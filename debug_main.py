@@ -196,7 +196,9 @@ async def main():
             )
             logger.info(f"Start command from user {message.from_user.id}")
         
-        logger.info("Starting polling...")
+        logger.info("Reset webhook (drop pending updates) and start polling...")
+        # Ensure no webhook is set when starting long polling to avoid conflicts
+        await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
         
     except Exception as e:
