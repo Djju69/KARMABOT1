@@ -38,17 +38,18 @@ async def show_categories_v2(message: Message, bot: Bot, lang: str):
             reply_markup=get_return_to_main_menu(lang)
         )
 
-async def show_nearest_v2(message: Message, bot: Bot, lang: str):
+async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced nearest places handler"""
     t = get_all_texts(lang)
     
+    city_hint = f" (город #{city_id})" if city_id else ""
     await message.answer(
-        "📍 **Ближайшие заведения**\n\n"
+        "📍 **Ближайшие заведения**" + city_hint + "\n\n"
         "Пожалуйста, отправьте свою геолокацию, чтобы найти заведения рядом с вами 🗺️",
         reply_markup=get_location_request_keyboard(lang)
     )
 
-async def handle_location_v2(message: Message, bot: Bot, lang: str):
+async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced location handler with actual nearby search"""
     
     try:

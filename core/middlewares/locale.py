@@ -32,4 +32,10 @@ class LocaleMiddleware(BaseMiddleware):
             except Exception:
                 lang = default_lang
         data["lang"] = lang
+        # Also provide selected city_id if any
+        try:
+            city_id = await profile_service.get_city_id(user_id) if user_id else None
+        except Exception:
+            city_id = None
+        data["city_id"] = city_id
         return await handler(event, data)
