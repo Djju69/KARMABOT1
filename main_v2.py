@@ -232,6 +232,8 @@ async def start():
     
     try:
         logger.info("🔄 Starting polling...")
+        # Ensure no webhook is set before long polling to prevent conflicts
+        await bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(bot)
     except Exception as e:
         logger.error(f"❌ Bot crashed: {e}")
