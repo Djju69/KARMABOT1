@@ -78,3 +78,33 @@ def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     for title, code in langs:
         rows.append([InlineKeyboardButton(text=label(title, code), callback_data=f"lang:set:{code}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def get_cities_inline(active_id: Optional[int] = None) -> InlineKeyboardMarkup:
+    """City selection keyboard. Callback: city:set:<id>
+    Uses a small default list; replace with DB-driven list in Phase 1 final.
+    """
+    cities: List[tuple[str, int]] = [
+        ("📍 Центр", 1),
+        ("📍 Нячанг-Север", 2),
+        ("📍 Нячанг-Юг", 3),
+        ("📍 Камрань", 4),
+        ("📍 Другой", 5),
+    ]
+
+    def label(txt: str, cid: int) -> str:
+        return ("✅ " if active_id == cid else "") + txt
+
+    rows: List[List[InlineKeyboardButton]] = []
+    for title, cid in cities:
+        rows.append([InlineKeyboardButton(text=label(title, cid), callback_data=f"city:set:{cid}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def get_policy_inline() -> InlineKeyboardMarkup:
+    """Policy acceptance keyboard. Callback: policy:accept"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Принимаю", callback_data="policy:accept")]
+        ]
+    )

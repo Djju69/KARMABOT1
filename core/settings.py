@@ -16,6 +16,7 @@ class Bots:
 @dataclass
 class Database:
     url: str
+    redis_url: str = ""
 
 @dataclass
 class FeatureFlags:
@@ -104,7 +105,7 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
     
     return Settings(
         bots=Bots(bot_token=bot_token, admin_id=admin_id),
-        database=Database(url=database_url),
+        database=Database(url=database_url, redis_url=env.str("REDIS_URL", "")),
         features=features,
         log_level=env.str("LOG_LEVEL", "INFO"),
         environment=env.str("ENVIRONMENT", "development"),

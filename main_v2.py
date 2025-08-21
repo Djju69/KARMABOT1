@@ -22,6 +22,8 @@ from core.database.db_v2 import db_v2
 # Enhanced services
 from core.services.card_renderer import card_service
 from core.keyboards.reply_v2 import get_main_menu_reply, get_return_to_main_menu
+from core.services.profile import profile_service
+from core.middlewares.locale import LocaleMiddleware
 
 # Handlers - Legacy (always enabled)
 from core.handlers.basic import (
@@ -219,6 +221,12 @@ async def start():
     default_properties = DefaultBotProperties(parse_mode='HTML')
     bot = Bot(token=settings.bots.bot_token, default=default_properties)
     dp = Dispatcher()
+    
+    # Connect services
+    await profile_service.connect(redis_url=settings.database.redis_url)
+    
+    # Middlewares
+    dp.update.middleware(LocaleMiddleware())
     
     # Setup handlers
     await setup_enhanced_handlers(dp)
