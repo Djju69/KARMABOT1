@@ -10,7 +10,7 @@ environs==10.3.0
 python-dotenv==1.0.1
 
 # Database - PostgreSQL for Railway
-asyncpg==0.29.0
+asyncpg==0.30.0
 aiosqlite==0.19.0
 
 # Redis support
@@ -25,8 +25,7 @@ qrcode==7.4.2
 aiofiles==23.2.1
 
 # Data validation
-pydantic==2.8.2
-pydantic-core==2.20.1
+# pydantic is an indirect dependency via aiogram; let pip resolve a compatible version (<2.9)
 
 # Security
 cryptography==45.0.6
