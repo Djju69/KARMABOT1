@@ -235,7 +235,7 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
 
 
 @category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):[0-9]+$"))
-async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str):
+async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
     """Хендлер пагинации каталога. Формат: pg:<slug>:<page>"""
     data = callback.data  # e.g., pg:restaurants:1
     try:
@@ -243,7 +243,12 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str):
         page = max(1, int(page_str))
 
         # Получаем карточки (пока без реального offset; 5 шт/страница по ТЗ)
-        cards = db_v2.get_cards_by_category(slug, status='published', limit=5)
+        cards = db_v2.get_cards_by_category(slug, status='published', limit=50)
+        # Опциональная фильтрация по городу, если поле присутствует в данных
+        if city_id is not None and cards and 'city_id' in cards[0]:
+            cards = [c for c in cards if (c.get('city_id') == city_id)]
+        # Ограничим выдачу до 5 на страницу (как и было)
+        cards = cards[:5]
 
         # Рендер заголовка
         count = len(cards)
@@ -279,7 +284,7 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str):
 
 
 @category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
-async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str):
+async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
     """Применение фильтра ресторанов и перерисовка pg:restaurants:1.
     Формат: filt:restaurants:<filter>
     """
@@ -290,6 +295,9 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str):
 
         # Получаем карточки категории (5 шт.)
         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=50)
+        # Опциональная фильтрация по городу, если поле присутствует
+        if city_id is not None and all_cards and 'city_id' in all_cards[0]:
+            all_cards = [c for c in all_cards if (c.get('city_id') == city_id)]
         if filt != 'all':
             # Локальная фильтрация по sub_slug, если поле присутствует
             cards = [c for c in all_cards if str(c.get('sub_slug') or '').lower() == filt]
