@@ -7,6 +7,7 @@ aiohttp==3.9.3
 
 # Environment and configuration
 environs==10.3.0
+marshmallow==3.21.3
 python-dotenv==1.0.1
 
 # Database - PostgreSQL for Railway
