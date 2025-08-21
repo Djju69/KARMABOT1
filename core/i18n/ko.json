@@ -39,5 +39,15 @@
   "profile_settings": "⚙️ 설정",
   "cards_count": "카드",
   "views_count": "조회수",
-  "qr_scans": "QR 스캔"
+  "qr_scans": "QR 스캔",
+  "category_restaurants": "레스토랑 & 카페",
+  "category_spa": "스파 & 마사지",
+  "category_transport": "교통 수단 대여",
+  "category_hotels": "호텔",
+  "category_tours": "투어",
+  "filter_asia": "아시아 요리",
+  "filter_europe": "유럽 요리",
+  "filter_street": "길거리 음식",
+  "filter_vege": "채식",
+  "filter_all": "모두 보기"
 }

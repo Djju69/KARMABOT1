@@ -39,5 +39,15 @@
   "profile_settings": "⚙️ Settings",
   "cards_count": "Cards",
   "views_count": "Views",
-  "qr_scans": "QR scans"
+  "qr_scans": "QR scans",
+  "category_restaurants": "Restaurants & Cafes",
+  "category_spa": "SPA & Massage",
+  "category_transport": "Transport Rental",
+  "category_hotels": "Hotels",
+  "category_tours": "Tours",
+  "filter_asia": "Asian",
+  "filter_europe": "European",
+  "filter_street": "Street food",
+  "filter_vege": "Vegetarian",
+  "filter_all": "Show all"
 }

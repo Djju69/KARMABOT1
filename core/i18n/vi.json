@@ -39,5 +39,15 @@
   "profile_settings": "⚙️ Cài đặt",
   "cards_count": "Thẻ",
   "views_count": "Lượt xem",
-  "qr_scans": "Quét QR"
+  "qr_scans": "Quét QR",
+  "category_restaurants": "Nhà hàng & Quán cà phê",
+  "category_spa": "SPA & Mát-xa",
+  "category_transport": "Thuê phương tiện",
+  "category_hotels": "Khách sạn",
+  "category_tours": "Tour",
+  "filter_asia": "Ẩm thực Á",
+  "filter_europe": "Ẩm thực Âu",
+  "filter_street": "Đồ ăn đường phố",
+  "filter_vege": "Chay",
+  "filter_all": "Hiện tất cả"
 }

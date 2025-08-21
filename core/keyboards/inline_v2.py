@@ -3,25 +3,28 @@ Inline keyboards for categories, pagination and profile actions (v2)
 """
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from typing import List, Optional
+from ..utils.locales_v2 import get_text
 
-CATEGORIES = [
-    ("🍽 Рестораны и кафе", "restaurants"),
-    ("🧖‍♀️ SPA и массаж", "spa"),
-    ("🚗 Аренда транспорта", "transport"),
-    ("🏨 Отели", "hotels"),
-    ("🚶‍♂️ Экскурсии", "tours"),
+CATEGORY_SLUGS = [
+    ("restaurants", "🍽"),
+    ("spa", "🧖‍♀️"),
+    ("transport", "🚗"),
+    ("hotels", "🏨"),
+    ("tours", "🚶‍♂️"),
 ]
 
 
 def get_categories_inline(lang: str = "ru") -> InlineKeyboardMarkup:
     """Five fixed inline categories. Callbacks: pg:<slug>:1"""
     rows: List[List[InlineKeyboardButton]] = []
-    for title, slug in CATEGORIES:
-        rows.append([InlineKeyboardButton(text=title, callback_data=f"pg:{slug}:1")])
+    for slug, emoji in CATEGORY_SLUGS:
+        key = f"category_{slug}"
+        label = f"{emoji} {get_text(key, lang)}"
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"pg:{slug}:1")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def get_restaurant_filters_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
+def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru") -> InlineKeyboardMarkup:
     """Restaurant filters block for category restaurants.
     Callbacks: filt:restaurants:(asia|europe|street|vege|all)
     """
@@ -31,23 +34,23 @@ def get_restaurant_filters_inline(active: Optional[str] = None) -> InlineKeyboar
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text=label("🥢 Азиатская", "asia"), callback_data="filt:restaurants:asia"),
-                InlineKeyboardButton(text=label("🍝 Европейская", "europe"), callback_data="filt:restaurants:europe"),
+                InlineKeyboardButton(text=label("🥢 " + get_text("filter_asia", lang), "asia"), callback_data="filt:restaurants:asia"),
+                InlineKeyboardButton(text=label("🍝 " + get_text("filter_europe", lang), "europe"), callback_data="filt:restaurants:europe"),
             ],
             [
-                InlineKeyboardButton(text=label("🌭 Стрит-фуд", "street"), callback_data="filt:restaurants:street"),
-                InlineKeyboardButton(text=label("🥗 Вегетарианская", "vege"), callback_data="filt:restaurants:vege"),
+                InlineKeyboardButton(text=label("🌭 " + get_text("filter_street", lang), "street"), callback_data="filt:restaurants:street"),
+                InlineKeyboardButton(text=label("🥗 " + get_text("filter_vege", lang), "vege"), callback_data="filt:restaurants:vege"),
             ],
-            [InlineKeyboardButton(text=label("🔎 Показать все", "all"), callback_data="filt:restaurants:all")],
+            [InlineKeyboardButton(text=label("🔎 " + get_text("filter_all", lang), "all"), callback_data="filt:restaurants:all")],
         ]
     )
 
 
-def get_catalog_item_row(listing_id: int, gmaps_url: Optional[str]) -> List[InlineKeyboardButton]:
+def get_catalog_item_row(listing_id: int, gmaps_url: Optional[str], lang: str = "ru") -> List[InlineKeyboardButton]:
     """Row with info button and map url (if any)"""
     row = [InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{listing_id}")]
     if gmaps_url:
-        row.append(InlineKeyboardButton(text="Показать на карте", url=gmaps_url))
+        row.append(InlineKeyboardButton(text=get_text("show_on_map", lang), url=gmaps_url))
     return row
 
 

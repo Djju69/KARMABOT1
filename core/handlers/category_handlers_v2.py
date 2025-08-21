@@ -256,11 +256,11 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str):
             listing_id = card.get('id') if isinstance(card, dict) else getattr(card, 'id', None)
             gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None)
             if listing_id:
-                inline_rows.append(get_catalog_item_row(listing_id, gmaps))
+                inline_rows.append(get_catalog_item_row(listing_id, gmaps, lang))
 
         # Кнопки фильтров только для restaurants
         if slug == 'restaurants':
-            filter_block = get_restaurant_filters_inline()
+            filter_block = get_restaurant_filters_inline(lang=lang)
             # Добавим фильтры перед пагинацией
             kb_rows = filter_block.inline_keyboard + [get_pagination_row(slug, page, pages)]
         else:
@@ -307,10 +307,10 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str):
         for c in cards_page:
             listing_id = c.get('id') if isinstance(c, dict) else getattr(c, 'id', None)
             gmaps = c.get('google_maps_url') if isinstance(c, dict) else getattr(c, 'google_maps_url', None)
-            inline_rows.append(get_catalog_item_row(listing_id, gmaps))
+            inline_rows.append(get_catalog_item_row(listing_id, gmaps, lang))
 
         # Блок фильтров (с активным маркером) + пагинация
-        filter_block = get_restaurant_filters_inline(active=filt)
+        filter_block = get_restaurant_filters_inline(active=filt, lang=lang)
         kb_rows = filter_block.inline_keyboard + [get_pagination_row(slug, page, pages)]
         kb = inline_rows + kb_rows
 
@@ -349,7 +349,7 @@ async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
 
         # Кнопки действия: карта/контакты, если есть данные
         gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None) if card else None
-        kb = [get_catalog_item_row(listing_id, gmaps)]
+        kb = [get_catalog_item_row(listing_id, gmaps, lang)]
 
         await callback.message.edit_text(text=text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
         await callback.answer()

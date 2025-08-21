@@ -39,5 +39,16 @@
   "profile_settings": "⚙️ Настройки",
   "cards_count": "Карточек",
   "views_count": "Просмотров",
-  "qr_scans": "QR сканирований"
+  "qr_scans": "QR сканирований",
+  "category_restaurants": "Рестораны и кафе",
+  "category_spa": "SPA и массаж",
+  "category_transport": "Аренда транспорта",
+  "category_hotels": "Отели",
+  "category_tours": "Экскурсии",
+  "filter_asia": "Азиатская",
+  "filter_europe": "Европейская",
+  "filter_street": "Стрит-фуд",
+  "filter_vege": "Вегетарианская",
+  "filter_all": "Показать все"
 }
+
