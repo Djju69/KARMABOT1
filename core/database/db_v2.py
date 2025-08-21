@@ -152,6 +152,23 @@ class DatabaseServiceV2:
             """, (category_slug, status, limit))
             
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_card_by_id(self, card_id: int) -> Optional[Dict[str, Any]]:
+        """Get single card by ID with joined fields"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT c.*, cat.name as category_name, cat.slug as category_slug,
+                       p.display_name as partner_name
+                FROM cards_v2 c
+                JOIN categories_v2 cat ON c.category_id = cat.id
+                JOIN partners_v2 p ON c.partner_id = p.id
+                WHERE c.id = ?
+                """,
+                (card_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
     
     def get_cards_pending_moderation(self, limit: int = 20) -> List[Dict]:
         """Get cards waiting for moderation"""

@@ -8,7 +8,12 @@ router = Router(name=__name__)
 
 # Basic text handlers (minimal implementations)
 async def get_start(message: Message):
-    await message.answer("👋 Привет! Выберите язык и категорию в главном меню.")
+    # Show main menu keyboard on start
+    from ..keyboards.reply_v2 import get_main_menu_reply
+    await message.answer(
+        "👋 Привет! Выберите язык и категорию в главном меню.",
+        reply_markup=get_main_menu_reply("ru")
+    )
 
 async def get_hello(message: Message):
     await message.answer("Здравствуйте!")
@@ -23,7 +28,11 @@ async def hiw_user(message: Message):
     await message.answer("Как это работает: выберите категорию — получите рекомендации.")
 
 async def main_menu(message: Message):
-    await message.answer("Главное меню: используйте кнопки ниже.")
+    from ..keyboards.reply_v2 import get_main_menu_reply
+    await message.answer(
+        "Главное меню: используйте кнопки ниже.",
+        reply_markup=get_main_menu_reply("ru")
+    )
 
 async def user_regional_rest(message: Message):
     await message.answer("Покажем рестораны в вашем регионе.")

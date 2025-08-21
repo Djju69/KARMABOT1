@@ -3,13 +3,19 @@ Enhanced category handlers with unified card rendering
 Backward compatible with existing functionality
 """
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram import Bot
 import logging
 
 from ..database.db_v2 import db_v2
 from ..services.card_renderer import card_service
 from ..keyboards.reply_v2 import get_return_to_main_menu, get_location_request_keyboard
+from ..keyboards.inline_v2 import (
+    get_categories_inline,
+    get_pagination_row,
+    get_catalog_item_row,
+    get_restaurant_filters_inline,
+)
 from ..utils.locales_v2 import get_text, get_all_texts
 from ..settings import settings
 
@@ -19,43 +25,13 @@ logger = logging.getLogger(__name__)
 category_router = Router()
 
 async def show_categories_v2(message: Message, bot: Bot):
-    """Enhanced categories handler with unified rendering"""
-    lang = 'ru'  # TODO: Get from user settings
-    t = get_all_texts(lang)
-    
+    """Показывает инлайн-меню из 5 категорий (pg:<slug>:1)."""
+    lang = 'ru'  # TODO: получить из профиля пользователя
     try:
-        categories = db_v2.get_categories(active_only=True)
-        
-        if not categories:
-            await message.answer(
-                "📭 Категории временно недоступны.",
-                reply_markup=get_return_to_main_menu(lang)
-            )
-            return
-        
-        # Build categories keyboard
-        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-        
-        keyboard_buttons = []
-        for category in categories:
-            button_text = f"{category.emoji} {category.name}" if category.emoji else category.name
-            keyboard_buttons.append([KeyboardButton(text=button_text)])
-        
-        # Add additional options
-        keyboard_buttons.append([KeyboardButton(text=t['show_nearest'])])
-        keyboard_buttons.append([KeyboardButton(text=t['back_to_main'])])
-        
-        categories_keyboard = ReplyKeyboardMarkup(
-            keyboard=keyboard_buttons,
-            resize_keyboard=True
-        )
-        
         await message.answer(
-            "🗂️ **Выберите категорию:**\n\n"
-            "Найдите заведения по типу услуг",
-            reply_markup=categories_keyboard
+            "🗂 Выберите категорию:",
+            reply_markup=get_categories_inline(lang)
         )
-        
     except Exception as e:
         logger.error(f"Error in show_categories_v2: {e}")
         await message.answer(
@@ -107,7 +83,7 @@ async def handle_location_v2(message: Message, bot: Bot):
         from ..windows.main_menu import main_menu_text
         await bot.send_message(
             chat_id=message.chat.id, 
-            text=main_menu_text, 
+            text=main_menu_text(lang), 
             reply_markup=get_return_to_main_menu(lang)
         )
         
@@ -173,7 +149,7 @@ async def category_selected_v2(message: Message, bot: Bot):
         from ..windows.main_menu import main_menu_text
         await bot.send_message(
             chat_id=message.chat.id,
-            text=main_menu_text,
+            text=main_menu_text(lang),
             reply_markup=get_return_to_main_menu(lang)
         )
         
@@ -258,6 +234,135 @@ async def handle_profile(message: Message, bot: Bot):
     
     from ..keyboards.reply_v2 import get_profile_keyboard
     await message.answer(response, reply_markup=get_profile_keyboard(lang))
+
+ 
+
+
+@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):[0-9]+$"))
+async def on_catalog_pagination(callback: CallbackQuery, bot: Bot):
+    """Хендлер пагинации каталога. Формат: pg:<slug>:<page>"""
+    lang = 'ru'  # TODO: взять из профиля
+    data = callback.data  # e.g., pg:restaurants:1
+    try:
+        _, slug, page_str = data.split(":")
+        page = max(1, int(page_str))
+
+        # Получаем карточки (пока без реального offset; 5 шт/страница по ТЗ)
+        cards = db_v2.get_cards_by_category(slug, status='published', limit=5)
+
+        # Рендер заголовка
+        count = len(cards)
+        pages = max(1, page)  # Заглушка: точное кол-во страниц зависит от БД
+        header = f"Найдено {count}. Стр. {page}/{pages}"
+
+        # Сборка инлайн-кнопок под каждым элементом
+        inline_rows = []
+        for card in cards:
+            listing_id = card.get('id') if isinstance(card, dict) else getattr(card, 'id', None)
+            gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None)
+            if listing_id:
+                inline_rows.append(get_catalog_item_row(listing_id, gmaps))
+
+        # Кнопки фильтров только для restaurants
+        if slug == 'restaurants':
+            filter_block = get_restaurant_filters_inline()
+            # Добавим фильтры перед пагинацией
+            kb_rows = filter_block.inline_keyboard + [get_pagination_row(slug, page, pages)]
+        else:
+            kb_rows = [get_pagination_row(slug, page, pages)]
+
+        # Объединяем ряды: элементы + блоки управления
+        kb = inline_rows + kb_rows
+        await callback.message.edit_text(
+            text=header + "\n\n" + card_service.render_cards_list(cards, lang, max_cards=5),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+        )
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"on_catalog_pagination error: {e}")
+        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
+
+
+@category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
+async def on_restaurants_filter(callback: CallbackQuery, bot: Bot):
+    """Применение фильтра ресторанов и перерисовка pg:restaurants:1.
+    Формат: filt:restaurants:<filter>
+    """
+    lang = 'ru'  # TODO: взять из профиля
+    try:
+        _, _, filt = callback.data.split(":")
+        slug = 'restaurants'
+        page = 1
+
+        # Получаем карточки категории (5 шт.)
+        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=50)
+        if filt != 'all':
+            # Локальная фильтрация по sub_slug, если поле присутствует
+            cards = [c for c in all_cards if str(c.get('sub_slug') or '').lower() == filt]
+        else:
+            cards = all_cards
+
+        # Обрезаем до 5 элементов (первая страница)
+        per_page = 5
+        count = len(cards)
+        pages = max(1, (count + per_page - 1) // per_page)
+        cards_page = cards[:per_page]
+
+        # Рендер строк элементов (каждый ряд = [ℹ️, (карта)])
+        inline_rows = []
+        for c in cards_page:
+            listing_id = c.get('id') if isinstance(c, dict) else getattr(c, 'id', None)
+            gmaps = c.get('google_maps_url') if isinstance(c, dict) else getattr(c, 'google_maps_url', None)
+            inline_rows.append(get_catalog_item_row(listing_id, gmaps))
+
+        # Блок фильтров (с активным маркером) + пагинация
+        filter_block = get_restaurant_filters_inline(active=filt)
+        kb_rows = filter_block.inline_keyboard + [get_pagination_row(slug, page, pages)]
+        kb = inline_rows + kb_rows
+
+        header = f"Найдено {count}. Стр. {page}/{pages}"
+        await callback.message.edit_text(
+            text=header + "\n\n" + card_service.render_cards_list(cards_page, lang, max_cards=5),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
+        )
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"on_restaurants_filter error: {e}")
+        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
+
+
+@category_router.callback_query(F.data.regexp(r"^act:view:[0-9]+$"))
+async def on_card_view(callback: CallbackQuery, bot: Bot):
+    """Просмотр карточки по id. Формат: act:view:<id>"""
+    lang = 'ru'
+    try:
+        _, _, id_str = callback.data.split(":")
+        listing_id = int(id_str)
+
+        # Пытаемся получить карточку; если интерфейса нет — показываем заглушку.
+        card = None
+        try:
+            card = db_v2.get_card_by_id(listing_id)
+        except Exception:
+            card = None
+
+        if card:
+            text = card_service.render_card(card if isinstance(card, dict) else dict(card), lang)
+        else:
+            text = (
+                "Карточка скоро будет доступна.\n"
+                "ID: " + str(listing_id)
+            )
+
+        # Кнопки действия: карта/контакты, если есть данные
+        gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None) if card else None
+        kb = [get_catalog_item_row(listing_id, gmaps)]
+
+        await callback.message.edit_text(text=text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"on_card_view error: {e}")
+        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
 
 def get_category_router() -> Router:
     """Get category router (always enabled)"""

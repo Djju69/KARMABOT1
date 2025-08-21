@@ -10,27 +10,15 @@ from ..utils.locales_v2 import get_text, get_all_texts
 
 def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """
-    Get main menu keyboard with backward compatibility
-    Falls back to legacy layout if new menu feature is disabled
+    Главное Reply-меню (фикс из ТЗ):
+    [🗂 Категории] [👤 Личный кабинет]
+    [📍 Районы/Рядом] [❓ Помощь]
     """
-    t = get_all_texts(lang)
-    
-    if not settings.features.new_menu:
-        # Legacy 2x2 layout for backward compatibility
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=t['choose_category']), KeyboardButton(text=t['show_nearest'])],
-                [KeyboardButton(text=t['choose_district']), KeyboardButton(text=t['choose_language'])]
-            ],
-            resize_keyboard=True
-        )
-    
-    # New 3x2 layout as per TZ requirements
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=t['choose_category']), KeyboardButton(text=t['profile'])],
-            [KeyboardButton(text=t['choose_district']), KeyboardButton(text=t['show_nearest'])],
-            [KeyboardButton(text=t['help']), KeyboardButton(text=t['choose_language'])]
+            [KeyboardButton(text='🗂 Категории'), KeyboardButton(text='🌐 Язык')],
+            [KeyboardButton(text='📍 По районам / Рядом'), KeyboardButton(text='❓ Помощь')],
+            [KeyboardButton(text='👤 Личный кабинет')]
         ],
         resize_keyboard=True
     )
