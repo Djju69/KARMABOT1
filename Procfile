@@ -1,1 +1,1 @@
-web: python debug_main.py
+web: python -u simple_test.py
