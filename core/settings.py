@@ -71,9 +71,14 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
     # Database configuration with Railway support
     database_url = env.str("DATABASE_URL", "sqlite:///core/database/data.db")
     
-    # Railway PostgreSQL support
-    if database_url.startswith("postgresql://"):
+    # Railway/Render PostgreSQL support: normalize to asyncpg driver
+    if database_url.startswith("postgresql+asyncpg://"):
+        pass  # already normalized
+    elif database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgres://"):
+        # Handle legacy 'postgres://' scheme by upgrading to asyncpg
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
     # Feature flags (all OFF by default for safety)
     features = FeatureFlags(
