@@ -60,3 +60,21 @@ def get_pagination_row(slug: str, page: int, pages: int) -> List[InlineKeyboardB
     if page < pages:
         buttons.append(InlineKeyboardButton(text="➡️", callback_data=f"pg:{slug}:{page+1}"))
     return buttons
+
+
+def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
+    """Language selection keyboard. Callbacks: lang:set:(ru|en|vi|ko)"""
+    langs: List[tuple[str, str]] = [
+        ("🇷🇺 Русский", "ru"),
+        ("🇺🇸 English", "en"),
+        ("🇻🇳 Tiếng Việt", "vi"),
+        ("🇰🇷 한국어", "ko"),
+    ]
+
+    def label(txt: str, code: str) -> str:
+        return ("✅ " if active == code else "") + txt
+
+    rows: List[List[InlineKeyboardButton]] = []
+    for title, code in langs:
+        rows.append([InlineKeyboardButton(text=label(title, code), callback_data=f"lang:set:{code}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)

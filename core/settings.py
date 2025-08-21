@@ -32,6 +32,19 @@ class Settings:
     features: FeatureFlags
     log_level: str = "INFO"
     environment: str = "development"
+    # Optional extended config (non-breaking)
+    pdf_user_ru: str = ""
+    pdf_user_en: str = ""
+    pdf_user_vi: str = ""
+    pdf_user_ko: str = ""
+    pdf_partner_ru: str = ""
+    pdf_partner_en: str = ""
+    pdf_partner_vi: str = ""
+    pdf_partner_ko: str = ""
+    support_tg: str = ""
+    webapp_qr_url: str = ""
+    default_lang: str = "ru"
+    default_city: str = ""
 
 def get_settings(env_path: Optional[str] = None) -> Settings:
     """
@@ -94,7 +107,19 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         database=Database(url=database_url),
         features=features,
         log_level=env.str("LOG_LEVEL", "INFO"),
-        environment=env.str("ENVIRONMENT", "development")
+        environment=env.str("ENVIRONMENT", "development"),
+        pdf_user_ru=env.str("PDF_USER_RU", ""),
+        pdf_user_en=env.str("PDF_USER_EN", ""),
+        pdf_user_vi=env.str("PDF_USER_VI", ""),
+        pdf_user_ko=env.str("PDF_USER_KO", ""),
+        pdf_partner_ru=env.str("PDF_PARTNER_RU", ""),
+        pdf_partner_en=env.str("PDF_PARTNER_EN", ""),
+        pdf_partner_vi=env.str("PDF_PARTNER_VI", ""),
+        pdf_partner_ko=env.str("PDF_PARTNER_KO", ""),
+        support_tg=env.str("SUPPORT_TG", ""),
+        webapp_qr_url=env.str("WEBAPP_QR_URL", ""),
+        default_lang=env.str("DEFAULT_LANG", "ru"),
+        default_city=env.str("DEFAULT_CITY", "")
     )
 
 # Initialize settings (no print for security)

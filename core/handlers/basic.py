@@ -49,14 +49,52 @@ async def get_video(message: Message):
 async def get_file(message: Message):
     await message.answer("Файл получен.")
 
-# Callback handlers
-async def language_callback(callback: CallbackQuery):
-    await callback.message.answer("Язык будет изменен (заглушка)")
-    await callback.answer()
+# ==== Language & Help (Phase 1) ====
+from ..keyboards.inline_v2 import get_language_inline
+from ..utils.locales_v2 import get_text
+from ..settings import settings
 
-async def main_menu_callback(callback: CallbackQuery):
-    await callback.message.answer("Открываю главное меню (заглушка)")
-    await callback.answer()
+
+@router.message(F.text == "🌐 Язык")
+async def on_language_menu(message: Message):
+    lang = getattr(settings, 'default_lang', 'ru')
+    await message.answer(
+        get_text('choose_language', lang),
+        reply_markup=get_language_inline(active=lang)
+    )
+
+
+@router.callback_query(F.data.regexp(r"^lang:set:(ru|en|vi|ko)$"))
+async def on_language_set(callback: CallbackQuery):
+    # TODO: сохранить язык в профиле пользователя (Redis/DB)
+    _, _, lang = callback.data.split(":")
+    await callback.message.edit_text(
+        get_text('choose_language', lang)
+    )
+    await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
+    await callback.answer("Язык обновлён")
+
+
+@router.message(F.text == "❓ Помощь")
+async def on_help(message: Message):
+    lang = getattr(settings, 'default_lang', 'ru')
+    help_text = get_text('help_main', lang)
+
+    # Append docs/support if available
+    pdf_user = getattr(settings, f'pdf_user_{lang}', '')
+    pdf_partner = getattr(settings, f'pdf_partner_{lang}', '')
+    support = getattr(settings, 'support_tg', '')
+
+    extras = []
+    if pdf_user:
+        extras.append(f"📄 User PDF: {pdf_user}")
+    if pdf_partner:
+        extras.append(f"📄 Partner PDF: {pdf_partner}")
+    if support:
+        extras.append(f"🆘 Support: {support}")
+
+    text = help_text + ("\n\n" + "\n".join(extras) if extras else "")
+    await message.answer(text)
 
 # Register defaults to router to ensure availability
 router.message.register(get_start, CommandStart())
