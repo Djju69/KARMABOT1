@@ -18,7 +18,7 @@ redis==5.0.1
 aioredis==2.0.1
 
 # Image processing (for QR codes and photos)
-Pillow==10.2.0
+Pillow==11.0.0
 qrcode==7.4.2
 
 # File handling
