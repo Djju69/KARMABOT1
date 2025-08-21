@@ -1,1 +1,1 @@
-web: python -u simple_test.py
+web: bash start.sh
