@@ -44,5 +44,5 @@ print(f"[health] Using port: {port}")
 PY
 uvicorn health_app:app --host 0.0.0.0 --port ${PORT:-8000} &
 
-echo "Starting bot (debug_main.py) ..."
-python -u debug_main.py
+echo "Starting bot (main_v2.py) ..."
+python -u main_v2.py
