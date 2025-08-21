@@ -13,5 +13,16 @@ echo "ADMIN_ID: $ADMIN_ID"
 echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
 echo "PORT: $PORT"
 echo ""
-echo "Starting Python script..."
-python -u simple_test.py
+echo "Starting health server on PORT=$PORT..."
+python - << 'PY'
+import os
+port = os.getenv('PORT')
+if not port:
+    # Fallback default
+    port = '8000'
+print(f"[health] Using port: {port}")
+PY
+uvicorn health_app:app --host 0.0.0.0 --port ${PORT:-8000} &
+
+echo "Starting bot (debug_main.py) ..."
+python -u debug_main.py
