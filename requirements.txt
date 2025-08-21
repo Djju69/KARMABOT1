@@ -1,0 +1,39 @@
+# KARMABOT1 - Railway deployment dependencies
+# Essential packages for production deployment on Railway
+
+# Core bot framework
+aiogram==3.3.0
+aiohttp==3.9.3
+
+# Environment and configuration
+environs==10.3.0
+python-dotenv==1.0.1
+
+# Database - PostgreSQL for Railway
+asyncpg==0.29.0
+aiosqlite==0.19.0
+
+# Redis support
+redis==5.0.1
+aioredis==2.0.1
+
+# Image processing (for QR codes and photos)
+Pillow==10.2.0
+qrcode==7.4.2
+
+# File handling
+aiofiles==23.2.1
+
+# Data validation
+pydantic==2.5.3
+
+# Security
+cryptography==41.0.8
+
+# Web server (for Railway health checks)
+uvicorn==0.24.0
+fastapi==0.104.1
+
+# Testing (development only)
+pytest==7.4.3
+pytest-asyncio==0.21.1
