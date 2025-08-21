@@ -25,7 +25,7 @@ qrcode==7.4.2
 aiofiles==23.2.1
 
 # Data validation
-pydantic==2.9.2
+pydantic==2.5.3
 
 # Security
 cryptography==45.0.6
