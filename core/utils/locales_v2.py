@@ -342,5 +342,26 @@ def load_translations_from_file(filepath: str = "core/utils/translations_v2.json
         except Exception as e:
             print(f"Warning: Failed to load translations from {filepath}: {e}")
 
-# Auto-load on import
+def load_translations_from_dir(dirpath: str = "core/i18n"):
+    """Load translations from all JSON files in a directory.
+    Each file should be named like 'ru.json', 'en.json', etc., containing a flat {key: text} map.
+    """
+    global translations_v2, translations
+    p = Path(dirpath)
+    if not p.exists():
+        return
+    for file in p.glob("*.json"):
+        try:
+            with open(file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                lang_code = file.stem
+                base = translations_v2.get(lang_code, {})
+                base.update(data)
+                translations_v2[lang_code] = base
+        except Exception as e:
+            print(f"Warning: Failed to load translations from {file}: {e}")
+    translations = translations_v2
+
+# Auto-load on import (JSON dir has precedence, then single file)
+load_translations_from_dir()
 load_translations_from_file()
