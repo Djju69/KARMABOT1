@@ -24,9 +24,8 @@ logger = logging.getLogger(__name__)
 # Router for category handlers
 category_router = Router()
 
-async def show_categories_v2(message: Message, bot: Bot):
+async def show_categories_v2(message: Message, bot: Bot, lang: str):
     """Показывает инлайн-меню из 5 категорий (pg:<slug>:1)."""
-    lang = 'ru'  # TODO: получить из профиля пользователя
     try:
         await message.answer(
             "🗂 Выберите категорию:",
@@ -39,9 +38,8 @@ async def show_categories_v2(message: Message, bot: Bot):
             reply_markup=get_return_to_main_menu(lang)
         )
 
-async def show_nearest_v2(message: Message, bot: Bot):
+async def show_nearest_v2(message: Message, bot: Bot, lang: str):
     """Enhanced nearest places handler"""
-    lang = 'ru'  # TODO: Get from user settings
     t = get_all_texts(lang)
     
     await message.answer(
@@ -50,9 +48,8 @@ async def show_nearest_v2(message: Message, bot: Bot):
         reply_markup=get_location_request_keyboard(lang)
     )
 
-async def handle_location_v2(message: Message, bot: Bot):
+async def handle_location_v2(message: Message, bot: Bot, lang: str):
     """Enhanced location handler with actual nearby search"""
-    lang = 'ru'  # TODO: Get from user settings
     
     try:
         latitude = message.location.latitude
@@ -94,9 +91,8 @@ async def handle_location_v2(message: Message, bot: Bot):
             reply_markup=get_return_to_main_menu(lang)
         )
 
-async def category_selected_v2(message: Message, bot: Bot):
+async def category_selected_v2(message: Message, bot: Bot, lang: str):
     """Enhanced category selection with unified card rendering"""
-    lang = 'ru'  # TODO: Get from user settings
     category_text = message.text
     
     try:
@@ -181,7 +177,7 @@ async def handle_legacy_category(message: Message, bot: Bot, category_text: str)
         await message.answer("Пожалуйста, выберите категорию из списка.")
 
 # Profile handler (new feature)
-async def handle_profile(message: Message, bot: Bot):
+async def handle_profile(message: Message, bot: Bot, lang: str):
     """Handle profile button press"""
     if not settings.features.partner_fsm:
         await message.answer(
@@ -191,7 +187,6 @@ async def handle_profile(message: Message, bot: Bot):
         )
         return
     
-    lang = 'ru'  # TODO: Get from user settings
     t = get_all_texts(lang)
     
     # Get partner info
@@ -239,9 +234,8 @@ async def handle_profile(message: Message, bot: Bot):
 
 
 @category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):[0-9]+$"))
-async def on_catalog_pagination(callback: CallbackQuery, bot: Bot):
+async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str):
     """Хендлер пагинации каталога. Формат: pg:<slug>:<page>"""
-    lang = 'ru'  # TODO: взять из профиля
     data = callback.data  # e.g., pg:restaurants:1
     try:
         _, slug, page_str = data.split(":")
@@ -284,11 +278,10 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot):
 
 
 @category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
-async def on_restaurants_filter(callback: CallbackQuery, bot: Bot):
+async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str):
     """Применение фильтра ресторанов и перерисовка pg:restaurants:1.
     Формат: filt:restaurants:<filter>
     """
-    lang = 'ru'  # TODO: взять из профиля
     try:
         _, _, filt = callback.data.split(":")
         slug = 'restaurants'
@@ -332,9 +325,8 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot):
 
 
 @category_router.callback_query(F.data.regexp(r"^act:view:[0-9]+$"))
-async def on_card_view(callback: CallbackQuery, bot: Bot):
+async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
     """Просмотр карточки по id. Формат: act:view:<id>"""
-    lang = 'ru'
     try:
         _, _, id_str = callback.data.split(":")
         listing_id = int(id_str)

@@ -31,6 +31,7 @@ from core.handlers.basic import (
     hiw_user, main_menu, user_regional_rest,
     get_location, get_video, get_file, language_callback, main_menu_callback
 )
+from core.handlers.basic import router as basic_router
 from core.handlers.callback import (
     rests_by_district_handler, rest_near_me_handler,
     rests_by_kitchen_handler, location_handler, router as callback_router
@@ -106,6 +107,9 @@ async def setup_enhanced_handlers(dp: Dispatcher):
 async def setup_legacy_handlers(dp: Dispatcher):
     """Setup legacy handlers for backward compatibility"""
     
+    # Include basic router to activate new Phase 1 handlers defined via decorators
+    dp.include_router(basic_router)
+
     # Localized text sets for filters (backward compatible)
     localized_texts = {
         'back_to_main': {get_text('back_to_main', lang) for lang in ['ru', 'en', 'vi', 'ko']},
