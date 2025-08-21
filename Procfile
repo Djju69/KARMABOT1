@@ -1,1 +1,1 @@
-web: python main_v2.py
+web: python debug_main.py
