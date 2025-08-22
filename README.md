@@ -330,3 +330,4 @@ python main_v2.py 2>&1 | grep "Feature flags"
 **Версия:** 2.0.0  
 **Дата:** 2025-08-21  
 **Совместимость:** Python 3.8+, aiogram 3.3.0+
+
