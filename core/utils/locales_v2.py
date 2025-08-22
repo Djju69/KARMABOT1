@@ -103,6 +103,25 @@ translations_v2 = {
         'filter_street': 'Стритфуд',
         'filter_vege': 'Вегетарианская',
         'filter_all': 'Показать все',
+
+        # NEW: Welcome flow
+        'welcome_message': '''{user_name} 👋 Добро пожаловать в Karma System!
+
+✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:
+🍽️ Рестораны и кафе
+🧖‍♀️ SPA и массаж
+🏍️ Аренда байков
+🏨 Отели
+🚶‍♂️ Экскурсии
+
+А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀
+
+Начни экономить прямо сейчас — выбирай категорию и получай свои скидки!
+
+Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
+        'policy_accept': '✅ Согласен',
+        'policy_view': '📄 Политика конфиденциальности',
+        'policy_url': 'https://example.com/privacy' # ЗАМЕНИТЬ НА РЕАЛЬНЫЙ URL
     }
 }
 
@@ -148,14 +167,22 @@ def validate_translations() -> Dict[str, list]:
     return missing_keys
 
 
-def load_translations_from_dir(dirpath: str = "core/i18n"):
+def load_translations_from_dir(dirpath: str = None):
     """Load translations from all JSON files in a directory.
     Each file should be named like 'ru.json', 'en.json', etc., containing a flat {key: text} map.
     """
     global translations_v2, translations
+    
+    # Use absolute path if dirpath is not provided
+    if dirpath is None:
+        import os
+        dirpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'i18n')
+    
     p = Path(dirpath)
     if not p.exists():
+        print(f"Warning: Translations directory not found: {p.absolute()}")
         return
+        
     for file in p.glob("*.json"):
         try:
             with open(file, 'r', encoding='utf-8') as f:
@@ -164,8 +191,10 @@ def load_translations_from_dir(dirpath: str = "core/i18n"):
                 base = translations_v2.get(lang_code, {})
                 base.update(data)
                 translations_v2[lang_code] = base
+                print(f"Loaded translations for language: {lang_code}")
         except Exception as e:
             print(f"Warning: Failed to load translations from {file}: {e}")
+    
     translations = translations_v2
 
 # Auto-load on import

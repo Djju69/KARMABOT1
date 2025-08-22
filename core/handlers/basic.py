@@ -17,11 +17,32 @@ router = Router(name=__name__)
 # Basic text handlers (minimal implementations)
 async def get_start(message: Message):
     from ..keyboards.reply_v2 import get_main_menu_reply
-    lang = await profile_service.get_lang(message.from_user.id)
-    await message.answer(
-        get_text('start_welcome', lang),
-        reply_markup=get_main_menu_reply(lang)
-    )
+    from ..keyboards.inline_v2 import get_policy_inline
+    
+    user_id = message.from_user.id
+    lang = await profile_service.get_lang(user_id)
+    
+    # Проверяем, принял ли пользователь политику
+    policy_accepted = await profile_service.get_policy_accepted(user_id)
+    
+    if not policy_accepted:
+        # Формируем приветственное сообщение с именем пользователя
+        welcome_text = get_text('welcome_message', lang).format(
+            user_name=message.from_user.first_name
+        )
+        
+        # Отправляем приветственное сообщение с кнопками
+        await message.answer(
+            text=welcome_text,
+            reply_markup=get_policy_inline(lang),
+            parse_mode='HTML'
+        )
+    else:
+        # Если политика уже принята, показываем главное меню
+        await message.answer(
+            text=get_text('main_menu_title', lang),
+            reply_markup=get_main_menu_reply(lang)
+        )
 
 
 async def main_menu(message: Message):
@@ -101,9 +122,22 @@ async def on_city_set(callback: CallbackQuery):
 
 @router.callback_query(F.data == "policy:accept")
 async def on_policy_accept(callback: CallbackQuery):
-    lang = await profile_service.get_lang(callback.from_user.id)
-    await profile_service.set_policy_accepted(callback.from_user.id, True)
+    from ..keyboards.reply_v2 import get_main_menu_reply
+    user_id = callback.from_user.id
+    lang = await profile_service.get_lang(user_id)
+
+    # Отмечаем, что политика принята
+    await profile_service.set_policy_accepted(user_id, True)
+
+    # Подтверждаем действие
     await callback.answer(get_text('policy_accepted', lang))
+
+    # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню
+    await callback.message.delete()
+    await callback.message.answer(
+        get_text('main_menu_title', lang),
+        reply_markup=get_main_menu_reply(lang)
+    )
 
 # Register defaults to router to ensure availability
 router.message.register(get_start, CommandStart())

@@ -104,10 +104,31 @@ def get_cities_inline(active_id: Optional[int] = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def get_policy_inline() -> InlineKeyboardMarkup:
-    """Policy acceptance keyboard. Callback: policy:accept"""
+def get_policy_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """
+    Клавиатура для принятия политики конфиденциальности
+    
+    Args:
+        lang: Язык интерфейса (по умолчанию: "ru")
+        
+    Returns:
+        InlineKeyboardMarkup: Клавиатура с кнопками
+    """
+    from ..utils.locales_v2 import get_text
+    
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Принимаю", callback_data="policy:accept")]
+            [
+                InlineKeyboardButton(
+                    text=get_text("policy_accept", lang),
+                    callback_data="policy:accept"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=get_text("policy_view", lang),
+                    url=get_text("policy_url", lang)
+                )
+            ]
         ]
     )
