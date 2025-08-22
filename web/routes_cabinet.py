@@ -75,7 +75,7 @@ async def profile(claims: Dict[str, Any] = Depends(get_current_claims)):
     if role != "partner":
         # 2) For WebApp users, auto-switch to partner if they have a partner card (MVP via ENV allowlist)
         try:
-            if is_partner(user_id):
+            if await is_partner(user_id):
                 role = "partner"
             else:
                 role = "user"
