@@ -1,8 +1,8 @@
 from aiogram import Router, F, Bot
 from aiogram.types import Message
 
-from .basic import on_help, show_nearest_v2
-from .category_handlers_v2 import show_categories_v2, handle_profile
+from .basic import on_help
+from .category_handlers_v2 import show_nearest_v2, handle_profile, show_categories_v2
 
 # Этот роутер имеет высший приоритет для кнопок главного меню
 main_menu_router = Router(name='main_menu_router')
