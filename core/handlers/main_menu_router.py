@@ -19,8 +19,8 @@ async def _(message: Message, bot: Bot, lang: str):
 
 
 @main_menu_router.message(F.text.in_([t.get('profile', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await handle_profile(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    await handle_profile(message, bot, lang)
 
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))
@@ -59,13 +59,13 @@ async def _(message: Message, bot: Bot, lang: str):
 
 
 @main_menu_router.message(F.text.in_([t.get('category_transport', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_transport(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    await on_transport(message, bot, lang)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_tours', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_tours(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    await on_tours(message, bot, lang)
 
 
 # --- Submenus & Back Buttons ---

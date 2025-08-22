@@ -49,6 +49,27 @@ class Settings:
     default_city: str = ""
     # WebApp/JWT and security
     jwt_secret: str = ""
+    # Split JWT secrets for domains with dual-key rotation (active/previous)
+    jwt_user_secret_active: str = ""
+    jwt_user_secret_previous: str = ""
+    jwt_partner_secret_active: str = ""
+    jwt_partner_secret_previous: str = ""
+    jwt_admin_secret_active: str = ""
+    jwt_admin_secret_previous: str = ""
+    # Global kids for signing headers (active/previous)
+    jwt_kid_active: str = ""
+    jwt_kid_previous: str = ""
+    # Access/Refresh and cookies (for email/password flow)
+    access_ttl_sec: int = 900
+    refresh_ttl_sec: int = 1209600  # 14 days
+    cookie_secure: bool = True
+    cookie_samesite: str = "Lax"  # Lax|Strict|None
+    cookie_domain: str = ""
+    csrf_secret: str = ""
+    # Temporary partner test credentials (MVP, no DB)
+    partner_login_email: str = ""
+    partner_login_password_sha256: str = ""  # hex of sha256(password + pepper)
+    partner_login_pepper: str = ""
     auth_window_sec: int = 300
     webapp_allowed_origin: str = ""
     csp_allowed_origin: str = ""
@@ -84,11 +105,16 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
     bot_token = env.str("BOT_TOKEN", env.str("TOKEN", ""))
     admin_id = env.int("ADMIN_ID", 0)
     
-    if not bot_token:
+    # Allow running WebApp API without bot credentials (e.g., uvicorn web.main:app)
+    fastapi_only = os.getenv("FASTAPI_ONLY", "0") == "1"
+    if not bot_token and not fastapi_only:
         raise ValueError("BOT_TOKEN is required. Please set it in .env file or environment variables.")
-    
-    if not admin_id:
+    if not admin_id and not fastapi_only:
         raise ValueError("ADMIN_ID is required. Please set it in .env file or environment variables.")
+    if fastapi_only:
+        # Provide safe placeholders to satisfy dataclass types
+        bot_token = bot_token or "debug"
+        admin_id = admin_id or 1
     
     # Database configuration with Railway support
     database_url = env.str("DATABASE_URL", "sqlite:///core/database/data.db")
@@ -131,6 +157,23 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         default_lang=env.str("DEFAULT_LANG", "ru"),
         default_city=env.str("DEFAULT_CITY", ""),
         jwt_secret=env.str("JWT_SECRET", ""),
+        jwt_user_secret_active=env.str("JWT_USER_SECRET_ACTIVE", env.str("JWT_USER_SECRET", "")),
+        jwt_user_secret_previous=env.str("JWT_USER_SECRET_PREVIOUS", ""),
+        jwt_partner_secret_active=env.str("JWT_PARTNER_SECRET_ACTIVE", env.str("JWT_PARTNER_SECRET", "")),
+        jwt_partner_secret_previous=env.str("JWT_PARTNER_SECRET_PREVIOUS", ""),
+        jwt_admin_secret_active=env.str("JWT_ADMIN_SECRET_ACTIVE", env.str("JWT_ADMIN_SECRET", "")),
+        jwt_admin_secret_previous=env.str("JWT_ADMIN_SECRET_PREVIOUS", ""),
+        jwt_kid_active=env.str("JWT_KID_ACTIVE", "main"),
+        jwt_kid_previous=env.str("JWT_KID_PREVIOUS", ""),
+        access_ttl_sec=env.int("ACCESS_TTL_SEC", 900),
+        refresh_ttl_sec=env.int("REFRESH_TTL_SEC", 1209600),
+        cookie_secure=env.bool("COOKIE_SECURE", True),
+        cookie_samesite=env.str("COOKIE_SAMESITE", "Lax"),
+        cookie_domain=env.str("COOKIE_DOMAIN", ""),
+        csrf_secret=env.str("CSRF_SECRET", ""),
+        partner_login_email=env.str("PARTNER_LOGIN_EMAIL", ""),
+        partner_login_password_sha256=env.str("PARTNER_LOGIN_PASSWORD_SHA256", ""),
+        partner_login_pepper=env.str("PARTNER_LOGIN_PEPPER", ""),
         auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
         webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
         csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
@@ -143,7 +186,8 @@ settings = get_settings()
 # Validation on import
 if settings.environment == "development":
     # Only show non-sensitive config in development
-    print(f"🔧 KARMABOT1 Config loaded:")
+    # Avoid non-ASCII in Windows console to prevent UnicodeEncodeError
+    print("[CONFIG] KARMABOT1 Config loaded:")
     print(f"   Database: {settings.database.url}")
     print(f"   Environment: {settings.environment}")
     print(f"   Features: {settings.features}")
