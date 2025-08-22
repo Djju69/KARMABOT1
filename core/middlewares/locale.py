@@ -21,11 +21,9 @@ class LocaleMiddleware(BaseMiddleware):
         event: Message | CallbackQuery | Update,
         data: Dict[str, Any]
     ) -> Any:
-        user_id = None
-        if isinstance(event, Message) and event.from_user:
-            user_id = event.from_user.id
-        elif isinstance(event, CallbackQuery) and event.from_user:
-            user_id = event.from_user.id
+        # Correctly extract user from any event type
+        user = data.get("event_from_user")
+        user_id = user.id if user else None
         # Fallback: keep existing
         default_lang = getattr(settings, 'default_lang', 'ru')
         lang = default_lang
