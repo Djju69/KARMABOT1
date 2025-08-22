@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from core.services.webapp_auth import check_jwt
 from core.security.jwt_service import verify_partner
 from core.settings import settings
+from core.services.partners import is_partner
 
 router = APIRouter()
 
@@ -15,6 +16,7 @@ class Profile(BaseModel):
     user_id: int
     lang: str
     source: str = "tg_webapp"
+    role: str = "user"  # user | partner
 
 
 class OrderItem(BaseModel):
@@ -67,7 +69,19 @@ async def profile(claims: Dict[str, Any] = Depends(get_current_claims)):
         raise HTTPException(status_code=400, detail="invalid sub in token")
     # Language could be taken from DB/profile service later; return default for MVP
     lang = settings.default_lang or "ru"
-    return Profile(user_id=user_id, lang=lang, source=str(claims.get("src", "")))
+    # Determine role:
+    # 1) Partner JWTs usually carry role=partner
+    role = str(claims.get("role") or "").lower()
+    if role != "partner":
+        # 2) For WebApp users, auto-switch to partner if they have a partner card (MVP via ENV allowlist)
+        try:
+            if is_partner(user_id):
+                role = "partner"
+            else:
+                role = "user"
+        except Exception:
+            role = "user"
+    return Profile(user_id=user_id, lang=lang, source=str(claims.get("src", "")), role=role)
 
 
 @router.get("/orders", response_model=OrdersResponse)
