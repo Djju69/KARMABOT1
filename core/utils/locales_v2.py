@@ -386,27 +386,6 @@ def validate_translations() -> Dict[str, list]:
     
     return missing_keys
 
-# Save extended translations to file for persistence
-def save_translations_to_file(filepath: str = "core/utils/translations_v2.json"):
-    """Save translations to JSON file"""
-    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(translations_v2, f, ensure_ascii=False, indent=2)
-
-# Load from file if exists (for runtime updates)
-def load_translations_from_file(filepath: str = "core/utils/translations_v2.json"):
-    """Load translations from JSON file if exists"""
-    global translations_v2, translations
-    
-    if Path(filepath).exists():
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                loaded = json.load(f)
-                translations_v2.update(loaded)
-                translations = translations_v2
-        except Exception as e:
-            print(f"Warning: Failed to load translations from {filepath}: {e}")
 
 def load_translations_from_dir(dirpath: str = "core/i18n"):
     """Load translations from all JSON files in a directory.
@@ -428,6 +407,5 @@ def load_translations_from_dir(dirpath: str = "core/i18n"):
             print(f"Warning: Failed to load translations from {file}: {e}")
     translations = translations_v2
 
-# Auto-load on import (JSON dir has precedence, then single file)
+# Auto-load on import
 load_translations_from_dir()
-load_translations_from_file()
