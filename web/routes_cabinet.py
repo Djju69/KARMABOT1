@@ -1,9 +1,11 @@
 from typing import Optional, List, Dict, Any
+import os
 
 from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
 
 from core.services.webapp_auth import check_jwt
+from core.security.jwt_service import verify_partner
 from core.settings import settings
 
 router = APIRouter()
@@ -29,15 +31,31 @@ def get_current_claims(authorization: Optional[str] = Header(default=None)) -> D
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(status_code=401, detail="missing bearer token")
     token = authorization.split(" ", 1)[1]
+
+    allow_partner = os.getenv("ALLOW_PARTNER_FOR_CABINET") == "1"
+
+    # 1) Try WebApp token (JWT_SECRET domain)
     claims = check_jwt(token)
-    if not claims:
-        raise HTTPException(status_code=401, detail="invalid token")
-    # Require WebApp token by default; allow debug in development/FASTAPI_ONLY
-    src = str(claims.get("src", ""))
-    if src != "tg_webapp":
-        if not (settings.environment == "development"):
+    if claims:
+        # Require WebApp source unless in development
+        src = str(claims.get("src", ""))
+        if src != "tg_webapp" and settings.environment != "development":
+            # If flagged, attempt partner verification as fallback
+            if allow_partner:
+                partner_claims = verify_partner(token)
+                if partner_claims:
+                    return partner_claims
             raise HTTPException(status_code=401, detail="invalid token source")
-    return claims
+        return claims
+
+    # 2) Fallback: allow partner tokens if enabled
+    if allow_partner:
+        partner_claims = verify_partner(token)
+        if partner_claims:
+            return partner_claims
+
+    # Otherwise invalid
+    raise HTTPException(status_code=401, detail="invalid token")
 
 
 @router.get("/profile", response_model=Profile)

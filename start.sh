@@ -15,6 +15,7 @@ echo "BOT_TOKEN: ${BOT_TOKEN:0:10}...${BOT_TOKEN: -4}"
 echo "ADMIN_ID: $ADMIN_ID"
 echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
 echo "PORT: $PORT"
+echo "ALLOW_PARTNER_FOR_CABINET: ${ALLOW_PARTNER_FOR_CABINET:-<unset>}"
 echo ""
 echo "Dependency versions:"
 python - << 'PY'
@@ -45,6 +46,25 @@ try:
     print('[ok] imported web.routes_auth_email, router has', len(getattr(m, 'router').routes), 'routes')
 except Exception as e:
     print('[error] cannot import web.routes_auth_email:', e)
+    traceback.print_exc()
+PY
+echo ""
+echo "Sanity import: web.routes_cabinet"
+python - << 'PY'
+import traceback, inspect
+try:
+    import importlib
+    m = importlib.import_module('web.routes_cabinet')
+    has_vp = hasattr(m, 'verify_partner')
+    print(f"[ok] imported web.routes_cabinet; verify_partner in module: {has_vp}")
+    # Extra: print snippet around get_current_claims to ensure fallback present
+    try:
+        src = inspect.getsource(m.get_current_claims)
+        print('[snippet] get_current_claims contains ALLOW_PARTNER:', 'ALLOW_PARTNER_FOR_CABINET' in src)
+    except Exception as e:
+        print('[warn] cannot introspect get_current_claims:', e)
+except Exception as e:
+    print('[error] cannot import web.routes_cabinet:', e)
     traceback.print_exc()
 PY
 echo ""
