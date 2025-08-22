@@ -52,7 +52,7 @@ from core.handlers.moderation import get_moderation_router
 # Enhanced category handlers
 from core.handlers.category_handlers_v2 import (
     show_categories_v2, show_nearest_v2, handle_location_v2, 
-    category_selected_v2, get_category_router
+    category_selected_v2, handle_profile, get_category_router
 )
 
 logger = logging.getLogger(__name__)
@@ -89,8 +89,14 @@ async def init_test_data():
 async def setup_enhanced_handlers(dp: Dispatcher):
     """Setup enhanced handlers based on feature flags"""
     
-    # Always include legacy callback router
+    # Register all routers
+    dp.include_router(basic_router)
     dp.include_router(callback_router)
+
+    # Explicitly register main menu handlers from different modules
+    # This ensures they work regardless of feature flags or router configs
+    dp.message.register(show_categories_v2, F.text == '🗂 Категории')
+    dp.message.register(handle_profile, F.text == '👤 Личный кабинет')
     
     # Enhanced category handling (always enabled, backward compatible)
     category_router = get_category_router()
