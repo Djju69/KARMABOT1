@@ -124,7 +124,7 @@ translations_v2 = {
         'policy_url': 'https://drive.google.com/file/d/1QBdcxqMisF0shAtTxblwnCfjhBIXp6mD/view?usp=sharing', # Временная ссылка Google Drive
 
         # NEW: Common UI texts required by handlers
-        'main_menu_title': '🏘 Главное меню',
+        'main_menu_title': '🏘 Главное меню\n\n✨ Выберите категорию ниже и начните экономить уже сейчас!',
         'language_updated': '✅ Язык обновлён',
         'policy_accepted': '✅ Политика принята',
         'choose_city': '🌆 Выберите город:',
