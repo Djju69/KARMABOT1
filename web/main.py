@@ -74,12 +74,19 @@ INDEX_HTML = """
     <script src=\"https://telegram.org/js/telegram-web-app.js\"></script>
     <style>
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-      .card { max-width: 720px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
+      .card { max-width: 860px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
       .muted { color: #6b7280; }
       pre { background: #f9fafb; padding: 12px; border-radius: 8px; overflow: auto; }
       .error { color: #b91c1c; }
       .ok { color: #065f46; }
       button { padding: 10px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #111827; color: #fff; cursor: pointer; }
+      .tabs { display:flex; gap:8px; margin: 14px 0; flex-wrap: wrap; }
+      .tab { padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; background:#f3f4f6; cursor:pointer; }
+      .tab.active { background:#111827; color:#fff; border-color:#111827; }
+      .section { display:none; }
+      .section.active { display:block; }
+      ul.clean { list-style:none; padding-left:0; }
+      ul.clean li { padding:8px 0; border-bottom:1px dashed #e5e7eb; }
     </style>
   </head>
   <body>
@@ -94,9 +101,73 @@ INDEX_HTML = """
       <div style=\"margin-top:12px\">
         <button id=\"retry\" style=\"display:none\">Повторить авторизацию</button>
       </div>
+
+      <div id=\"cabinet\" style=\"display:none; margin-top:16px\">
+        <div class=\"tabs\">
+          <div class=\"tab active\" data-tab=\"profile\">Профиль</div>
+          <div class=\"tab\" data-tab=\"orders\">Заказы</div>
+        </div>
+
+        <div id=\"section-profile\" class=\"section active\">
+          <h3>Профиль</h3>
+          <div id=\"profileBox\" class=\"muted\">Загрузка…</div>
+        </div>
+
+        <div id=\"section-orders\" class=\"section\">
+          <h3>Заказы</h3>
+          <ul id=\"ordersList\" class=\"clean\"></ul>
+          <div id=\"ordersEmpty\" class=\"muted\" style=\"display:none\">Нет заказов</div>
+        </div>
+      </div>
     </div>
 
     <script>
+      function selectTab(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        const el = document.getElementById('section-' + name);
+        if (el) el.classList.add('active');
+      }
+
+      async function loadProfile(token) {
+        const box = document.getElementById('profileBox');
+        box.textContent = 'Загрузка…';
+        try {
+          const r = await fetch('/cabinet/profile', { headers: { 'Authorization': 'Bearer ' + token } });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const data = await r.json();
+          box.textContent = `ID: ${data.user_id} · Язык: ${data.lang} · Источник: ${data.source}`;
+        } catch (e) {
+          box.textContent = 'Ошибка загрузки профиля: ' + (e.message || e);
+        }
+      }
+
+      async function loadOrders(token) {
+        const list = document.getElementById('ordersList');
+        const empty = document.getElementById('ordersEmpty');
+        list.innerHTML = '';
+        empty.style.display = 'none';
+        try {
+          const r = await fetch('/cabinet/orders?limit=20', { headers: { 'Authorization': 'Bearer ' + token } });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const data = await r.json();
+          const items = (data && data.items) || [];
+          if (!items.length) {
+            empty.style.display = 'block';
+            return;
+          }
+          for (const it of items) {
+            const li = document.createElement('li');
+            li.textContent = `${it.title || it.id} — ${it.status || ''}`;
+            list.appendChild(li);
+          }
+        } catch (e) {
+          const li = document.createElement('li');
+          li.textContent = 'Ошибка загрузки заказов: ' + (e.message || e);
+          list.appendChild(li);
+        }
+      }
+
       async function authWithInitData() {
         const s = document.getElementById('status');
         const retry = document.getElementById('retry');
@@ -135,19 +206,33 @@ INDEX_HTML = """
           localStorage.setItem('jwt', token);
           s.innerHTML = '<span class="ok">Успешно. Запрашиваю /auth/me…</span>';
 
-          const meResp = await fetch('/auth/me', {
-            headers: { 'Authorization': 'Bearer ' + token }
-          });
+          const meResp = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
           const me = await meResp.json().catch(() => ({}));
           claimsPre.textContent = JSON.stringify(me, null, 2);
           claimsBox.style.display = 'block';
           s.innerHTML = '<span class="ok">Готово</span>';
+
+          // Show cabinet sections and load data
+          document.getElementById('cabinet').style.display = 'block';
+          await loadProfile(token);
+          // Defer orders until tab click to save requests
         } catch (e) {
           s.innerHTML = '<span class="error">' + (e && e.message ? e.message : e) + '</span>';
           retry.style.display = 'inline-block';
         }
       }
       document.getElementById('retry').addEventListener('click', authWithInitData);
+      document.addEventListener('click', async (ev) => {
+        const t = ev.target;
+        if (t && t.classList && t.classList.contains('tab')) {
+          const name = t.dataset.tab;
+          selectTab(name);
+          if (name === 'orders') {
+            const token = localStorage.getItem('jwt');
+            if (token) await loadOrders(token);
+          }
+        }
+      });
       authWithInitData();
     </script>
   </body>
