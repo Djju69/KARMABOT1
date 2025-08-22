@@ -10,7 +10,7 @@ from pathlib import Path
 translations_v2 = {
     'ru': {
         # Existing keys (preserved for compatibility)
-        'back_to_main': 'Вернуться в главное меню🏘',
+        'back_to_main_menu': 'Вернуться в главное меню🏘',
         'choose_category': '🗂️ Категории',
         'show_nearest': '📍 Показать ближайшие',
         'choose_language': '🌐 Язык',
@@ -95,6 +95,14 @@ translations_v2 = {
         'catalog_empty_sub': '📭 В этой подкатегории пока нет заведений.',
         'transport_choose': 'Выберите вид транспорта:',
         'tours_choose': 'Выберите тип экскурсии:',
+
+        # NEW: Restaurant filters
+        'restaurants_choose_cuisine': 'Выберите тип кухни:',
+        'filter_asia': 'Азиатская',
+        'filter_europe': 'Европейская',
+        'filter_street': 'Стритфуд',
+        'filter_vege': 'Вегетарианская',
+        'filter_all': 'Показать все',
     }
 }
 
