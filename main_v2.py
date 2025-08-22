@@ -50,10 +50,8 @@ from core.handlers.partner import get_partner_router
 from core.handlers.moderation import get_moderation_router
 
 # Enhanced category handlers
-from core.handlers.category_handlers_v2 import (
-    show_categories_v2, show_nearest_v2, handle_location_v2, 
-    category_selected_v2, handle_profile, get_category_router
-)
+from core.handlers.category_handlers_v2 import get_category_router
+from core.handlers.main_menu_router import main_menu_router
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +87,8 @@ async def init_test_data():
 async def setup_enhanced_handlers(dp: Dispatcher):
     """Setup enhanced handlers based on feature flags"""
     
-    # Register all routers
+    # Register all routers, with main menu having the highest priority
+    dp.include_router(main_menu_router)
     dp.include_router(basic_router)
     dp.include_router(callback_router)
 

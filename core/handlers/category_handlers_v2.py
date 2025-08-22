@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 # Router for category handlers
 category_router = Router()
 
-@category_router.message(F.text == "🗂 Категории")
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
     """Показывает инлайн-меню из 5 категорий (pg:<slug>:1)."""
     try:
@@ -179,7 +178,6 @@ async def handle_legacy_category(message: Message, bot: Bot, category_text: str)
         await message.answer("Пожалуйста, выберите категорию из списка.")
 
 # Profile handler (new feature)
-@category_router.message(F.text == "👤 Личный кабинет")
 async def handle_profile(message: Message, bot: Bot, lang: str):
     """Handle profile button press"""
     if not settings.features.partner_fsm:
