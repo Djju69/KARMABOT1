@@ -20,6 +20,7 @@ except Exception:
     settings = _Simple()  # type: ignore
 
 from .routes_auth import router as auth_router
+from .routes_auth_email import router as auth_email_router
 from .routes_cabinet import router as cabinet_router
 
 # Middleware to add CSP header to responses
@@ -56,6 +57,7 @@ app.add_middleware(CSPMiddleware)
 
 # Routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"]) 
+app.include_router(auth_email_router, prefix="/auth", tags=["auth"]) 
 app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet"]) 
 
 @app.get("/health")

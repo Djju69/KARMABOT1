@@ -59,6 +59,17 @@ class Settings:
     # Global kids for signing headers (active/previous)
     jwt_kid_active: str = ""
     jwt_kid_previous: str = ""
+    # Access/Refresh and cookies (for email/password flow)
+    access_ttl_sec: int = 900
+    refresh_ttl_sec: int = 1209600  # 14 days
+    cookie_secure: bool = True
+    cookie_samesite: str = "Lax"  # Lax|Strict|None
+    cookie_domain: str = ""
+    csrf_secret: str = ""
+    # Temporary partner test credentials (MVP, no DB)
+    partner_login_email: str = ""
+    partner_login_password_sha256: str = ""  # hex of sha256(password + pepper)
+    partner_login_pepper: str = ""
     auth_window_sec: int = 300
     webapp_allowed_origin: str = ""
     csp_allowed_origin: str = ""
@@ -154,6 +165,15 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         jwt_admin_secret_previous=env.str("JWT_ADMIN_SECRET_PREVIOUS", ""),
         jwt_kid_active=env.str("JWT_KID_ACTIVE", "main"),
         jwt_kid_previous=env.str("JWT_KID_PREVIOUS", ""),
+        access_ttl_sec=env.int("ACCESS_TTL_SEC", 900),
+        refresh_ttl_sec=env.int("REFRESH_TTL_SEC", 1209600),
+        cookie_secure=env.bool("COOKIE_SECURE", True),
+        cookie_samesite=env.str("COOKIE_SAMESITE", "Lax"),
+        cookie_domain=env.str("COOKIE_DOMAIN", ""),
+        csrf_secret=env.str("CSRF_SECRET", ""),
+        partner_login_email=env.str("PARTNER_LOGIN_EMAIL", ""),
+        partner_login_password_sha256=env.str("PARTNER_LOGIN_PASSWORD_SHA256", ""),
+        partner_login_pepper=env.str("PARTNER_LOGIN_PEPPER", ""),
         auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
         webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
         csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
