@@ -47,9 +47,12 @@ PY
 export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
 uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
 
-echo "Starting bot (main_v2.py) ..."
-# Print first 60 lines of main_v2.py to verify deployed version
-python - << 'PY'
+if [ "${FASTAPI_ONLY}" = "1" ]; then
+  echo "FASTAPI_ONLY=1 → бот не запускается на этом инстансе (избегаем getUpdates конфликта)."
+else
+  echo "Starting bot (main_v2.py) ..."
+  # Print first 60 lines of main_v2.py to verify deployed version
+  python - << 'PY'
 print("--- main_v2.py (head) ---")
 try:
     import itertools
@@ -60,4 +63,5 @@ except Exception as e:
     print(f"[WARN] Cannot read main_v2.py: {e}")
 print("--- end head ---")
 PY
-python -u main_v2.py
+  python -u main_v2.py
+fi
