@@ -49,28 +49,33 @@ async def _(message: Message):
 
 # --- Category Menu ---
 @main_menu_router.message(F.text.in_([t.get('category_restaurants', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_restaurants(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city(message.from_user.id)
+    await on_restaurants(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_spa', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_spa(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city(message.from_user.id)
+    await on_spa(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_hotels', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_hotels(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city(message.from_user.id)
+    await on_hotels(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_transport', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_transport(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city(message.from_user.id)
+    await on_transport(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_tours', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await on_tours(message, lang)
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city(message.from_user.id)
+    await on_tours(message, bot, lang, city_id)
 
 
 # --- Submenus & Back Buttons ---
