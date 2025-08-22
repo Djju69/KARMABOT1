@@ -23,7 +23,7 @@ async def get_start(message: Message):
     lang = await profile_service.get_lang(user_id)
     
     # Проверяем, принял ли пользователь политику
-    policy_accepted = await profile_service.get_policy_accepted(user_id)
+    policy_accepted = await profile_service.is_policy_accepted(user_id)
     
     if not policy_accepted:
         # Формируем приветственное сообщение с именем пользователя
