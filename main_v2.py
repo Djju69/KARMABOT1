@@ -5,6 +5,7 @@ Integrates all new components while preserving existing functionality
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
 
