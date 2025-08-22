@@ -69,6 +69,11 @@ class ProfileService:
         data["lang"] = lang
         await self._set(user_id, data)
 
+    async def has_lang(self, user_id: int) -> bool:
+        """Return True if user has explicitly selected language."""
+        data = await self._get(user_id)
+        return "lang" in data
+
     async def get_city_id(self, user_id: int) -> Optional[int]:
         data = await self._get(user_id)
         v = data.get("city_id")

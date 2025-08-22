@@ -43,6 +43,13 @@ async def get_start(message: Message):
     policy_accepted = await profile_service.is_policy_accepted(user_id)
     
     if not policy_accepted:
+        # Если язык ещё не выбран явно — сперва показываем выбор языка
+        if not await profile_service.has_lang(user_id):
+            await message.answer(
+                get_text('choose_language', lang),
+                reply_markup=get_language_inline(active=lang)
+            )
+            return
         # Формируем приветственное сообщение с именем пользователя
         welcome_text = get_text('welcome_message', lang).format(
             user_name=message.from_user.first_name
@@ -88,11 +95,27 @@ async def on_language_set(callback: CallbackQuery):
     # TODO: сохранить язык в профиле пользователя (Redis/DB)
     _, _, lang = callback.data.split(":")
     await profile_service.set_lang(callback.from_user.id, lang)
-    await callback.message.edit_text(
-        get_text('choose_language', lang)
-    )
-    await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
-    await callback.answer(get_text('language_updated', lang))
+    # После выбора языка: если политика не принята — отправляем приветствие с согласием
+    if not await profile_service.is_policy_accepted(callback.from_user.id):
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        welcome_text = get_text('welcome_message', lang).format(
+            user_name=callback.from_user.first_name
+        )
+        await callback.message.answer(
+            welcome_text,
+            reply_markup=get_policy_inline(lang),
+            parse_mode='HTML'
+        )
+    else:
+        # Если политика уже принята — просто обновим инлайн-выбор языка
+        await callback.message.edit_text(
+            get_text('choose_language', lang)
+        )
+        await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
+        await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
 async def language_callback(callback: CallbackQuery):
