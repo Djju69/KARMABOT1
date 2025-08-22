@@ -93,6 +93,16 @@ class ProfileService:
         data["policy_accepted"] = bool(accepted)
         await self._set(user_id, data)
 
+    # Partner status (for conditional UI like Scan QR)
+    async def is_partner_active(self, user_id: int) -> bool:
+        data = await self._get(user_id)
+        return bool(data.get("partner_active", False))
+
+    async def set_partner_active(self, user_id: int, active: bool = True) -> None:
+        data = await self._get(user_id)
+        data["partner_active"] = bool(active)
+        await self._set(user_id, data)
+
 
 # Singleton provider
 profile_service = ProfileService()

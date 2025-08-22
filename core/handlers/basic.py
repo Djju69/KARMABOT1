@@ -68,9 +68,11 @@ async def get_start(message: Message):
     else:
         # Если политика уже принята, показываем главное меню
         await log_event("main_menu_opened", user=message.from_user)
+        # Веб-версия доступна только через командное меню /webapp
+        reply_kb = get_main_menu_reply(lang)
         await message.answer(
             text=get_text('main_menu_title', lang),
-            reply_markup=get_main_menu_reply(lang)
+            reply_markup=reply_kb
         )
 
 
@@ -80,7 +82,9 @@ async def main_menu(message: Message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("main_menu_opened", user=message.from_user)
-    await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
+    # Веб-версия доступна только через командное меню /webapp
+    reply_kb = get_main_menu_reply(lang)
+    await message.answer(get_text('main_menu_title', lang), reply_markup=reply_kb)
 
 
 # ==== Language & Help (Phase 1) ====
@@ -152,6 +156,20 @@ async def on_help(message: Message):
     await message.answer(text)
 
 
+async def on_webapp(message: Message):
+    """Открыть веб-версию (WebApp) — отправляет ссылку на WebApp."""
+    if not await ensure_policy_accepted(message):
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    url = getattr(settings, 'webapp_qr_url', '') or ''
+    if not url:
+        await message.answer(get_text('scan_qr_unavailable', lang))
+        return
+    # Покажем инлайн-кнопку, открывающую WebApp через WebAppInfo. Доступно только через команду /webapp.
+    from ..keyboards.inline_v2 import get_webapp_inline
+    await message.answer(get_text('main_menu_title', lang), reply_markup=get_webapp_inline(url, lang))
+
+
 async def on_profile(message: Message):
     """Показывает информацию профиля пользователя: язык, город, статус политики."""
     if not await ensure_policy_accepted(message):
@@ -177,6 +195,7 @@ async def on_policy_command(message: Message):
     if not await ensure_policy_accepted(message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
+    await log_event("policy_command", user=message.from_user, lang=lang)
     url = get_text('policy_url', lang)
     await message.answer(f"📄 Политика конфиденциальности:\n{url}")
 
@@ -200,6 +219,24 @@ async def on_clear_cache(message: Message):
         return
     await profile_service.clear_cache()
     await message.answer("🧹 Кэш профилей очищен.")
+
+
+async def on_partner_on(message: Message):
+    """Admin: mark current user as active partner (enables QR button)."""
+    if message.from_user.id != settings.bots.admin_id:
+        await message.answer("❌ Доступ запрещён.")
+        return
+    await profile_service.set_partner_active(message.from_user.id, True)
+    await message.answer("✅ partner_active = true")
+
+
+async def on_partner_off(message: Message):
+    """Admin: mark current user as NOT active partner (disables QR button)."""
+    if message.from_user.id != settings.bots.admin_id:
+        await message.answer("❌ Доступ запрещён.")
+        return
+    await profile_service.set_partner_active(message.from_user.id, False)
+    await message.answer("✅ partner_active = false")
 
 
 # ==== City selection & Policy acceptance (Phase 1) ====
@@ -238,9 +275,11 @@ async def on_policy_accept(callback: CallbackQuery):
 
     # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню
     await callback.message.delete()
+    # Веб-версия доступна только через командное меню /webapp
+    reply_kb = get_main_menu_reply(lang)
     await callback.message.answer(
         get_text('main_menu_title', lang),
-        reply_markup=get_main_menu_reply(lang)
+        reply_markup=reply_kb
     )
 
 # Register defaults to router to ensure availability
@@ -248,10 +287,13 @@ router.message.register(get_start, CommandStart())
 router.message.register(main_menu, Command("menu"))
 router.message.register(on_help, Command("help"))
 router.message.register(on_profile, Command("profile"))
+router.message.register(on_webapp, Command("webapp"))
 router.message.register(on_add_partner, Command("add_partner"))
 router.message.register(on_city_menu, Command("city"))
 router.message.register(on_policy_command, Command("policy"))
 router.message.register(on_clear_cache, Command("clear_cache"))
+router.message.register(on_partner_on, Command("partner_on"))
+router.message.register(on_partner_off, Command("partner_off"))
 
 # Fallback for any other text messages
 @router.message(F.text)

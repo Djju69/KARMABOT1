@@ -1,7 +1,7 @@
 """
 Inline keyboards for categories, pagination and profile actions (v2)
 """
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from typing import List, Optional
 from ..utils.locales_v2 import get_text
 
@@ -42,6 +42,17 @@ def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru"
                 InlineKeyboardButton(text=label("🥗 " + get_text("filter_vege", lang), "vege"), callback_data="filt:restaurants:vege"),
             ],
             [InlineKeyboardButton(text=label("🔎 " + get_text("filter_all", lang), "all"), callback_data="filt:restaurants:all")],
+        ]
+    )
+
+
+def get_webapp_inline(url: str, lang: str = "ru") -> InlineKeyboardMarkup:
+    """Single-button inline keyboard that opens WebApp via WebAppInfo.
+    This keeps WebApp accessible only when the /webapp command is used.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=get_text("webapp_open", lang), web_app=WebAppInfo(url=url))]
         ]
     )
 

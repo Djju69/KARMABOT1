@@ -25,6 +25,7 @@ class FeatureFlags:
     new_menu: bool = False
     qr_webapp: bool = False
     listen_notify: bool = False
+    webapp_security: bool = False
 
 @dataclass
 class Settings:
@@ -46,6 +47,13 @@ class Settings:
     webapp_qr_url: str = ""
     default_lang: str = "ru"
     default_city: str = ""
+    # WebApp/JWT and security
+    jwt_secret: str = ""
+    auth_window_sec: int = 300
+    webapp_allowed_origin: str = ""
+    csp_allowed_origin: str = ""
+    # Reports
+    report_max_req_per_hour: int = 3
 
 def get_settings(env_path: Optional[str] = None) -> Settings:
     """
@@ -100,7 +108,8 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         moderation=env.bool("FEATURE_MODERATION", False),
         new_menu=env.bool("FEATURE_NEW_MENU", False),
         qr_webapp=env.bool("FEATURE_QR_WEBAPP", False),
-        listen_notify=env.bool("FEATURE_LISTEN_NOTIFY", False)
+        listen_notify=env.bool("FEATURE_LISTEN_NOTIFY", False),
+        webapp_security=env.bool("FEATURE_WEBAPP_SECURITY", False)
     )
     
     return Settings(
@@ -120,7 +129,12 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         support_tg=env.str("SUPPORT_TG", ""),
         webapp_qr_url=env.str("WEBAPP_QR_URL", ""),
         default_lang=env.str("DEFAULT_LANG", "ru"),
-        default_city=env.str("DEFAULT_CITY", "")
+        default_city=env.str("DEFAULT_CITY", ""),
+        jwt_secret=env.str("JWT_SECRET", ""),
+        auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
+        webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
+        csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
+        report_max_req_per_hour=env.int("REPORT_MAX_REQ_PER_HOUR", 3)
     )
 
 # Initialize settings (no print for security)
