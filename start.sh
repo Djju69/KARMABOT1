@@ -33,7 +33,7 @@ for mod in mods:
     print(f" - {mod}: {ver(mod)}")
 PY
 echo ""
-echo "Starting health server on PORT=$PORT..."
+echo "Starting FastAPI WebApp on PORT=$PORT..."
 python - << 'PY'
 import os
 port = os.getenv('PORT')
@@ -42,7 +42,10 @@ if not port:
     port = '8000'
 print(f"[health] Using port: {port}")
 PY
-uvicorn health_app:app --host 0.0.0.0 --port ${PORT:-8000} &
+# Запускаем основной WebApp (FastAPI) вместо health_app
+# В нём уже есть эндпоинт /health
+export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
+uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
 
 echo "Starting bot (main_v2.py) ..."
 # Print first 60 lines of main_v2.py to verify deployed version
