@@ -1,5 +1,6 @@
 from typing import Optional
 from urllib.parse import parse_qsl
+import os
 
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
@@ -9,6 +10,7 @@ from core.services.webapp_auth import (
     issue_jwt,
     check_jwt,
 )
+from core.settings import settings
 
 router = APIRouter()
 
@@ -63,3 +65,11 @@ async def me(authorization: Optional[str] = Header(default=None)):
     if not data:
         raise HTTPException(status_code=401, detail="invalid token")
     return {"ok": True, "claims": data}
+
+
+# Dev-only helper to mint a JWT without Telegram initData
+if settings.environment == "development" or os.getenv("FASTAPI_ONLY") == "1":
+    @router.get("/debug-token", response_model=TokenResponse)
+    async def debug_token(user_id: int = 1):
+        token = issue_jwt(user_id, extra={"src": "debug"})
+        return TokenResponse(token=token)
