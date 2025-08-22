@@ -12,6 +12,7 @@ from aiogram.client.bot import DefaultBotProperties
 # Core imports
 from core.settings import settings
 from core.utils.commands import set_commands
+from core.utils.logging_setup import setup_logging
 from core.middlewares.locale import LocaleMiddleware
 from core.database.migrations import ensure_database_ready
 
@@ -25,6 +26,8 @@ from core.handlers.moderation import get_moderation_router
 
 # Services
 from core.services.profile import profile_service
+from core.services.cache import cache_service
+from core.services.pg_notify import pg_notify_listener
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +69,24 @@ async def on_startup(bot: Bot):
         await bot.send_message(settings.bots.admin_id, "🚀 KARMABOT1 запущен")
     except Exception as e:
         logger.warning(f"Could not send startup message to admin: {e}")
+    # Start PG LISTEN (no-op if disabled)
+    try:
+        await pg_notify_listener.start()
+    except Exception as e:
+        logger.warning(f"PGNotifyListener start error: {e}")
 
 async def on_shutdown(bot: Bot):
     """Bot shutdown handler"""
     logger.info("😴 Stopping KARMABOT1...")
+    # Stop listeners/services
+    try:
+        await pg_notify_listener.stop()
+    except Exception:
+        pass
+    try:
+        await cache_service.close()
+    except Exception:
+        pass
     await profile_service.disconnect()
     try:
         await bot.send_message(settings.bots.admin_id, "😴 KARMABOT1 остановлен")
@@ -78,10 +95,8 @@ async def on_shutdown(bot: Bot):
 
 async def main():
     """Main entry point for the bot"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - [%(levelname)s] - %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s"
-    )
+    # Centralized logging with stdout + daily rotation (retention 7d by default)
+    setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1...")
 
     ensure_database_ready()
@@ -93,6 +108,7 @@ async def main():
     # Connect services
     profile_service._redis_url = settings.database.redis_url or ""
     await profile_service.connect()
+    await cache_service.connect()
 
     # Register middlewares
     dp.update.middleware(LocaleMiddleware())

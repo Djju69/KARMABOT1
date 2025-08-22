@@ -3,6 +3,10 @@ Enhanced keyboard layouts with backward compatibility
 Supports new menu structure while preserving existing functionality
 """
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+try:
+    from aiogram.types import WebAppInfo  # aiogram v3
+except Exception:
+    WebAppInfo = None  # type: ignore
 from typing import Optional
 
 from ..settings import settings
@@ -32,6 +36,28 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
     )
+
+def get_main_menu_reply_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
+    """
+    Главное меню c верхней кнопкой WebApp "Сканировать QR" для партнёров.
+    Падаем обратно на стандартное меню, если WebAppInfo недоступен или URL пуст.
+    """
+    base = get_main_menu_reply(lang)
+    if not webapp_url or WebAppInfo is None:
+        return base
+    # Prepend QR row
+    try:
+        qr_row = [KeyboardButton(text=get_text('menu_scan_qr', lang), web_app=WebAppInfo(url=webapp_url))]
+        # base.keyboard is List[List[KeyboardButtonLike]]; create a new markup with modified keyboard
+        new_kbd = [qr_row] + base.keyboard
+        return ReplyKeyboardMarkup(
+            keyboard=new_kbd,
+            resize_keyboard=True,
+            input_field_placeholder=get_text('choose_action', lang)
+        )
+    except Exception:
+        # Fallback silently in case of older aiogram
+        return base
 
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu keyboard"""
@@ -171,6 +197,7 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 # Export commonly used keyboards
 __all__ = [
     'get_main_menu_reply',
+    'get_main_menu_reply_with_qr',
     'get_return_to_main_menu',
     'get_categories_keyboard',
     'get_transport_reply_keyboard',

@@ -22,6 +22,7 @@ from ..keyboards.inline_v2 import (
     get_restaurant_filters_inline,
 )
 from ..utils.locales_v2 import get_text, get_all_texts
+from ..utils.telemetry import log_event
 from ..settings import settings
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,7 @@ category_router = Router()
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
     """Показывает Reply-клавиатуру с 5 категориями согласно ТЗ."""
     try:
+        await log_event("categories_menu_shown", user=message.from_user, lang=lang)
         await message.answer(
             text="🗂 Выберите категорию из меню ниже:",
             reply_markup=get_categories_keyboard(lang)
@@ -52,6 +54,7 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     """
     try:
         # 1. Получение данных и фильтрация
+        await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
         if city_id is not None and all_cards and 'city_id' in all_cards[0]:
             all_cards = [c for c in all_cards if c.get('city_id') == city_id]
@@ -84,6 +87,7 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
         else:
             await bot.send_message(chat_id, text, reply_markup=kb)
+        await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
 
     except Exception as e:
         logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
@@ -93,21 +97,26 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None):
     # Сначала показываем фильтры, а не сам каталог
     from ..keyboards.inline_v2 import get_restaurant_filters_inline
+    await log_event("category_open", user=message.from_user, slug="restaurants", lang=lang, city_id=city_id)
     await message.answer(
         text=get_text('restaurants_choose_cuisine', lang),
         reply_markup=get_restaurant_filters_inline(lang=lang)
     )
 
 async def on_spa(message: Message, bot: Bot, lang: str, city_id: int | None):
+    await log_event("category_open", user=message.from_user, slug="spa", lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'spa', page=1, city_id=city_id)
 
 async def on_hotels(message: Message, bot: Bot, lang: str, city_id: int | None):
+    await log_event("category_open", user=message.from_user, slug="hotels", lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'hotels', page=1, city_id=city_id)
 
-async def on_transport(message: Message, lang: str):
+async def on_transport(message: Message, bot: Bot, lang: str):
+    await log_event("category_open", user=message.from_user, slug="transport", lang=lang)
     await message.answer(get_text('transport_choose', lang), reply_markup=get_transport_reply_keyboard(lang))
 
-async def on_tours(message: Message, lang: str):
+async def on_tours(message: Message, bot: Bot, lang: str):
+    await log_event("category_open", user=message.from_user, slug="tours", lang=lang)
     await message.answer(get_text('tours_choose', lang), reply_markup=get_tours_reply_keyboard(lang))
 
 
@@ -121,6 +130,7 @@ async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: i
         get_text('transport_bicycles', lang): 'bicycles'
     }
     sub_slug = sub_slug_map.get(message.text, "all")
+    await log_event("category_sub_open", user=message.from_user, slug="transport", sub_slug=sub_slug, lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
 
 async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
@@ -130,6 +140,7 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
         get_text('tours_private', lang): 'private'
     }
     sub_slug = sub_slug_map.get(message.text, "all")
+    await log_event("category_sub_open", user=message.from_user, slug="tours", sub_slug=sub_slug, lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
@@ -169,6 +180,7 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
             response = "📭 **Поблизости пока нет заведений**\n\n"
             response += "Попробуйте выбрать категорию из главного меню или добавьте свое заведение!"
         
+        await log_event("nearest_results_shown", user=message.from_user, count=len(nearby_cards))
         await message.answer(response)
         
         # Return to main menu
@@ -336,6 +348,7 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, ci
         page = int(page_str)
 
         # Вызываем универсальную функцию для обновления сообщения
+        await log_event("catalog_page_click", user=callback.from_user, slug=slug, sub_slug=sub_slug, page=page)
         await show_catalog_page(bot, callback.message.chat.id, lang, slug, sub_slug, page, city_id, callback.message.message_id)
         await callback.answer()
     except Exception as e:
@@ -350,6 +363,7 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
     """
     try:
         _, _, filt = callback.data.split(":")
+        await log_event("restaurants_filter", user=callback.from_user, filter=filt, lang=lang, city_id=city_id)
         slug = 'restaurants'
         page = 1
 
@@ -399,6 +413,7 @@ async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
     try:
         _, _, id_str = callback.data.split(":")
         listing_id = int(id_str)
+        await log_event("card_view", user=callback.from_user, id=listing_id)
 
         # Пытаемся получить карточку; если интерфейса нет — показываем заглушку.
         card = None
