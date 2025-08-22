@@ -9,9 +9,14 @@ import logging
 
 from ..database.db_v2 import db_v2
 from ..services.card_renderer import card_service
-from ..keyboards.reply_v2 import get_return_to_main_menu, get_location_request_keyboard
+from ..keyboards.reply_v2 import (
+    get_return_to_main_menu, 
+    get_location_request_keyboard,
+    get_categories_keyboard,
+    get_transport_reply_keyboard,
+    get_tours_reply_keyboard
+)
 from ..keyboards.inline_v2 import (
-    get_categories_inline,
     get_pagination_row,
     get_catalog_item_row,
     get_restaurant_filters_inline,
@@ -25,18 +30,102 @@ logger = logging.getLogger(__name__)
 category_router = Router()
 
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
-    """Показывает инлайн-меню из 5 категорий (pg:<slug>:1)."""
+    """Показывает Reply-клавиатуру с 5 категориями согласно ТЗ."""
     try:
         await message.answer(
-            "🗂 Выберите категорию:",
-            reply_markup=get_categories_inline(lang)
+            text="🗂 Выберите категорию из меню ниже:",
+            reply_markup=get_categories_keyboard(lang)
         )
     except Exception as e:
         logger.error(f"Error in show_categories_v2: {e}")
         await message.answer(
-            "❌ Ошибка при загрузке категорий. Попробуйте позже.",
+            get_text('catalog_error', lang),
             reply_markup=get_return_to_main_menu(lang)
         )
+
+
+# --- Этап 2: Интеграция с сервисом каталога ---
+
+async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_slug: str = "all", page: int = 1, city_id: int | None = None, message_id: int | None = None):
+    """
+    Универсальный обработчик для отображения страницы каталога с фильтрацией по sub_slug.
+    """
+    try:
+        # 1. Получение данных и фильтрация
+        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+        if city_id is not None and all_cards and 'city_id' in all_cards[0]:
+            all_cards = [c for c in all_cards if c.get('city_id') == city_id]
+        if sub_slug != "all" and all_cards and 'sub_slug' in all_cards[0]:
+             all_cards = [c for c in all_cards if str(c.get('sub_slug') or '').lower() == sub_slug]
+
+        # 2. Пагинация
+        per_page = 5
+        total_items = len(all_cards)
+        total_pages = max(1, (total_items + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        cards_page = all_cards[(page - 1) * per_page:page * per_page]
+
+        # 3. Рендеринг контента
+        if not cards_page:
+            text = get_text('catalog_empty_sub', lang)
+            kb = None
+        else:
+            header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
+            text = header + "\n\n" + card_service.render_cards_list(cards_page, lang, max_cards=per_page)
+            
+            # 4. Сборка клавиатуры
+            inline_rows = [get_catalog_item_row(c.get('id'), c.get('google_maps_url'), lang) for c in cards_page]
+            pagination_row = [get_pagination_row(slug, page, total_pages, sub_slug)]
+            kb_rows = inline_rows + pagination_row
+            kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+
+        # 5. Отправка или редактирование сообщения
+        if message_id:
+            await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
+        else:
+            await bot.send_message(chat_id, text, reply_markup=kb)
+
+    except Exception as e:
+        logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
+        await bot.send_message(chat_id, get_text('catalog_error', lang))
+
+
+async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None):
+    await show_catalog_page(bot, message.chat.id, lang, 'restaurants', page=1, city_id=city_id)
+
+async def on_spa(message: Message, bot: Bot, lang: str, city_id: int | None):
+    await show_catalog_page(bot, message.chat.id, lang, 'spa', page=1, city_id=city_id)
+
+async def on_hotels(message: Message, bot: Bot, lang: str, city_id: int | None):
+    await show_catalog_page(bot, message.chat.id, lang, 'hotels', page=1, city_id=city_id)
+
+async def on_transport(message: Message, lang: str):
+    await message.answer(get_text('transport_choose', lang), reply_markup=get_transport_reply_keyboard(lang))
+
+async def on_tours(message: Message, lang: str):
+    await message.answer(get_text('tours_choose', lang), reply_markup=get_tours_reply_keyboard(lang))
+
+
+# --- Обработчики подменю --- 
+
+async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Обработчик для кнопок подменю 'Транспорт'."""
+    sub_slug_map = {
+        get_text('transport_bikes', lang): 'bikes',
+        get_text('transport_cars', lang): 'cars',
+        get_text('transport_bicycles', lang): 'bicycles'
+    }
+    sub_slug = sub_slug_map.get(message.text, "all")
+    await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
+
+async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Обработчик для кнопок подменю 'Экскурсии'."""
+    sub_slug_map = {
+        get_text('tours_group', lang): 'group',
+        get_text('tours_private', lang): 'private'
+    }
+    sub_slug = sub_slug_map.get(message.text, "all")
+    await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced nearest places handler"""
@@ -234,53 +323,19 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
  
 
 
-@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):[0-9]+$"))
+@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):([a-zA-Z0-9_]+):[0-9]+$"))
 async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
-    """Хендлер пагинации каталога. Формат: pg:<slug>:<page>"""
-    data = callback.data  # e.g., pg:restaurants:1
+    """Хендлер пагинации каталога. Формат: pg:<slug>:<sub_slug>:<page>"""
     try:
-        _, slug, page_str = data.split(":")
-        page = max(1, int(page_str))
+        _, slug, sub_slug, page_str = callback.data.split(":")
+        page = int(page_str)
 
-        # Получаем карточки (пока без реального offset; 5 шт/страница по ТЗ)
-        cards = db_v2.get_cards_by_category(slug, status='published', limit=50)
-        # Опциональная фильтрация по городу, если поле присутствует в данных
-        if city_id is not None and cards and 'city_id' in cards[0]:
-            cards = [c for c in cards if (c.get('city_id') == city_id)]
-        # Ограничим выдачу до 5 на страницу (как и было)
-        cards = cards[:5]
-
-        # Рендер заголовка
-        count = len(cards)
-        pages = max(1, page)  # Заглушка: точное кол-во страниц зависит от БД
-        header = f"Найдено {count}. Стр. {page}/{pages}"
-
-        # Сборка инлайн-кнопок под каждым элементом
-        inline_rows = []
-        for card in cards:
-            listing_id = card.get('id') if isinstance(card, dict) else getattr(card, 'id', None)
-            gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None)
-            if listing_id:
-                inline_rows.append(get_catalog_item_row(listing_id, gmaps, lang))
-
-        # Кнопки фильтров только для restaurants
-        if slug == 'restaurants':
-            filter_block = get_restaurant_filters_inline(lang=lang)
-            # Добавим фильтры перед пагинацией
-            kb_rows = filter_block.inline_keyboard + [get_pagination_row(slug, page, pages)]
-        else:
-            kb_rows = [get_pagination_row(slug, page, pages)]
-
-        # Объединяем ряды: элементы + блоки управления
-        kb = inline_rows + kb_rows
-        await callback.message.edit_text(
-            text=header + "\n\n" + card_service.render_cards_list(cards, lang, max_cards=5),
-            reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
-        )
+        # Вызываем универсальную функцию для обновления сообщения
+        await show_catalog_page(bot, callback.message.chat.id, lang, slug, sub_slug, page, city_id, callback.message.message_id)
         await callback.answer()
     except Exception as e:
         logger.error(f"on_catalog_pagination error: {e}")
-        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
+        await callback.answer(get_text('catalog_error', lang), show_alert=False)
 
 
 @category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
@@ -372,9 +427,17 @@ def get_category_router() -> Router:
 # Export handlers for registration
 __all__ = [
     'show_categories_v2',
-    'show_nearest_v2', 
+    'show_nearest_v2',
     'handle_location_v2',
     'category_selected_v2',
     'handle_profile',
-    'get_category_router'
+    'get_category_router',
+    # -- Новые обработчики для Этапа 1 --
+    'on_restaurants',
+    'on_spa',
+    'on_hotels',
+    'on_transport',
+    'on_tours',
+    'on_transport_submenu',
+    'on_tours_submenu'
 ]

@@ -10,59 +10,105 @@ from ..utils.locales_v2 import get_text, get_all_texts
 
 def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """
-    Главное Reply-меню (фикс из ТЗ):
-    [🗂 Категории] [👤 Личный кабинет]
-    [📍 Районы/Рядом] [❓ Помощь]
+    Главное Reply-меню согласно финальному ТЗ.
+    Ряд 1: 🗂 Категории | 📍 По районам / Рядом
+    Ряд 2: ❓ Помощь | 🌐 Язык
+    Ряд 3: 👤 Личный кабинет
     """
-    # Legacy 2x2 when feature flag is off
-    if not settings.features.new_menu:
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text='🗂 Категории'), KeyboardButton(text='👤 Личный кабинет')],
-                [KeyboardButton(text='📍 По районам / Рядом'), KeyboardButton(text='❓ Помощь')]
-            ],
-            resize_keyboard=True
-        )
-
-    # New layout (with language button)
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='🗂 Категории'), KeyboardButton(text='🌐 Язык')],
-            [KeyboardButton(text='📍 По районам / Рядом'), KeyboardButton(text='❓ Помощь')],
-            [KeyboardButton(text='👤 Личный кабинет')]
+            [
+                KeyboardButton(text=get_text('choose_category', lang)),
+                KeyboardButton(text=get_text('show_nearest', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('help', lang)),
+                KeyboardButton(text=get_text('choose_language', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('profile', lang)),
+            ]
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_action', lang)
     )
 
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu keyboard"""
-    t = get_all_texts(lang)
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=t['back_to_main'])]],
+        keyboard=[[KeyboardButton(text=get_text('back_to_main', lang))]],
         resize_keyboard=True
     )
 
 def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
-    """Categories selection keyboard"""
-    t = get_all_texts(lang)
+    """Новая клавиатура для выбора категории (ReplyKeyboardMarkup)."""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='🍜 Рестораны'), KeyboardButton(text='🧘 SPA и массаж')],
-            [KeyboardButton(text='🛵 Аренда байков'), KeyboardButton(text='🏨 Отели')],
-            [KeyboardButton(text='🗺️ Экскурсии')],
-            [KeyboardButton(text=t['show_nearest'])],
-            [KeyboardButton(text=t['back_to_main'])]
+            [
+                KeyboardButton(text=get_text('category_restaurants', lang)),
+                KeyboardButton(text=get_text('category_spa', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('category_transport', lang)),
+                KeyboardButton(text=get_text('category_hotels', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('category_tours', lang))
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_main', lang))
+            ]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_category', lang)
+    )
+
+def get_transport_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'Транспорт'."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('transport_bikes', lang)),
+                KeyboardButton(text=get_text('transport_cars', lang)),
+                KeyboardButton(text=get_text('transport_bicycles', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
         ],
         resize_keyboard=True
     )
 
-def get_language_keyboard() -> ReplyKeyboardMarkup:
+def get_tours_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'Экскурсии'."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('tours_group', lang)),
+                KeyboardButton(text=get_text('tours_private', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
+        ],
+        resize_keyboard=True
+    )
+
+def get_language_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Language selection keyboard"""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text='🇷🇺 Русский'), KeyboardButton(text='🇺🇸 English')],
-            [KeyboardButton(text='🇻🇳 Tiếng Việt'), KeyboardButton(text='🇰🇷 한국어')],
-            [KeyboardButton(text='🔙 Назад')]
+            [
+                KeyboardButton(text=get_text('language_ru', lang)),
+                KeyboardButton(text=get_text('language_en', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('language_vi', lang)),
+                KeyboardButton(text=get_text('language_ko', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_main', lang))
+            ]
         ],
         resize_keyboard=True
     )
@@ -125,8 +171,10 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 # Export commonly used keyboards
 __all__ = [
     'get_main_menu_reply',
-    'get_return_to_main_menu', 
+    'get_return_to_main_menu',
     'get_categories_keyboard',
+    'get_transport_reply_keyboard',
+    'get_tours_reply_keyboard',
     'get_language_keyboard',
     'get_profile_keyboard',
     'get_location_request_keyboard',

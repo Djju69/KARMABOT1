@@ -54,14 +54,14 @@ def get_catalog_item_row(listing_id: int, gmaps_url: Optional[str], lang: str = 
     return row
 
 
-def get_pagination_row(slug: str, page: int, pages: int) -> List[InlineKeyboardButton]:
-    """Prev/Next buttons for catalog pages"""
+def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") -> List[InlineKeyboardButton]:
+    """Prev/Next buttons for catalog pages. Callback: pg:<slug>:<sub_slug>:<page>"""
     buttons: List[InlineKeyboardButton] = []
     if page > 1:
-        buttons.append(InlineKeyboardButton(text="⬅️", callback_data=f"pg:{slug}:{page-1}"))
+        buttons.append(InlineKeyboardButton(text="⬅️", callback_data=f"pg:{slug}:{sub_slug}:{page-1}"))
     buttons.append(InlineKeyboardButton(text=f"{page}/{pages}", callback_data="noop"))
     if page < pages:
-        buttons.append(InlineKeyboardButton(text="➡️", callback_data=f"pg:{slug}:{page+1}"))
+        buttons.append(InlineKeyboardButton(text="➡️", callback_data=f"pg:{slug}:{sub_slug}:{page+1}"))
     return buttons
 
 

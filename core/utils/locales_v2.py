@@ -77,13 +77,31 @@ translations_v2 = {
         'cards_count': 'Карточек',
         'views_count': 'Просмотров',
         'qr_scans': 'QR сканирований',
+
+        # NEW: Category Menu (v2)
+        'category_restaurants': '🍽 Рестораны',
+        'category_spa': '🧖‍♀️ SPA',
+        'category_transport': '🚗 Транспорт',
+        'category_hotels': '🏨 Отели',
+        'category_tours': '🚶‍♂️ Экскурсии',
+        'transport_bikes': '🛵 Байки',
+        'transport_cars': '🚘 Машины',
+        'transport_bicycles': '🚲 Велосипед',
+        'tours_group': '👥 Групповые',
+        'tours_private': '🧑‍🤝‍🧑 Индивидуальные',
+        'back_to_categories': '◀️ Назад',
+        'catalog_found': 'Найдено',
+        'catalog_page': 'Стр.',
+        'catalog_empty_sub': '📭 В этой подкатегории пока нет заведений.',
+        'transport_choose': 'Выберите вид транспорта:',
+        'tours_choose': 'Выберите тип экскурсии:',
     },
     
     'en': {
         # Existing keys (preserved)
         'back_to_main': 'Back to main menu🏘',
         'choose_category': '🗂️ Categories',
-        'show_nearest': '📍 Show nearest',
+        'show_nearest': '📍 By districts / Nearby',
         'choose_language': '🌐 Language',
         'choose_district': '🌆 By districts',
         
@@ -127,19 +145,17 @@ translations_v2 = {
         'book_service': '📅 Book',
         
         # NEW: Help
-        'help_main': '''❓ **Bot Help**
-
-🗂️ **Categories** - browse businesses by type
-👤 **Profile** - manage your cards
-📍 **Show nearest** - find nearby places
-🌆 **By districts** - choose by location
-🌐 **Language** - change interface language
-
-**For partners:**
-/add_card - add new business card
-/my_cards - view your cards
-
-**Support:** @support_bot''',
+        'help_main': 'This is Karma Bot. Use the menu to navigate.',
+        'catalog_empty': 'There is nothing in this category yet.',
+        'catalog_error': 'An error occurred while loading the catalog. Please try again later.',
+        'start_welcome': '👋 Hello! Choose a language and category in the main menu.',
+        'main_menu_title': 'Main menu: use the buttons below.',
+        'language_updated': 'Language updated',
+        'choose_city': 'Choose a district:',
+        'city_updated': 'City/district updated',
+        'city_selected': 'District selected. You can continue searching.',
+        'policy_accepted': 'Policy accepted',
+        'unhandled_message': 'I don\'t understand. Please use the menu buttons.',
         
         # NEW: Profile
         'profile_main': '👤 **Profile**',
@@ -148,13 +164,31 @@ translations_v2 = {
         'cards_count': 'Cards',
         'views_count': 'Views',
         'qr_scans': 'QR scans',
+
+        # NEW: Category Menu (v2)
+        'category_restaurants': '🍽 Restaurants',
+        'category_spa': '🧖‍♀️ SPA',
+        'category_transport': '🚗 Transport',
+        'category_hotels': '🏨 Hotels',
+        'category_tours': '🚶‍♂️ Tours',
+        'transport_bikes': '🛵 Bikes',
+        'transport_cars': '🚘 Cars',
+        'transport_bicycles': '🚲 Bicycles',
+        'tours_group': '👥 Group',
+        'tours_private': '🧑‍🤝‍🧑 Private',
+        'back_to_categories': '◀️ Back',
+        'catalog_found': 'Found',
+        'catalog_page': 'Page',
+        'catalog_empty_sub': '📭 There are no places in this subcategory yet.',
+        'transport_choose': 'Choose transport type:',
+        'tours_choose': 'Choose tour type:',
     },
     
     'vi': {
         # Existing keys (preserved)
         'back_to_main': 'Về menu chính🏘',
         'choose_category': '🗂️ Danh mục',
-        'show_nearest': '📍 Hiển thị gần nhất',
+        'show_nearest': '📍 Theo quận / Gần đây',
         'choose_language': '🌐 Ngôn ngữ',
         'choose_district': '🌆 Theo quận',
         
@@ -191,19 +225,17 @@ translations_v2 = {
         'book_service': '📅 Đặt chỗ',
         
         # NEW: Help
-        'help_main': '''❓ **Trợ giúp Bot**
-
-🗂️ **Danh mục** - duyệt doanh nghiệp theo loại
-👤 **Hồ sơ** - quản lý thẻ của bạn
-📍 **Hiển thị gần nhất** - tìm địa điểm gần
-🌆 **Theo quận** - chọn theo vị trí
-🌐 **Ngôn ngữ** - thay đổi ngôn ngữ
-
-**Cho đối tác:**
-/add_card - thêm thẻ doanh nghiệp mới
-/my_cards - xem thẻ của bạn
-
-**Hỗ trợ:** @support_bot''',
+        'help_main': 'Đây là Karma Bot. Sử dụng menu để điều hướng.',
+        'catalog_empty': 'Chưa có gì trong danh mục này.',
+        'catalog_error': 'Đã xảy ra lỗi khi tải danh mục. Vui lòng thử lại sau.',
+        'start_welcome': '👋 Xin chào! Chọn ngôn ngữ và danh mục trong menu chính.',
+        'main_menu_title': 'Menu chính: sử dụng các nút bên dưới.',
+        'language_updated': 'Đã cập nhật ngôn ngữ',
+        'choose_city': 'Chọn một quận:',
+        'city_updated': 'Đã cập nhật thành phố/quận',
+        'city_selected': 'Đã chọn quận. Bạn có thể tiếp tục tìm kiếm.',
+        'policy_accepted': 'Chính sách được chấp nhận',
+        'unhandled_message': 'Tôi không hiểu. Vui lòng sử dụng các nút menu.',
         
         # NEW: Profile
         'profile_main': '👤 **Hồ sơ**',
@@ -212,13 +244,31 @@ translations_v2 = {
         'cards_count': 'Thẻ',
         'views_count': 'Lượt xem',
         'qr_scans': 'Quét QR',
+
+        # NEW: Category Menu (v2)
+        'category_restaurants': '🍽 Nhà hàng',
+        'category_spa': '🧖‍♀️ SPA',
+        'category_transport': '🚗 Vận chuyển',
+        'category_hotels': '🏨 Khách sạn',
+        'category_tours': '🚶‍♂️ Tour',
+        'transport_bikes': '🛵 Xe máy',
+        'transport_cars': '🚘 Ô tô',
+        'transport_bicycles': '🚲 Xe đạp',
+        'tours_group': '👥 Nhóm',
+        'tours_private': '🧑‍🤝‍🧑 Riêng tư',
+        'back_to_categories': '◀️ Quay lại',
+        'catalog_found': 'Tìm thấy',
+        'catalog_page': 'Trang',
+        'catalog_empty_sub': '📭 Chưa có địa điểm nào trong tiểu mục này.',
+        'transport_choose': 'Chọn loại phương tiện:',
+        'tours_choose': 'Chọn loại tour:',
     },
     
     'ko': {
         # Existing keys (preserved)
         'back_to_main': '메인 메뉴로🏘',
         'choose_category': '🗂️ 카테고리',
-        'show_nearest': '📍 가까운 곳 보기',
+        'show_nearest': '📍 지역별 / 근처',
         'choose_language': '🌐 언어',
         'choose_district': '🌆 지역별',
         
@@ -255,19 +305,17 @@ translations_v2 = {
         'book_service': '📅 예약하기',
         
         # NEW: Help
-        'help_main': '''❓ **봇 도움말**
-
-🗂️ **카테고리** - 유형별 업체 보기
-👤 **프로필** - 카드 관리
-📍 **가까운 곳 보기** - 근처 장소 찾기
-🌆 **지역별** - 위치별 선택
-🌐 **언어** - 인터페이스 언어 변경
-
-**파트너용:**
-/add_card - 새 비즈니스 카드 추가
-/my_cards - 내 카드 보기
-
-**지원:** @support_bot''',
+        'help_main': '카르마 봇입니다. 메뉴를 사용하여 탐색하세요.',
+        'catalog_empty': '이 카테고리에는 아직 아무것도 없습니다.',
+        'catalog_error': '카탈로그를 로드하는 중 오류가 발생했습니다. 나중에 다시 시도하십시오.',
+        'start_welcome': '👋 안녕하세요! 메인 메뉴에서 언어와 카테고리를 선택하세요.',
+        'main_menu_title': '메인 메뉴: 아래 버튼을 사용하세요.',
+        'language_updated': '언어 업데이트됨',
+        'choose_city': '지역을 선택하세요:',
+        'city_updated': '도시/지역 업데이트됨',
+        'city_selected': '지역이 선택되었습니다. 계속 검색할 수 있습니다.',
+        'policy_accepted': '정책 동의함',
+        'unhandled_message': '이해할 수 없습니다. 메뉴 버튼을 사용해 주세요.',
         
         # NEW: Profile
         'profile_main': '👤 **프로필**',
@@ -276,6 +324,24 @@ translations_v2 = {
         'cards_count': '카드',
         'views_count': '조회수',
         'qr_scans': 'QR 스캔',
+
+        # NEW: Category Menu (v2)
+        'category_restaurants': '🍽 레스토랑',
+        'category_spa': '🧖‍♀️ 스파',
+        'category_transport': '🚗 교통',
+        'category_hotels': '🏨 호텔',
+        'category_tours': '🚶‍♂️ 투어',
+        'transport_bikes': '🛵 오토바이',
+        'transport_cars': '🚘 자동차',
+        'transport_bicycles': '🚲 자전거',
+        'tours_group': '👥 그룹',
+        'tours_private': '🧑‍🤝‍🧑 개인',
+        'back_to_categories': '◀️ 뒤로',
+        'catalog_found': '찾음',
+        'catalog_page': '페이지',
+        'catalog_empty_sub': '📭 이 하위 카테고리에는 아직 장소가 없습니다.',
+        'transport_choose': '교통 수단을 선택하십시오:',
+        'tours_choose': '투어 유형을 선택하십시오:',
     }
 }
 

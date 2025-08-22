@@ -16,56 +16,28 @@ router = Router(name=__name__)
 
 # Basic text handlers (minimal implementations)
 async def get_start(message: Message):
-    # Show main menu keyboard on start
     from ..keyboards.reply_v2 import get_main_menu_reply
-    # Resolve user language for potential localized layouts
-    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
+    lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(
-        "👋 Привет! Выберите язык и категорию в главном меню.",
+        get_text('start_welcome', lang),
         reply_markup=get_main_menu_reply(lang)
     )
 
-async def get_hello(message: Message):
-    await message.answer("Здравствуйте!")
-
-async def get_inline(message: Message):
-    await message.answer("Inline команды пока недоступны")
-
-async def feedback_user(message: Message):
-    await message.answer("Оставьте отзыв текстом, спасибо!")
-
-async def hiw_user(message: Message):
-    await message.answer("Как это работает: выберите категорию — получите рекомендации.")
 
 async def main_menu(message: Message):
     from ..keyboards.reply_v2 import get_main_menu_reply
-    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
+    lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(
-        "Главное меню: используйте кнопки ниже.",
+        get_text('main_menu_title', lang),
         reply_markup=get_main_menu_reply(lang)
     )
 
-async def user_regional_rest(message: Message):
-    await message.answer("Покажем рестораны в вашем регионе.")
-
-async def get_photo(message: Message):
-    await message.answer("Фото получено.")
-
-async def get_location(message: Message):
-    await message.answer("Локация получена.")
-
-async def get_video(message: Message):
-    await message.answer("Видео получено.")
-
-async def get_file(message: Message):
-    await message.answer("Файл получен.")
 
 # ==== Language & Help (Phase 1) ====
 
 
-@router.message(F.text == "🌐 Язык")
-async def on_language_menu(message: Message):
-    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
+async def on_language_select(message: Message):
+    lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(
         get_text('choose_language', lang),
         reply_markup=get_language_inline(active=lang)
@@ -81,7 +53,7 @@ async def on_language_set(callback: CallbackQuery):
         get_text('choose_language', lang)
     )
     await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
-    await callback.answer("Язык обновлён")
+    await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
 async def language_callback(callback: CallbackQuery):
@@ -89,7 +61,7 @@ async def language_callback(callback: CallbackQuery):
 
 
 async def on_help(message: Message):
-    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
+    lang = await profile_service.get_lang(message.from_user.id)
     help_text = get_text('help_main', lang)
 
     # Append docs/support if available
@@ -111,36 +83,41 @@ async def on_help(message: Message):
 
 # ==== City selection & Policy acceptance (Phase 1) ====
 async def on_city_menu(message: Message):
-    # TODO: Use user profile city if exists
+    lang = await profile_service.get_lang(message.from_user.id)
     active = await profile_service.get_city_id(message.from_user.id)
-    await message.answer("Выберите район:", reply_markup=get_cities_inline(active_id=active))
+    await message.answer(get_text('choose_city', lang), reply_markup=get_cities_inline(active_id=active))
 
 
 @router.callback_query(F.data.regexp(r"^city:set:[0-9]+$"))
 async def on_city_set(callback: CallbackQuery):
-    # TODO: persist chosen city in profile (Redis/DB)
+    lang = await profile_service.get_lang(callback.from_user.id)
     _, _, id_str = callback.data.split(":")
     active = int(id_str)
     await profile_service.set_city_id(callback.from_user.id, active)
-    await callback.message.edit_text("Район выбран. Можно продолжать поиск.")
+    await callback.message.edit_text(get_text('city_selected', lang))
     await callback.message.edit_reply_markup(reply_markup=get_cities_inline(active_id=active))
-    await callback.answer("Город/район обновлён")
+    await callback.answer(get_text('city_updated', lang))
 
 
 @router.callback_query(F.data == "policy:accept")
 async def on_policy_accept(callback: CallbackQuery):
-    # TODO: persist policy acceptance in profile
+    lang = await profile_service.get_lang(callback.from_user.id)
     await profile_service.set_policy_accepted(callback.from_user.id, True)
-    await callback.answer("Политика принята")
+    await callback.answer(get_text('policy_accepted', lang))
 
 # Register defaults to router to ensure availability
 router.message.register(get_start, CommandStart())
-router.message.register(get_hello, Command("hello"))
 router.message.register(main_menu, Command("menu"))
+
+# Fallback for any other text messages
+@router.message(F.text)
+async def on_unhandled_message(message: Message):
+    lang = await profile_service.get_lang(message.from_user.id)
+    await message.answer(get_text('unhandled_message', lang))
 
 __all__ = [
     "router",
-    "get_start","get_photo","get_hello","get_inline","feedback_user",
-    "hiw_user","main_menu","user_regional_rest","get_location","get_video","get_file",
-    "on_language_menu","on_language_set","language_callback","on_help","on_city_menu","on_city_set","on_policy_accept",
+    "get_start", "main_menu",
+    "on_language_select", "on_language_set", "language_callback", "on_help",
+    "on_city_menu", "on_city_set", "on_policy_accept",
 ]
