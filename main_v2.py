@@ -93,10 +93,6 @@ async def setup_enhanced_handlers(dp: Dispatcher):
     dp.include_router(basic_router)
     dp.include_router(callback_router)
 
-    # Explicitly register main menu handlers from different modules
-    # This ensures they work regardless of feature flags or router configs
-    dp.message.register(show_categories_v2, F.text == '🗂 Категории')
-    dp.message.register(handle_profile, F.text == '👤 Личный кабинет')
     
     # Enhanced category handling (always enabled, backward compatible)
     category_router = get_category_router()
