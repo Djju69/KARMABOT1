@@ -84,11 +84,16 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
     bot_token = env.str("BOT_TOKEN", env.str("TOKEN", ""))
     admin_id = env.int("ADMIN_ID", 0)
     
-    if not bot_token:
+    # Allow running WebApp API without bot credentials (e.g., uvicorn web.main:app)
+    fastapi_only = os.getenv("FASTAPI_ONLY", "0") == "1"
+    if not bot_token and not fastapi_only:
         raise ValueError("BOT_TOKEN is required. Please set it in .env file or environment variables.")
-    
-    if not admin_id:
+    if not admin_id and not fastapi_only:
         raise ValueError("ADMIN_ID is required. Please set it in .env file or environment variables.")
+    if fastapi_only:
+        # Provide safe placeholders to satisfy dataclass types
+        bot_token = bot_token or "debug"
+        admin_id = admin_id or 1
     
     # Database configuration with Railway support
     database_url = env.str("DATABASE_URL", "sqlite:///core/database/data.db")
@@ -143,7 +148,8 @@ settings = get_settings()
 # Validation on import
 if settings.environment == "development":
     # Only show non-sensitive config in development
-    print(f"🔧 KARMABOT1 Config loaded:")
+    # Avoid non-ASCII in Windows console to prevent UnicodeEncodeError
+    print("[CONFIG] KARMABOT1 Config loaded:")
     print(f"   Database: {settings.database.url}")
     print(f"   Environment: {settings.environment}")
     print(f"   Features: {settings.features}")
