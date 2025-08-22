@@ -90,7 +90,7 @@ async def main():
     )
     logger.info(f"🚀 Starting KARMABOT1...")
 
-    await ensure_database_ready()
+    ensure_database_ready()
 
     default_properties = DefaultBotProperties(parse_mode="HTML")
     bot = Bot(token=settings.bots.bot_token, default=default_properties)
