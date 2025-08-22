@@ -3,18 +3,10 @@ from aiogram.types import Message
 
 from ..services.profile import profile_service
 from ..utils.locales_v2 import translations
-from .basic import on_help, on_language_select
+from .basic import get_start, on_help, on_language_select
 from .category_handlers_v2 import (
-    handle_profile,
-    on_hotels,
-    on_restaurants,
-    on_spa,
-    on_tours,
-    on_tours_submenu,
-    on_transport,
-    on_transport_submenu,
-    show_categories_v2,
-    show_nearest_v2,
+    show_categories_v2, on_restaurants, on_spa, on_hotels, on_transport, on_tours,
+    on_transport_submenu, on_tours_submenu, handle_profile, show_nearest_v2
 )
 
 main_menu_router = Router(name="main_menu_router")

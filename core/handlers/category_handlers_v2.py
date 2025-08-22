@@ -91,7 +91,12 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None):
-    await show_catalog_page(bot, message.chat.id, lang, 'restaurants', page=1, city_id=city_id)
+    # Сначала показываем фильтры, а не сам каталог
+    from ..keyboards.inline_v2 import get_restaurant_filters_inline
+    await message.answer(
+        text=get_text('restaurants_choose_cuisine', lang),
+        reply_markup=get_restaurant_filters_inline(lang=lang)
+    )
 
 async def on_spa(message: Message, bot: Bot, lang: str, city_id: int | None):
     await show_catalog_page(bot, message.chat.id, lang, 'spa', page=1, city_id=city_id)
