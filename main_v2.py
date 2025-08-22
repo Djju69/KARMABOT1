@@ -105,13 +105,13 @@ async def main():
     await setup_routers(dp)
     logger.info("✅ All routers registered successfully")
 
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await dp.start_polling(bot)
-    except Exception as e:
-        logger.error(f"💥 Fatal error during polling: {e}")
+    # To ensure no conflicts, we delete any existing webhook
+    # and start polling cleanly.
+    await bot.delete_webhook(drop_pending_updates=True)
+    await dp.start_polling(bot)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
