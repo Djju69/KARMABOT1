@@ -24,6 +24,16 @@ WebApp & Security
 - JWT_SECRET = <strong random secret>
 - AUTH_WINDOW_SEC = 300
 
+JWT split + rotation (Auth/RBAC foundation)
+- JWT_USER_SECRET_ACTIVE = <secret for user tokens>
+- JWT_USER_SECRET_PREVIOUS = <prev secret for user tokens> (optional during rotation)
+- JWT_PARTNER_SECRET_ACTIVE = <secret for partner tokens>
+- JWT_PARTNER_SECRET_PREVIOUS = <prev secret for partner tokens> (optional)
+- JWT_ADMIN_SECRET_ACTIVE = <secret for admin tokens>
+- JWT_ADMIN_SECRET_PREVIOUS = <prev secret for admin tokens> (optional)
+- JWT_KID_ACTIVE = main
+- JWT_KID_PREVIOUS = (empty or previous kid during rotation)
+
 Optional
 - REDIS_URL = ${Redis.REDIS_URL}
 - LOG_LEVEL = INFO

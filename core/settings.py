@@ -49,6 +49,16 @@ class Settings:
     default_city: str = ""
     # WebApp/JWT and security
     jwt_secret: str = ""
+    # Split JWT secrets for domains with dual-key rotation (active/previous)
+    jwt_user_secret_active: str = ""
+    jwt_user_secret_previous: str = ""
+    jwt_partner_secret_active: str = ""
+    jwt_partner_secret_previous: str = ""
+    jwt_admin_secret_active: str = ""
+    jwt_admin_secret_previous: str = ""
+    # Global kids for signing headers (active/previous)
+    jwt_kid_active: str = ""
+    jwt_kid_previous: str = ""
     auth_window_sec: int = 300
     webapp_allowed_origin: str = ""
     csp_allowed_origin: str = ""
@@ -136,6 +146,14 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         default_lang=env.str("DEFAULT_LANG", "ru"),
         default_city=env.str("DEFAULT_CITY", ""),
         jwt_secret=env.str("JWT_SECRET", ""),
+        jwt_user_secret_active=env.str("JWT_USER_SECRET_ACTIVE", env.str("JWT_USER_SECRET", "")),
+        jwt_user_secret_previous=env.str("JWT_USER_SECRET_PREVIOUS", ""),
+        jwt_partner_secret_active=env.str("JWT_PARTNER_SECRET_ACTIVE", env.str("JWT_PARTNER_SECRET", "")),
+        jwt_partner_secret_previous=env.str("JWT_PARTNER_SECRET_PREVIOUS", ""),
+        jwt_admin_secret_active=env.str("JWT_ADMIN_SECRET_ACTIVE", env.str("JWT_ADMIN_SECRET", "")),
+        jwt_admin_secret_previous=env.str("JWT_ADMIN_SECRET_PREVIOUS", ""),
+        jwt_kid_active=env.str("JWT_KID_ACTIVE", "main"),
+        jwt_kid_previous=env.str("JWT_KID_PREVIOUS", ""),
         auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
         webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
         csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
