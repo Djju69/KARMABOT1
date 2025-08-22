@@ -21,6 +21,19 @@ class ProfileService:
         # In-memory fallback
         self._mem: dict[int, dict[str, Any]] = {}
 
+    async def clear_cache(self) -> None:
+        """Clear cached profiles in memory and Redis (only profile:* keys)."""
+        # Clear in-memory cache
+        self._mem.clear()
+        # Clear Redis keys if available
+        if self._redis:
+            try:
+                async for key in self._redis.scan_iter("profile:*"):
+                    await self._redis.delete(key)
+            except Exception:
+                # Fail silently to avoid breaking admin command in absence of permissions
+                pass
+
     async def connect(self):
         if AsyncRedis and self._redis_url:
             try:
