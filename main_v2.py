@@ -29,7 +29,7 @@ from core.middlewares.locale import LocaleMiddleware
 from core.handlers.basic import (
     get_start, get_photo, get_hello, get_inline, feedback_user,
     hiw_user, main_menu, user_regional_rest,
-    get_location, get_video, get_file, language_callback, main_menu_callback
+    get_location, get_video, get_file, on_language_set
 )
 from core.handlers.basic import router as basic_router
 from core.handlers.callback import (
@@ -56,6 +56,14 @@ from core.handlers.category_handlers_v2 import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Debug echo handler for diagnostics (safe and low priority)
+async def _debug_echo(message):
+    try:
+        logger.info(f"[DEBUG] Unmatched text received: {message.text}")
+    except Exception:
+        pass
+    await message.answer("⚙️ Получено сообщение. Если кнопка не сработала, значит не совпал фильтр. Я добавил отладчик — пришлите точный текст кнопки.")
 
 async def init_test_data():
     """Initialize test data if no categories exist (backward compatible)"""
@@ -123,7 +131,7 @@ async def setup_legacy_handlers(dp: Dispatcher):
     # Start and language handlers
     dp.message.register(get_start, CommandStart())
     dp.message.register(get_start, F.text.in_(localized_texts['choose_language']))
-    dp.callback_query.register(language_callback, F.data.startswith("lang_"))
+    dp.callback_query.register(on_language_set, F.data.regexp(r"^lang:set:(ru|en|vi|ko)$"))
     
     # Help, feedback, main menu
     dp.message.register(hiw_user, Command(commands='help'))
@@ -144,6 +152,8 @@ async def setup_legacy_handlers(dp: Dispatcher):
     
     # Enhanced category handlers (backward compatible)
     dp.message.register(show_categories_v2, F.text.in_(localized_texts['categories_button']))
+    # Explicit bind for emoji-labeled button in reply menu
+    dp.message.register(show_categories_v2, F.text == '🗂 Категории')
     dp.message.register(show_nearest_v2, F.text.in_(localized_texts['show_nearest']))
     dp.message.register(handle_location_v2, F.content_type == ContentType.LOCATION)
     dp.message.register(category_selected_v2, F.text.regexp(r'^.+\s.+$'))
@@ -152,6 +162,8 @@ async def setup_legacy_handlers(dp: Dispatcher):
     if settings.features.new_menu:
         from core.handlers.profile import handle_profile
         dp.message.register(handle_profile, F.text.in_(localized_texts['profile']))
+        # Explicit bind for emoji-labeled button in reply menu
+        dp.message.register(handle_profile, F.text == '👤 Личный кабинет')
     
     # Regional restaurants
     dp.message.register(user_regional_rest, F.text == 'Выбор ресторана по районам🌆')
@@ -159,14 +171,7 @@ async def setup_legacy_handlers(dp: Dispatcher):
     dp.callback_query.register(rests_by_district_handler, F.data == 'rests_by_district')
     dp.callback_query.register(rests_by_kitchen_handler, F.data == 'rests_by_kitchen')
     
-    # Main menu callback handler
-    dp.callback_query.register(
-        main_menu_callback,
-        F.data.in_({
-            "show_categories", "rests_by_district", "rest_near_me", 
-            "change_language", "back_to_main", "profile"
-        })
-    )
+    # Note: main menu works via reply keyboard; no dedicated callback handler required
     
     # Content handlers
     dp.message.register(get_hello, F.text.lower().startswith('привет'))
@@ -179,6 +184,9 @@ async def setup_legacy_handlers(dp: Dispatcher):
     
     # Additional return to menu handler (safety net)
     dp.message.register(main_menu, F.text.in_(localized_texts['back_to_main']))
+
+    # Debug fallback (last): helps verify that updates reach the bot
+    dp.message.register(_debug_echo, F.text)
 
 async def start_bot(bot: Bot):
     """Bot startup handler"""
@@ -194,11 +202,17 @@ async def start_bot(bot: Bot):
     startup_message += f"   • New Menu: {'✅' if settings.features.new_menu else '❌'}\n"
     startup_message += f"   • QR WebApp: {'✅' if settings.features.qr_webapp else '❌'}\n"
     
-    await bot.send_message(settings.bots.admin_id, startup_message)
+    try:
+        await bot.send_message(settings.bots.admin_id, startup_message)
+    except Exception as e:
+        logger.warning(f"Cannot send startup message to admin {settings.bots.admin_id}: {e}")
 
 async def stop_bot(bot: Bot):
     """Bot shutdown handler"""
-    await bot.send_message(settings.bots.admin_id, "❌ **KARMABOT1 остановлен**")
+    try:
+        await bot.send_message(settings.bots.admin_id, "❌ **KARMABOT1 остановлен**")
+    except Exception as e:
+        logger.warning(f"Cannot send shutdown message to admin {settings.bots.admin_id}: {e}")
 
 async def start():
     """Main entry point"""
@@ -226,8 +240,9 @@ async def start():
     bot = Bot(token=settings.bots.bot_token, default=default_properties)
     dp = Dispatcher()
     
-    # Connect services
-    await profile_service.connect(redis_url=settings.database.redis_url)
+    # Connect services (configure redis url on singleton and connect)
+    profile_service._redis_url = settings.database.redis_url or ""
+    await profile_service.connect()
     
     # Middlewares
     dp.update.middleware(LocaleMiddleware())

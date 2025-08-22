@@ -14,6 +14,17 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     [🗂 Категории] [👤 Личный кабинет]
     [📍 Районы/Рядом] [❓ Помощь]
     """
+    # Legacy 2x2 when feature flag is off
+    if not settings.features.new_menu:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text='🗂 Категории'), KeyboardButton(text='👤 Личный кабинет')],
+                [KeyboardButton(text='📍 По районам / Рядом'), KeyboardButton(text='❓ Помощь')]
+            ],
+            resize_keyboard=True
+        )
+
+    # New layout (with language button)
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text='🗂 Категории'), KeyboardButton(text='🌐 Язык')],

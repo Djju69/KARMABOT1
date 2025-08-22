@@ -18,9 +18,11 @@ router = Router(name=__name__)
 async def get_start(message: Message):
     # Show main menu keyboard on start
     from ..keyboards.reply_v2 import get_main_menu_reply
+    # Resolve user language for potential localized layouts
+    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
     await message.answer(
         "👋 Привет! Выберите язык и категорию в главном меню.",
-        reply_markup=get_main_menu_reply("ru")
+        reply_markup=get_main_menu_reply(lang)
     )
 
 async def get_hello(message: Message):
@@ -37,9 +39,10 @@ async def hiw_user(message: Message):
 
 async def main_menu(message: Message):
     from ..keyboards.reply_v2 import get_main_menu_reply
+    lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
     await message.answer(
         "Главное меню: используйте кнопки ниже.",
-        reply_markup=get_main_menu_reply("ru")
+        reply_markup=get_main_menu_reply(lang)
     )
 
 async def user_regional_rest(message: Message):
@@ -79,6 +82,10 @@ async def on_language_set(callback: CallbackQuery):
     )
     await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
     await callback.answer("Язык обновлён")
+
+# Backward-compatible alias expected by older imports
+async def language_callback(callback: CallbackQuery):
+    return await on_language_set(callback)
 
 
 @router.message(F.text == "❓ Помощь")
@@ -137,5 +144,5 @@ __all__ = [
     "router",
     "get_start","get_photo","get_hello","get_inline","feedback_user",
     "hiw_user","main_menu","user_regional_rest","get_location","get_video","get_file",
-    "on_language_menu","on_language_set","on_help","on_city_menu","on_city_set","on_policy_accept",
+    "on_language_menu","on_language_set","language_callback","on_help","on_city_menu","on_city_set","on_policy_accept",
 ]

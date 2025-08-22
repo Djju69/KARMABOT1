@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 
-from .migrations import ensure_database_ready
+from .migrations import DatabaseMigrator
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,8 @@ class Partner:
     id: Optional[int]
     tg_user_id: int
     display_name: Optional[str]
-    phone: Optional[str]
-    email: Optional[str]
+    phone: Optional[str] = None
+    email: Optional[str] = None
     is_verified: bool = False
     is_active: bool = True
 
@@ -29,12 +29,12 @@ class Card:
     partner_id: int
     category_id: int
     title: str
-    description: Optional[str]
-    contact: Optional[str]
-    address: Optional[str]
-    google_maps_url: Optional[str]
-    photo_file_id: Optional[str]
-    discount_text: Optional[str]
+    description: Optional[str] = None
+    contact: Optional[str] = None
+    address: Optional[str] = None
+    google_maps_url: Optional[str] = None
+    photo_file_id: Optional[str] = None
+    discount_text: Optional[str] = None
     status: str = 'draft'
     priority_level: int = 0
 
@@ -49,16 +49,32 @@ class Category:
 
 class DatabaseServiceV2:
     def __init__(self, db_path: str = "core/database/data.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Support in-memory with shared cache and persistent connection
+        self._is_memory = db_path == ":memory:" or str(db_path).startswith("file::memory:")
+        if self._is_memory:
+            self._memory_uri = db_path if str(db_path).startswith("file:") else "file::memory:?cache=shared"
+            self._conn = sqlite3.connect(self._memory_uri, uri=True, check_same_thread=False)
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            self._conn.row_factory = sqlite3.Row
+            self.db_path = None
+        else:
+            self.db_path = Path(db_path)
+            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+            self._conn = None
         
-        # Ensure database is migrated
-        if not ensure_database_ready():
-            raise RuntimeError("Failed to initialize database")
+        # Run migrations against the same database (same URI for memory)
+        try:
+            migrator_path = self._memory_uri if self._is_memory else str(self.db_path)
+            migrator = DatabaseMigrator(migrator_path)
+            migrator.run_all_migrations()
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize database: {e}")
     
     def get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory"""
-        conn = sqlite3.connect(self.db_path)
+        if self._is_memory and self._conn is not None:
+            return self._conn
+        conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = sqlite3.Row
         return conn
@@ -202,7 +218,7 @@ class DatabaseServiceV2:
     def get_categories(self, active_only: bool = True) -> List[Category]:
         """Get all categories"""
         with self.get_connection() as conn:
-            query = "SELECT * FROM categories_v2"
+            query = "SELECT id, slug, name, emoji, priority_level, is_active FROM categories_v2"
             params = []
             
             if active_only:
@@ -217,7 +233,7 @@ class DatabaseServiceV2:
         """Get category by slug"""
         with self.get_connection() as conn:
             cursor = conn.execute(
-                "SELECT * FROM categories_v2 WHERE slug = ?",
+                "SELECT id, slug, name, emoji, priority_level, is_active FROM categories_v2 WHERE slug = ?",
                 (slug,)
             )
             row = cursor.fetchone()
