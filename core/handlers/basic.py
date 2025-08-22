@@ -88,7 +88,6 @@ async def language_callback(callback: CallbackQuery):
     return await on_language_set(callback)
 
 
-@router.message(F.text == "❓ Помощь")
 async def on_help(message: Message):
     lang = await profile_service.get_lang(message.from_user.id, default=getattr(settings, 'default_lang', 'ru'))
     help_text = get_text('help_main', lang)
@@ -111,7 +110,6 @@ async def on_help(message: Message):
 
 
 # ==== City selection & Policy acceptance (Phase 1) ====
-@router.message(F.text == "📍 По районам / Рядом")
 async def on_city_menu(message: Message):
     # TODO: Use user profile city if exists
     active = await profile_service.get_city_id(message.from_user.id)
