@@ -121,7 +121,16 @@ translations_v2 = {
 Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
         'policy_accept': '✅ Согласен',
         'policy_view': '📄 Политика конфиденциальности',
-        'policy_url': 'https://drive.google.com/file/d/1QBdcxqMisF0shAtTxblwnCfjhBIXp6mD/view?usp=sharing' # Временная ссылка Google Drive
+        'policy_url': 'https://drive.google.com/file/d/1QBdcxqMisF0shAtTxblwnCfjhBIXp6mD/view?usp=sharing', # Временная ссылка Google Drive
+
+        # NEW: Common UI texts required by handlers
+        'main_menu_title': '🏘 Главное меню',
+        'language_updated': '✅ Язык обновлён',
+        'policy_accepted': '✅ Политика принята',
+        'choose_city': '🌆 Выберите город:',
+        'city_selected': '✅ Город выбран',
+        'city_updated': '✅ Город обновлён',
+        'unhandled_message': '🤖 Я вас не понял. Пожалуйста, используйте меню команд.'
     }
 }
 
