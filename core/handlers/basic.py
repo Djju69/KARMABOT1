@@ -11,6 +11,7 @@ from ..keyboards.inline_v2 import (
 from ..utils.locales_v2 import get_text
 from ..settings import settings
 from ..services.profile import profile_service
+from ..utils.telemetry import log_event
 
 router = Router(name=__name__)
 
@@ -29,6 +30,7 @@ async def ensure_policy_accepted(message: Message) -> bool:
     """Return True if policy accepted. Otherwise send welcome and return False."""
     user_id = message.from_user.id
     if not await profile_service.is_policy_accepted(user_id):
+        await log_event("policy_gate_blocked", user=message.from_user, command=getattr(message, 'text', None))
         await _send_welcome_with_policy(message)
         return False
     return True
@@ -45,6 +47,7 @@ async def get_start(message: Message):
     if not policy_accepted:
         # Если язык ещё не выбран явно — сперва показываем выбор языка
         if not await profile_service.has_lang(user_id):
+            await log_event("language_prompt", user=message.from_user)
             await message.answer(
                 get_text('choose_language', lang),
                 reply_markup=get_language_inline(active=lang)
@@ -56,6 +59,7 @@ async def get_start(message: Message):
         )
         
         # Отправляем приветственное сообщение с кнопками
+        await log_event("welcome_shown", user=message.from_user, reason="policy_not_accepted")
         await message.answer(
             text=welcome_text,
             reply_markup=get_policy_inline(lang),
@@ -63,6 +67,7 @@ async def get_start(message: Message):
         )
     else:
         # Если политика уже принята, показываем главное меню
+        await log_event("main_menu_opened", user=message.from_user)
         await message.answer(
             text=get_text('main_menu_title', lang),
             reply_markup=get_main_menu_reply(lang)
@@ -74,6 +79,7 @@ async def main_menu(message: Message):
     if not await ensure_policy_accepted(message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
+    await log_event("main_menu_opened", user=message.from_user)
     await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
 
 
@@ -95,6 +101,7 @@ async def on_language_set(callback: CallbackQuery):
     # TODO: сохранить язык в профиле пользователя (Redis/DB)
     _, _, lang = callback.data.split(":")
     await profile_service.set_lang(callback.from_user.id, lang)
+    await log_event("language_set", user=callback.from_user, lang=lang)
     # После выбора языка: если политика не принята — отправляем приветствие с согласием
     if not await profile_service.is_policy_accepted(callback.from_user.id):
         try:
@@ -210,6 +217,7 @@ async def on_city_set(callback: CallbackQuery):
     _, _, id_str = callback.data.split(":")
     active = int(id_str)
     await profile_service.set_city_id(callback.from_user.id, active)
+    await log_event("city_set", user=callback.from_user, city_id=active)
     await callback.message.edit_text(get_text('city_selected', lang))
     await callback.message.edit_reply_markup(reply_markup=get_cities_inline(active_id=active))
     await callback.answer(get_text('city_updated', lang))
@@ -223,6 +231,7 @@ async def on_policy_accept(callback: CallbackQuery):
 
     # Отмечаем, что политика принята
     await profile_service.set_policy_accepted(user_id, True)
+    await log_event("policy_accepted", user=callback.from_user, lang=lang)
 
     # Подтверждаем действие
     await callback.answer(get_text('policy_accepted', lang))
