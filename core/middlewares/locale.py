@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 
 from typing import Any, Callable, Dict, Awaitable
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery, Update
 from ..services.profile import profile_service
 from ..settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class LocaleMiddleware(BaseMiddleware):
@@ -31,6 +34,7 @@ class LocaleMiddleware(BaseMiddleware):
                 lang = await profile_service.get_lang(user_id, default=default_lang)
             except Exception:
                 lang = default_lang
+        logger.info(f"LocaleMiddleware: Set lang='{lang}' for user_id={user_id}")
         data["lang"] = lang
         # Also provide selected city_id if any
         try:
