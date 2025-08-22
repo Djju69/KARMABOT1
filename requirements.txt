@@ -30,6 +30,7 @@ aiofiles==23.2.1
 
 # Security
 cryptography==45.0.6
+PyJWT==2.8.0
 
 # Web server (for Railway health checks)
 uvicorn==0.24.0
