@@ -31,6 +31,9 @@ from core.services.pg_notify import pg_notify_listener
 
 logger = logging.getLogger(__name__)
 
+# Explicit app version marker to verify running build in logs
+APP_VERSION = "feature/webapp-cabinets@4c342bb"
+
 async def setup_routers(dp: Dispatcher):
     """Centralized function to set up all bot routers with correct priority."""
 
@@ -66,7 +69,7 @@ async def on_startup(bot: Bot):
     await set_commands(bot)
     logger.info("Bot started and commands set.")
     try:
-        await bot.send_message(settings.bots.admin_id, "🚀 KARMABOT1 запущен")
+        await bot.send_message(settings.bots.admin_id, f"🚀 KARMABOT1 запущен | version: {APP_VERSION}")
     except Exception as e:
         logger.warning(f"Could not send startup message to admin: {e}")
     # Start PG LISTEN (no-op if disabled)
@@ -97,7 +100,7 @@ async def main():
     """Main entry point for the bot"""
     # Centralized logging with stdout + daily rotation (retention 7d by default)
     setup_logging(level=logging.INFO, retention_days=7)
-    logger.info(f"🚀 Starting KARMABOT1...")
+    logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
 
     ensure_database_ready()
 
@@ -119,7 +122,7 @@ async def main():
 
     # Setup all routers
     await setup_routers(dp)
-    logger.info("✅ All routers registered successfully")
+    logger.info(f"✅ All routers registered successfully | version={APP_VERSION}")
 
     # To ensure no conflicts, we delete any existing webhook
     # and start polling cleanly.
