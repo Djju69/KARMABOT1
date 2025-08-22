@@ -4,6 +4,9 @@ echo "Current directory: $(pwd)"
 echo "Files in directory:"
 ls -la
 echo ""
+echo "Files in web/:"
+ls -la web || echo "[warn] cannot list web/"
+echo ""
 echo "Python version:"
 python --version
 echo ""
@@ -33,6 +36,18 @@ for mod in mods:
     print(f" - {mod}: {ver(mod)}")
 PY
 echo ""
+echo "Sanity import: web.routes_auth_email"
+python - << 'PY'
+import traceback
+try:
+    import importlib
+    m = importlib.import_module('web.routes_auth_email')
+    print('[ok] imported web.routes_auth_email, router has', len(getattr(m, 'router').routes), 'routes')
+except Exception as e:
+    print('[error] cannot import web.routes_auth_email:', e)
+    traceback.print_exc()
+PY
+echo ""
 echo "Starting FastAPI WebApp on PORT=$PORT..."
 python - << 'PY'
 import os
@@ -45,10 +60,14 @@ PY
 # Запускаем основной WebApp (FastAPI) вместо health_app
 # В нём уже есть эндпоинт /health
 export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
+# Start uvicorn and capture PID
 uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
+WEB_PID=$!
 
 if [ "${FASTAPI_ONLY}" = "1" ]; then
   echo "FASTAPI_ONLY=1 → бот не запускается на этом инстансе (избегаем getUpdates конфликта)."
+  echo "Waiting on web (PID=$WEB_PID) ..."
+  wait "$WEB_PID"
 else
   echo "Starting bot (main_v2.py) ..."
   # Print first 60 lines of main_v2.py to verify deployed version
@@ -64,4 +83,5 @@ except Exception as e:
 print("--- end head ---")
 PY
   python -u main_v2.py
+  wait "$WEB_PID"
 fi
