@@ -57,13 +57,6 @@ async def setup_routers(dp: Dispatcher):
     else:
         logger.info("⚠️ Moderation disabled")
 
-    # 5. Debug fallback handler (must be last)
-    async def fallback_handler(message: Message):
-        logger.warning(f"No handler for message: '{message.text}' from user {message.from_user.id}")
-        # Optionally, notify the user
-        # await message.answer("Неизвестная команда. Возврат в главное меню.")
-
-    dp.message.register(fallback_handler)
 
 async def on_startup(bot: Bot):
     """Bot startup handler"""
