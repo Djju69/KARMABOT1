@@ -67,15 +67,13 @@ async def _(message: Message, bot: Bot, lang: str):
 
 
 @main_menu_router.message(F.text.in_([t.get('category_transport', '') for t in translations.values()]))
-async def _(message: Message, bot: Bot, lang: str):
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_transport(message, bot, lang, city_id)
+async def _(message: Message, lang: str):
+    await on_transport(message, lang)
 
 
 @main_menu_router.message(F.text.in_([t.get('category_tours', '') for t in translations.values()]))
-async def _(message: Message, bot: Bot, lang: str):
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_tours(message, bot, lang, city_id)
+async def _(message: Message, lang: str):
+    await on_tours(message, lang)
 
 
 # --- Submenus & Back Buttons ---
