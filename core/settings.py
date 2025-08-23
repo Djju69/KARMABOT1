@@ -75,6 +75,8 @@ class Settings:
     csp_allowed_origin: str = ""
     # Reports
     report_max_req_per_hour: int = 3
+    # Policy
+    policy_version: int = 1
 
 def get_settings(env_path: Optional[str] = None) -> Settings:
     """
@@ -177,7 +179,8 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
         webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
         csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
-        report_max_req_per_hour=env.int("REPORT_MAX_REQ_PER_HOUR", 3)
+        report_max_req_per_hour=env.int("REPORT_MAX_REQ_PER_HOUR", 3),
+        policy_version=env.int("POLICY_VERSION", 1)
     )
 
 # Initialize settings (no print for security)

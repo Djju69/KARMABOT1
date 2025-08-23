@@ -1,4 +1,4 @@
-import asyncio
+from asyncio import create_task, sleep, Lock
 import logging
 from typing import Optional
 
@@ -9,6 +9,11 @@ except Exception:  # optional dependency
 
 from ..settings import settings
 from ..utils.telemetry import log_event
+try:
+    from ..utils.metrics import AUTHME_ENTRIES, AUTHME_INVALIDATIONS
+except Exception:
+    AUTHME_ENTRIES = None
+    AUTHME_INVALIDATIONS = None
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +27,7 @@ class CacheService:
         self._redis_url = redis_url or ""
         self._redis = None
         self._mem = {}  # fallback
-        self._lock = asyncio.Lock()
+        self._lock = Lock()
 
     async def connect(self):
         if self._redis_url and aioredis:
@@ -46,7 +51,7 @@ class CacheService:
             try:
                 val = await self._redis.get(key)
                 try:
-                    import asyncio; asyncio.create_task(log_event("cache_get", backend="redis", key=key, hit=bool(val)))
+                    create_task(log_event("cache_get", backend="redis", key=key, hit=bool(val)))
                 except Exception:
                     pass
                 return val
@@ -55,7 +60,7 @@ class CacheService:
         async with self._lock:
             val = self._mem.get(key)
             try:
-                import asyncio; asyncio.create_task(log_event("cache_get", backend="memory", key=key, hit=bool(val)))
+                create_task(log_event("cache_get", backend="memory", key=key, hit=bool(val)))
             except Exception:
                 pass
             return val
@@ -65,7 +70,7 @@ class CacheService:
             try:
                 await self._redis.set(key, value, ex=ttl_sec)
                 try:
-                    import asyncio; asyncio.create_task(log_event("cache_set", backend="redis", key=key, ttl=ttl_sec))
+                    create_task(log_event("cache_set", backend="redis", key=key, ttl=ttl_sec))
                 except Exception:
                     pass
                 return
@@ -74,9 +79,15 @@ class CacheService:
         async with self._lock:
             self._mem[key] = value
             # naive TTL: schedule deletion
-            asyncio.create_task(self._expire_mem(key, ttl_sec))
+            create_task(self._expire_mem(key, ttl_sec))
+            # gauge update for memory mode
             try:
-                import asyncio; asyncio.create_task(log_event("cache_set", backend="memory", key=key, ttl=ttl_sec))
+                if AUTHME_ENTRIES is not None and key.startswith("authme:"):
+                    AUTHME_ENTRIES.set(sum(1 for k in self._mem.keys() if k.startswith("authme:")))
+            except Exception:
+                pass
+            try:
+                create_task(log_event("cache_set", backend="memory", key=key, ttl=ttl_sec))
             except Exception:
                 pass
 
@@ -93,7 +104,7 @@ class CacheService:
                     deleted += 1
                 logger.info(f"🧹 CacheService deleted keys by mask: {mask} (count={deleted})")
                 try:
-                    import asyncio; asyncio.create_task(log_event("cache_delete_mask", backend="redis", mask=mask, deleted=deleted))
+                    create_task(log_event("cache_delete_mask", backend="redis", mask=mask, deleted=deleted))
                 except Exception:
                     pass
                 return
@@ -104,16 +115,29 @@ class CacheService:
             to_del = [k for k in self._mem.keys() if _match_glob(k, mask)]
             for k in to_del:
                 self._mem.pop(k, None)
+            # metrics: invalidations + gauge
+            try:
+                if AUTHME_INVALIDATIONS is not None and (mask.startswith("authme:") or "authme:" in mask):
+                    AUTHME_INVALIDATIONS.labels("mask").inc(len(to_del))
+                if AUTHME_ENTRIES is not None:
+                    AUTHME_ENTRIES.set(sum(1 for k in self._mem.keys() if k.startswith("authme:")))
+            except Exception:
+                pass
             logger.info(f"🧹 CacheService(memory) deleted {len(to_del)} keys by mask: {mask}")
             try:
-                import asyncio; asyncio.create_task(log_event("cache_delete_mask", backend="memory", mask=mask, deleted=len(to_del)))
+                create_task(log_event("cache_delete_mask", backend="memory", mask=mask, deleted=len(to_del)))
             except Exception:
                 pass
 
     async def _expire_mem(self, key: str, ttl: int):
-        await asyncio.sleep(max(0, ttl))
+        await sleep(max(0, ttl))
         async with self._lock:
             self._mem.pop(key, None)
+            try:
+                if AUTHME_ENTRIES is not None and key.startswith("authme:"):
+                    AUTHME_ENTRIES.set(sum(1 for k in self._mem.keys() if k.startswith("authme:")))
+            except Exception:
+                pass
 
 
 def _match_glob(text: str, pattern: str) -> bool:

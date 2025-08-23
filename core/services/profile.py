@@ -45,6 +45,16 @@ class ProfileService:
                 self._redis = None
         return self
 
+    async def disconnect(self) -> None:
+        """Close Redis connection if open; noop for memory fallback."""
+        if self._redis:
+            try:
+                await self._redis.close()
+            except Exception:
+                pass
+            finally:
+                self._redis = None
+
     def _key(self, user_id: int) -> str:
         return f"profile:{user_id}"
 
@@ -85,12 +95,24 @@ class ProfileService:
         await self._set(user_id, data)
 
     async def is_policy_accepted(self, user_id: int) -> bool:
+        from ..settings import settings
         data = await self._get(user_id)
-        return bool(data.get("policy_accepted", False))
+        # Backward compatibility: boolean flag
+        accepted_flag = bool(data.get("policy_accepted", False))
+        if not accepted_flag:
+            return False
+        # Versioned consent: require stored version to match current
+        accepted_ver = int(data.get("policy_version", 0))
+        current_ver = int(getattr(settings, "policy_version", 1))
+        return accepted_ver == current_ver
 
     async def set_policy_accepted(self, user_id: int, accepted: bool = True) -> None:
+        from ..settings import settings
         data = await self._get(user_id)
         data["policy_accepted"] = bool(accepted)
+        if accepted:
+            # Persist the version that was accepted
+            data["policy_version"] = int(getattr(settings, "policy_version", 1))
         await self._set(user_id, data)
 
     # Partner status (for conditional UI like Scan QR)

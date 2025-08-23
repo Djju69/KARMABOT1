@@ -121,11 +121,16 @@ async def on_language_set(callback: CallbackQuery):
             parse_mode='HTML'
         )
     else:
-        # Если политика уже принята — просто обновим инлайн-выбор языка
-        await callback.message.edit_text(
-            get_text('choose_language', lang)
+        # Если политика уже принята — сразу обновим главное меню (ReplyKeyboard) и уведомим пользователя
+        try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        from ..keyboards.reply_v2 import get_main_menu_reply
+        await callback.message.answer(
+            get_text('main_menu_title', lang),
+            reply_markup=get_main_menu_reply(lang)
         )
-        await callback.message.edit_reply_markup(reply_markup=get_language_inline(active=lang))
         await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
@@ -294,6 +299,10 @@ router.message.register(on_policy_command, Command("policy"))
 router.message.register(on_clear_cache, Command("clear_cache"))
 router.message.register(on_partner_on, Command("partner_on"))
 router.message.register(on_partner_off, Command("partner_off"))
+
+# Open language selection when user taps the reply button (e.g., "🌐 Язык")
+# We match by leading globe emoji to avoid hardcoding per-language labels.
+router.message.register(on_language_select, F.text.startswith("🌐"))
 
 # Fallback for any other text messages
 @router.message(F.text)
