@@ -96,6 +96,10 @@ INDEX_HTML = """
       <h1>KARMABOT1 WebApp</h1>
       <p class=\"muted\">Авторизация через Telegram initData → POST /auth/webapp → /auth/me</p>
       <div id=\"status\">Инициализация…</div>
+      <div style=\"margin-top:8px; display:flex; gap:8px; flex-wrap:wrap\">
+        <button id=\"toggleDetails\">Показать детали</button>
+        <button id=\"openInBrowser\">Открыть в браузере</button>
+      </div>
       <div id=\"claims\" style=\"display:none\">
         <h3>Claims</h3>
         <pre id=\"claimsPre\"></pre>
@@ -236,7 +240,7 @@ INDEX_HTML = """
           const meResp = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
           const me = await meResp.json().catch(() => ({}));
           claimsPre.textContent = JSON.stringify(me, null, 2);
-          claimsBox.style.display = 'block';
+          // Не показываем детали автоматически; доступны по кнопке
           s.innerHTML = '<span class="ok">Готово</span>';
 
           // Show cabinet sections and load data
@@ -270,6 +274,34 @@ INDEX_HTML = """
           }
         }
       });
+      // Open in external browser
+      try {
+        const btn = document.getElementById('openInBrowser');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            const url = window.location.href;
+            if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
+              Telegram.WebApp.openLink(url);
+            } else {
+              window.open(url, '_blank');
+            }
+          });
+        }
+      } catch (e) { /* noop */ }
+      // Toggle details (claims)
+      try {
+        const btn = document.getElementById('toggleDetails');
+        const box = document.getElementById('claims');
+        if (btn && box) {
+          btn.addEventListener('click', () => {
+            const shown = box.style.display !== 'none';
+            box.style.display = shown ? 'none' : 'block';
+            btn.textContent = shown ? 'Показать детали' : 'Скрыть детали';
+          });
+          // стартуем скрытым
+          box.style.display = 'none';
+        }
+      } catch (e) { /* noop */ }
       // QR button click placeholder
       try {
         const btn = document.getElementById('btnScanQR');
