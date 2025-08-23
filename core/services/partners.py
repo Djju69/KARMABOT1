@@ -56,18 +56,31 @@ async def is_partner(user_id: int) -> bool:
         if pool is None:
             return False
         async with pool.acquire() as conn:
-            # partner_cards schema:
-            # id (pk), tg_user_id (int), status (text), created_at (timestamptz), updated_at (timestamptz)
-            row = await conn.fetchrow(
-                """
-                SELECT 1
-                FROM partner_cards
-                WHERE tg_user_id = $1
-                  AND status IN ('active','pending','verified')
-                LIMIT 1
-                """,
-                user_id,
-            )
+            # Prefer query excluding archived rows; if archived_at column doesn't exist yet, fallback
+            try:
+                row = await conn.fetchrow(
+                    """
+                    SELECT 1
+                    FROM partner_cards
+                    WHERE tg_user_id = $1
+                      AND status IN ('active','pending','verified')
+                      AND (archived_at IS NULL)
+                    LIMIT 1
+                    """,
+                    user_id,
+                )
+            except Exception:
+                # Column archived_at may not exist on older schema — fallback without the predicate
+                row = await conn.fetchrow(
+                    """
+                    SELECT 1
+                    FROM partner_cards
+                    WHERE tg_user_id = $1
+                      AND status IN ('active','pending','verified')
+                    LIMIT 1
+                    """,
+                    user_id,
+                )
             return row is not None
     except Exception:
         # If table doesn't exist or DB unreachable, fail closed (False)
