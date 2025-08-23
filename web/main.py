@@ -109,6 +109,9 @@ INDEX_HTML = """
         <div id="tokenBox" class="muted" style="display:none; word-break:break-all; margin-top:6px"></div>
       </div>
       <div id=\"cabinet\" style=\"display:none; margin-top:16px\">
+        <div style=\"margin-bottom:10px\">
+          <button id=\"btnScanQR\" style=\"display:none; background:#2563eb; border-color:#2563eb\">🧾 Сканировать QR</button>
+        </div>
         <div class=\"tabs\">
           <div class=\"tab active\" data-tab=\"profile\">Профиль</div>
           <div class=\"tab\" data-tab=\"orders\">Заказы</div>
@@ -238,6 +241,16 @@ INDEX_HTML = """
 
           // Show cabinet sections and load data
           document.getElementById('cabinet').style.display = 'block';
+          try {
+            const caps = (me && me.capabilities) || [];
+            const canScan = (me && me.partner && me.partner.can_scan_qr) || (Array.isArray(caps) && caps.includes('qr:scan'));
+            const btnScan = document.getElementById('btnScanQR');
+            if (canScan && btnScan) {
+              btnScan.style.display = 'inline-block';
+            } else if (btnScan) {
+              btnScan.style.display = 'none';
+            }
+          } catch (e) { /* ignore */ }
           await loadProfile(token);
           // Defer orders until tab click to save requests
         } catch (e) {
@@ -257,6 +270,15 @@ INDEX_HTML = """
           }
         }
       });
+      // QR button click placeholder
+      try {
+        const btn = document.getElementById('btnScanQR');
+        if (btn) {
+          btn.addEventListener('click', () => {
+            alert('Сканер QR будет доступен в мобильном приложении. Пока заглушка.');
+          });
+        }
+      } catch (e) { /* noop */ }
       // If token already saved (повторный визит), покажем инструменты
       try {
         const saved = localStorage.getItem('jwt');
