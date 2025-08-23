@@ -204,7 +204,9 @@ async def on_policy_command(message: Message):
     policy_path = get_text('policy_url', lang)
     base = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
     policy_url = f"{base}{policy_path}" if base and policy_path.startswith('/') else policy_path
-    await message.answer(f"📄 Политика конфиденциальности:\n{policy_url}")
+    # Отправляем кликабельную ссылку без отображения полного URL
+    text = f"📄 <a href=\"{policy_url}\">Политика конфиденциальности</a>"
+    await message.answer(text, parse_mode='HTML', disable_web_page_preview=True)
 
 
 async def on_add_partner(message: Message):
