@@ -16,6 +16,7 @@ echo "ADMIN_ID: $ADMIN_ID"
 echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
 echo "PORT: $PORT"
 echo "ALLOW_PARTNER_FOR_CABINET: ${ALLOW_PARTNER_FOR_CABINET:-<unset>}"
+echo "APPLY_MIGRATIONS: ${APPLY_MIGRATIONS:-<unset>}"
 echo ""
 echo "Dependency versions:"
 python - << 'PY'
@@ -68,6 +69,43 @@ except Exception as e:
     traceback.print_exc()
 PY
 echo ""
+echo "Apply migrations (optional): APPLY_MIGRATIONS=${APPLY_MIGRATIONS:-0}"
+# Accept common truthy values: 1/true/yes/on (case-insensitive)
+FLAG="${APPLY_MIGRATIONS,,}"
+if [ "$FLAG" = "1" ] || [ "$FLAG" = "true" ] || [ "$FLAG" = "yes" ] || [ "$FLAG" = "on" ]; then
+  python - << 'PY'
+import os, asyncio, sys
+import asyncpg
+
+DB_URL = os.getenv('DATABASE_URL')
+migration_path = 'migrations/001_partner_cards.sql'
+if not DB_URL:
+    print('[migrate] DATABASE_URL not set; skip')
+    sys.exit(0)
+try:
+    with open(migration_path, 'r', encoding='utf-8') as f:
+        sql = f.read()
+except FileNotFoundError:
+    print(f'[migrate] file not found: {migration_path}; skip')
+    sys.exit(0)
+
+async def run():
+    try:
+        conn = await asyncpg.connect(DB_URL)
+        try:
+            await conn.execute(sql)
+            print('[migrate] applied 001_partner_cards.sql successfully')
+        finally:
+            await conn.close()
+    except Exception as e:
+        print('[migrate] failed to apply migration:', e)
+
+asyncio.run(run())
+PY
+  echo ""
+else
+  echo "[migrate] skipped: APPLY_MIGRATIONS flag is not enabled"
+fi
 echo "Starting FastAPI WebApp on PORT=$PORT..."
 python - << 'PY'
 import os
