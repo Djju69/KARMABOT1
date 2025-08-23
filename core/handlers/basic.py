@@ -139,26 +139,25 @@ async def language_callback(callback: CallbackQuery):
 
 
 async def on_help(message: Message):
+    """Отправляет краткую веб-стайл справку по боту (HTML)."""
     if not await ensure_policy_accepted(message):
         return
-    lang = await profile_service.get_lang(message.from_user.id)
-    help_text = get_text('help_main', lang)
-
-    # Append docs/support if available
-    pdf_user = getattr(settings, f'pdf_user_{lang}', '')
-    pdf_partner = getattr(settings, f'pdf_partner_{lang}', '')
-    support = getattr(settings, 'support_tg', '')
-
-    extras = []
-    if pdf_user:
-        extras.append(f"📄 User PDF: {pdf_user}")
-    if pdf_partner:
-        extras.append(f"📄 Partner PDF: {pdf_partner}")
-    if support:
-        extras.append(f"🆘 Support: {support}")
-
-    text = help_text + ("\n\n" + "\n".join(extras) if extras else "")
-    await message.answer(text)
+    html = (
+        "<b>❓ Справка по боту</b>\n\n"
+        "🗂️ <b>Категории</b> — смотрите заведения по типам\n"
+        "👤 <b>Личный кабинет</b> — управляйте своими карточками\n"
+        "📍 <b>Рядом</b> — ищите ближайшие места\n"
+        "🌆 <b>По районам</b> — выбирайте локацию на карте\n"
+        "🌐 <b>Язык</b> — переключайте язык интерфейса\n\n"
+        "<b>Партнёрам</b>:\n"
+        "— Добавить карточку: через Личный кабинет\n"
+        "— Мои карточки: через Личный кабинет\n\n"
+        "<b>Документы</b>:\n"
+        "— <a href=\"https://web-production-d51c7.up.railway.app/policy\">Политика конфиденциальности</a>\n\n"
+        "<b>Поддержка</b>:\n"
+        "— <a href=\"https://t.me/karma_system_official\">связаться с администратором</a>"
+    )
+    await message.answer(html, parse_mode='HTML', disable_web_page_preview=True)
 
 
 async def on_webapp(message: Message):
