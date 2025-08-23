@@ -124,7 +124,30 @@ def _admin_id_from_claims(claims: Dict[str, Any]) -> str:
     return sub
 
 
+async def _is_mfa_toggle_allowed() -> bool:
+    return os.getenv("ADMIN_MFA_TOGGLE_ALLOWED") in ("1", "true", "yes", "on")
+
+
+async def _is_mfa_required() -> bool:
+    """
+    Priority: Redis override -> ENV ADMIN_MFA_REQUIRED (default: required)
+    Redis key allows runtime toggle without redeploy.
+    """
+    override = await cache_service.get("admin:mfa:required")
+    if isinstance(override, str):
+        if override.lower() in ("0", "false", "no", "off"):
+            return False
+        if override.lower() in ("1", "true", "yes", "on"):
+            return True
+    env_val = os.getenv("ADMIN_MFA_REQUIRED")
+    if env_val is None:
+        return True  # secure-by-default
+    return env_val in ("1", "true", "yes", "on")
+
+
 async def _enforce_mfa(claims: Dict[str, Any], code: Optional[str]):
+    if not await _is_mfa_required():
+        return
     admin_id = _admin_id_from_claims(claims)
     secret = await _load_secret(admin_id)
     if not secret:
@@ -244,4 +267,35 @@ if os.getenv("ADMIN_UI_2FA") in ("1", "true", "yes", "on"):
     </html>
     """
         return HTMLResponse(content=html)
+
+
+# ======== Admin MFA runtime control (status/toggle) ========
+
+@router.get("/admin/mfa/status")
+async def admin_mfa_status(admin_claims: Dict[str, Any] = Depends(require_admin)):
+    required = await _is_mfa_required()
+    toggle_allowed = await _is_mfa_toggle_allowed()
+    return {"required": required, "toggle_allowed": toggle_allowed}
+
+
+@router.post("/admin/mfa/toggle")
+async def admin_mfa_toggle(
+    payload: Dict[str, Any] = Body(...),
+    admin_claims: Dict[str, Any] = Depends(require_admin),
+):
+    # Allow toggling only if enabled via env
+    if not await _is_mfa_toggle_allowed():
+        raise HTTPException(status_code=403, detail="mfa_toggle_disabled")
+    # Only authenticated admins (require_admin) can toggle; extra policy can be added if needed
+    desired = None
+    if isinstance(payload, dict):
+        desired = payload.get("required")
+    if desired is None:
+        raise HTTPException(status_code=422, detail="missing 'required' (bool)")
+    # Persist override in Redis; takes effect immediately for this and other instances using Redis
+    key = "admin:mfa:required"
+    val = "1" if bool(desired) else "0"
+    # Long TTL (30 days); can be overwritten anytime
+    await cache_service.set(key, val, ttl=30*24*60*60)
+    return {"ok": True, "required": bool(desired)}
 
