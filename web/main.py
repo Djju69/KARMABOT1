@@ -100,10 +100,14 @@ INDEX_HTML = """
         <h3>Claims</h3>
         <pre id=\"claimsPre\"></pre>
       </div>
-      <div style=\"margin-top:12px\">
-        <button id=\"retry\" style=\"display:none\">Повторить авторизацию</button>
+      <div style="margin-top:12px">
+        <button id="retry" style="display:none">Повторить авторизацию</button>
       </div>
-
+      <div id="tokenTools" style="margin-top:8px; display:none">
+        <button id="showToken">Показать токен</button>
+        <button id="copyToken" style="display:none">Копировать</button>
+        <div id="tokenBox" class="muted" style="display:none; word-break:break-all; margin-top:6px"></div>
+      </div>
       <div id=\"cabinet\" style=\"display:none; margin-top:16px\">
         <div class=\"tabs\">
           <div class=\"tab active\" data-tab=\"profile\">Профиль</div>
@@ -208,6 +212,24 @@ INDEX_HTML = """
           localStorage.setItem('jwt', token);
           s.innerHTML = '<span class="ok">Успешно. Запрашиваю /auth/me…</span>';
 
+          // Reveal token tools
+          try {
+            document.getElementById('tokenTools').style.display = 'block';
+            const tb = document.getElementById('tokenBox');
+            const copyBtn = document.getElementById('copyToken');
+            const showBtn = document.getElementById('showToken');
+            showBtn.style.display = 'inline-block';
+            showBtn.onclick = () => {
+              tb.textContent = token;
+              tb.style.display = 'block';
+              copyBtn.style.display = 'inline-block';
+            };
+            copyBtn.onclick = async () => {
+              try { await navigator.clipboard.writeText(token); showBtn.textContent = 'Токен скопирован'; }
+              catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
+            };
+          } catch (e) { /* no-op */ }
+
           const meResp = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
           const me = await meResp.json().catch(() => ({}));
           claimsPre.textContent = JSON.stringify(me, null, 2);
@@ -235,6 +257,26 @@ INDEX_HTML = """
           }
         }
       });
+      // If token already saved (повторный визит), покажем инструменты
+      try {
+        const saved = localStorage.getItem('jwt');
+        if (saved) {
+          document.getElementById('tokenTools').style.display = 'block';
+          const tb = document.getElementById('tokenBox');
+          const copyBtn = document.getElementById('copyToken');
+          const showBtn = document.getElementById('showToken');
+          showBtn.style.display = 'inline-block';
+          showBtn.onclick = () => {
+            tb.textContent = saved;
+            tb.style.display = 'block';
+            copyBtn.style.display = 'inline-block';
+          };
+          copyBtn.onclick = async () => {
+            try { await navigator.clipboard.writeText(saved); showBtn.textContent = 'Токен скопирован'; }
+            catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
+          };
+        }
+      } catch (e) { /* ignore */ }
       authWithInitData();
     </script>
   </body>
