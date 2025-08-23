@@ -71,7 +71,8 @@ async def health():
 import os as _os
 _SHOW_DEBUG_UI = str(_os.getenv("SHOW_DEBUG_UI", "0")).strip() in ("1","true","yes","on")
 
-INDEX_HTML = f"""
+# Use a plain string and substitute a placeholder to avoid f-string brace issues with CSS/JS
+_INDEX_HTML_RAW = """
 <!doctype html>
 <html lang=\"ru\">
   <head>
@@ -148,7 +149,7 @@ INDEX_HTML = f"""
     </div>
 
     <script>
-      const SHOW_DEBUG_UI = {str(_SHOW_DEBUG_UI).lower()};
+      const SHOW_DEBUG_UI = __SHOW_DEBUG_PLACEHOLDER__;
       function selectTab(name) {
         document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -357,6 +358,9 @@ INDEX_HTML = f"""
   </body>
 </html>
 """
+
+# Inject the actual boolean literal safely
+INDEX_HTML = _INDEX_HTML_RAW.replace("__SHOW_DEBUG_PLACEHOLDER__", "true" if _SHOW_DEBUG_UI else "false")
 
 
 @app.get("/", response_class=HTMLResponse)
