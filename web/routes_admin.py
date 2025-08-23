@@ -1,0 +1,67 @@
+from typing import Optional, Dict, Any
+import os
+
+from fastapi import APIRouter, HTTPException, Header
+
+import asyncpg
+
+router = APIRouter()
+
+MIGRATION_SQL = """
+ALTER TABLE partner_cards
+    ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_partner_cards_archived_at ON partner_cards (archived_at);
+"""
+
+
+async def _run_sql(sql: str) -> Dict[str, Any]:
+    dsn = os.getenv("DATABASE_URL")
+    if not dsn:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    conn: Optional[asyncpg.Connection] = None
+    try:
+        conn = await asyncpg.connect(dsn)
+        await conn.execute(sql)
+        return {"ok": True}
+    finally:
+        if conn:
+            await conn.close()
+
+
+def _require_admin(header_token: Optional[str]):
+    if os.getenv("ALLOW_ADMIN_MIGRATIONS") not in ("1", "true", "yes", "on"):
+        raise HTTPException(status_code=403, detail="admin migrations disabled")
+    expected = os.getenv("ADMIN_SQL_TOKEN")
+    if not expected or not header_token or header_token != expected:
+        raise HTTPException(status_code=401, detail="invalid admin token")
+
+
+@router.post("/admin/migrate/partner-archived")
+async def migrate_partner_archived(x_admin_token: Optional[str] = Header(default=None)):
+    _require_admin(x_admin_token)
+    res = await _run_sql(MIGRATION_SQL)
+    return {"ok": True, "applied": True}
+
+
+@router.get("/admin/check/partner-archived")
+async def check_partner_archived(x_admin_token: Optional[str] = Header(default=None)):
+    _require_admin(x_admin_token)
+    dsn = os.getenv("DATABASE_URL")
+    if not dsn:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    conn: Optional[asyncpg.Connection] = None
+    try:
+        conn = await asyncpg.connect(dsn)
+        row = await conn.fetchrow(
+            """
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name='partner_cards' AND column_name='archived_at'
+            """
+        )
+        exists = row is not None
+        return {"ok": True, "exists": exists, "column": dict(row) if row else None}
+    finally:
+        if conn:
+            await conn.close()

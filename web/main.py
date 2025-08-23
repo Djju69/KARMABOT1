@@ -21,7 +21,8 @@ except Exception:
 
 from .routes_auth import router as auth_router
 from .routes_auth_email import router as auth_email_router
-from .routes_cabinet import router as cabinet_router
+from web.routes_cabinet import router as cabinet_router
+from web.routes_admin import router as admin_router
 
 # Middleware to add CSP header to responses
 class CSPMiddleware(BaseHTTPMiddleware):
@@ -59,6 +60,7 @@ app.add_middleware(CSPMiddleware)
 app.include_router(auth_router, prefix="/auth", tags=["auth"]) 
 app.include_router(auth_email_router, prefix="/auth", tags=["auth"]) 
 app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet"]) 
+app.include_router(admin_router, tags=["admin"]) 
 
 @app.get("/health")
 async def health():
