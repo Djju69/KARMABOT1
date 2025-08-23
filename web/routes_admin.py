@@ -36,6 +36,16 @@ def _require_admin(header_token: Optional[str]):
         raise HTTPException(status_code=401, detail="invalid admin token")
 
 
+"""
+NOTE: Миграционные эндпоинты ниже оставлены временно для безопасного применения миграции в проде.
+Их можно удалить после того, как:
+  1) в прод-БД подтверждено наличие колонки `archived_at` в `partner_cards`;
+  2) все необходимые данные заархивированы/бэкфил сделан;
+  3) отключены переменные окружения `ALLOW_ADMIN_MIGRATIONS` и `ADMIN_SQL_TOKEN`;
+  4) принято решение больше не выполнять эти операции через HTTP.
+
+Рекомендуется держать их только в dev-среде под флагами.
+"""
 @router.post("/admin/migrate/partner-archived")
 async def migrate_partner_archived(x_admin_token: Optional[str] = Header(default=None)):
     _require_admin(x_admin_token)
