@@ -65,3 +65,30 @@ async def check_partner_archived(x_admin_token: Optional[str] = Header(default=N
     finally:
         if conn:
             await conn.close()
+
+
+# Temporary debug endpoint to inspect rows as seen by the running app's DATABASE_URL.
+# Protected by the same admin token/flag gate as migrations.
+@router.get("/admin/debug/partner-cards")
+async def debug_partner_cards(tg_user_id: int, x_admin_token: Optional[str] = Header(default=None)):
+    _require_admin(x_admin_token)
+    dsn = os.getenv("DATABASE_URL")
+    if not dsn:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
+    conn: Optional[asyncpg.Connection] = None
+    try:
+        conn = await asyncpg.connect(dsn)
+        rows = await conn.fetch(
+            """
+            SELECT id, tg_user_id, status, archived_at
+            FROM partner_cards
+            WHERE tg_user_id = $1
+            ORDER BY id
+            """,
+            tg_user_id,
+        )
+        data = [dict(r) for r in rows]
+        return {"ok": True, "count": len(data), "rows": data}
+    finally:
+        if conn:
+            await conn.close()
