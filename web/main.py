@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -468,3 +469,84 @@ async def i18n_keys():
         "auth.login",
         "auth.logout",
     ]}
+
+# --- Static assets (logo etc.)
+try:
+    app.mount("/static", StaticFiles(directory="web/static"), name="static")
+except Exception:
+    # If folder absent locally, ignore
+    pass
+
+# --- Privacy Policy page (/policy)
+_POLICY_HTML = """
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Политика обработки персональных данных — Karma System</title>
+    <style>
+      body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0b1020;color:#e5e7eb}
+      .page{max-width:900px;margin:0 auto;padding:24px}
+      .card{background:#0f172a;border:1px solid #1f2937;border-radius:14px;padding:20px}
+      h1{margin:0 0 8px 0;font-size:22px}
+      .muted{color:#94a3b8}
+      img.logo{width:80px;height:80px;border-radius:50%;object-fit:cover}
+      .hdr{display:flex;gap:14px;align-items:center;margin:8px 0 18px}
+      h2{font-size:18px;margin:18px 0 8px}
+      ul{margin:8px 0 8px 20px}
+      li{margin:6px 0}
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card">
+        <div class="hdr">
+          <img class="logo" src="/static/logo.png" alt="Karma System" onerror="this.style.display='none'" />
+          <div>
+            <h1>📄 Политика обработки персональных данных</h1>
+            <div class="muted">Karma System</div>
+          </div>
+        </div>
+        <div id="content">
+          <p><b>Кто мы</b><br/>Оператор: karma_system_official<br/>Для связи по вопросам персональных данных: @karma_system_official</p>
+          <p>Публичное лицо проекта: @karma_system_official (лицо, осуществляющее коммуникацию).</p>
+          <h2>1. Общие положения</h2>
+          <p>Настоящая Политика действует в отношении всех данных, которые karma_system_official (далее — «Оператор») может получить от пользователей Telegram-бота, а также других цифровых продуктов под брендом Karma System.</p>
+          <h2>2. Какие данные мы собираем</h2>
+          <ul>
+            <li>Имя и username в Telegram</li>
+            <li>Контактные данные (телефон, email — если указаны пользователем)</li>
+            <li>Ответы в формах и заявках</li>
+            <li>IP-адрес и технические метаданные (если применимо)</li>
+          </ul>
+          <h2>3. Цели обработки данных</h2>
+          <ul>
+            <li>Обработка заявок и коммуникация по услугам</li>
+            <li>Маркетинговая аналитика</li>
+          </ul>
+          <h2>4. Кто имеет доступ к данным</h2>
+          <ul>
+            <li>Оператор и лица, осуществляющие взаимодействие с пользователями</li>
+            <li>Подрядчики по договорам (например, техподдержка)</li>
+            <li>Другие пользователи бота при участии в нетворкинге (только username, с согласия)</li>
+            <li>Пользователь, пригласивший вас по ссылке (только username)</li>
+          </ul>
+          <h2>5. Безопасность данных</h2>
+          <p>Мы применяем административные, технические и физические меры для защиты информации от несанкционированного доступа, утраты или раскрытия.</p>
+          <h2>6. Срок хранения</h2>
+          <p>Данные хранятся до отзыва согласия пользователем или до окончания актуальности деловых отношений.</p>
+          <h2>7. Как отозвать согласие</h2>
+          <p>Пользователь может отозвать согласие, обратившись в техподдержку бота.</p>
+          <p class="muted">© 2025 Karma System. Все права защищены.</p>
+        </div>
+      </div>
+    </div>
+  </body>
+ </html>
+"""
+
+
+@app.get("/policy", response_class=HTMLResponse)
+async def policy_page():
+    return HTMLResponse(content=_POLICY_HTML)

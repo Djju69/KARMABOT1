@@ -20,11 +20,9 @@ async def _send_welcome_with_policy(message: Message):
     from ..keyboards.inline_v2 import get_policy_inline
     user_id = message.from_user.id
     lang = await profile_service.get_lang(user_id)
-    policy_label = get_text('policy_view', lang)
-    policy_url = get_text('policy_url', lang)
     welcome_text = get_text('welcome_message', lang).format(
         user_name=message.from_user.first_name
-    ) + f"\n\n📄 <a href=\"{policy_url}\">{policy_label}</a>"
+    )
     await message.answer(text=welcome_text, reply_markup=get_policy_inline(lang), parse_mode='HTML')
 
 
@@ -56,11 +54,9 @@ async def get_start(message: Message):
             )
             return
         # Формируем приветственное сообщение с именем пользователя
-        policy_label = get_text('policy_view', lang)
-        policy_url = get_text('policy_url', lang)
         welcome_text = get_text('welcome_message', lang).format(
             user_name=message.from_user.first_name
-        ) + f"\n\n📄 <a href=\"{policy_url}\">{policy_label}</a>"
+        )
         
         # Отправляем приветственное сообщение с кнопками
         await log_event("welcome_shown", user=message.from_user, reason="policy_not_accepted")
@@ -116,11 +112,9 @@ async def on_language_set(callback: CallbackQuery):
             await callback.message.delete()
         except Exception:
             pass
-        policy_label = get_text('policy_view', lang)
-        policy_url = get_text('policy_url', lang)
         welcome_text = get_text('welcome_message', lang).format(
             user_name=callback.from_user.first_name
-        ) + f"\n\n📄 <a href=\"{policy_url}\">{policy_label}</a>"
+        )
         await callback.message.answer(
             welcome_text,
             reply_markup=get_policy_inline(lang),

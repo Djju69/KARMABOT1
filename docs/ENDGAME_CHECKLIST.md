@@ -25,6 +25,8 @@
 - [ ] Сервис бота: `python main_v2.py`
 - [ ] Сервис web: `uvicorn web.main:app --host 0.0.0.0 --port $PORT`
 - [ ] Переменные: `BOT_TOKEN`, `ADMIN_ID`, `REDIS_URL`, `ENVIRONMENT`, `LOG_LEVEL`, `POLICY_VERSION`
+- [ ] Админ MFA env: `ADMIN_MFA_REQUIRED=1` (по умолчанию), `ADMIN_MFA_TOGGLE_ALLOWED=0|1`, `ADMIN_UI_2FA=0|1`
+- [ ] Админ MFA runtime‑toggle (через Redis): проверить `GET /admin/mfa/status` и `POST /admin/mfa/toggle {"required": false|true}`
 - [ ] Мониторинг логов, авто-ресдеплой по push
 
 ## 4. Безопасность и соответствие
