@@ -201,8 +201,10 @@ async def on_policy_command(message: Message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("policy_command", user=message.from_user, lang=lang)
-    url = get_text('policy_url', lang)
-    await message.answer(f"📄 Политика конфиденциальности:\n{url}")
+    policy_path = get_text('policy_url', lang)
+    base = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
+    policy_url = f"{base}{policy_path}" if base and policy_path.startswith('/') else policy_path
+    await message.answer(f"📄 Политика конфиденциальности:\n{policy_url}")
 
 
 async def on_add_partner(message: Message):
@@ -295,6 +297,7 @@ router.message.register(on_profile, Command("profile"))
 router.message.register(on_webapp, Command("webapp"))
 router.message.register(on_add_partner, Command("add_partner"))
 router.message.register(on_city_menu, Command("city"))
+router.message.register(on_city_menu, Command("citi"))
 router.message.register(on_policy_command, Command("policy"))
 router.message.register(on_clear_cache, Command("clear_cache"))
 router.message.register(on_partner_on, Command("partner_on"))

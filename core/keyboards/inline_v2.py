@@ -96,18 +96,19 @@ def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
 
 def get_cities_inline(active_id: Optional[int] = None) -> InlineKeyboardMarkup:
     """City selection keyboard. Callback: city:set:<id>
-    Uses a small default list; replace with DB-driven list in Phase 1 final.
+    Provides four cities: Нячанг (1), Дананг (2), Хошимин (3), Фукуок (4).
     """
     cities: List[tuple[str, int]] = [
-        ("📍 Центр", 1),
-        ("📍 Нячанг-Север", 2),
-        ("📍 Нячанг-Юг", 3),
-        ("📍 Камрань", 4),
-        ("📍 Другой", 5),
+        ("📍 Нячанг", 1),
+        ("📍 Дананг", 2),
+        ("📍 Хошимин", 3),
+        ("📍 Фукуок", 4),
     ]
 
     def label(txt: str, cid: int) -> str:
-        return ("✅ " if active_id == cid else "") + txt
+        # Если город ещё не выбран, подсветим Нячанг (id=1) как дефолтный
+        eff_active = active_id if active_id is not None else 1
+        return ("✅ " if eff_active == cid else "") + txt
 
     rows: List[List[InlineKeyboardButton]] = []
     for title, cid in cities:
