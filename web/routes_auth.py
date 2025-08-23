@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from core.services.webapp_auth import (
     verify_init_data,
+    verify_init_data_with_reason,
     issue_jwt,
     check_jwt,
 )
@@ -47,8 +48,10 @@ def _extract_user_id(init_data: str) -> Optional[int]:
 @router.post("/webapp", response_model=TokenResponse)
 async def auth_webapp(payload: WebAppAuthRequest):
     # Validate Telegram initData signature and freshness
-    if not verify_init_data(payload.initData):
-        raise HTTPException(status_code=401, detail="invalid initData")
+    ok, reason = verify_init_data_with_reason(payload.initData)
+    if not ok:
+        # Provide detailed reason to logs/clients for diagnostics (no secrets exposed)
+        raise HTTPException(status_code=401, detail=f"invalid initData: {reason}")
 
     user_id = _extract_user_id(payload.initData)
     if not user_id:
@@ -104,6 +107,9 @@ async def me(authorization: Optional[str] = Header(default=None)):
     partner_profile_id = None  # unknown in current schema
     # Minimal capability: allow QR scan when partner is active in DB
     partner_can_scan_qr = bool(has_partner)
+    # MVP listings counters (no DB yet)
+    listings_counts: Dict[str, int] = {"draft": 0, "pending": 0, "published": 0, "archived": 0}
+    has_listings = False
 
     # Determine effective role
     if blocked:
@@ -148,8 +154,8 @@ async def me(authorization: Optional[str] = Header(default=None)):
         "partner": {
             "has_partner": has_partner,
             "partner_profile_id": partner_profile_id,
-            "listings_counts": None,
-            "has_listings": None,
+            "listings_counts": listings_counts if has_partner else None,
+            "has_listings": has_listings if has_partner else None,
             "can_scan_qr": partner_can_scan_qr,
         },
         "capabilities": capabilities,

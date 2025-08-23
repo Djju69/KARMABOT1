@@ -18,7 +18,7 @@ from ..utils.telemetry import log_event
 logger = logging.getLogger(__name__)
 
 
-def verify_init_data(init_data: str) -> bool:
+def verify_init_data_with_reason(init_data: str) -> (bool, str):
     """Verify Telegram WebApp initData according to TG spec.
     https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
     Steps:
@@ -31,7 +31,7 @@ def verify_init_data(init_data: str) -> bool:
     """
     try:
         if not init_data:
-            return False
+            return False, "empty"
         # Parse query string safely
         pairs = dict(parse_qsl(init_data, keep_blank_values=True))
         provided_hash = pairs.pop("hash", None)
@@ -42,7 +42,7 @@ def verify_init_data(init_data: str) -> bool:
                 import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="missing_hash"))
             except Exception:
                 pass
-            return False
+            return False, "missing_hash"
         # Build data_check_string from sorted keys
         items = []
         for k in sorted(pairs.keys()):
@@ -59,7 +59,7 @@ def verify_init_data(init_data: str) -> bool:
                 import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="hash_mismatch"))
             except Exception:
                 pass
-            return False
+            return False, "hash_mismatch"
 
         # Anti-replay window
         auth_date_str = pairs.get("auth_date")
@@ -69,7 +69,7 @@ def verify_init_data(init_data: str) -> bool:
                 import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="missing_auth_date"))
             except Exception:
                 pass
-            return False
+            return False, "missing_auth_date"
         try:
             auth_date = int(auth_date_str)
         except Exception:
@@ -78,22 +78,27 @@ def verify_init_data(init_data: str) -> bool:
                 import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="invalid_auth_date"))
             except Exception:
                 pass
-            return False
+            return False, "invalid_auth_date"
         if abs(int(time.time()) - auth_date) > settings.auth_window_sec:
             logger.warning("WebApp initData expired window")
             try:
                 import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="expired"))
             except Exception:
                 pass
-            return False
-        return True
+            return False, "expired"
+        return True, "ok"
     except Exception as e:
         logger.warning(f"verify_init_data error: {e}")
         try:
             import asyncio; asyncio.create_task(log_event("webapp_invalid_auth", reason="exception", error=str(e)))
         except Exception:
             pass
-        return False
+        return False, "exception"
+
+
+def verify_init_data(init_data: str) -> bool:
+    ok, _ = verify_init_data_with_reason(init_data)
+    return ok
 
 
 def issue_jwt(user_id: int, extra: Optional[Dict[str, Any]] = None, ttl_sec: int = 300) -> str:
