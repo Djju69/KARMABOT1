@@ -66,7 +66,10 @@ async def health():
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL
-INDEX_HTML = """
+import os as _os
+_SHOW_DEBUG_UI = str(_os.getenv("SHOW_DEBUG_UI", "0")).strip() in ("1","true","yes","on")
+
+INDEX_HTML = f"""
 <!doctype html>
 <html lang=\"ru\">
   <head>
@@ -75,47 +78,55 @@ INDEX_HTML = """
     <title>KARMABOT1 WebApp</title>
     <script src=\"https://telegram.org/js/telegram-web-app.js\"></script>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
-      .card { max-width: 860px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
-      .muted { color: #6b7280; }
-      pre { background: #f9fafb; padding: 12px; border-radius: 8px; overflow: auto; }
-      .error { color: #b91c1c; }
-      .ok { color: #065f46; }
-      button { padding: 10px 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #111827; color: #fff; cursor: pointer; }
+      :root { --bg:#0b1020; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --primary:#2563eb; --stroke:#1f2937; }
+      * { box-sizing: border-box; }
+      body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background: var(--bg); color: var(--text); }
+      .shell { max-width: 980px; margin: 0 auto; padding: 20px; }
+      .card { border: 1px solid var(--stroke); border-radius: 14px; background: linear-gradient(180deg, #0f172a 0%, #0b1224 100%); padding: 16px; }
+      .toolbar { display:flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border:1px solid var(--stroke); border-radius: 12px; background: rgba(255,255,255,0.02); }
+      .title { display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:0.2px; }
+      .actions { display:flex; gap:8px; flex-wrap:wrap; }
+      .btn { padding:9px 12px; border-radius:10px; border:1px solid var(--stroke); background:#0b1327; color:var(--text); cursor:pointer; }
+      .btn:hover { background:#0d1731; }
+      .btn.primary { background: var(--primary); border-color: var(--primary); }
+      .btn.ghost { background: transparent; }
+      .muted { color: var(--muted); }
+      pre { background: #0b1327; color:#e2e8f0; padding: 12px; border-radius: 10px; overflow: auto; border:1px solid var(--stroke); }
       .tabs { display:flex; gap:8px; margin: 14px 0; flex-wrap: wrap; }
-      .tab { padding:8px 12px; border:1px solid #d1d5db; border-radius:8px; background:#f3f4f6; cursor:pointer; }
-      .tab.active { background:#111827; color:#fff; border-color:#111827; }
+      .tab { padding:8px 12px; border:1px solid var(--stroke); border-radius:10px; background:#0b1327; cursor:pointer; color:#cbd5e1; }
+      .tab.active { background:#0f172a; color:#fff; border-color:#334155; }
       .section { display:none; }
       .section.active { display:block; }
       ul.clean { list-style:none; padding-left:0; }
-      ul.clean li { padding:8px 0; border-bottom:1px dashed #e5e7eb; }
+      ul.clean li { padding:8px 0; border-bottom:1px dashed #273247; }
+      .spacer { height: 12px; }
     </style>
   </head>
   <body>
-    <div class=\"card\">
-      <h1>KARMABOT1 WebApp</h1>
+    <div class=\"shell\">
+      <div class=\"card\">
+      <div class=\"toolbar\">
+        <div class=\"title\">🪄 <span>KARMABOT1 WebApp</span></div>
+        <div class=\"actions\">
+          <button id=\"btnScanQR\" class=\"btn primary\" style=\"display:none\">🧾 Сканировать QR</button>
+          <button id=\"openInBrowser\" class=\"btn ghost\">🌐 Открыть в браузере</button>
+          <button id=\"toggleDetails\" class=\"btn ghost\">Показать детали</button>
+          <button id=\"showToken\" class=\"btn ghost\">Показать токен</button>
+          <button id=\"copyToken\" class=\"btn\" style=\"display:none\">Копировать</button>
+        </div>
+      </div>
+      <div class=\"spacer\"></div>
       <p class=\"muted\">Авторизация через Telegram initData → POST /auth/webapp → /auth/me</p>
       <div id=\"status\">Инициализация…</div>
-      <div style=\"margin-top:8px; display:flex; gap:8px; flex-wrap:wrap\">
-        <button id=\"toggleDetails\">Показать детали</button>
-        <button id=\"openInBrowser\">Открыть в браузере</button>
-      </div>
       <div id=\"claims\" style=\"display:none\">
         <h3>Claims</h3>
         <pre id=\"claimsPre\"></pre>
       </div>
-      <div style="margin-top:12px">
-        <button id="retry" style="display:none">Повторить авторизацию</button>
+      <div style=\"margin-top:12px\">
+        <button id=\"retry\" class=\"btn\" style=\"display:none\">Повторить авторизацию</button>
       </div>
-      <div id="tokenTools" style="margin-top:8px; display:none">
-        <button id="showToken">Показать токен</button>
-        <button id="copyToken" style="display:none">Копировать</button>
-        <div id="tokenBox" class="muted" style="display:none; word-break:break-all; margin-top:6px"></div>
-      </div>
+      <div id=\"tokenBox\" class=\"muted\" style=\"display:none; word-break:break-all; margin-top:6px\"></div>
       <div id=\"cabinet\" style=\"display:none; margin-top:16px\">
-        <div style=\"margin-bottom:10px\">
-          <button id=\"btnScanQR\" style=\"display:none; background:#2563eb; border-color:#2563eb\">🧾 Сканировать QR</button>
-        </div>
         <div class=\"tabs\">
           <div class=\"tab active\" data-tab=\"profile\">Профиль</div>
           <div class=\"tab\" data-tab=\"orders\">Заказы</div>
@@ -135,6 +146,7 @@ INDEX_HTML = """
     </div>
 
     <script>
+      const SHOW_DEBUG_UI = {str(_SHOW_DEBUG_UI).lower()};
       function selectTab(name) {
         document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -219,22 +231,25 @@ INDEX_HTML = """
           localStorage.setItem('jwt', token);
           s.innerHTML = '<span class="ok">Успешно. Запрашиваю /auth/me…</span>';
 
-          // Reveal token tools
+          // Reveal token tools (debug only)
           try {
-            document.getElementById('tokenTools').style.display = 'block';
             const tb = document.getElementById('tokenBox');
             const copyBtn = document.getElementById('copyToken');
             const showBtn = document.getElementById('showToken');
-            showBtn.style.display = 'inline-block';
-            showBtn.onclick = () => {
-              tb.textContent = token;
-              tb.style.display = 'block';
-              copyBtn.style.display = 'inline-block';
-            };
-            copyBtn.onclick = async () => {
-              try { await navigator.clipboard.writeText(token); showBtn.textContent = 'Токен скопирован'; }
-              catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
-            };
+            if (SHOW_DEBUG_UI) {
+              showBtn.style.display = 'inline-block';
+              showBtn.onclick = () => {
+                tb.textContent = token;
+                tb.style.display = 'block';
+                copyBtn.style.display = 'inline-block';
+              };
+              copyBtn.onclick = async () => {
+                try { await navigator.clipboard.writeText(token); showBtn.textContent = 'Токен скопирован'; }
+                catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
+              };
+            } else {
+              showBtn.style.display = 'none';
+            }
           } catch (e) { /* no-op */ }
 
           const meResp = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
@@ -288,11 +303,12 @@ INDEX_HTML = """
           });
         }
       } catch (e) { /* noop */ }
-      // Toggle details (claims)
+      // Toggle details (claims) — debug only
       try {
         const btn = document.getElementById('toggleDetails');
         const box = document.getElementById('claims');
         if (btn && box) {
+          if (!SHOW_DEBUG_UI) { btn.style.display = 'none'; box.style.display='none'; }
           btn.addEventListener('click', () => {
             const shown = box.style.display !== 'none';
             box.style.display = shown ? 'none' : 'block';
@@ -311,24 +327,27 @@ INDEX_HTML = """
           });
         }
       } catch (e) { /* noop */ }
-      // If token already saved (повторный визит), покажем инструменты
+      // If token already saved (повторный визит), настрой debug-кнопки
       try {
         const saved = localStorage.getItem('jwt');
         if (saved) {
-          document.getElementById('tokenTools').style.display = 'block';
           const tb = document.getElementById('tokenBox');
           const copyBtn = document.getElementById('copyToken');
           const showBtn = document.getElementById('showToken');
-          showBtn.style.display = 'inline-block';
-          showBtn.onclick = () => {
-            tb.textContent = saved;
-            tb.style.display = 'block';
-            copyBtn.style.display = 'inline-block';
-          };
-          copyBtn.onclick = async () => {
-            try { await navigator.clipboard.writeText(saved); showBtn.textContent = 'Токен скопирован'; }
-            catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
-          };
+          if (SHOW_DEBUG_UI) {
+            showBtn.style.display = 'inline-block';
+            showBtn.onclick = () => {
+              tb.textContent = saved;
+              tb.style.display = 'block';
+              copyBtn.style.display = 'inline-block';
+            };
+            copyBtn.onclick = async () => {
+              try { await navigator.clipboard.writeText(saved); showBtn.textContent = 'Токен скопирован'; }
+              catch (_) { showBtn.textContent = 'Скопируйте вручную ниже'; }
+            };
+          } else {
+            showBtn.style.display = 'none';
+          }
         }
       } catch (e) { /* ignore */ }
       authWithInitData();
