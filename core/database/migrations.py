@@ -11,18 +11,31 @@ logger = logging.getLogger(__name__)
 
 class DatabaseMigrator:
     def __init__(self, db_path: str = "core/database/data.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Поддержка in-memory БД для тестов: нужно единое соединение
+        self._is_memory = db_path == ":memory:" or str(db_path).startswith("file::memory:")
+        if self._is_memory:
+            # Используем shared cache для возможных множественных подключений
+            uri = db_path if str(db_path).startswith("file:") else "file::memory:?cache=shared"
+            self._conn = sqlite3.connect(uri, uri=True, check_same_thread=False)
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            self.db_path = None
+        else:
+            self.db_path = Path(db_path)
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            self._conn = None
     
     def get_connection(self) -> sqlite3.Connection:
         """Get database connection with foreign keys enabled"""
+        if self._is_memory and self._conn is not None:
+            return self._conn
         conn = sqlite3.connect(self.db_path)
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
     
     def init_migration_table(self):
         """Initialize migration tracking table"""
-        with self.get_connection() as conn:
+        if self._is_memory:
+            conn = self.get_connection()
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     version TEXT PRIMARY KEY,
@@ -30,15 +43,33 @@ class DatabaseMigrator:
                     description TEXT
                 )
             """)
+            conn.commit()
+        else:
+            with self.get_connection() as conn:
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS schema_migrations (
+                        version TEXT PRIMARY KEY,
+                        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        description TEXT
+                    )
+                """)
     
     def is_migration_applied(self, version: str) -> bool:
         """Check if migration is already applied"""
-        with self.get_connection() as conn:
+        if self._is_memory:
+            conn = self.get_connection()
             cursor = conn.execute(
-                "SELECT 1 FROM schema_migrations WHERE version = ?", 
+                "SELECT 1 FROM schema_migrations WHERE version = ?",
                 (version,)
             )
             return cursor.fetchone() is not None
+        else:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT 1 FROM schema_migrations WHERE version = ?", 
+                    (version,)
+                )
+                return cursor.fetchone() is not None
     
     def apply_migration(self, version: str, description: str, sql: str):
         """Apply migration if not already applied (idempotent)"""
@@ -46,21 +77,35 @@ class DatabaseMigrator:
             logger.info(f"Migration {version} already applied, skipping")
             return
         
-        with self.get_connection() as conn:
+        if self._is_memory:
+            conn = self.get_connection()
             try:
-                # Execute migration SQL
                 conn.executescript(sql)
-                
-                # Record migration
                 conn.execute(
                     "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
                     (version, description)
                 )
-                
+                conn.commit()
                 logger.info(f"Applied migration {version}: {description}")
             except Exception as e:
                 logger.error(f"Failed to apply migration {version}: {e}")
                 raise
+        else:
+            with self.get_connection() as conn:
+                try:
+                    # Execute migration SQL
+                    conn.executescript(sql)
+                    
+                    # Record migration
+                    conn.execute(
+                        "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                        (version, description)
+                    )
+                    
+                    logger.info(f"Applied migration {version}: {description}")
+                except Exception as e:
+                    logger.error(f"Failed to apply migration {version}: {e}")
+                    raise
     
     def migrate_001_expand_legacy_tables(self):
         """
@@ -217,6 +262,55 @@ class DatabaseMigrator:
             "EXPAND: Seed default categories with backward compatibility",
             sql
         )
+
+    def migrate_004_add_cards_optional_fields(self):
+        """
+        EXPAND Phase: Conditionally add optional fields to cards_v2:
+        - subcategory_id INTEGER NULL
+        - city_id INTEGER NULL
+        - area_id INTEGER NULL
+
+        Idempotent: checks existing columns before altering.
+        """
+        version = "004"
+        desc = "EXPAND: Add optional subcategory_id, city_id, area_id to cards_v2"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+        def _apply(conn: sqlite3.Connection):
+            cur = conn.execute("PRAGMA table_info(cards_v2)")
+            have = {str(r[1]) for r in cur.fetchall()}
+            to_add: list[tuple[str, str]] = []
+            if "subcategory_id" not in have:
+                to_add.append(("subcategory_id", "INTEGER"))
+            if "city_id" not in have:
+                to_add.append(("city_id", "INTEGER"))
+            if "area_id" not in have:
+                to_add.append(("area_id", "INTEGER"))
+            for name, typ in to_add:
+                conn.execute(f"ALTER TABLE cards_v2 ADD COLUMN {name} {typ}")
+            # record migration
+            conn.execute(
+                "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                (version, desc),
+            )
+        if self._is_memory:
+            conn = self.get_connection()
+            try:
+                _apply(conn)
+                conn.commit()
+                logger.info(f"Applied migration {version}: {desc}")
+            except Exception as e:
+                logger.error(f"Failed to apply migration {version}: {e}")
+                raise
+        else:
+            with self.get_connection() as conn:
+                try:
+                    _apply(conn)
+                    logger.info(f"Applied migration {version}: {desc}")
+                except Exception as e:
+                    logger.error(f"Failed to apply migration {version}: {e}")
+                    raise
     
     def run_all_migrations(self):
         """Run all pending migrations in order"""
@@ -226,6 +320,8 @@ class DatabaseMigrator:
         self.migrate_001_expand_legacy_tables()
         self.migrate_002_expand_new_schema()
         self.migrate_003_seed_default_data()
+        # Add optional fields to cards_v2 (subcategory_id, city_id, area_id)
+        self.migrate_004_add_cards_optional_fields()
         
         logger.info("All migrations completed successfully")
 

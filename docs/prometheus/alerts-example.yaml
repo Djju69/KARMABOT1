@@ -1,0 +1,25 @@
+groups:
+- name: authme-cache
+  rules:
+  - alert: HighAuthMeMissRate
+    expr: |
+      sum(rate(authme_cache_requests_total{outcome="miss"}[5m]))
+        /
+      clamp_min(sum(rate(authme_cache_requests_total[5m])), 1e-9)
+        > 0.3
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "/auth/me cache miss rate is high (>30%)"
+      description: |
+        Investigate cache TTL/soft TTL and DB latency. Miss rate is {{ $value | humanizePercentage }}.
+  - alert: SlowAuthMeBuild
+    expr: histogram_quantile(0.95, sum(rate(authme_cache_build_latency_seconds_bucket[5m])) by (le)) > 0.5
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "/auth/me build latency p95 > 500ms"
+      description: |
+        DB or dependency slowdown suspected. Check Postgres/Redis.

@@ -11,7 +11,7 @@ import logging
 
 from ..settings import settings
 from ..database.db_v2 import db_v2, Card
-from ..utils.locales import translations
+from ..utils.locales_v2 import translations
 
 logger = logging.getLogger(__name__)
 

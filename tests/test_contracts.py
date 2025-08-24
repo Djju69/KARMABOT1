@@ -19,6 +19,14 @@ CALLBACK_PATTERNS = {
     "moderation": r"^mod_(approve|reject|feature|archive|next|finish|back):\d+$",
     "reject_reason": r"^reject_reason:\d+:[a-z_]+$",
     "reject_custom": r"^reject_custom:\d+$",
+
+    # Phase 1 UX patterns (IMMUTABLE once added)
+    "pagination": r"^pg:(restaurants|spa|transport|hotels|tours):\d+$",
+    "card_view": r"^act:view:\d+$",
+    "rest_filt": r"^filt:restaurants:(asia|europe|street|vege|all)$",
+    "lang_set": r"^lang:set:(ru|en|vi|ko)$",
+    "city_set": r"^city:set:\d+$",
+    "policy_accept": r"^policy:accept$",
 }
 
 # Required i18n keys that MUST exist in all languages (IMMUTABLE)
@@ -96,6 +104,17 @@ class TestCallbackContracts:
         assert re.match(CALLBACK_PATTERNS["moderation"], "mod_approve:123")
         assert re.match(CALLBACK_PATTERNS["moderation"], "mod_reject:456")
         assert re.match(CALLBACK_PATTERNS["reject_reason"], "reject_reason:123:incomplete")
+
+        # Phase 1 UX patterns
+        assert re.match(CALLBACK_PATTERNS["pagination"], "pg:restaurants:1")
+        assert re.match(CALLBACK_PATTERNS["pagination"], "pg:hotels:10")
+        assert re.match(CALLBACK_PATTERNS["card_view"], "act:view:42")
+        assert re.match(CALLBACK_PATTERNS["rest_filt"], "filt:restaurants:asia")
+        assert re.match(CALLBACK_PATTERNS["rest_filt"], "filt:restaurants:all")
+        assert re.match(CALLBACK_PATTERNS["lang_set"], "lang:set:ru")
+        assert re.match(CALLBACK_PATTERNS["lang_set"], "lang:set:en")
+        assert re.match(CALLBACK_PATTERNS["city_set"], "city:set:5")
+        assert re.match(CALLBACK_PATTERNS["policy_accept"], "policy:accept")
 
 class TestI18nContracts:
     """Test internationalization contracts"""

@@ -10,7 +10,7 @@ from pathlib import Path
 translations_v2 = {
     'ru': {
         # Existing keys (preserved for compatibility)
-        'back_to_main': 'Вернуться в главное меню🏘',
+        'back_to_main_menu': 'Вернуться в главное меню🏘',
         'choose_category': '🗂️ Категории',
         'show_nearest': '📍 Показать ближайшие',
         'choose_language': '🌐 Язык',
@@ -77,205 +77,91 @@ translations_v2 = {
         'cards_count': 'Карточек',
         'views_count': 'Просмотров',
         'qr_scans': 'QR сканирований',
-    },
-    
-    'en': {
-        # Existing keys (preserved)
-        'back_to_main': 'Back to main menu🏘',
-        'choose_category': '🗂️ Categories',
-        'show_nearest': '📍 Show nearest',
-        'choose_language': '🌐 Language',
-        'choose_district': '🌆 By districts',
-        
-        # NEW: P1 additions
-        'profile': '👤 Profile',
-        'help': '❓ Help',
-        
-        # NEW: Partner FSM
-        'add_card': '➕ Add card',
-        'my_cards': '📋 My cards',
-        'card_status_draft': '📝 Draft',
-        'card_status_pending': '⏳ Pending',
-        'card_status_approved': '✅ Approved',
-        'card_status_published': '🎉 Published',
-        'card_status_rejected': '❌ Rejected',
-        'card_status_archived': '🗂️ Archived',
-        
-        # NEW: Moderation
-        'moderation_title': '🔍 Moderation',
-        'approve_card': '✅ Approve',
-        'reject_card': '❌ Reject',
-        'feature_card': '⭐ Feature',
-        'archive_card': '🗂️ Archive',
-        
-        # NEW: Common actions
-        'cancel': '❌ Cancel',
-        'skip': '⏭️ Skip',
-        'back': '🔙 Back',
-        'next': '➡️ Next',
-        'edit': '✏️ Edit',
-        'delete': '🗑️ Delete',
-        'save': '💾 Save',
-        
-        # NEW: Card renderer
-        'contact_info': '📞 Contact',
-        'address_info': '📍 Address',
-        'discount_info': '🎫 Discount',
-        'show_on_map': '🗺️ Show on map',
-        'create_qr': '📱 Create QR',
-        'call_business': '📞 Contact',
-        'book_service': '📅 Book',
-        
-        # NEW: Help
-        'help_main': '''❓ **Bot Help**
 
-🗂️ **Categories** - browse businesses by type
-👤 **Profile** - manage your cards
-📍 **Show nearest** - find nearby places
-🌆 **By districts** - choose by location
-🌐 **Language** - change interface language
+        # NEW: Category Menu (v2)
+        'category_restaurants': '🍽 Рестораны',
+        'category_spa': '🧖‍♀️ SPA',
+        'category_transport': '🚗 Транспорт',
+        'category_hotels': '🏨 Отели',
+        'category_tours': '🚶‍♂️ Экскурсии',
+        'transport_bikes': '🛵 Байки',
+        'transport_cars': '🚘 Машины',
+        'transport_bicycles': '🚲 Велосипед',
+        'tours_group': '👥 Групповые',
+        'tours_private': '🧑‍🤝‍🧑 Индивидуальные',
+        'back_to_categories': '◀️ Назад',
+        'catalog_found': 'Найдено',
+        'catalog_page': 'Стр.',
+        'catalog_empty_sub': '📭 В этой подкатегории пока нет заведений.',
+        'transport_choose': 'Выберите вид транспорта:',
+        'tours_choose': 'Выберите тип экскурсии:',
+        # NEW: SPA and Hotels submenus
+        'spa_choose': 'Выберите раздел SPA:',
+        'spa_salon': '💆 Спа-салоны',
+        'spa_massage': '🤲 Массаж',
+        'spa_sauna': '🧖 Бани/сауны',
+        'hotels_choose': 'Выберите тип размещения:',
+        'hotels_hotels': '🏨 Отели',
+        'hotels_apartments': '🏘 Апартаменты',
 
-**For partners:**
-/add_card - add new business card
-/my_cards - view your cards
+        # NEW: Restaurant filters
+        'restaurants_choose_cuisine': 'Выберите тип кухни:',
+        'filter_asia': 'Азиатская',
+        'filter_europe': 'Европейская',
+        'filter_street': 'Стритфуд',
+        'filter_vege': 'Вегетарианская',
+        'filter_all': 'Показать все',
 
-**Support:** @support_bot''',
-        
-        # NEW: Profile
-        'profile_main': '👤 **Profile**',
-        'profile_stats': '📊 Statistics',
-        'profile_settings': '⚙️ Settings',
-        'cards_count': 'Cards',
-        'views_count': 'Views',
-        'qr_scans': 'QR scans',
-    },
-    
-    'vi': {
-        # Existing keys (preserved)
-        'back_to_main': 'Về menu chính🏘',
-        'choose_category': '🗂️ Danh mục',
-        'show_nearest': '📍 Hiển thị gần nhất',
-        'choose_language': '🌐 Ngôn ngữ',
-        'choose_district': '🌆 Theo quận',
-        
-        # NEW: P1 additions
-        'profile': '👤 Hồ sơ',
-        'help': '❓ Trợ giúp',
-        
-        # NEW: Partner FSM
-        'add_card': '➕ Thêm thẻ',
-        'my_cards': '📋 Thẻ của tôi',
-        'card_status_draft': '📝 Bản nháp',
-        'card_status_pending': '⏳ Đang chờ',
-        'card_status_approved': '✅ Đã duyệt',
-        'card_status_published': '🎉 Đã xuất bản',
-        'card_status_rejected': '❌ Bị từ chối',
-        'card_status_archived': '🗂️ Lưu trữ',
-        
-        # NEW: Common actions
-        'cancel': '❌ Hủy',
-        'skip': '⏭️ Bỏ qua',
-        'back': '🔙 Quay lại',
-        'next': '➡️ Tiếp theo',
-        'edit': '✏️ Chỉnh sửa',
-        'delete': '🗑️ Xóa',
-        'save': '💾 Lưu',
-        
-        # NEW: Card renderer
-        'contact_info': '📞 Liên hệ',
-        'address_info': '📍 Địa chỉ',
-        'discount_info': '🎫 Giảm giá',
-        'show_on_map': '🗺️ Hiện trên bản đồ',
-        'create_qr': '📱 Tạo QR',
-        'call_business': '📞 Liên hệ',
-        'book_service': '📅 Đặt chỗ',
-        
-        # NEW: Help
-        'help_main': '''❓ **Trợ giúp Bot**
+        # NEW: Welcome flow
+        'welcome_message': '''{user_name} 👋 Добро пожаловать в Karma System!
 
-🗂️ **Danh mục** - duyệt doanh nghiệp theo loại
-👤 **Hồ sơ** - quản lý thẻ của bạn
-📍 **Hiển thị gần nhất** - tìm địa điểm gần
-🌆 **Theo quận** - chọn theo vị trí
-🌐 **Ngôn ngữ** - thay đổi ngôn ngữ
+✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:
+🍽️ Рестораны и кафе
+🧖‍♀️ SPA и массаж
+🏍️ Аренда байков
+🏨 Отели
+🚶‍♂️ Экскурсии
 
-**Cho đối tác:**
-/add_card - thêm thẻ doanh nghiệp mới
-/my_cards - xem thẻ của bạn
+А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀
 
-**Hỗ trợ:** @support_bot''',
-        
-        # NEW: Profile
-        'profile_main': '👤 **Hồ sơ**',
-        'profile_stats': '📊 Thống kê',
-        'profile_settings': '⚙️ Cài đặt',
-        'cards_count': 'Thẻ',
-        'views_count': 'Lượt xem',
-        'qr_scans': 'Quét QR',
-    },
-    
-    'ko': {
-        # Existing keys (preserved)
-        'back_to_main': '메인 메뉴로🏘',
-        'choose_category': '🗂️ 카테고리',
-        'show_nearest': '📍 가까운 곳 보기',
-        'choose_language': '🌐 언어',
-        'choose_district': '🌆 지역별',
-        
-        # NEW: P1 additions
-        'profile': '👤 프로필',
-        'help': '❓ 도움말',
-        
-        # NEW: Partner FSM
-        'add_card': '➕ 카드 추가',
-        'my_cards': '📋 내 카드',
-        'card_status_draft': '📝 초안',
-        'card_status_pending': '⏳ 대기중',
-        'card_status_approved': '✅ 승인됨',
-        'card_status_published': '🎉 게시됨',
-        'card_status_rejected': '❌ 거부됨',
-        'card_status_archived': '🗂️ 보관됨',
-        
-        # NEW: Common actions
-        'cancel': '❌ 취소',
-        'skip': '⏭️ 건너뛰기',
-        'back': '🔙 뒤로',
-        'next': '➡️ 다음',
-        'edit': '✏️ 편집',
-        'delete': '🗑️ 삭제',
-        'save': '💾 저장',
-        
-        # NEW: Card renderer
-        'contact_info': '📞 연락처',
-        'address_info': '📍 주소',
-        'discount_info': '🎫 할인',
-        'show_on_map': '🗺️ 지도에서 보기',
-        'create_qr': '📱 QR 생성',
-        'call_business': '📞 연락하기',
-        'book_service': '📅 예약하기',
-        
-        # NEW: Help
-        'help_main': '''❓ **봇 도움말**
+Начни экономить прямо сейчас — выбирай категорию и получай свои скидки!
 
-🗂️ **카테고리** - 유형별 업체 보기
-👤 **프로필** - 카드 관리
-📍 **가까운 곳 보기** - 근처 장소 찾기
-🌆 **지역별** - 위치별 선택
-🌐 **언어** - 인터페이스 언어 변경
+Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
+        'policy_accept': '✅ Согласен',
+        'policy_view': '📄 Политика конфиденциальности',
+        'policy_url': '/policy',  # Внутренняя страница политики на нашем веб-сервисе
 
-**파트너용:**
-/add_card - 새 비즈니스 카드 추가
-/my_cards - 내 카드 보기
+        # NEW: Common UI texts required by handlers
+        'main_menu_title': '🏘 Главное меню\n\n✨ Выберите категорию ниже и начните экономить уже сейчас!',
+        'language_updated': '✅ Язык обновлён',
+        'policy_accepted': '✅ Политика принята',
+        'choose_city': '🌆 Выберите город:',
+        'city_selected': '✅ Город выбран',
+        'city_updated': '✅ Город обновлён',
+        'unhandled_message': '🤖 Я вас не понял. Пожалуйста, используйте меню команд.',
 
-**지원:** @support_bot''',
-        
-        # NEW: Profile
-        'profile_main': '👤 **프로필**',
-        'profile_stats': '📊 통계',
-        'profile_settings': '⚙️ 설정',
-        'cards_count': '카드',
-        'views_count': '조회수',
-        'qr_scans': 'QR 스캔',
+        # NEW: WebApp security / errors
+        'webapp_auth_invalid': '❌ Неверная авторизация WebApp. Повторите вход из Telegram.',
+        'webapp_auth_expired': '⌛ Сессия истекла. Откройте WebApp заново из бота.',
+        'webapp_origin_denied': '🚫 Источник запроса не разрешён.',
+
+        # NEW: Reply Menu
+        'menu_scan_qr': '🧾 Сканировать QR',
+        'scan_qr_unavailable': 'Сканирование недоступно. Доступно только партнёрам с активными карточками.',
+        'webapp_open': '🔗 Открыть WebApp',
+
+        # NEW: Partner cabinet navigation
+        'btn_more': '⋮ Ещё',
+        'btn_goto_page': '➡️ К странице…',
+        'btn_search_listing': '🔎 Поиск',
+        'btn_add_offer': '➕ Добавить предложение',
+        'btn_metrics_category': '📈 Показатели по категории',
+        'search_placeholder': 'Введите название или часть адреса…',
+        'search_no_results': 'Ничего не найдено по вашему запросу.',
+
+        # NEW: Reports
+        'report_building': '⏳ Формируем отчёт… Это может занять некоторое время.',
+        'report_rate_limited': '⏱ Лимит запросов отчётов исчерпан. Повторите позже.'
     }
 }
 
@@ -320,27 +206,36 @@ def validate_translations() -> Dict[str, list]:
     
     return missing_keys
 
-# Save extended translations to file for persistence
-def save_translations_to_file(filepath: str = "core/utils/translations_v2.json"):
-    """Save translations to JSON file"""
-    Path(filepath).parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(translations_v2, f, ensure_ascii=False, indent=2)
 
-# Load from file if exists (for runtime updates)
-def load_translations_from_file(filepath: str = "core/utils/translations_v2.json"):
-    """Load translations from JSON file if exists"""
+def load_translations_from_dir(dirpath: str = None):
+    """Load translations from all JSON files in a directory.
+    Each file should be named like 'ru.json', 'en.json', etc., containing a flat {key: text} map.
+    """
     global translations_v2, translations
     
-    if Path(filepath).exists():
+    # Use absolute path if dirpath is not provided
+    if dirpath is None:
+        import os
+        dirpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'i18n')
+    
+    p = Path(dirpath)
+    if not p.exists():
+        print(f"Warning: Translations directory not found: {p.absolute()}")
+        return
+        
+    for file in p.glob("*.json"):
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                loaded = json.load(f)
-                translations_v2.update(loaded)
-                translations = translations_v2
+            with open(file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                lang_code = file.stem
+                base = translations_v2.get(lang_code, {})
+                base.update(data)
+                translations_v2[lang_code] = base
+                print(f"Loaded translations for language: {lang_code}")
         except Exception as e:
-            print(f"Warning: Failed to load translations from {filepath}: {e}")
+            print(f"Warning: Failed to load translations from {file}: {e}")
+    
+    translations = translations_v2
 
 # Auto-load on import
-load_translations_from_file()
+load_translations_from_dir()
