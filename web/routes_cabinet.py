@@ -24,17 +24,22 @@ def get_current_claims(
     token_q: Optional[str] = Query(default=None, alias="token"),
 ) -> Dict[str, Any]:
     allow_partner = os.getenv("ALLOW_PARTNER_FOR_CABINET") == "1"
-    # Dev bypass: allow running UI without real token
-    if (not authorization or not authorization.lower().startswith("bearer ")):
-        # Try alternative sources: Query, Header, Cookies (in that order)
+    # 0) Extract token from Authorization or alternative sources
+    token: Optional[str] = None
+    if authorization and authorization.lower().startswith("bearer "):
+        try:
+            token = authorization.split(" ", 1)[1]
+        except Exception:
+            token = None
+    if not token:
         alt = token_q or x_auth_token or partner_jwt or authToken or jwt
         if alt:
-            authorization = f"Bearer {alt}"
-        
-        if settings.environment == "development" and allow_partner:
+            token = alt
+    if not token:
+        # Dev bypass (optional)
+        if getattr(settings, 'environment', None) == "development" and allow_partner:
             return {"sub": "1", "role": "partner", "src": "tg_webapp"}
         raise HTTPException(status_code=401, detail="missing bearer token")
-    token = authorization.split(" ", 1)[1]
 
     # 1) Try WebApp token (JWT_SECRET domain)
     claims = check_jwt(token)
