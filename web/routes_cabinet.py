@@ -44,15 +44,7 @@ def get_current_claims(
     # 1) Try WebApp token (JWT_SECRET domain)
     claims = check_jwt(token)
     if claims:
-        # Require WebApp source unless in development
-        src = str(claims.get("src", ""))
-        if src != "tg_webapp" and settings.environment != "development":
-            # If flagged, attempt partner verification as fallback
-            if allow_partner:
-                partner_claims = verify_partner(token)
-                if partner_claims:
-                    return partner_claims
-            raise HTTPException(status_code=401, detail="invalid token source")
+        # Accept any valid JWT regardless of 'src' to avoid false 401 for WebApp tokens
         return claims
 
     # 2) Fallback: always try partner/admin token verification
