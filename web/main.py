@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -145,6 +145,23 @@ async def healthz():
         "node_id": snap.get("node_id"),
         "components": list((snap.get("components") or {}).keys()),
     }
+
+
+# --- Utility: set JWT into cookies and redirect to partner cards
+@app.get("/auth/set-token")
+async def set_token(token: str):
+    """Accepts ?token=...; sets cookies 'partner_jwt' and 'authToken' and redirects to /cabinet/partner/cards.
+    Works both inside and outside Telegram WebApp.
+    """
+    # Set lax cookies for browser fetch to send Authorization via our cookie fallback
+    max_age = 60 * 60 * 24 * 7  # 7 days
+    resp = RedirectResponse(url="/cabinet/partner/cards", status_code=302)
+    try:
+        resp.set_cookie("partner_jwt", token, max_age=max_age, path="/", httponly=False, samesite="lax")
+        resp.set_cookie("authToken", token, max_age=max_age, path="/", httponly=False, samesite="lax")
+    except Exception:
+        pass
+    return resp
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL

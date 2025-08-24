@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Any
 import os
 import sqlite3
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie
 
 from pydantic import BaseModel, Field
 
@@ -14,10 +14,19 @@ from core.services.partners import is_partner
 router = APIRouter()
 
 # Define auth dependency BEFORE any route uses Depends(get_current_claims)
-def get_current_claims(authorization: Optional[str] = Header(default=None)) -> Dict[str, Any]:
+def get_current_claims(
+    authorization: Optional[str] = Header(default=None),
+    partner_jwt: Optional[str] = Cookie(default=None),
+    authToken: Optional[str] = Cookie(default=None),
+) -> Dict[str, Any]:
     allow_partner = os.getenv("ALLOW_PARTNER_FOR_CABINET") == "1"
     # Dev bypass: allow running UI without real token
     if (not authorization or not authorization.lower().startswith("bearer ")):
+        # Try cookies as fallback
+        cookie_token = partner_jwt or authToken
+        if cookie_token:
+            authorization = f"Bearer {cookie_token}"
+        
         if settings.environment == "development" and allow_partner:
             return {"sub": "1", "role": "partner", "src": "tg_webapp"}
         raise HTTPException(status_code=401, detail="missing bearer token")
