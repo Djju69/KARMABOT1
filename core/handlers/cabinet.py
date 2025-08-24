@@ -12,7 +12,7 @@ from ..database.db_v2 import db_v2
 from ..utils.locales_v2 import get_text, get_all_texts
 from ..keyboards.reply_v2 import get_profile_keyboard
 from ..keyboards.inline_v2 import get_catalog_item_row, get_pagination_row
-from .partner import AddCardStates, get_skip_keyboard
+from .partner import AddCardStates, get_skip_keyboard, get_categories_keyboard
 from ..settings import settings
 
 router = Router()
@@ -31,8 +31,11 @@ def _paginate(items: List[dict], page: int, per_page: int) -> Tuple[List[dict], 
 def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[str, InlineKeyboardMarkup]:
     # Build text
     if not cards:
-        text = "📭 Пока нет карточек. Используйте /add_card, чтобы добавить первую."
-        return text, InlineKeyboardMarkup(inline_keyboard=[])
+        text = "📭 Пока нет карточек. Нажмите, чтобы добавить первую."
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='➕ Добавить карточку', callback_data='pc:add')]
+        ])
+        return text, kb
 
     page_cards, cur, pages = _paginate(cards, page, PAGE_SIZE)
 
@@ -76,6 +79,9 @@ def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[
             InlineKeyboardButton(text=label, callback_data=f"pc:status:{cid}:{next_status}"),
             InlineKeyboardButton(text='✏️ Редактировать', callback_data=f"pc:edit:{cid}")
         ])
+
+    # Add button row (always visible)
+    inline_rows.append([InlineKeyboardButton(text='➕ Добавить карточку', callback_data='pc:add')])
 
     # Pagination row
     inline_rows.append(get_pagination_row('pc', cur, pages, 'all'))
@@ -244,6 +250,26 @@ async def cb_pc_edit(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
     except Exception:
         await callback.answer("Ошибка запуска редактирования", show_alert=True)
+
+
+@router.callback_query(F.data == "pc:add")
+async def cb_pc_add(callback: CallbackQuery, state: FSMContext):
+    """Start FSM creating a new card from cabinet"""
+    if not settings.features.partner_fsm:
+        await callback.answer("🚧 Добавление временно недоступно", show_alert=True)
+        return
+    partner = db_v2.get_or_create_partner(callback.from_user.id, callback.from_user.full_name)
+    await state.update_data(partner_id=partner.id)
+    await state.set_state(AddCardStates.choose_category)
+    await callback.message.edit_text(
+        "🏪 **Добавление новой карточки**\n\nВыберите категорию для вашего заведения:",
+        reply_markup=None
+    )
+    await callback.message.answer(
+        "Выберите категорию:",
+        reply_markup=get_categories_keyboard()
+    )
+    await callback.answer()
 
 
 # Factory for main include
