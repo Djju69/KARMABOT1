@@ -155,7 +155,7 @@ async def set_token(token: str):
     """
     # Set lax cookies for browser fetch to send Authorization via our cookie fallback
     max_age = 60 * 60 * 24 * 7  # 7 days
-    resp = RedirectResponse(url="/cabinet/partner/cards", status_code=302)
+    resp = RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
     try:
         resp.set_cookie("partner_jwt", token, max_age=max_age, path="/", httponly=False, samesite="lax")
         resp.set_cookie("authToken", token, max_age=max_age, path="/", httponly=False, samesite="lax")
@@ -563,7 +563,7 @@ async def index():
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
     if str(env).lower() == 'production':
       from fastapi.responses import RedirectResponse
-      return RedirectResponse(url="/cabinet/partner/cards", status_code=302)
+      return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
   except Exception:
     pass
   return HTMLResponse(content=INDEX_HTML)
@@ -1556,16 +1556,3 @@ _PARTNER_CARDS_HTML = """
   </body>
 </html>
 """
-
-
-@app.get("/cabinet/partner/cards/page", response_class=HTMLResponse)
-async def partner_cards_page():
-    return HTMLResponse(content=_PARTNER_CARDS_HTML)
-
-@app.get("/cabinet/partner/cards", response_class=HTMLResponse)
-async def partner_cards_index():
-    return HTMLResponse(content=_PARTNER_CARDS_HTML)
-
-@app.get("/cabinet/partner/cards/", response_class=HTMLResponse)
-async def partner_cards_index_slash():
-    return HTMLResponse(content=_PARTNER_CARDS_HTML)
