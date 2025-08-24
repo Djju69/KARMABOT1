@@ -318,12 +318,65 @@ _INDEX_HTML_RAW = """
 
     <script>
       const SHOW_DEBUG_UI = __SHOW_DEBUG_PLACEHOLDER__;
+      // --- Auth bootstrap helpers: read token from URL/localStorage/cookies and inject Authorization header globally
+      function getQueryParam(name){
+        try { return new URL(window.location.href).searchParams.get(name); } catch(_) { return null }
+      }
+      function readCookie(name){
+        try {
+          const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g,'\\$1') + '=([^;]*)'));
+          return m ? decodeURIComponent(m[1]) : null;
+        } catch(_) { return null }
+      }
+      function pickToken(){
+        const fromUrl = getQueryParam('token');
+        const ls = window.localStorage || { getItem:()=>null, setItem:()=>{} };
+        const fromLS = ls.getItem('partner_jwt') || ls.getItem('authToken') || ls.getItem('jwt');
+        const fromCookie = readCookie('partner_jwt') || readCookie('authToken') || readCookie('jwt');
+        return fromUrl || fromLS || fromCookie || null;
+      }
+      (function installFetchAuth(){
+        try {
+          const orig = window.fetch;
+          if (!orig || orig.__withAuthInstalled) return;
+          window.fetch = async function(input, init){
+            try {
+              const url = (typeof input === 'string') ? input : (input && input.url) || '';
+              const sameOrigin = !/^https?:\/\//i.test(url) || url.startsWith(window.location.origin);
+              const token = window.__authToken || pickToken();
+              if (sameOrigin && token) {
+                init = init || {};
+                const headers = new Headers(init.headers || (typeof input !== 'string' && input && input.headers) || {});
+                if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token);
+                init.headers = headers;
+              }
+            } catch(_) { /* ignore */ }
+            return orig.apply(this, arguments);
+          };
+          window.fetch.__withAuthInstalled = true;
+        } catch (_) { /* ignore */ }
+      })();
+
+      async function bootstrapAuthIfPossible(){
+        try{
+          const token = pickToken();
+          if (token) {
+            window.__authToken = token;
+            try { localStorage.setItem('partner_jwt', token); } catch(_){}
+            return token;
+          }
+        } catch(_){}
+        return null;
+      }
       // Auto-redirect inside Telegram WebApp to partner cards page to avoid stale UI
       try {
         const inTg = (window.Telegram && Telegram.WebApp);
         const p = window.location.pathname || '/';
-        if (inTg && p !== '/cabinet/partner/cards' && p !== '/cabinet/partner/cards/') {
-          window.location.replace(window.location.origin + '/cabinet/partner/cards');
+        // Do not redirect away if we are already on the UI page
+        const ui1 = '/cabinet/partner/cards/page';
+        const ui2 = '/cabinet/partner/cards/page/';
+        if (inTg && p !== ui1 && p !== ui2) {
+          window.location.replace(window.location.origin + ui1);
         }
       } catch (e) { /* ignore */ }
       function selectTab(name) {
@@ -422,7 +475,8 @@ _INDEX_HTML_RAW = """
             retry.style.display = 'inline-block';
             return;
           }
-          localStorage.setItem('partner_jwt', token);
+          try { localStorage.setItem('partner_jwt', token); } catch(_){}
+          window.__authToken = token;
           s.textContent = 'Успешно! Загружаю профиль…';
           // Reveal token tools (debug only)
           try {
@@ -460,7 +514,7 @@ _INDEX_HTML_RAW = """
               btn.className = 'btn primary';
               btn.textContent = 'Мои карточки';
               btn.addEventListener('click', () => {
-                const url = window.location.origin + '/cabinet/partner/cards';
+                const url = window.location.origin + '/cabinet/partner/cards/page';
                 window.location.href = url;
               });
               // insert as first button after openInBrowser if present
@@ -481,13 +535,13 @@ _INDEX_HTML_RAW = """
               wrap.style.margin = '8px 0 0';
               const a = document.createElement('a');
               a.id = 'gotoMyCards';
-              a.href = '/cabinet/partner/cards';
+              a.href = '/cabinet/partner/cards/page';
               a.textContent = '→ Перейти к моим карточкам';
               a.className = 'btn';
               a.style.marginLeft = '8px';
               a.addEventListener('click', (ev) => {
                 ev.preventDefault();
-                const url = window.location.origin + '/cabinet/partner/cards';
+                const url = window.location.origin + '/cabinet/partner/cards/page';
                 window.location.href = url;
               });
               wrap.appendChild(a);
@@ -521,7 +575,7 @@ _INDEX_HTML_RAW = """
           const name = t.dataset.tab;
           selectTab(name);
           if (name === 'mycards') {
-            const url = window.location.origin + '/cabinet/partner/cards';
+            const url = window.location.origin + '/cabinet/partner/cards/page';
             window.location.href = url;
           }
         }
@@ -545,7 +599,7 @@ _INDEX_HTML_RAW = """
         const btn = document.getElementById('btnMyCards');
         if (btn) {
           btn.addEventListener('click', () => {
-            const url = window.location.origin + '/cabinet/partner/cards';
+            const url = window.location.origin + '/cabinet/partner/cards/page';
             window.location.href = url;
           });
         }
@@ -597,7 +651,21 @@ _INDEX_HTML_RAW = """
           }
         }
       } catch (e) { /* ignore */ }
-      authWithInitData();
+      (async () => {
+        const tok = await bootstrapAuthIfPossible();
+        if (tok) {
+          // try to show minimal UI and profile without Telegram flow
+          try {
+            const s = document.getElementById('status');
+            s.textContent = 'Токен найден. Загружаю профиль…';
+          } catch(_){}
+          try { await loadProfile(tok); } catch(_){}
+          try { document.getElementById('cabinet').style.display = 'block'; } catch(_){}
+        } else {
+          // fallback to Telegram initData authorization
+          authWithInitData();
+        }
+      })();
     </script>
   </body>
 </html>
