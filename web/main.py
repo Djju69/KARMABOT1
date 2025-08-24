@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Query, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -148,17 +148,21 @@ async def healthz():
 
 
 # --- Utility: set JWT into cookies and redirect to partner cards
-@app.api_route("/auth/set-token", methods=["GET", "HEAD", "OPTIONS"])
-async def set_token(token: str):
+@app.api_route("/auth/set-token", methods=["GET", "POST", "HEAD", "OPTIONS"])
+async def set_token(token: str | None = Query(default=None), token_body: str | None = Form(default=None)):
     """Accepts ?token=...; sets cookies 'partner_jwt' and 'authToken' and redirects to /cabinet/partner/cards.
     Works both inside and outside Telegram WebApp.
     """
+    token_val = token or token_body
+    if not token_val:
+        # No token provided
+        return JSONResponse(status_code=400, content={"detail": "missing token parameter"})
     # Set lax cookies for browser fetch to send Authorization via our cookie fallback
     max_age = 60 * 60 * 24 * 7  # 7 days
     resp = RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
     try:
-        resp.set_cookie("partner_jwt", token, max_age=max_age, path="/", httponly=False, samesite="lax")
-        resp.set_cookie("authToken", token, max_age=max_age, path="/", httponly=False, samesite="lax")
+        resp.set_cookie("partner_jwt", token_val, max_age=max_age, path="/", httponly=False, samesite="lax")
+        resp.set_cookie("authToken", token_val, max_age=max_age, path="/", httponly=False, samesite="lax")
     except Exception:
         pass
     return resp
