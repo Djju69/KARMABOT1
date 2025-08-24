@@ -2,10 +2,6 @@
 
 providers = ["python"]
 
-[phases.setup]
-# Ensure Python 3.11 and build essentials are available
-nixPkgs = ["python311", "pip", "gcc", "pkg-config"]
-
 [phases.install]
 cmds = [
   "pip install --upgrade pip",
