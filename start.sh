@@ -17,6 +17,8 @@ echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
 echo "PORT: $PORT"
 echo "ALLOW_PARTNER_FOR_CABINET: ${ALLOW_PARTNER_FOR_CABINET:-<unset>}"
 echo "APPLY_MIGRATIONS: ${APPLY_MIGRATIONS:-<unset>}"
+echo "FEATURE_PARTNER_FSM: ${FEATURE_PARTNER_FSM:-<unset>}"
+echo "LOYALTY_MIN_SPEND_PTS: ${LOYALTY_MIN_SPEND_PTS:-<unset>}"
 echo ""
 echo "Dependency versions:"
 python - << 'PY'

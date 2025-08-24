@@ -1,0 +1,24 @@
+{
+  "name": "karmabot1-fixed",
+  "version": "1.0.0",
+  "description": "Система скидок и каталога заведений для Telegram с поддержкой партнерских карточек и модерации.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Djju69/KARMABOT1.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Djju69/KARMABOT1/issues"
+  },
+  "homepage": "https://github.com/Djju69/KARMABOT1#readme"
+}

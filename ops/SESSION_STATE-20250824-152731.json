@@ -1,0 +1,1 @@
+{"version":"v2.4.2","generated_at":"2025-08-24T12:26:10.676233+00:00","node_id":"api-1","build":{},"components":{"feature_flags":{"listen_notify":false,"moderation":false,"new_menu":false,"partner_fsm":false,"qr_webapp":false,"webapp_security":false}}}

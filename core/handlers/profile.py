@@ -15,6 +15,8 @@ from ..database.db_v2 import db_v2
 from ..utils.locales_v2 import get_text
 from ..services.profile import profile_service
 from ..services.cache import cache_service
+from ..services.loyalty import loyalty_service
+from ..services.cards import card_service
 
 profile_router = Router()
 
@@ -74,12 +76,21 @@ async def cb_wallet_spend(c: CallbackQuery):
         min_pts = int(os.getenv('LOYALTY_MIN_SPEND_PTS', '100'))
     except Exception:
         min_pts = 100
-    # Fetch balance (stub: 0)
-    balance = 0
+    # Fetch balance from wallet
+    balance = loyalty_service.get_balance(c.from_user.id)
     if balance < min_pts:
         await c.message.answer(get_text('wallet.spend.min_threshold', lang).replace('%{min}', str(min_pts)))
         return
-    await c.message.answer("⏳ Генерация QR будет добавлена после подготовки таблиц (loy_spend_intents).")
+    # Create spend intent
+    intent = loyalty_service.create_spend_intent(c.from_user.id, min_pts)
+    if not intent:
+        await c.message.answer("⚠️ У вас уже есть активный запрос на списание. Пожалуйста, завершите его или дождитесь истечения срока.")
+        return
+    await c.message.answer(
+        "✅ Запрос на списание создан. Пожалуйста, покажите этот код партнёру:\n\n" +
+        f"<code>{intent.intent_token}</code>\n\nДействителен {loyalty_service.default_ttl} мин.",
+        parse_mode='HTML'
+    )
 
 
 @profile_router.callback_query(F.data.regexp(r"^profile:history:\d+$"))
@@ -136,10 +147,18 @@ async def on_card_uid_entered(m: Message):
         return
     lang = await profile_service.get_lang(m.from_user.id)
     uid = m.text
-    # TODO: check occupied/blocked via DB; stubs for now
-    # Accept and store last4 only (privacy), actual hashing to be implemented with DB schema
+    res = card_service.bind_card(m.from_user.id, uid)
     await cache_service.delete(f"card_bind_wait:{m.from_user.id}")
-    await m.answer(f"✅ Карта с окончанием {uid[-4:]} зарегистрирована (демо).")
+    if not res.ok:
+        reason = res.reason or "invalid"
+        if reason == "blocked":
+            await m.answer("❌ Эта карта заблокирована.")
+        elif reason == "taken":
+            await m.answer("❌ Эта карта уже привязана к другому пользователю.")
+        else:
+            await m.answer("❌ Неверный UID карты. Введите 12 цифр.")
+        return
+    await m.answer(f"✅ Карта с окончанием {res.last4} успешно привязана.")
 
 
 @profile_router.callback_query(F.data == "profile:notify:toggle")
