@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Any
 import os
 import sqlite3
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie
+from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie, Response
 
 from pydantic import BaseModel, Field
 
@@ -414,6 +414,11 @@ async def partner_cards_create(payload: CardCreate, claims: Dict[str, Any] = Dep
         cols = _select_card_columns(conn)
         row = conn.execute(f"SELECT {cols} FROM cards_v2 WHERE id = ?", (card_id,)).fetchone()
         return Card(**dict(row))
+
+# --- Catch-all for HEAD/OPTIONS inside this router to prevent 405 on preflights/HEAD probes
+@router.api_route("/{_any:path}", methods=["HEAD", "OPTIONS"])
+async def _cabinet_head_options(_any: str):
+    return Response(status_code=204)
 
 
 @router.patch("/partner/cards/{card_id}", response_model=Card)

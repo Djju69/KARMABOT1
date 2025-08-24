@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 # Import project settings and auth utils
@@ -53,6 +54,23 @@ class CSPMiddleware(BaseHTTPMiddleware):
         return response
 
 app = FastAPI(title="KARMABOT1 WebApp API")
+
+# Global handler to gracefully handle Method Not Allowed (405)
+@app.exception_handler(StarletteHTTPException)
+async def _http_exc_handler(request: Request, exc: StarletteHTTPException):
+    try:
+        if exc.status_code == 405:
+            path = request.url.path or ""
+            method = (request.method or "").upper()
+            # Serve SPA for our UI route regardless of method
+            if path.startswith("/cabinet/partner/cards/page"):
+                return HTMLResponse(content=INDEX_HTML, status_code=200)
+            # Generic safety for HEAD/OPTIONS anywhere
+            if method in ("HEAD", "OPTIONS"):
+                return Response(status_code=204)
+    except Exception:
+        pass
+    return JSONResponse(status_code=exc.status_code, content={"detail": getattr(exc, 'detail', 'error')})
 
 # CORS
 try:
@@ -148,7 +166,7 @@ async def healthz():
 
 
 # --- Utility: set JWT into cookies and redirect to partner cards
-@app.api_route("/auth/set-token", methods=["GET", "POST", "HEAD", "OPTIONS"])
+@app.api_route("/auth/set-token", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
 async def set_token(request: Request, token: str | None = Query(default=None), token_body: str | None = Form(default=None)):
     """Accepts ?token=...; sets cookies 'partner_jwt' and 'authToken' and redirects to /cabinet/partner/cards.
     Works both inside and outside Telegram WebApp.
@@ -174,6 +192,26 @@ async def set_token(request: Request, token: str | None = Query(default=None), t
     except Exception:
         pass
     return resp
+
+
+# --- Partner Cards UI page (HTML) at /cabinet/partner/cards/page
+# Allow GET/POST/HEAD/OPTIONS to avoid 405 from various clients/embeds
+@app.api_route("/cabinet/partner/cards/page", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], response_class=HTMLResponse)
+async def partner_cards_page():
+    # Serve the main SPA/HTML used by partner cards UI
+    # Token can be set beforehand via /auth/set-token?token=...
+    # Frontend also attempts to read token from URL/localStorage and fallback to cookies
+    return HTMLResponse(content=INDEX_HTML)
+
+# Support trailing slash to avoid 405/redirect loops on some clients
+@app.api_route("/cabinet/partner/cards/page/", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], response_class=HTMLResponse)
+async def partner_cards_page_slash():
+    return HTMLResponse(content=INDEX_HTML)
+
+# Global HEAD/OPTIONS catch-all to prevent 405 for preflights and HEAD probes
+@app.api_route("/{_catch_all:path}", methods=["HEAD", "OPTIONS"])
+async def catch_all_head_options(_catch_all: str):
+    return Response(status_code=204)
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL
@@ -569,7 +607,7 @@ _INDEX_HTML_RAW = """
 INDEX_HTML = _INDEX_HTML_RAW.replace("__SHOW_DEBUG_PLACEHOLDER__", "true" if _SHOW_DEBUG_UI else "false")
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD", "OPTIONS"], response_class=HTMLResponse)
 async def index():
   try:
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
@@ -581,7 +619,7 @@ async def index():
   return HTMLResponse(content=INDEX_HTML)
 
 
-@app.get("/app", response_class=HTMLResponse)
+@app.api_route("/app", methods=["GET", "HEAD", "OPTIONS"], response_class=HTMLResponse)
 async def app_page():
   try:
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
