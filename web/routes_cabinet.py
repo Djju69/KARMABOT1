@@ -49,11 +49,10 @@ def get_current_claims(
             raise HTTPException(status_code=401, detail="invalid token source")
         return claims
 
-    # 2) Fallback: allow partner tokens if enabled
-    if allow_partner:
-        partner_claims = verify_partner(token)
-        if partner_claims:
-            return partner_claims
+    # 2) Fallback: always try partner/admin token verification
+    partner_claims = verify_partner(token)
+    if partner_claims:
+        return partner_claims
 
     # Dev bypass on invalid token
     if settings.environment == "development" and allow_partner:
