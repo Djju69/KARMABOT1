@@ -23,6 +23,7 @@ from core.handlers.callback import router as callback_router
 from core.handlers.category_handlers_v2 import get_category_router
 from core.handlers.partner import get_partner_router
 from core.handlers.moderation import get_moderation_router
+from core.handlers.profile import get_profile_router
 
 # Services
 from core.services.profile import profile_service
@@ -48,7 +49,10 @@ async def setup_routers(dp: Dispatcher):
     category_router = get_category_router()
     dp.include_router(category_router)
 
-    # 4. Feature-flagged routers
+    # 4. Profile router (inline cabinet)
+    dp.include_router(get_profile_router())
+
+    # 5. Feature-flagged routers
     if settings.features.partner_fsm:
         partner_router = get_partner_router()
         dp.include_router(partner_router)

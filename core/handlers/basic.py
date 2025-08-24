@@ -165,20 +165,12 @@ async def on_help(message: Message):
 
 
 async def open_cabinet(message: Message):
-    """Opens the user's cabinet from the reply keyboard button.
-    Shows cabinet keyboard and hints for adding a card if FSM is enabled.
-    """
+    """Opens the user's cabinet and renders inline profile menu per spec."""
     if not await ensure_policy_accepted(message):
         return
-    from ..keyboards.reply_v2 import get_profile_keyboard
-    lang = await profile_service.get_lang(message.from_user.id)
-    kb = get_profile_keyboard(lang)
-    if getattr(settings.features, 'partner_fsm', False):
-        text = get_text('profile_title', lang) if 'profile_title' in dir(__import__('core.utils.locales_v2', fromlist=[''])) else "👤 Личный кабинет"
-        text += "\n\nЧтобы добавить карточку используйте команду /add_card"
-    else:
-        text = "👤 Личный кабинет\n\n🚧 Добавление карточек временно недоступно"
-    await message.answer(text, reply_markup=kb)
+    # Inline cabinet (no reply keyboard here)
+    from .profile import render_profile
+    await render_profile(message)
 
 
 async def on_webapp(message: Message):
