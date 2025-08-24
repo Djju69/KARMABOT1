@@ -164,6 +164,23 @@ async def on_help(message: Message):
     await message.answer(html, parse_mode='HTML', disable_web_page_preview=True)
 
 
+async def open_cabinet(message: Message):
+    """Opens the user's cabinet from the reply keyboard button.
+    Shows cabinet keyboard and hints for adding a card if FSM is enabled.
+    """
+    if not await ensure_policy_accepted(message):
+        return
+    from ..keyboards.reply_v2 import get_profile_keyboard
+    lang = await profile_service.get_lang(message.from_user.id)
+    kb = get_profile_keyboard(lang)
+    if getattr(settings.features, 'partner_fsm', False):
+        text = get_text('profile_title', lang) if 'profile_title' in dir(__import__('core.utils.locales_v2', fromlist=[''])) else "👤 Личный кабинет"
+        text += "\n\nЧтобы добавить карточку используйте команду /add_card"
+    else:
+        text = "👤 Личный кабинет\n\n🚧 Добавление карточек временно недоступно"
+    await message.answer(text, reply_markup=kb)
+
+
 async def on_webapp(message: Message):
     """Открыть веб-версию (WebApp) — отправляет ссылку на WebApp."""
     if not await ensure_policy_accepted(message):
@@ -311,6 +328,9 @@ router.message.register(on_partner_off, Command("partner_off"))
 # Open language selection when user taps the reply button (e.g., "🌐 Язык")
 # We match by leading globe emoji to avoid hardcoding per-language labels.
 router.message.register(on_language_select, F.text.startswith("🌐"))
+
+# Open cabinet when user taps the reply button starting with person emoji (e.g., "👤 Личный кабинет")
+router.message.register(open_cabinet, F.text.startswith("👤"))
 
 # Fallback for any other text messages
 @router.message(F.text)

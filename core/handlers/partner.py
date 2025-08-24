@@ -118,6 +118,38 @@ async def start_add_card(message: Message, state: FSMContext):
         reply_markup=get_categories_keyboard()
     )
 
+# ===== Reply-button entry points (no new slash commands) =====
+@partner_router.message(F.text.startswith("➕"))
+async def start_add_card_via_button(message: Message, state: FSMContext):
+    """Start add-card flow from reply keyboard button '➕ Добавить карточку'."""
+    if not settings.features.partner_fsm:
+        await message.answer("🚧 Добавление карточек временно недоступно.")
+        return
+    # Reuse the same flow as /add_card
+    await start_add_card(message, state)
+
+
+@partner_router.message(F.text.startswith("📂"))
+async def show_my_cards(message: Message):
+    """Show current user's cards list in cabinet from '📂 Мои карточки'."""
+    try:
+        # Ensure partner exists
+        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        cards = db_v2.get_partner_cards(partner.id, limit=20)
+        if not cards:
+            await message.answer("📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.")
+            return
+        # Render simple list
+        lines = ["📂 Ваши карточки:"]
+        for c in cards:
+            title = c.title or "(без названия)"
+            status = c.status or "pending"
+            lines.append(f"• {title} — {status}")
+        await message.answer("\n".join(lines))
+    except Exception as e:
+        logger.error(f"Failed to load my cards: {e}")
+        await message.answer("❌ Ошибка при загрузке списка карточек. Попробуйте позже.")
+
 # Category selection
 @partner_router.callback_query(F.data.startswith("partner_cat:"))
 async def select_category(callback: CallbackQuery, state: FSMContext):
