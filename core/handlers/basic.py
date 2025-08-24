@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Router, F
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
 from ..keyboards.inline_v2 import (
     get_language_inline,
@@ -312,8 +312,8 @@ router.message.register(on_partner_off, Command("partner_off"))
 # We match by leading globe emoji to avoid hardcoding per-language labels.
 router.message.register(on_language_select, F.text.startswith("🌐"))
 
-# Fallback for any other text messages
-@router.message(F.text)
+# Fallback for any other text messages (only when no FSM state is active)
+@router.message(F.text, StateFilter(None))
 async def on_unhandled_message(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(get_text('unhandled_message', lang))
