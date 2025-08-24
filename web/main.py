@@ -148,7 +148,7 @@ async def healthz():
 
 
 # --- Utility: set JWT into cookies and redirect to partner cards
-@app.get("/auth/set-token")
+@app.api_route("/auth/set-token", methods=["GET", "HEAD", "OPTIONS"])
 async def set_token(token: str):
     """Accepts ?token=...; sets cookies 'partner_jwt' and 'authToken' and redirects to /cabinet/partner/cards.
     Works both inside and outside Telegram WebApp.
@@ -694,7 +694,7 @@ _POLICY_HTML = """
 """
 
 
-@app.get("/policy", response_class=HTMLResponse)
+@app.api_route("/policy", methods=["GET", "HEAD", "OPTIONS"], response_class=HTMLResponse)
 async def policy_page():
     return HTMLResponse(content=_POLICY_HTML)
 
