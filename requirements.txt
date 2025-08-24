@@ -24,6 +24,8 @@ qrcode==7.4.2
 
 # File handling
 aiofiles==23.2.1
+# Uploads (form-data) for FastAPI File/UploadFile
+python-multipart==0.0.9
 
 # Data validation
 # pydantic is an indirect dependency via aiogram; let pip resolve a compatible version (<2.9)
