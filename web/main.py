@@ -550,3 +550,54 @@ _POLICY_HTML = """
 @app.get("/policy", response_class=HTMLResponse)
 async def policy_page():
     return HTMLResponse(content=_POLICY_HTML)
+
+# --- FAQ page (/faq)
+_FAQ_HTML = """
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FAQ — Karma System</title>
+    <style>
+      body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#0b1020;color:#e5e7eb}
+      .page{max-width:900px;margin:0 auto;padding:24px}
+      .card{background:#0f172a;border:1px solid #1f2937;border-radius:14px;padding:20px}
+      h1{margin:0 0 8px 0;font-size:22px}
+      .muted{color:#94a3b8}
+      ul{margin:8px 0 8px 20px}
+      li{margin:6px 0}
+      a{color:#60a5fa;text-decoration:none}
+      a:hover{text-decoration:underline}
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card">
+        <h1>❓ FAQ</h1>
+        <div class="muted">Краткие инструкции по использованию бота</div>
+        <h2>Основное</h2>
+        <ul>
+          <li>Откройте бота в Telegram и нажмите «Главное меню».</li>
+          <li>Выберите раздел: Категории, Рядом, По районам, Личный кабинет.</li>
+          <li>Язык меняется через пункт «Язык».</li>
+        </ul>
+        <h2>Партнёрам</h2>
+        <ul>
+          <li>Добавьте свою компанию: используйте пункт «Стать партнёром» в /help.</li>
+        </ul>
+        <h2>Поддержка</h2>
+        <ul>
+          <li><a href="https://t.me/karma_system_official">Написать администратору</a></li>
+          <li><a href="/policy">Политика конфиденциальности</a></li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>
+"""
+
+
+@app.get("/faq", response_class=HTMLResponse)
+async def faq_page():
+    return HTMLResponse(content=_FAQ_HTML)

@@ -10,6 +10,7 @@ COMMANDS_I18N = {
     "en": [
         ("start", "Restart"),
         ("help", "Help / FAQ"),
+        ("faq", "FAQ page"),
         ("menu", "Open main menu"),
         ("profile", "Profile"),
         ("webapp", "Open WebApp"),
@@ -21,6 +22,7 @@ COMMANDS_I18N = {
     "ru": [
         ("start", "Перезапуск"),
         ("help", "Помощь/FAQ"),
+        ("faq", "FAQ"),
         ("menu", "Главное меню"),
         ("profile", "Личный кабинет"),
         ("webapp", "Открыть WebApp"),
@@ -32,6 +34,7 @@ COMMANDS_I18N = {
     "vi": [
         ("start", "Khởi động lại"),
         ("help", "Trợ giúp / FAQ"),
+        ("faq", "FAQ"),
         ("menu", "Mở menu chính"),
         ("profile", "Hồ sơ"),
         ("webapp", "Mở WebApp"),
@@ -43,6 +46,7 @@ COMMANDS_I18N = {
     "ko": [
         ("start", "재시작"),
         ("help", "도움말 / FAQ"),
+        ("faq", "FAQ"),
         ("menu", "메인 메뉴"),
         ("profile", "프로필"),
         ("webapp", "WebApp 열기"),
