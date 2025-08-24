@@ -587,7 +587,7 @@ async def app_page():
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
     if str(env).lower() == 'production':
       from fastapi.responses import RedirectResponse
-      return RedirectResponse(url="/cabinet/partner/cards", status_code=302)
+      return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
   except Exception:
     pass
   return HTMLResponse(content=INDEX_HTML)
