@@ -332,8 +332,14 @@ router.message.register(on_language_select, F.text.startswith("🌐"))
 # Open cabinet when user taps the reply button starting with person emoji (e.g., "👤 Личный кабинет")
 router.message.register(open_cabinet, F.text.startswith("👤"))
 
-# Fallback for any other text messages
-@router.message(F.text)
+# Fallback for any other text messages (exclude known reply buttons handled elsewhere)
+@router.message(
+    F.text,
+    ~F.text.startswith("🌐"),  # language
+    ~F.text.startswith("👤"),  # cabinet
+    ~F.text.startswith("➕"),  # add card (partner router)
+    ~F.text.startswith("📂")   # my cards (partner router)
+)
 async def on_unhandled_message(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(get_text('unhandled_message', lang))
