@@ -153,21 +153,29 @@ class DatabaseServiceV2:
             
             return cursor.rowcount > 0
     
-    def get_cards_by_category(self, category_slug: str, status: str = 'published', limit: int = 50) -> List[Dict]:
-        """Get cards by category with pagination"""
+    def update_card_fields(self, card_id: int, **fields) -> bool:
+        """Partially update allowed fields of a card.
+        Allowed: category_id, title, description, contact, address, google_maps_url,
+                 photo_file_id, discount_text, status, priority_level
+        """
+        if not fields:
+            return False
+        allowed = {
+            'category_id', 'title', 'description', 'contact', 'address',
+            'google_maps_url', 'photo_file_id', 'discount_text', 'status', 'priority_level'
+        }
+        to_update = {k: v for k, v in fields.items() if k in allowed}
+        if not to_update:
+            return False
+        sets = ", ".join([f"{k} = ?" for k in to_update.keys()])
+        params = list(to_update.values())
         with self.get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
-                       p.display_name as partner_name
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                JOIN partners_v2 p ON c.partner_id = p.id
-                WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
-                ORDER BY c.priority_level DESC, c.created_at DESC
-                LIMIT ?
-            """, (category_slug, status, limit))
-            
-            return [dict(row) for row in cursor.fetchall()]
+            cursor = conn.execute(
+                f"UPDATE cards_v2 SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (*params, card_id)
+            )
+            return cursor.rowcount > 0
+
 
     def get_card_by_id(self, card_id: int) -> Optional[Dict[str, Any]]:
         """Get single card by ID with joined fields"""

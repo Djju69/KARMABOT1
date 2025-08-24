@@ -154,7 +154,17 @@ async def enter_title(message: Message, state: FSMContext):
     if message.text == "❌ Отменить":
         await cancel_add_card(message, state)
         return
-    
+    # Edit mode: allow skipping title change
+    data = await state.get_data()
+    if message.text == "⏭️ Пропустить" and data.get('edit_card_id'):
+        # Keep existing title, move next
+        await state.set_state(AddCardStates.enter_description)
+        await message.answer(
+            f"📄 Теперь введите описание заведения (или Пропустить):",
+            reply_markup=get_skip_keyboard()
+        )
+        return
+
     title = message.text.strip()
     if len(title) < 3:
         await message.answer("❌ Название слишком короткое. Минимум 3 символа.")
@@ -320,29 +330,53 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     
     try:
-        # Create card
-        card = Card(
-            id=None,
-            partner_id=data['partner_id'],
-            category_id=data['category_id'],
-            title=data['title'],
-            description=data.get('description'),
-            contact=data.get('contact'),
-            address=data.get('address'),
-            photo_file_id=data.get('photo_file_id'),
-            discount_text=data.get('discount_text'),
-            status='pending'  # Waiting for moderation
-        )
-        
-        card_id = db_v2.create_card(card)
-        
-        await callback.message.edit_text(
-            f"✅ **Карточка отправлена на модерацию!**\n\n"
-            f"📋 ID карточки: #{card_id}\n"
-            f"⏳ Статус: На рассмотрении\n\n"
-            f"💡 Вы получите уведомление, когда модератор рассмотрит вашу карточку.",
-            reply_markup=None
-        )
+        if data.get('edit_card_id'):
+            # Update existing card (partial)
+            card_id = int(data['edit_card_id'])
+            fields = {
+                'category_id': data.get('category_id'),
+                'title': data.get('title'),
+                'description': data.get('description'),
+                'contact': data.get('contact'),
+                'address': data.get('address'),
+                'photo_file_id': data.get('photo_file_id'),
+                'discount_text': data.get('discount_text'),
+                'status': 'pending'  # re-moderate after edit
+            }
+            # Remove None to avoid overwriting with NULL unless explicitly skipped fields kept
+            fields = {k: v for k, v in fields.items() if v is not None}
+            db_v2.update_card_fields(card_id, **fields)
+
+            await callback.message.edit_text(
+                f"✅ **Изменения сохранены!**\n\n"
+                f"📋 ID карточки: #{card_id}\n"
+                f"⏳ Статус: Отправлена на повторную модерацию",
+                reply_markup=None
+            )
+        else:
+            # Create new card
+            card = Card(
+                id=None,
+                partner_id=data['partner_id'],
+                category_id=data['category_id'],
+                title=data['title'],
+                description=data.get('description'),
+                contact=data.get('contact'),
+                address=data.get('address'),
+                photo_file_id=data.get('photo_file_id'),
+                discount_text=data.get('discount_text'),
+                status='pending'  # Waiting for moderation
+            )
+            
+            card_id = db_v2.create_card(card)
+            
+            await callback.message.edit_text(
+                f"✅ **Карточка отправлена на модерацию!**\n\n"
+                f"📋 ID карточки: #{card_id}\n"
+                f"⏳ Статус: На рассмотрении\n\n"
+                f"💡 Вы получите уведомление, когда модератор рассмотрит вашу карточку.",
+                reply_markup=None
+            )
         
         # Notify admin about new card
         if settings.features.moderation:

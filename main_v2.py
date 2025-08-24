@@ -23,6 +23,7 @@ from core.handlers.callback import router as callback_router
 from core.handlers.category_handlers_v2 import get_category_router
 from core.handlers.partner import get_partner_router
 from core.handlers.moderation import get_moderation_router
+from core.handlers.cabinet import get_cabinet_router
 
 # Services
 from core.services.profile import profile_service
@@ -62,6 +63,10 @@ async def setup_routers(dp: Dispatcher):
         logger.info("✅ Moderation enabled")
     else:
         logger.info("⚠️ Moderation disabled")
+
+    # 5. Personal cabinet router (enabled always; handlers self-check feature flags)
+    cabinet_router = get_cabinet_router()
+    dp.include_router(cabinet_router)
 
 
 async def on_startup(bot: Bot):
