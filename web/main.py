@@ -31,6 +31,17 @@ from web.routes_bot import router as bot_hooks_router
 from core.services.cache import cache_service
 from ops.session_state import load as ss_load, save as ss_save, update as ss_update, snapshot as ss_snapshot
 
+# Helper: HTML no-store (avoid stale cached bundles)
+def _html(content: str, status_code: int = 200) -> HTMLResponse:
+    resp = HTMLResponse(content=content, status_code=status_code)
+    try:
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
+        resp.headers['Expires'] = '0'
+    except Exception:
+        pass
+    return resp
+
 # Middleware to add CSP header to responses
 class CSPMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -53,6 +64,44 @@ class CSPMiddleware(BaseHTTPMiddleware):
             pass
         return response
 
+# Middleware: capture ?token= and persist to cookies, with redirect for idempotent methods
+class TokenCookieMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            token = request.query_params.get("token")
+        except Exception:
+            token = None
+        # If no token in query, proceed
+        if not token:
+            return await call_next(request)
+
+        # Inject Authorization/X-Auth-Token into current request scope
+        try:
+            token_b = token.encode()
+            auth_b = b"Bearer " + token_b
+            # Clone scope headers and replace/append
+            headers = [(k, v) for (k, v) in request.scope.get("headers", []) if k not in (b"authorization", b"x-auth-token")]
+            headers.append((b"authorization", auth_b))
+            headers.append((b"x-auth-token", token_b))
+            scope = dict(request.scope)
+            scope["headers"] = headers
+            new_request = Request(scope=scope, receive=request.receive)
+        except Exception:
+            new_request = request
+
+        # Proceed without redirect; token may remain in URL, but cookies will be set
+        resp = await call_next(new_request)
+
+        try:
+            max_age = 60 * 60 * 24 * 7  # 7 days
+            # In Telegram WebView/embedded contexts, cookies require SameSite=None; Secure
+            resp.set_cookie("partner_jwt", token, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
+            resp.set_cookie("authToken", token, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
+            resp.set_cookie("jwt", token, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
+        except Exception:
+            pass
+        return resp
+
 app = FastAPI(title="KARMABOT1 WebApp API")
 
 # Global handler to gracefully handle Method Not Allowed (405)
@@ -64,7 +113,7 @@ async def _http_exc_handler(request: Request, exc: StarletteHTTPException):
             method = (request.method or "").upper()
             # Serve SPA for our UI route regardless of method
             if path.startswith("/cabinet/partner/cards/page"):
-                return HTMLResponse(content=INDEX_HTML, status_code=200)
+                return _html(INDEX_HTML, status_code=200)
             # Generic safety for HEAD/OPTIONS anywhere
             if method in ("HEAD", "OPTIONS"):
                 return Response(status_code=204)
@@ -88,6 +137,7 @@ except Exception:
 
 # CSP
 app.add_middleware(CSPMiddleware)
+app.add_middleware(TokenCookieMiddleware)
 
 # Routers
 app.include_router(auth_router, prefix="/auth", tags=["auth"]) 
@@ -183,12 +233,13 @@ async def set_token(request: Request, token: str | None = Query(default=None), t
     if not token_val:
         # No token provided
         return JSONResponse(status_code=400, content={"detail": "missing token parameter"})
-    # Set lax cookies for browser fetch to send Authorization via our cookie fallback
+    # Set cookies for WebView/browser; SameSite=None and Secure=True for embedded contexts
     max_age = 60 * 60 * 24 * 7  # 7 days
     resp = RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
     try:
-        resp.set_cookie("partner_jwt", token_val, max_age=max_age, path="/", httponly=False, samesite="lax")
-        resp.set_cookie("authToken", token_val, max_age=max_age, path="/", httponly=False, samesite="lax")
+        resp.set_cookie("partner_jwt", token_val, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
+        resp.set_cookie("authToken", token_val, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
+        resp.set_cookie("jwt", token_val, max_age=max_age, path="/", httponly=False, samesite="none", secure=True)
     except Exception:
         pass
     return resp
@@ -201,17 +252,37 @@ async def partner_cards_page():
     # Serve the main SPA/HTML used by partner cards UI
     # Token can be set beforehand via /auth/set-token?token=...
     # Frontend also attempts to read token from URL/localStorage and fallback to cookies
-    return HTMLResponse(content=INDEX_HTML)
+    return _html(INDEX_HTML)
 
 # Support trailing slash to avoid 405/redirect loops on some clients
 @app.api_route("/cabinet/partner/cards/page/", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"], response_class=HTMLResponse)
 async def partner_cards_page_slash():
-    return HTMLResponse(content=INDEX_HTML)
+    return _html(INDEX_HTML)
 
 # Global HEAD/OPTIONS catch-all to prevent 405 for preflights and HEAD probes
 @app.api_route("/{_catch_all:path}", methods=["HEAD", "OPTIONS"])
 async def catch_all_head_options(_catch_all: str):
     return Response(status_code=204)
+
+# --- Disable any legacy PWA artifacts and noisy assets
+@app.get("/sw.js")
+async def sw_js():
+    # Explicitly disabled service worker to avoid cache hijacking
+    return Response(content="/* service worker disabled */", media_type="application/javascript", headers={
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+@app.get("/favicon.ico")
+async def favicon():
+    # Avoid 405 in logs
+    return Response(status_code=204)
+
+@app.get("/dist/{path:path}")
+async def legacy_dist(path: str):
+    # Tell browser these bundles are gone
+    return Response(status_code=410)
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL
@@ -269,18 +340,16 @@ _INDEX_HTML_RAW = """
     </style>
   </head>
   <body>
-    <div class=\"shell\">
-      <div class=\"card\">
-      <div class=\"toolbar\">
-        <div class=\"title\">🪄 <span>KARMABOT1 WebApp</span></div>
-        <div class=\"actions\"> 
-          <button id=\"btnScanQR\" class=\"btn primary\" style=\"display:none\">🧾 Сканировать QR</button>
           <button id=\"openInBrowser\" class=\"btn ghost\">🌐 Открыть в браузере</button>
           <button id=\"btnMyCards\" class=\"btn primary\">Мои карточки</button>
           <button id=\"toggleDetails\" class=\"btn ghost\">Показать детали</button>
           <button id=\"showToken\" class=\"btn ghost\">Показать токен</button>
           <button id=\"copyToken\" class=\"btn\" style=\"display:none\">Копировать</button>
           <button id=\"btnDevToken\" class=\"btn ghost\" title=\"Получить dev-токен без Telegram\">Dev токен</button>
+        </div>
+        <div id=\"devTokenPanel\" style=\"margin:8px 0; display:block\">
+          <input id=\"tokenInput\" class=\"xs\" type=\"text\" placeholder=\"Вставьте JWT токен (admin/partner)\" style=\"min-width:320px\" />
+          <button id=\"btnApplyToken\" class=\"btn\">Применить токен</button>
         </div>
       <!-- Image lightbox -->
       <div id="imgLightbox" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);z-index:1600">
@@ -290,6 +359,8 @@ _INDEX_HTML_RAW = """
       <div class=\"spacer\"></div>
       <p class=\"muted\">Авторизация через Telegram initData → POST /auth/webapp → /auth/me</p>
       <div id=\"status\">Инициализация…</div>
+      <div id=\"error\" class=\"muted\" style=\"color:#f87171; margin-top:6px\"></div>
+      <pre id=\"diag\" class=\"muted\" style=\"white-space:pre-wrap; margin-top:6px\"></pre>
       <div id=\"claims\" style=\"display:none\">
         <h3>Claims</h3>
         <pre id=\"claimsPre\"></pre>
@@ -306,12 +377,14 @@ _INDEX_HTML_RAW = """
 
         <div id=\"section-profile\" class=\"section active\">
           <h3>Профиль</h3>
+          <div id=\"authStatus\" class=\"muted\"></div>
           <div id=\"profileBox\" class=\"muted\">Загрузка…</div>
         </div>
 
         <div id=\"section-mycards\" class=\"section\"> 
           <h3>Мои карточки</h3>
-          <div class=\"muted\">Открывается интерфейс карточек…</div>
+          <div id=\"cardsEmpty\" class=\"muted\" style=\"display:none\">Карточек пока нет</div>
+          <ul id=\"cardsList\" class=\"clean\"></ul>
         </div>
       </div>
     </div>
@@ -322,6 +395,59 @@ _INDEX_HTML_RAW = """
       function getQueryParam(name){
         try { return new URL(window.location.href).searchParams.get(name); } catch(_) { return null }
       }
+
+      // Dev token flow: allow manual token entry when Telegram is unavailable
+      async function devTokenFlow(tokenFromUI){
+        try {
+          let t = tokenFromUI;
+          if (!t) t = prompt('Вставьте JWT токен (admin/partner):');
+          if (!t) return;
+          try {
+            localStorage.setItem('partner_jwt', t);
+            localStorage.setItem('jwt', t);
+            localStorage.setItem('authToken', t);
+          } catch(_) {}
+          document.cookie = 'partner_jwt=' + encodeURIComponent(t) + '; path=/';
+          document.cookie = 'authToken=' + encodeURIComponent(t) + '; path=/';
+          document.cookie = 'jwt=' + encodeURIComponent(t) + '; path=/';
+          window.__authToken = t;
+          try { const s = document.getElementById('status'); if (s) s.textContent = 'Сохраняю токен…'; } catch(_) {}
+          try { await fetch('/auth/set-token?token=' + encodeURIComponent(t), { method: 'POST' }); } catch(_) {}
+          // Сразу пробуем загрузить профиль без ожидания редиректа — чтобы пользователь видел результат
+          try { const s = document.getElementById('status'); if (s) s.textContent = 'Загружаю профиль…'; } catch(_) {}
+          try { await loadProfile(t); } catch(_) {}
+          // Затем "мягко" пробуем перейти на canonical URL с ?token
+          try { window.location.href = '/cabinet/partner/cards/page?token=' + encodeURIComponent(t); return; } catch(_) {}
+        } catch (e) {
+          alert('Ошибка установки токена: ' + (e && e.message ? e.message : e));
+        }
+      }
+      (function installDevTokenHandler(){
+        try {
+          const btn = document.getElementById('btnDevToken');
+          if (btn) btn.addEventListener('click', () => devTokenFlow());
+          const applyBtn = document.getElementById('btnApplyToken');
+          const input = document.getElementById('tokenInput');
+          if (applyBtn && input) {
+            applyBtn.addEventListener('click', () => {
+              try { const s = document.getElementById('status'); if (s) s.textContent = 'Применяю токен…'; } catch(_) {}
+              devTokenFlow(input.value && input.value.trim());
+            });
+            // Нажатие Enter в поле ввода — как клик по кнопке
+            input.addEventListener('keydown', (ev) => {
+              if (ev && (ev.key === 'Enter' || ev.keyCode === 13)) {
+                ev.preventDefault();
+                applyBtn.click();
+              }
+            });
+          }
+          // Fallback: delegation, in case initial binding failed or DOM replaced
+          document.addEventListener('click', (ev) => {
+            const el = ev.target && (ev.target.closest ? ev.target.closest('#btnDevToken') : null);
+            if (el) { ev.preventDefault(); devTokenFlow(); }
+          }, { capture: true });
+        } catch(_) {}
+      })();
       function readCookie(name){
         try {
           const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g,'\\$1') + '=([^;]*)'));
@@ -329,11 +455,58 @@ _INDEX_HTML_RAW = """
         } catch(_) { return null }
       }
       function pickToken(){
-        const fromUrl = getQueryParam('token');
-        const ls = window.localStorage || { getItem:()=>null, setItem:()=>{} };
-        const fromLS = ls.getItem('partner_jwt') || ls.getItem('authToken') || ls.getItem('jwt');
-        const fromCookie = readCookie('partner_jwt') || readCookie('authToken') || readCookie('jwt');
-        return fromUrl || fromLS || fromCookie || null;
+        try {
+          const q = getQueryParam('token');
+          if (q) {
+            try {
+              localStorage.setItem('partner_jwt', q);
+              localStorage.setItem('jwt', q);
+              console.info('[auth] token picked from ?token, saved to localStorage');
+            } catch(_) {}
+            return q;
+          }
+        } catch(_) {}
+        try {
+          const ls = localStorage.getItem('partner_jwt') || localStorage.getItem('authToken') || localStorage.getItem('jwt');
+          if (ls) return ls;
+        } catch(_) {}
+        try {
+          const c = readCookie('partner_jwt') || readCookie('authToken') || readCookie('jwt');
+          if (c) return c;
+        } catch(_) {}
+        return null;
+      }
+      function asciiToken(t){
+        try {
+          const s = String(t);
+          let out = '';
+          for (let i = 0; i < s.length; i++) {
+            const code = s.charCodeAt(i);
+            if (code >= 32 && code <= 126) out += s[i];
+          }
+          return out;
+        } catch(_) { return ''; }
+      }
+      // Minimal error helper used by cards/profile loaders
+      function showError(msg){
+        try {
+          const el = document.getElementById('status') || document.getElementById('authStatus');
+          if (el) el.textContent = typeof msg === 'string' ? msg : (msg && msg.message) ? msg.message : String(msg);
+        } catch(_) { /* no-op */ }
+      }
+      async function clearCachesAndSW(){
+        try {
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            for (const r of regs) try { await r.unregister(); } catch(_) {}
+          }
+        } catch(_) {}
+        try {
+          if (window.caches && caches.keys) {
+            const keys = await caches.keys();
+            for (const k of keys) try { await caches.delete(k); } catch(_) {}
+          }
+        } catch(_) {}
       }
       (function installFetchAuth(){
         try {
@@ -347,7 +520,8 @@ _INDEX_HTML_RAW = """
               if (sameOrigin && token) {
                 init = init || {};
                 const headers = new Headers(init.headers || (typeof input !== 'string' && input && input.headers) || {});
-                if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token);
+                const at = asciiToken(token);
+                if (at && !headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + at);
                 init.headers = headers;
               }
             } catch(_) { /* ignore */ }
@@ -357,88 +531,116 @@ _INDEX_HTML_RAW = """
         } catch (_) { /* ignore */ }
       })();
 
+      function logDiag(msg){
+        try{
+          const d = document.getElementById('diag');
+          if (d) d.textContent = (d.textContent ? (d.textContent + "\n") : '') + msg;
+        }catch(_){ }
+      }
       async function bootstrapAuthIfPossible(){
         try{
+          // best-effort: clear caches/SW once to avoid stale bundles
+          clearCachesAndSW().catch(()=>{});
+          try { const s = document.getElementById('status'); if (s) s.textContent = 'Поиск токена…'; } catch(_) {}
           const token = pickToken();
           if (token) {
             window.__authToken = token;
-            try { localStorage.setItem('partner_jwt', token); } catch(_){}
-            return token;
+            try { document.getElementById('authStatus').textContent = 'Токен найден'; } catch(_) {}
+            logDiag('token: найден (URL/cookie/localStorage)');
+            try { const s = document.getElementById('status'); if (s) s.textContent = 'Токен найден, загружаю профиль…'; } catch(_) {}
+          } else {
+            try { document.getElementById('authStatus').textContent = 'Токен не найден'; } catch(_) {}
+            try { const inp = document.getElementById('tokenInput'); if (inp) { inp.focus(); inp.select && inp.select(); } } catch(_) {}
+            logDiag('token: не найден, пробую Telegram initData');
+            try { const s = document.getElementById('status'); if (s) s.textContent = 'Токен не найден, пытаюсь Telegram initData…'; } catch(_) {}
           }
-        } catch(_){}
-        return null;
-      }
-      // Auto-redirect inside Telegram WebApp to partner cards page to avoid stale UI
-      try {
-        const inTg = (window.Telegram && Telegram.WebApp);
-        const p = window.location.pathname || '/';
-        // Do not redirect away if we are already on the UI page
-        const ui1 = '/cabinet/partner/cards/page';
-        const ui2 = '/cabinet/partner/cards/page/';
-        if (inTg && p !== ui1 && p !== ui2) {
-          window.location.replace(window.location.origin + ui1);
+          if (token) {
+            await loadProfile(token);
+          } else {
+            // fallback to Telegram initData authorization
+            authWithInitData();
+          }
+        } catch (e) {
+          console.error('[auth] bootstrap error', e);
+          logDiag('bootstrap error: ' + (e && e.message ? e.message : e));
         }
-      } catch (e) { /* ignore */ }
-      function selectTab(name) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-        const el = document.getElementById('section-' + name);
-        if (el) el.classList.add('active');
       }
-
       async function loadProfile(token) {
         const box = document.getElementById('profileBox');
-        box.textContent = 'Загрузка…';
         try {
-          const r = await fetch('/cabinet/profile', { headers: { 'Authorization': 'Bearer ' + token } });
-          if (!r.ok) throw new Error('HTTP ' + r.status);
+          console.info('[auth] loading profile…');
+          const at = asciiToken(token);
+          let r = await fetch('/cabinet/profile', { headers: { 'Authorization': 'Bearer ' + at } });
+          if (!r.ok) {
+            const txt = await r.text().catch(()=> '');
+            console.warn('[auth] profile with header failed', r.status, txt);
+            // Retry with query param to bypass header issues
+            r = await fetch('/cabinet/profile?token=' + encodeURIComponent(token));
+          }
+          if (!r.ok) {
+            const t2 = await r.text().catch(()=> '');
+            throw new Error('HTTP ' + r.status + (t2 ? (' · ' + t2) : ''));
+          }
           const data = await r.json();
           box.textContent = `ID: ${data.user_id} · Язык: ${data.lang} · Источник: ${data.source}`;
+          const s = document.getElementById('authStatus');
+          if (s) s.textContent = 'Авторизация успешна';
+          try { const cab = document.getElementById('cabinet'); if (cab) cab.style.display = 'block'; } catch(_) {}
+          // После успешной загрузки профиля — подгрузим «Мои карточки»
+          try { await loadMyCards(token); } catch(_e) { console.warn('[cards] load after profile failed', _e); }
         } catch (e) {
           box.textContent = 'Ошибка загрузки профиля: ' + (e.message || e);
+          const s = document.getElementById('authStatus');
+          if (s) s.textContent = 'Нет авторизации или ошибка профиля';
+          console.error('[auth] profile error', e);
         }
       }
 
-      async function loadOrders(token) {
-        const list = document.getElementById('ordersList');
-        const empty = document.getElementById('ordersEmpty');
+      async function loadMyCards(token) {
+        const list = document.getElementById('cardsList');
+        const empty = document.getElementById('cardsEmpty');
+        if (!list || !empty) return;
         list.innerHTML = '';
         empty.style.display = 'none';
         try {
-          const r = await fetch('/cabinet/orders?limit=20', { headers: { 'Authorization': 'Bearer ' + token } });
+          console.info('[cards] loading…');
+          const at = asciiToken(token);
+          let r = await fetch('/cabinet/partner/cards?limit=20', { headers: { 'Authorization': 'Bearer ' + at } });
+          if (!r.ok) {
+            const txt = await r.text().catch(()=> '');
+            console.warn('[cards] header auth failed', r.status, txt);
+            r = await fetch('/cabinet/partner/cards?limit=20&token=' + encodeURIComponent(token));
+          }
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const data = await r.json();
           const items = (data && data.items) || [];
           if (!items.length) {
             empty.style.display = 'block';
+            console.info('[cards] empty list');
             return;
           }
           for (const it of items) {
             const li = document.createElement('li');
-            li.textContent = `${it.title || it.id} — ${it.status || ''}`;
+            li.textContent = `#${it.id} · ${it.title || '(без названия)'} · статус: ${it.status}`;
             list.appendChild(li);
           }
         } catch (e) {
-          const li = document.createElement('li');
-          li.textContent = 'Ошибка загрузки заказов: ' + (e.message || e);
-          list.appendChild(li);
+          showError('Ошибка загрузки карточек: ' + (e && e.message ? e.message : e));
+          console.error('[cards] error', e);
         }
       }
 
       async function authWithInitData() {
         const s = document.getElementById('status');
         const retry = document.getElementById('retry');
-        const claimsBox = document.getElementById('claims');
-        const claimsPre = document.getElementById('claimsPre');
+        const err = document.getElementById('error');
         try {
-          retry.style.display = 'none';
-          claimsBox.style.display = 'none';
-          s.textContent = 'Чтение initData из Telegram…';
+          console.info('[auth] trying Telegram initData flow…');
+          if (err) err.textContent = '';
+          if (retry) retry.style.display = 'none';
           const initData = (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) || '';
           if (!initData) {
-            s.innerHTML = '<span class="error">initData отсутствует. Откройте страницу из Telegram WebApp.</span>';
-            retry.style.display = 'inline-block';
-            return;
+            throw new Error('initData пустой: откройте в Telegram WebApp');
           }
 
           s.textContent = 'Отправка initData → /auth/webapp…';
@@ -448,34 +650,20 @@ _INDEX_HTML_RAW = """
             body: JSON.stringify({ initData })
           });
 
-      // Lightbox handlers
-      const lightbox = $('#imgLightbox');
-      const lightboxImg = $('#imgLightboxImg');
-      function openLightbox(src){ lightboxImg.src = src; lightbox.style.display = 'flex'; }
-      function closeLightbox(){ lightbox.style.display = 'none'; lightboxImg.src = ''; }
-      lightbox.addEventListener('click', closeLightbox);
-      // open from gallery
-      document.addEventListener('click', (e)=>{
-        const t = e.target;
-        if (t && t instanceof HTMLElement && t.matches('.gallery .gitem img, #f_images_preview img, .bot-card .thumbs img')){
-          const src = t.getAttribute('data-full') || t.getAttribute('src');
-          if (src) openLightbox(src);
-        }
-      });
           if (!resp.ok) {
             const text = await resp.text();
-            s.innerHTML = `<span class="error">Ошибка авторизации (${resp.status}): ${text}</span>`;
-            retry.style.display = 'inline-block';
+            if (err) err.textContent = 'Ошибка авторизации (' + resp.status + '): ' + text;
+            if (retry) retry.style.display = 'inline-block';
             return;
           }
           const data = await resp.json();
           const token = data.token;
           if (!token) {
-            s.innerHTML = '<span class="error">Сервер не вернул token</span>';
-            retry.style.display = 'inline-block';
+            if (err) err.textContent = 'Сервер не вернул token';
+            if (retry) retry.style.display = 'inline-block';
             return;
           }
-          try { localStorage.setItem('partner_jwt', token); } catch(_){}
+          try { localStorage.setItem('partner_jwt', token); localStorage.setItem('jwt', token); } catch(_){ }
           window.__authToken = token;
           s.textContent = 'Успешно! Загружаю профиль…';
           // Reveal token tools (debug only)
@@ -501,6 +689,7 @@ _INDEX_HTML_RAW = """
 
           const meResp = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + token } });
           const me = await meResp.json().catch(() => ({}));
+          const claimsPre = document.getElementById('claimsPre');
           claimsPre.textContent = JSON.stringify(me, null, 2);
           // Не показываем детали автоматически; доступны по кнопке
           s.textContent = 'Успешно! Запрашиваю /auth/me…';
@@ -564,19 +753,50 @@ _INDEX_HTML_RAW = """
           await loadProfile(token);
           // Defer orders until tab click to save requests
         } catch (e) {
-          s.innerHTML = '<span class="error">' + (e && e.message ? e.message : e) + '</span>';
+          err.textContent = 'Ошибка авторизации: ' + (e.message || e);
           retry.style.display = 'inline-block';
+          console.error('[auth] initData error', e);
         }
       }
       document.getElementById('retry').addEventListener('click', authWithInitData);
+      // Kick off bootstrap on page load
+      try {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', ()=> { bootstrapAuthIfPossible().catch(()=>{}); });
+        } else {
+          // already loaded
+          bootstrapAuthIfPossible().catch(()=>{});
+        }
+      } catch(_) { /* ignore */ }
+      // Simple tab switcher used by click handler
+      function selectTab(name){
+        try {
+          const tabs = document.querySelectorAll('.tab');
+          tabs.forEach(t => t.classList.remove('active'));
+          const sections = document.querySelectorAll('.section');
+          sections.forEach(s => s.classList.remove('active'));
+          const tabEl = document.querySelector('.tab[data-tab="' + name + '"]');
+          if (tabEl) tabEl.classList.add('active');
+          const sec = document.getElementById('section-' + name);
+          if (sec) sec.classList.add('active');
+        } catch(_) { /* ignore */ }
+      }
       document.addEventListener('click', async (ev) => {
         const t = ev.target;
         if (t && t.classList && t.classList.contains('tab')) {
           const name = t.dataset.tab;
           selectTab(name);
           if (name === 'mycards') {
-            const url = window.location.origin + '/cabinet/partner/cards/page';
-            window.location.href = url;
+            try {
+              const token = window.__authToken || pickToken();
+              if (token) {
+                await loadMyCards(token);
+              } else {
+                // как fallback оставим переход на standalone-страницу
+                const url = window.location.origin + '/cabinet/partner/cards/page';
+                window.location.href = url;
+              }
+            } catch(_) {}
           }
         }
       });
@@ -630,7 +850,7 @@ _INDEX_HTML_RAW = """
       } catch (e) { /* noop */ }
       // If token already saved (повторный визит), настрой debug-кнопки
       try {
-        const saved = localStorage.getItem('jwt');
+        const saved = localStorage.getItem('partner_jwt') || localStorage.getItem('authToken') || localStorage.getItem('jwt');
         if (saved) {
           const tb = document.getElementById('tokenBox');
           const copyBtn = document.getElementById('copyToken');
@@ -651,21 +871,7 @@ _INDEX_HTML_RAW = """
           }
         }
       } catch (e) { /* ignore */ }
-      (async () => {
-        const tok = await bootstrapAuthIfPossible();
-        if (tok) {
-          // try to show minimal UI and profile without Telegram flow
-          try {
-            const s = document.getElementById('status');
-            s.textContent = 'Токен найден. Загружаю профиль…';
-          } catch(_){}
-          try { await loadProfile(tok); } catch(_){}
-          try { document.getElementById('cabinet').style.display = 'block'; } catch(_){}
-        } else {
-          // fallback to Telegram initData authorization
-          authWithInitData();
-        }
-      })();
+      // Unified bootstrap handled by bootstrapAuthIfPossible() above
     </script>
   </body>
 </html>
@@ -681,10 +887,11 @@ async def index():
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
     if str(env).lower() == 'production':
       from fastapi.responses import RedirectResponse
-      return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
+      import time as _t
+      return RedirectResponse(url=f"/cabinet/partner/cards/page?v={int(_t.time())}", status_code=302)
   except Exception:
     pass
-  return HTMLResponse(content=INDEX_HTML)
+  return _html(INDEX_HTML)
 
 
 @app.api_route("/app", methods=["GET", "HEAD", "OPTIONS"], response_class=HTMLResponse)
@@ -693,10 +900,11 @@ async def app_page():
     env = getattr(settings, 'ENVIRONMENT', None) or getattr(settings, 'environment', None) or getattr(getattr(settings, 'web', None), 'environment', None)
     if str(env).lower() == 'production':
       from fastapi.responses import RedirectResponse
-      return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
+      import time as _t
+      return RedirectResponse(url=f"/cabinet/partner/cards/page?v={int(_t.time())}", status_code=302)
   except Exception:
     pass
-  return HTMLResponse(content=INDEX_HTML)
+  return _html(INDEX_HTML)
 
 
 # Optional utility endpoints for local smoke checks
@@ -814,7 +1022,7 @@ _POLICY_HTML = """
 
 @app.api_route("/policy", methods=["GET", "HEAD", "OPTIONS"], response_class=HTMLResponse)
 async def policy_page():
-    return HTMLResponse(content=_POLICY_HTML)
+    return _html(_POLICY_HTML)
 
 # --- FAQ page (/faq)
 _FAQ_HTML = """
@@ -865,7 +1073,7 @@ _FAQ_HTML = """
 
 @app.get("/faq", response_class=HTMLResponse)
 async def faq_page():
-    return HTMLResponse(content=_FAQ_HTML)
+    return _html(_FAQ_HTML)
 
 
 # --- Partner Cabinet: Cards UI (/cabinet/partner/cards)
@@ -1201,7 +1409,13 @@ _PARTNER_CARDS_HTML = """
         if (afterId) params.set('after_id', afterId);
         params.set('limit', '20');
         const url = `${apiBase}/cabinet/partner/cards?${params.toString()}`;
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        // sanitize token for header
+        const at = (token || '').replace(/[^\x20-\x7E]/g, '');
+        let res = await fetch(url, { headers: { 'Authorization': `Bearer ${at}` } });
+        if (!res.ok){
+          // fallback with query token
+          res = await fetch(url + `&token=${encodeURIComponent(token||'')}`);
+        }
         if (!res.ok){ stateEl.textContent = 'Ошибка загрузки'; return; }
         const data = await res.json();
         const items = data.items || [];
