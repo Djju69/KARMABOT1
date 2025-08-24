@@ -994,7 +994,17 @@ _PARTNER_CARDS_HTML = """
         console.log('CabinetUI apiBase fallback = same-origin', location.origin);
       }
       if (!token){
-        alert('Нет токена. Откройте страницу со ссылкой ?token=...');
+        try {
+          const pasted = window.prompt('Нет токена. Вставьте сюда JWT (или откройте страницу со ссылкой ?token=...)');
+          if (pasted && pasted.trim().length > 0){
+            localStorage.setItem('partner_jwt', pasted.trim());
+            location.reload();
+          } else {
+            alert('Токен не задан. Откройте страницу со ссылкой ?token=... или вставьте JWT в появившееся окно.');
+          }
+        } catch(_) {
+          alert('Нет токена. Откройте страницу со ссылкой ?token=...');
+        }
       }
       const stateEl = $('#state');
       const tbody = $('#tbl tbody');
