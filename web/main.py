@@ -149,11 +149,19 @@ async def healthz():
 
 # --- Utility: set JWT into cookies and redirect to partner cards
 @app.api_route("/auth/set-token", methods=["GET", "POST", "HEAD", "OPTIONS"])
-async def set_token(token: str | None = Query(default=None), token_body: str | None = Form(default=None)):
+async def set_token(request: Request, token: str | None = Query(default=None), token_body: str | None = Form(default=None)):
     """Accepts ?token=...; sets cookies 'partner_jwt' and 'authToken' and redirects to /cabinet/partner/cards.
     Works both inside and outside Telegram WebApp.
     """
     token_val = token or token_body
+    if not token_val:
+        # try JSON body {"token": "..."}
+        try:
+            data = await request.json()
+            if isinstance(data, dict):
+                token_val = data.get("token")
+        except Exception:
+            pass
     if not token_val:
         # No token provided
         return JSONResponse(status_code=400, content={"detail": "missing token parameter"})
