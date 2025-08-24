@@ -965,7 +965,11 @@ _PARTNER_CARDS_HTML = """
       const $ = (sel) => document.querySelector(sel);
       const tokenFromQuery = new URLSearchParams(location.search).get('token');
       if (tokenFromQuery) localStorage.setItem('partner_jwt', tokenFromQuery);
-      const token = tokenFromQuery || localStorage.getItem('partner_jwt') || '';
+      // Support both keys: 'partner_jwt' (primary) and 'authToken' (fallback for convenience)
+      const token = tokenFromQuery
+        || localStorage.getItem('partner_jwt')
+        || localStorage.getItem('authToken')
+        || '';
       // Dynamic API base: if opened directly on API port (8001/8002) → same-origin.
       // Otherwise (preview/other port) → probe 8001 then 8002.
       let apiBase = '';
