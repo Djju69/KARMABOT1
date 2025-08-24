@@ -37,6 +37,37 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         input_field_placeholder=get_text('choose_action', lang)
     )
 
+def get_spa_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'SPA'."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('spa_salon', lang)),
+                KeyboardButton(text=get_text('spa_massage', lang)),
+                KeyboardButton(text=get_text('spa_sauna', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
+        ],
+        resize_keyboard=True
+    )
+
+def get_hotels_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'Отели'."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('hotels_hotels', lang)),
+                KeyboardButton(text=get_text('hotels_apartments', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
+        ],
+        resize_keyboard=True
+    )
+
 def get_main_menu_reply_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
     """
     Главное меню c верхней кнопкой WebApp "Сканировать QR" для партнёров.
@@ -202,6 +233,8 @@ __all__ = [
     'get_categories_keyboard',
     'get_transport_reply_keyboard',
     'get_tours_reply_keyboard',
+    'get_spa_reply_keyboard',
+    'get_hotels_reply_keyboard',
     'get_language_keyboard',
     'get_profile_keyboard',
     'get_location_request_keyboard',

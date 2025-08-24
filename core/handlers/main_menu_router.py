@@ -6,7 +6,8 @@ from ..utils.locales_v2 import translations
 from .basic import get_start, on_help, on_language_select
 from .category_handlers_v2 import (
     show_categories_v2, on_restaurants, on_spa, on_hotels, on_transport, on_tours,
-    on_transport_submenu, on_tours_submenu, handle_profile, show_nearest_v2
+    on_transport_submenu, on_tours_submenu, on_spa_submenu, on_hotels_submenu,
+    handle_profile, show_nearest_v2
 )
 
 main_menu_router = Router(name="main_menu_router")
@@ -88,6 +89,22 @@ async def _(message: Message, bot: Bot, lang: str):
 async def _(message: Message, bot: Bot, lang: str):
     city_id = await profile_service.get_city_id(message.from_user.id)
     await on_tours_submenu(message, bot, lang, city_id)
+
+
+@main_menu_router.message(F.text.in_(
+    [t.get(k, '') for t in translations.values() for k in ['spa_salon', 'spa_massage', 'spa_sauna']]
+))
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city_id(message.from_user.id)
+    await on_spa_submenu(message, bot, lang, city_id)
+
+
+@main_menu_router.message(F.text.in_(
+    [t.get(k, '') for t in translations.values() for k in ['hotels_hotels', 'hotels_apartments']]
+))
+async def _(message: Message, bot: Bot, lang: str):
+    city_id = await profile_service.get_city_id(message.from_user.id)
+    await on_hotels_submenu(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))

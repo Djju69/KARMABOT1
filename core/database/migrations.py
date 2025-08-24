@@ -262,6 +262,55 @@ class DatabaseMigrator:
             "EXPAND: Seed default categories with backward compatibility",
             sql
         )
+
+    def migrate_004_add_cards_optional_fields(self):
+        """
+        EXPAND Phase: Conditionally add optional fields to cards_v2:
+        - subcategory_id INTEGER NULL
+        - city_id INTEGER NULL
+        - area_id INTEGER NULL
+
+        Idempotent: checks existing columns before altering.
+        """
+        version = "004"
+        desc = "EXPAND: Add optional subcategory_id, city_id, area_id to cards_v2"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+        def _apply(conn: sqlite3.Connection):
+            cur = conn.execute("PRAGMA table_info(cards_v2)")
+            have = {str(r[1]) for r in cur.fetchall()}
+            to_add: list[tuple[str, str]] = []
+            if "subcategory_id" not in have:
+                to_add.append(("subcategory_id", "INTEGER"))
+            if "city_id" not in have:
+                to_add.append(("city_id", "INTEGER"))
+            if "area_id" not in have:
+                to_add.append(("area_id", "INTEGER"))
+            for name, typ in to_add:
+                conn.execute(f"ALTER TABLE cards_v2 ADD COLUMN {name} {typ}")
+            # record migration
+            conn.execute(
+                "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                (version, desc),
+            )
+        if self._is_memory:
+            conn = self.get_connection()
+            try:
+                _apply(conn)
+                conn.commit()
+                logger.info(f"Applied migration {version}: {desc}")
+            except Exception as e:
+                logger.error(f"Failed to apply migration {version}: {e}")
+                raise
+        else:
+            with self.get_connection() as conn:
+                try:
+                    _apply(conn)
+                    logger.info(f"Applied migration {version}: {desc}")
+                except Exception as e:
+                    logger.error(f"Failed to apply migration {version}: {e}")
+                    raise
     
     def run_all_migrations(self):
         """Run all pending migrations in order"""
@@ -271,6 +320,8 @@ class DatabaseMigrator:
         self.migrate_001_expand_legacy_tables()
         self.migrate_002_expand_new_schema()
         self.migrate_003_seed_default_data()
+        # Add optional fields to cards_v2 (subcategory_id, city_id, area_id)
+        self.migrate_004_add_cards_optional_fields()
         
         logger.info("All migrations completed successfully")
 

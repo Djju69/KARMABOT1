@@ -14,7 +14,9 @@ from ..keyboards.reply_v2 import (
     get_location_request_keyboard,
     get_categories_keyboard,
     get_transport_reply_keyboard,
-    get_tours_reply_keyboard
+    get_tours_reply_keyboard,
+    get_spa_reply_keyboard,
+    get_hotels_reply_keyboard,
 )
 from ..keyboards.inline_v2 import (
     get_pagination_row,
@@ -104,12 +106,14 @@ async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | N
     )
 
 async def on_spa(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Show SPA submenu (salon/massage/sauna)."""
     await log_event("category_open", user=message.from_user, slug="spa", lang=lang, city_id=city_id)
-    await show_catalog_page(bot, message.chat.id, lang, 'spa', page=1, city_id=city_id)
+    await message.answer(get_text('spa_choose', lang), reply_markup=get_spa_reply_keyboard(lang))
 
 async def on_hotels(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Show Hotels submenu (hotels/apartments)."""
     await log_event("category_open", user=message.from_user, slug="hotels", lang=lang, city_id=city_id)
-    await show_catalog_page(bot, message.chat.id, lang, 'hotels', page=1, city_id=city_id)
+    await message.answer(get_text('hotels_choose', lang), reply_markup=get_hotels_reply_keyboard(lang))
 
 async def on_transport(message: Message, bot: Bot, lang: str):
     await log_event("category_open", user=message.from_user, slug="transport", lang=lang)
@@ -142,6 +146,27 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="tours", sub_slug=sub_slug, lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
+
+async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Обработчик для кнопок подменю 'SPA'."""
+    sub_slug_map = {
+        get_text('spa_salon', lang): 'salon',
+        get_text('spa_massage', lang): 'massage',
+        get_text('spa_sauna', lang): 'sauna',
+    }
+    sub_slug = sub_slug_map.get(message.text, "all")
+    await log_event("category_sub_open", user=message.from_user, slug="spa", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
+
+async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Обработчик для кнопок подменю 'Отели'."""
+    sub_slug_map = {
+        get_text('hotels_hotels', lang): 'hotel',
+        get_text('hotels_apartments', lang): 'apartments',
+    }
+    sub_slug = sub_slug_map.get(message.text, "all")
+    await log_event("category_sub_open", user=message.from_user, slug="hotels", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced nearest places handler"""
@@ -460,4 +485,5 @@ __all__ = [
     'on_tours',
     'on_transport_submenu',
     'on_tours_submenu'
+    , 'on_spa_submenu', 'on_hotels_submenu'
 ]
