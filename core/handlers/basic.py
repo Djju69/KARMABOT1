@@ -330,11 +330,21 @@ router.message.register(open_cabinet, F.text.startswith("👤"))
     ~F.text.startswith("🌐"),  # language
     ~F.text.startswith("👤"),  # cabinet
     ~F.text.startswith("➕"),  # add card (partner router)
-    ~F.text.startswith("📂")   # my cards (partner router)
+    ~F.text.startswith("📂"),  # my cards (partner router)
+    ~F.text.startswith("🎁")   # quick entry points
 )
 async def on_unhandled_message(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(get_text('unhandled_message', lang))
+
+# Quick entry: Reply header "🎁 Баллы" opens profile points (placeholder) and logs event
+@router.message(F.text.startswith("🎁"))
+async def on_points_quick_entry(message: Message):
+    if not await ensure_policy_accepted(message):
+        return
+    await log_event("points_open", user=message.from_user, origin="bot", source="reply_header")
+    from .profile import render_profile
+    await render_profile(message)
 
 __all__ = [
     "router",
