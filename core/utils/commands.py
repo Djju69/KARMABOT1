@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 from aiogram import Bot
-from aiogram.types import BotCommand
+from aiogram.types import (
+    BotCommand,
+    BotCommandScopeDefault,
+    BotCommandScopeAllPrivateChats,
+    BotCommandScopeAllGroupChats,
+    BotCommandScopeAllChatAdministrators,
+)
 
 # WARNING: TABOO — DO NOT CHANGE BOT COMMANDS WITHOUT OWNER'S EXPLICIT APPROVAL.
 # Strictly limited set of commands. No extras, no duplicates.
@@ -46,13 +52,35 @@ COMMANDS_I18N = {
 }
 
 async def set_commands(bot: Bot) -> None:
-    # Overwrite default (no language_code)
-    default_cmds = [BotCommand(command=c, description=d) for c, d in COMMANDS_I18N["en"]]
-    await bot.set_my_commands(default_cmds)
+    """Clear legacy commands in all scopes/langs, then set strict list."""
+    # 1) Hard delete in all common scopes without language
+    scopes = [
+        BotCommandScopeDefault(),
+        BotCommandScopeAllPrivateChats(),
+        BotCommandScopeAllGroupChats(),
+        BotCommandScopeAllChatAdministrators(),
+    ]
+    for scope in scopes:
+        try:
+            await bot.delete_my_commands(scope=scope)
+        except Exception:
+            pass
 
-    # Overwrite per-language commands (clears extras in Telegram client menus)
+    # 2) Hard delete per-language in same scopes
+    for lang in COMMANDS_I18N.keys():
+        for scope in scopes:
+            try:
+                await bot.delete_my_commands(scope=scope, language_code=lang)
+            except Exception:
+                pass
+
+    # 3) Set default (no language_code)
+    default_cmds = [BotCommand(command=c, description=d) for c, d in COMMANDS_I18N["en"]]
+    await bot.set_my_commands(default_cmds, scope=BotCommandScopeDefault())
+
+    # 4) Set per-language
     for lang, pairs in COMMANDS_I18N.items():
         cmds = [BotCommand(command=c, description=d) for c, d in pairs]
-        await bot.set_my_commands(cmds, language_code=lang)
+        await bot.set_my_commands(cmds, scope=BotCommandScopeDefault(), language_code=lang)
 
 __all__ = ["set_commands"]
