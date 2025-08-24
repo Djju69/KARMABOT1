@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Any
 import os
 import sqlite3
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie, Response
+from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie, Response, Query
 
 from pydantic import BaseModel, Field
 
@@ -16,16 +16,19 @@ router = APIRouter()
 # Define auth dependency BEFORE any route uses Depends(get_current_claims)
 def get_current_claims(
     authorization: Optional[str] = Header(default=None),
+    x_auth_token: Optional[str] = Header(default=None, alias="X-Auth-Token"),
     partner_jwt: Optional[str] = Cookie(default=None),
     authToken: Optional[str] = Cookie(default=None),
+    jwt: Optional[str] = Cookie(default=None),
+    token_q: Optional[str] = Query(default=None, alias="token"),
 ) -> Dict[str, Any]:
     allow_partner = os.getenv("ALLOW_PARTNER_FOR_CABINET") == "1"
     # Dev bypass: allow running UI without real token
     if (not authorization or not authorization.lower().startswith("bearer ")):
-        # Try cookies as fallback
-        cookie_token = partner_jwt or authToken
-        if cookie_token:
-            authorization = f"Bearer {cookie_token}"
+        # Try alternative sources: Query, Header, Cookies (in that order)
+        alt = token_q or x_auth_token or partner_jwt or authToken or jwt
+        if alt:
+            authorization = f"Bearer {alt}"
         
         if settings.environment == "development" and allow_partner:
             return {"sub": "1", "role": "partner", "src": "tg_webapp"}
