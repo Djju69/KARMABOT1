@@ -107,6 +107,68 @@ class DatabaseMigrator:
                     logger.error(f"Failed to apply migration {version}: {e}")
                     raise
     
+    def migrate_005_loyalty_tables(self):
+        """
+        EXPAND Phase: Loyalty subsystem tables
+        - loyalty_wallets: per-user balance
+        - loy_spend_intents: spending intents with TTL and single-active constraint
+        - user_cards: bound card registry with uid_hash and last4 only
+        - loyalty_transactions: audit log of accruals/redemptions
+        """
+        sql = """
+        -- Wallets: one per Telegram user
+        CREATE TABLE IF NOT EXISTS loyalty_wallets (
+            user_id INTEGER PRIMARY KEY,
+            balance_pts INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Spend intents: ephemeral tokens for redemption flow
+        CREATE TABLE IF NOT EXISTS loy_spend_intents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            intent_token TEXT UNIQUE NOT NULL,
+            amount_pts INTEGER NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('active','consumed','expired','canceled')) DEFAULT 'active',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT,
+            consumed_at TEXT,
+            UNIQUE(user_id, status) ON CONFLICT IGNORE
+        );
+
+        -- Bound user cards: store only hashed UID and last4 for privacy
+        CREATE TABLE IF NOT EXISTS user_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            uid_hash TEXT NOT NULL UNIQUE,
+            last4 TEXT NOT NULL,
+            is_blocked BOOLEAN DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Loyalty transactions: audit trail
+        CREATE TABLE IF NOT EXISTS loyalty_transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('accrual','redeem','adjust')),
+            delta_pts INTEGER NOT NULL,
+            balance_after INTEGER NOT NULL,
+            ref INT,
+            note TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Indexes
+        CREATE INDEX IF NOT EXISTS idx_loy_spend_intents_user_status ON loy_spend_intents(user_id, status);
+        CREATE INDEX IF NOT EXISTS idx_loy_spend_intents_expires ON loy_spend_intents(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_loy_tx_user_time ON loyalty_transactions(user_id, created_at);
+        """
+        self.apply_migration(
+            "005",
+            "EXPAND: Loyalty wallets, spend intents, user cards, transactions",
+            sql,
+        )
+    
     def migrate_001_expand_legacy_tables(self):
         """
         EXPAND Phase: Create legacy tables for backward compatibility
@@ -322,6 +384,8 @@ class DatabaseMigrator:
         self.migrate_003_seed_default_data()
         # Add optional fields to cards_v2 (subcategory_id, city_id, area_id)
         self.migrate_004_add_cards_optional_fields()
+        # Loyalty subsystem (wallets, spend intents, cards, transactions)
+        self.migrate_005_loyalty_tables()
         
         logger.info("All migrations completed successfully")
 
