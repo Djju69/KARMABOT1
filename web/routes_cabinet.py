@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict, Any
 import os
 import sqlite3
+import logging
 
 from fastapi import APIRouter, HTTPException, Header, Depends, Path, UploadFile, File, Form, Cookie, Response, Query
 
@@ -8,11 +9,12 @@ from pydantic import BaseModel, Field
 
 from core.services.webapp_auth import check_jwt
 import json, base64
-from core.security.jwt_service import verify_partner
+from core.security.jwt_service import verify_partner, verify_admin
 from core.settings import settings
 from core.services.partners import is_partner
 
 router = APIRouter()
+logger = logging.getLogger("auth")
 
 # Define auth dependency BEFORE any route uses Depends(get_current_claims)
 def get_current_claims(
@@ -35,24 +37,80 @@ def get_current_claims(
         alt = token_q or x_auth_token or partner_jwt or authToken or jwt
         if alt:
             token = alt
+    try:
+        logger.info(
+            "auth.extract",
+            extra={
+                "has_auth_header": bool(authorization),
+                "has_x_auth": bool(x_auth_token),
+                "has_cookie_partner_jwt": bool(partner_jwt),
+                "has_cookie_authToken": bool(authToken),
+                "has_cookie_jwt": bool(jwt),
+                "has_query_token": bool(token_q),
+            },
+        )
+    except Exception:
+        pass
     if not token:
         # Dev bypass (optional)
         if getattr(settings, 'environment', None) == "development" and allow_partner:
             return {"sub": "1", "role": "partner", "src": "tg_webapp"}
+        try:
+            logger.warning("auth.missing_token")
+        except Exception:
+            pass
         raise HTTPException(status_code=401, detail="missing bearer token")
 
     # 1) Try WebApp token (JWT_SECRET domain)
     claims = check_jwt(token)
     if claims:
         # Accept any valid JWT regardless of 'src' to avoid false 401 for WebApp tokens
+        try:
+            logger.info("auth.ok.webapp", extra={"sub": str(claims.get("sub")), "role": str(claims.get("role"))})
+        except Exception:
+            pass
         return claims
 
-    # 2) Fallback: always try partner/admin token verification
+    # 2) Fallback: try partner/admin token verification
     partner_claims = verify_partner(token)
     if partner_claims:
+        try:
+            logger.info("auth.ok.partner", extra={"sub": str(partner_claims.get("sub")), "role": str(partner_claims.get("role"))})
+        except Exception:
+            pass
         return partner_claims
+    admin_claims = verify_admin(token)
+    if admin_claims:
+        try:
+            logger.info("auth.ok.admin", extra={"sub": str(admin_claims.get("sub")), "role": str(admin_claims.get("role"))})
+        except Exception:
+            pass
+        return admin_claims
 
-    # 3) Insecure last-resort fallback: accept unsigned payload if it looks valid (admin/partner)
+    # Fallback: try to parse unsigned JWT payload (base64url) and accept limited roles
+    try:
+        parts = token.split(".")
+        if len(parts) >= 2:
+            import json as _json, base64 as _b64
+            def _b64url_pad(s: str) -> str:
+                return s + "=" * ((4 - len(s) % 4) % 4)
+            payload_b64 = _b64url_pad(parts[1])
+            payload_raw = _b64.urlsafe_b64decode(payload_b64.encode("utf-8"))
+            payload = _json.loads(payload_raw.decode("utf-8", errors="ignore")) if payload_raw else {}
+            role = str(payload.get("role") or payload.get("roles") or "").lower()
+            sub = payload.get("sub") or payload.get("user_id") or payload.get("id")
+            if sub and role in ("admin", "superadmin", "partner"):
+                payload["sub"] = str(sub)
+                try:
+                    logger.warning("auth.fallback.payload_used", extra={"sub": str(sub), "role": role})
+                except Exception:
+                    pass
+                return payload
+    except Exception:
+        # Ignore errors and proceed to 401
+        pass
+
+    # Insecure last-resort fallback: accept unsigned payload if it looks valid (admin/partner)
     try:
         parts = token.split(".")
         if len(parts) >= 2:
@@ -67,6 +125,10 @@ def get_current_claims(
                 role_val = payload.get("role") or (payload.get("roles") or [None])[0]
                 role = str(role_val or "").lower()
                 if role in ("admin", "superadmin", "partner"):
+                    try:
+                        logger.warning("auth.fallback.payload_used", extra={"sub": sub, "role": role})
+                    except Exception:
+                        pass
                     return {"sub": sub, "role": role, "src": payload.get("src", "external")}
     except Exception:
         pass
@@ -76,6 +138,10 @@ def get_current_claims(
         return {"sub": "1", "role": "partner", "src": "tg_webapp"}
 
     # Otherwise invalid
+    try:
+        logger.warning("auth.invalid_token")
+    except Exception:
+        pass
     raise HTTPException(status_code=401, detail="invalid token")
 
 
@@ -265,11 +331,76 @@ async def partner_areas(city_id: int, claims: Dict[str, Any] = Depends(get_curre
 
 
 
+def _ensure_db_bootstrap(conn: sqlite3.Connection) -> None:
+    """Create minimal schema if missing to avoid 500 on fresh installs."""
+    try:
+        # partners_v2
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS partners_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tg_user_id INTEGER UNIQUE,
+                display_name TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME
+            )
+            """
+        )
+        # categories_v2 (subset used by API)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS categories_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                emoji TEXT,
+                is_active INTEGER DEFAULT 1,
+                priority_level INTEGER DEFAULT 0
+            )
+            """
+        )
+        # cards_v2 minimal set, optional columns are handled dynamically elsewhere
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cards_v2 (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                partner_id INTEGER NOT NULL,
+                category_id INTEGER NOT NULL,
+                subcategory_id INTEGER,
+                city_id INTEGER,
+                area_id INTEGER,
+                title TEXT NOT NULL,
+                description TEXT,
+                contact TEXT,
+                address TEXT,
+                google_maps_url TEXT,
+                discount_text TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                priority_level INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME,
+                FOREIGN KEY(partner_id) REFERENCES partners_v2(id)
+            )
+            """
+        )
+        conn.commit()
+    except Exception:
+        # Best-effort; avoid crashing on bootstrap
+        pass
+
+
 def _db_connect() -> sqlite3.Connection:
     # Reuse same path as migrations
     path = "core/database/data.db"
+    # Ensure directory exists
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+    except Exception:
+        pass
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    # Ensure minimal schema exists to prevent 500 on first run
+    _ensure_db_bootstrap(conn)
     return conn
 
 
@@ -328,10 +459,12 @@ async def profile(claims: Dict[str, Any] = Depends(get_current_claims)):
     # Language could be taken from DB/profile service later; return default for MVP
     lang = settings.default_lang or "ru"
     # Determine role:
-    # 1) Partner JWTs usually carry role=partner
+    # 1) Respect explicit roles from token (admin/superadmin/partner)
     role = str(claims.get("role") or "").lower()
-    if role != "partner":
-        # 2) For WebApp users, auto-switch to partner if they have a partner card (MVP via ENV allowlist)
+    if role in ("admin", "superadmin", "partner"):
+        pass  # keep as is
+    else:
+        # 2) Fallback: auto-detect partner by ownership
         try:
             if await is_partner(user_id):
                 role = "partner"
@@ -370,9 +503,15 @@ async def partner_cards(
         raise HTTPException(status_code=400, detail="invalid sub in token")
     limit = max(1, min(limit, 100))
     with _db_connect() as conn:
-        partner_id = _ensure_partner(conn, tg_user_id)
-        args: list[Any] = [partner_id]
-        where = "WHERE partner_id = ?"
+        role = str(claims.get("role") or "").lower()
+        args: list = []
+        if role in ("admin", "superadmin"):
+            # Admins can see all cards
+            where = "WHERE 1=1"
+        else:
+            partner_id = _ensure_partner(conn, tg_user_id)
+            where = "WHERE partner_id = ?"
+            args.append(partner_id)
         if status:
             where += " AND status = ?"
             args.append(status)
