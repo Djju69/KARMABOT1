@@ -12,6 +12,7 @@ from ..utils.locales_v2 import get_text
 from ..settings import settings
 from ..services.profile import profile_service
 from ..utils.telemetry import log_event
+from ..database.db_v2 import db_v2
 
 router = Router(name=__name__)
 
@@ -36,6 +37,7 @@ async def ensure_policy_accepted(message: Message) -> bool:
     return True
 async def get_start(message: Message):
     from ..keyboards.reply_v2 import get_main_menu_reply
+    from ..keyboards.reply_v2 import get_main_menu_reply_with_qr
     from ..keyboards.inline_v2 import get_policy_inline
     
     user_id = message.from_user.id
@@ -69,7 +71,7 @@ async def get_start(message: Message):
         # Если политика уже принята, показываем главное меню
         await log_event("main_menu_opened", user=message.from_user)
         # Веб-версия доступна только через командное меню /webapp
-        reply_kb = get_main_menu_reply(lang)
+        reply_kb = await _build_main_menu_kb(message.from_user.id, lang)
         await message.answer(
             text=get_text('main_menu_title', lang),
             reply_markup=reply_kb
@@ -83,7 +85,7 @@ async def main_menu(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("main_menu_opened", user=message.from_user)
     # Веб-версия доступна только через командное меню /webapp
-    reply_kb = get_main_menu_reply(lang)
+    reply_kb = await _build_main_menu_kb(message.from_user.id, lang)
     await message.answer(get_text('main_menu_title', lang), reply_markup=reply_kb)
 
 
@@ -129,7 +131,7 @@ async def on_language_set(callback: CallbackQuery):
         from ..keyboards.reply_v2 import get_main_menu_reply
         await callback.message.answer(
             get_text('main_menu_title', lang),
-            reply_markup=get_main_menu_reply(lang)
+            reply_markup=(await _build_main_menu_kb(callback.from_user.id, lang))
         )
         await callback.answer(get_text('language_updated', lang))
 
@@ -288,7 +290,7 @@ async def on_policy_accept(callback: CallbackQuery):
     # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню
     await callback.message.delete()
     # Веб-версия доступна только через командное меню /webapp
-    reply_kb = get_main_menu_reply(lang)
+    reply_kb = await _build_main_menu_kb(user_id, lang)
     await callback.message.answer(
         get_text('main_menu_title', lang),
         reply_markup=reply_kb
@@ -312,6 +314,15 @@ router.message.register(on_partner_off, Command("partner_off"))
 # We match by leading globe emoji to avoid hardcoding per-language labels.
 router.message.register(on_language_select, F.text.startswith("🌐"))
 
+# Open personal cabinet when user taps the reply button (e.g., "👤 Личный кабинет")
+@router.message(F.text.startswith("👤"))
+async def on_open_cabinet_from_menu(message: Message):
+    if not await ensure_policy_accepted(message):
+        return
+    # Reuse the same flow as /cabinet
+    from .cabinet import cmd_cabinet
+    await cmd_cabinet(message)
+
 # Fallback for any other text messages (only when no FSM state is active)
 @router.message(F.text, StateFilter(None))
 async def on_unhandled_message(message: Message):
@@ -324,3 +335,42 @@ __all__ = [
     "on_language_select", "on_language_set", "language_callback", "on_help",
     "on_city_menu", "on_city_set", "on_policy_accept",
 ]
+
+# ===== Helpers =====
+async def _build_main_menu_kb(user_id: int, lang: str):
+    """Возвращает главное меню. Если пользователь — активный партнёр и у него есть >=1 карточка,
+    добавляет верхний ряд «🧾 Сканировать QR» (WebApp).
+    Условия по ТЗ: role=partner, listings_count≥1, blocked=false.
+    В текущей реализации:
+      - role/blocked аппроксимируем по партнёрскому профилю и флагу is_active.
+      - listings_count считаем по количеству карточек партнёра (любых статусов, минимум — для появления кнопки).
+    """
+    from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_with_qr
+
+    # Базовая клавиатура
+    base_kb = get_main_menu_reply(lang)
+
+    # Проверяем наличие партнёра
+    partner = db_v2.get_partner_by_tg_id(user_id)
+    if not partner:
+        return base_kb
+
+    # Проверяем, не заблокирован ли партнёр (используем is_active как прокси blocked=false)
+    if not getattr(partner, 'is_active', True):
+        return base_kb
+
+    # Количество карточек партнёра
+    try:
+        cards = db_v2.get_partner_cards(partner.id) if partner.id is not None else []
+    except Exception:
+        cards = []
+    if len(cards) < 1:
+        return base_kb
+
+    # URL WebApp
+    webapp_url = (getattr(settings, 'webapp_qr_url', '') or '').strip()
+    if not webapp_url:
+        return base_kb
+
+    # Построить клавиатуру с верхним рядом QR
+    return get_main_menu_reply_with_qr(lang=lang, webapp_url=webapp_url)

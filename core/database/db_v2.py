@@ -213,7 +213,7 @@ class DatabaseServiceV2:
         """Get all cards for a partner"""
         with self.get_connection() as conn:
             cursor = conn.execute("""
-                SELECT c.*, cat.name as category_name
+                SELECT c.*, cat.name as category_name, cat.slug as category_slug
                 FROM cards_v2 c
                 JOIN categories_v2 cat ON c.category_id = cat.id
                 WHERE c.partner_id = ?
@@ -221,6 +221,69 @@ class DatabaseServiceV2:
             """, (partner_id,))
             
             return [dict(row) for row in cursor.fetchall()]
+
+    def count_partner_cards(self, partner_id: int) -> int:
+        """Count cards for a partner (any status)."""
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                "SELECT COUNT(1) FROM cards_v2 WHERE partner_id = ?",
+                (partner_id,)
+            )
+            row = cur.fetchone()
+            return int(row[0]) if row else 0
+
+    def get_partner_cards_keyset_next(self, partner_id: int, limit: int, after_prio: Optional[int] = None, after_id: Optional[int] = None) -> List[Dict]:
+        """Keyset page forward ordered by (priority_level DESC, id DESC).
+        If after_* is None -> first page.
+        """
+        with self.get_connection() as conn:
+            if after_prio is None or after_id is None:
+                cursor = conn.execute(
+                    """
+                    SELECT c.*, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    WHERE c.partner_id = ?
+                    ORDER BY c.priority_level DESC, c.id DESC
+                    LIMIT ?
+                    """,
+                    (partner_id, limit)
+                )
+            else:
+                cursor = conn.execute(
+                    """
+                    SELECT c.*, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    WHERE c.partner_id = ?
+                      AND (c.priority_level < ? OR (c.priority_level = ? AND c.id < ?))
+                    ORDER BY c.priority_level DESC, c.id DESC
+                    LIMIT ?
+                    """,
+                    (partner_id, after_prio, after_prio, after_id, limit)
+                )
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_partner_cards_keyset_prev(self, partner_id: int, limit: int, before_prio: int, before_id: int) -> List[Dict]:
+        """Keyset page backward relative to the first element currently shown.
+        Fetch records that come BEFORE the current window in DESC order, by querying ASC then reverse.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT c.*, cat.name as category_name
+                FROM cards_v2 c
+                JOIN categories_v2 cat ON c.category_id = cat.id
+                WHERE c.partner_id = ?
+                  AND (c.priority_level > ? OR (c.priority_level = ? AND c.id > ?))
+                ORDER BY c.priority_level ASC, c.id ASC
+                LIMIT ?
+                """,
+                (partner_id, before_prio, before_prio, before_id, limit)
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
+            rows.reverse()
+            return rows
     
     # Category methods
     def get_categories(self, active_only: bool = True) -> List[Category]:

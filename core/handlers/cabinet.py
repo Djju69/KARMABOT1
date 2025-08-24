@@ -14,10 +14,31 @@ from ..keyboards.reply_v2 import get_profile_keyboard
 from ..keyboards.inline_v2 import get_catalog_item_row, get_pagination_row
 from .partner import AddCardStates, get_skip_keyboard, get_categories_keyboard
 from ..settings import settings
+from ..services.cache import cache_service
 
 router = Router()
 
 PAGE_SIZE = 5
+
+
+def _build_keyset_nav_row(prefix: str, page_items: List[dict]) -> List[List[InlineKeyboardButton]]:
+    """Build keyset prev/next buttons using first/last item cursors.
+    Callback format:
+      pc:ks:next:<prio>:<id>
+      pc:ks:prev:<prio>:<id>
+    """
+    rows: List[List[InlineKeyboardButton]] = []
+    if not page_items:
+        return rows
+    first = page_items[0]
+    last = page_items[-1]
+    f_prio, f_id = int(first.get('priority_level', 0)), int(first.get('id'))
+    l_prio, l_id = int(last.get('priority_level', 0)), int(last.get('id'))
+    rows.append([
+        InlineKeyboardButton(text='⬅️ Назад', callback_data=f"{prefix}:ks:prev:{f_prio}:{f_id}"),
+        InlineKeyboardButton(text='➡️ Далее', callback_data=f"{prefix}:ks:next:{l_prio}:{l_id}")
+    ])
+    return rows
 
 
 def _paginate(items: List[dict], page: int, per_page: int) -> Tuple[List[dict], int, int]:
@@ -28,7 +49,29 @@ def _paginate(items: List[dict], page: int, per_page: int) -> Tuple[List[dict], 
     return items[start:start + per_page], page, pages
 
 
-def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[str, InlineKeyboardMarkup]:
+def _status_badge(status: str, lang: str) -> str:
+    """Map various internal statuses to i18n badge keys per spec.
+    Mapping:
+      published/approved -> active
+      archived/hidden    -> hidden
+      pending/draft      -> pending
+      rejected           -> rejected
+    """
+    status = (status or '').lower()
+    key_map = {
+        'published': 'cabinet.status.active',
+        'approved': 'cabinet.status.active',
+        'archived': 'cabinet.status.hidden',
+        'hidden': 'cabinet.status.hidden',
+        'pending': 'cabinet.status.pending',
+        'draft': 'cabinet.status.pending',
+        'rejected': 'cabinet.status.rejected',
+    }
+    i18n_key = key_map.get(status, 'cabinet.status.active')
+    return get_text(i18n_key, lang)
+
+
+def _render_partner_cards_full(cards: List[dict], lang: str, page: int = 1) -> Tuple[str, InlineKeyboardMarkup]:
     # Build text
     if not cards:
         text = "📭 Пока нет карточек. Нажмите, чтобы добавить первую."
@@ -47,9 +90,7 @@ def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[
     lines: List[str] = []
     for c in page_cards:
         status = c.get('status', 'draft')
-        emoji = {
-            'draft': '📝', 'pending': '⏳', 'published': '✅', 'rejected': '❌', 'archived': '🗂️'
-        }.get(status, '📄')
+        emoji = _status_badge(status, lang)
         title = c.get('title') or 'Без названия'
         cat = c.get('category_name') or ''
         lines.append(f"{emoji} {title} — {cat} (id:{c.get('id')})")
@@ -67,14 +108,14 @@ def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[
         status = c.get('status', 'draft')
         if status == 'archived':
             next_status = 'published'
-            label = '♻️ Разархивировать'
+            label = get_text('btn_unhide', lang)
         elif status == 'published':
             next_status = 'archived'
-            label = '🗂 Архивировать'
+            label = get_text('btn_hide', lang)
         else:
             # For other statuses, propose publish
             next_status = 'published'
-            label = '✅ Опубликовать'
+            label = get_text('btn_publish', lang)
         inline_rows.append([
             InlineKeyboardButton(text=label, callback_data=f"pc:status:{cid}:{next_status}"),
             InlineKeyboardButton(text='✏️ Редактировать', callback_data=f"pc:edit:{cid}")
@@ -87,6 +128,49 @@ def _render_partner_cards(cards: List[dict], lang: str, page: int = 1) -> Tuple[
     inline_rows.append(get_pagination_row('pc', cur, pages, 'all'))
 
     return text, InlineKeyboardMarkup(inline_keyboard=inline_rows)
+
+
+async def _render_partner_cards_keyset(partner_id: int, lang: str, after_prio: int | None, after_id: int | None) -> Tuple[str, InlineKeyboardMarkup, List[dict]]:
+    """Fetch a keyset page and render text+kb. Returns also items used (for cursors)."""
+    items = db_v2.get_partner_cards_keyset_next(partner_id, PAGE_SIZE, after_prio, after_id)
+    total = db_v2.count_partner_cards(partner_id)
+    t = get_all_texts(lang)
+    if not items:
+        text = "📭 Пока нет карточек. Нажмите, чтобы добавить первую."
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='➕ Добавить карточку', callback_data='pc:add')]])
+        return text, kb, items
+
+    # Header without exact page number (keyset): show total and window range
+    header = f"{t.get('my_cards', 'Мои карточки')}: {total}"
+    lines: List[str] = []
+    for c in items:
+        status = c.get('status', 'draft')
+        emoji = _status_badge(status, lang)
+        title = c.get('title') or 'Без названия'
+        cat = c.get('category_name') or ''
+        lines.append(f"{emoji} {title} — {cat} (id:{c.get('id')})")
+    text = header + "\n\n" + "\n".join(lines)
+
+    inline_rows: List[List[InlineKeyboardButton]] = []
+    for c in items:
+        cid = int(c.get('id'))
+        gmaps = c.get('google_maps_url')
+        inline_rows.append(get_catalog_item_row(cid, gmaps, lang))
+        status = c.get('status', 'draft')
+        if status == 'archived':
+            next_status = 'published'; label = get_text('btn_unhide', lang)
+        elif status == 'published':
+            next_status = 'archived'; label = get_text('btn_hide', lang)
+        else:
+            next_status = 'published'; label = get_text('btn_publish', lang)
+        inline_rows.append([
+            InlineKeyboardButton(text=label, callback_data=f"pc:status:{cid}:{next_status}"),
+            InlineKeyboardButton(text='✏️ Редактировать', callback_data=f"pc:edit:{cid}")
+        ])
+    inline_rows.append([InlineKeyboardButton(text='➕ Добавить карточку', callback_data='pc:add')])
+    inline_rows.extend(_build_keyset_nav_row('pc', items))
+
+    return text, InlineKeyboardMarkup(inline_keyboard=inline_rows), items
 
 
 @router.message(Command(commands=["cabinet"]))
@@ -111,6 +195,14 @@ async def cmd_cabinet(message: Message):
             "Начните с добавления первой карточки командой /add_card"
         )
         await message.answer(response, reply_markup=get_profile_keyboard(lang))
+    # Inline entry to partner cabinets (categories)
+    if partner:
+        await message.answer(
+            get_text('my_cabinets', lang),
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text=get_text('my_cabinets', lang), callback_data='pc:cabinets')]
+            ])
+        )
         return
 
     # Existing partner summary
@@ -125,7 +217,7 @@ async def cmd_cabinet(message: Message):
     if counts:
         response += "\nПо статусам:\n"
         for s, cnt in counts.items():
-            emoji = {'draft': '📝','pending':'⏳','published':'✅','rejected':'❌','archived':'🗂️'}.get(s, '📄')
+            emoji = _status_badge(s, lang)
             response += f" • {emoji} {s}: {cnt}\n"
 
     await message.answer(response, reply_markup=get_profile_keyboard(lang))
@@ -143,8 +235,15 @@ async def cmd_my_cards(message: Message):
         await message.answer("Сначала добавьте первую карточку: /add_card")
         return
 
-    cards = db_v2.get_partner_cards(partner.id)
-    text, kb = _render_partner_cards(cards, lang, page=1)
+    # Keyset first page with cache 45s
+    cache_key = f"cabinet:{partner.id}:ks:first"
+    cached = await cache_service.get(cache_key)
+    if cached:
+        # naive: cached value is not structured; recompute for now to ensure fresh buttons with valid callbacks
+        text, kb, _items = await _render_partner_cards_keyset(partner.id, lang, None, None)
+    else:
+        text, kb, _items = await _render_partner_cards_keyset(partner.id, lang, None, None)
+        await cache_service.set(cache_key, "1", 45)
     await message.answer(text, reply_markup=kb)
 
 
@@ -158,8 +257,9 @@ async def cb_pc_pagination(callback: CallbackQuery):
         if not partner:
             await callback.answer("Нет данных", show_alert=False)
             return
+        # Backward compat: still support offset pagination if message contains old buttons
         cards = db_v2.get_partner_cards(partner.id)
-        text, kb = _render_partner_cards(cards, lang, page=page)
+        text, kb = _render_partner_cards_full(cards, lang, page=page)
         await callback.message.edit_text(text=text, reply_markup=kb)
         await callback.answer()
     except Exception:
@@ -180,7 +280,67 @@ async def cb_pc_pagination_alt(callback: CallbackQuery):
             await callback.answer("Нет данных", show_alert=False)
             return
         cards = db_v2.get_partner_cards(partner.id)
-        text, kb = _render_partner_cards(cards, lang, page=page)
+        text, kb = _render_partner_cards_full(cards, lang, page=page)
+        await callback.message.edit_text(text=text, reply_markup=kb)
+        await callback.answer()
+    except Exception:
+        await callback.answer("Ошибка пагинации", show_alert=False)
+
+
+@router.callback_query(F.data.regexp(r"^pc:ks:(next|prev):-?[0-9]+:-?[0-9]+$"))
+async def cb_pc_keyset(callback: CallbackQuery):
+    try:
+        _, _, dir_s, prio_s, id_s = callback.data.split(":")
+        dir_next = dir_s == 'next'
+        lang = 'ru'
+        partner = db_v2.get_partner_by_tg_id(callback.from_user.id)
+        if not partner:
+            await callback.answer("Нет данных", show_alert=False)
+            return
+        prio = int(prio_s); cid = int(id_s)
+        cache_key = f"cabinet:{partner.id}:ks:{dir_s}:{prio}:{cid}"
+        cached = await cache_service.get(cache_key)
+        # Always recompute content but use cache as throttle flag; set 45s TTL
+        after_prio = prio if dir_next else None
+        after_id = cid if dir_next else None
+        if dir_next:
+            text, kb, _items = await _render_partner_cards_keyset(partner.id, lang, after_prio, after_id)
+        else:
+            items = db_v2.get_partner_cards_keyset_prev(partner.id, PAGE_SIZE, prio, cid)
+            if not items:
+                text, kb, _ = await _render_partner_cards_keyset(partner.id, lang, None, None)
+            else:
+                t = get_all_texts(lang)
+                header = f"{t.get('my_cards', 'Мои карточки')}: {db_v2.count_partner_cards(partner.id)}"
+                lines = []
+                for c in items:
+                    status = c.get('status', 'draft')
+                    emoji = {'draft': '📝','pending':'⏳','published':'✅','rejected':'❌','archived':'🗂️'}.get(status, '📄')
+                    title = c.get('title') or 'Без названия'
+                    cat = c.get('category_name') or ''
+                    lines.append(f"{emoji} {title} — {cat} (id:{c.get('id')})")
+                text = header + "\n\n" + "\n".join(lines)
+                inline_rows: List[List[InlineKeyboardButton]] = []
+                for c in items:
+                    cid2 = int(c.get('id'))
+                    gmaps = c.get('google_maps_url')
+                    inline_rows.append(get_catalog_item_row(cid2, gmaps, lang))
+                    status = c.get('status', 'draft')
+                    if status == 'archived':
+                        next_status = 'published'; label = '♻️ Разархивировать'
+                    elif status == 'published':
+                        next_status = 'archived'; label = '🗂 Архивировать'
+                    else:
+                        next_status = 'published'; label = '✅ Опубликовать'
+                    inline_rows.append([
+                        InlineKeyboardButton(text=label, callback_data=f"pc:status:{cid2}:{next_status}"),
+                        InlineKeyboardButton(text='✏️ Редактировать', callback_data=f"pc:edit:{cid2}")
+                    ])
+                inline_rows.append([InlineKeyboardButton(text='➕ Добавить карточку', callback_data='pc:add')])
+                inline_rows.extend(_build_keyset_nav_row('pc', items))
+                kb = InlineKeyboardMarkup(inline_keyboard=inline_rows)
+        if not cached:
+            await cache_service.set(cache_key, "1", 45)
         await callback.message.edit_text(text=text, reply_markup=kb)
         await callback.answer()
     except Exception:
@@ -194,11 +354,20 @@ async def cb_pc_status(callback: CallbackQuery):
         card_id = int(id_str)
         # Update status
         db_v2.update_card_status(card_id, next_status)
+        # Invalidate cabinet cache for this partner
+        try:
+            partner = db_v2.get_partner_by_tg_id(callback.from_user.id)
+            if partner:
+                await cache_service.delete_by_mask(f"cabinet:{partner.id}:*")
+        except Exception:
+            pass
         # Repaint same page (assume page hint unavailable -> page 1)
         lang = 'ru'
         partner = db_v2.get_partner_by_tg_id(callback.from_user.id)
-        cards = db_v2.get_partner_cards(partner.id) if partner else []
-        text, kb = _render_partner_cards(cards, lang, page=1)
+        if partner:
+            text, kb, _ = await _render_partner_cards_keyset(partner.id, lang, None, None)
+        else:
+            text, kb = _render_partner_cards_full([], lang, page=1)
         await callback.message.edit_text(text=text, reply_markup=kb)
         await callback.answer("Статус обновлен")
     except Exception:
@@ -260,6 +429,11 @@ async def cb_pc_add(callback: CallbackQuery, state: FSMContext):
         return
     partner = db_v2.get_or_create_partner(callback.from_user.id, callback.from_user.full_name)
     await state.update_data(partner_id=partner.id)
+    # Invalidate cabinet cache for this partner (new item will appear)
+    try:
+        await cache_service.delete_by_mask(f"cabinet:{partner.id}:*")
+    except Exception:
+        pass
     await state.set_state(AddCardStates.choose_category)
     await callback.message.edit_text(
         "🏪 **Добавление новой карточки**\n\nВыберите категорию для вашего заведения:",
@@ -276,3 +450,75 @@ async def cb_pc_add(callback: CallbackQuery, state: FSMContext):
 
 def get_cabinet_router() -> Router:
     return router
+
+
+# === Partner cabinets: categories and per-category cabinet (skeleton) ===
+
+@router.callback_query(F.data == 'pc:cabinets')
+async def cb_pc_cabinets(callback: CallbackQuery):
+    """Show 5 fixed partner categories with i18n labels."""
+    lang = 'ru'
+    partner = db_v2.get_partner_by_tg_id(callback.from_user.id)
+    if not partner:
+        await callback.answer("Нет данных", show_alert=False)
+        return
+    # Fixed 5 categories by slugs
+    cats = [
+        ("restaurants", get_text('category_restaurants', lang)),
+        ("spa", get_text('category_spa', lang)),
+        ("transport", get_text('category_transport', lang)),
+        ("hotels", get_text('category_hotels', lang)),
+        ("tours", get_text('category_tours', lang)),
+    ]
+    rows: List[List[InlineKeyboardButton]] = []
+    for slug, label in cats:
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"pc:cab:{slug}")])
+    kb = InlineKeyboardMarkup(inline_keyboard=rows)
+    await callback.message.edit_text(get_text('my_cabinets', lang), reply_markup=kb)
+    await callback.answer()
+
+
+@router.callback_query(F.data.regexp(r"^pc:cab:[a-z_]+$"))
+async def cb_pc_cabinet_category(callback: CallbackQuery):
+    """Open category cabinet skeleton: header, status summary, filtered list 5/pg (offset renderer)."""
+    lang = 'ru'
+    try:
+        _, _, slug = callback.data.split(":")
+        partner = db_v2.get_partner_by_tg_id(callback.from_user.id)
+        if not partner:
+            await callback.answer("Нет данных", show_alert=False)
+            return
+        # Fetch all partner cards and filter by category_slug if present
+        all_cards = db_v2.get_partner_cards(partner.id)
+        cards = [c for c in all_cards if (c.get('category_slug') == slug) or (c.get('category_name','').lower() == slug)]
+        # Header with status summary
+        cat_title_map = {
+            'restaurants': get_text('category_restaurants', lang),
+            'spa': get_text('category_spa', lang),
+            'transport': get_text('category_transport', lang),
+            'hotels': get_text('category_hotels', lang),
+            'tours': get_text('category_tours', lang),
+        }
+        title = cat_title_map.get(slug, slug)
+        counts: dict[str,int] = {}
+        for c in cards:
+            s = c.get('status', 'draft')
+            counts[s] = counts.get(s, 0) + 1
+        summary_lines = []
+        for s, cnt in counts.items():
+            summary_lines.append(f"{_status_badge(s, lang)} {s}: {cnt}")
+        summary = "\n".join(summary_lines)
+        header = f"{title}\n{summary}\n\n"
+        # Render first page (offset renderer is fine as skeleton)
+        text, list_kb = _render_partner_cards_full(cards, lang, page=1)
+        # Compose extra controls: metrics, add offer, back
+        extra_rows = [
+            [InlineKeyboardButton(text=get_text('btn_metrics_category', lang), callback_data=f"pc:metrics:{slug}")],
+            [InlineKeyboardButton(text=get_text('btn_add_offer', lang), callback_data='pc:add')],
+            [InlineKeyboardButton(text='◀️ Назад', callback_data='pc:cabinets')],
+        ]
+        merged = list_kb.inline_keyboard + extra_rows
+        await callback.message.edit_text(header + text, reply_markup=InlineKeyboardMarkup(inline_keyboard=merged))
+        await callback.answer()
+    except Exception:
+        await callback.answer("Ошибка открытия кабинета", show_alert=False)

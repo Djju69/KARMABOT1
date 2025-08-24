@@ -10,10 +10,12 @@ from datetime import datetime, timezone
 from typing import Optional, List
 
 from fastapi import APIRouter, Request, HTTPException
+from starlette.responses import JSONResponse
 
 from core.services.cache import cache_service
 from ops.session_state import mark_webhook_ui_refresh, save as ss_save
 from core.utils.telemetry import log_event
+from core.utils.metrics import AUTHME_INVALIDATIONS
 
 router = APIRouter()
 
@@ -81,40 +83,48 @@ async def _dedupe_try(key: str, ttl_sec: int) -> bool:
 
 @router.post("/ui.refresh_menu")
 async def ui_refresh_menu(request: Request):
+    start_monotonic = time.monotonic()
     # Security headers
     ts = request.headers.get("X-Karma-Timestamp") or ""
     sig = request.headers.get("X-Karma-Signature") or ""
+    request_id = request.headers.get("X-Request-ID") or request.headers.get("X-Request-Id") or ""
+    trace_id = request.headers.get("X-Trace-ID") or request.headers.get("X-Trace-Id") or ""
 
     # IP allowlist
     allowlist = _parse_allowlist(os.getenv("WEBHOOK_IP_ALLOWLIST", ""))
     ip = _client_ip(request)
     if not _ip_allowed(ip, allowlist):
-        await log_event("ui.refresh_menu", ip=ip, allowlist=allowlist, status="rejected_ip")
-        raise HTTPException(status_code=403, detail="ip not allowed")
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", ip=ip, allowlist=allowlist, outcome="rejected", status_code=403, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=403, content={"ok": False, "code": "unauthorized"})
 
     # Timestamp skew
     try:
         ts_i = int(ts)
     except Exception:
-        await log_event("ui.refresh_menu", ip=ip, status="bad_timestamp")
-        raise HTTPException(status_code=401, detail="bad timestamp")
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", ip=ip, outcome="rejected", reason="bad_timestamp", status_code=401, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=401, content={"ok": False, "code": "unauthorized"})
     skew = int(os.getenv("BOT_WEBHOOK_MAX_SKEW_SEC", "120") or 120)
     now = int(time.time())
     if abs(now - ts_i) > skew:
-        await log_event("ui.refresh_menu", ip=ip, status="skew_rejected", ts=ts_i, now=now)
-        raise HTTPException(status_code=401, detail="timestamp skew too large")
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", ip=ip, outcome="rejected", reason="skew", ts=ts_i, now=now, status_code=401, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=401, content={"ok": False, "code": "unauthorized"})
 
     # Body and HMAC
     secret = os.getenv("BOT_WEBHOOK_SECRET", "")
     if not secret:
-        await log_event("ui.refresh_menu", status="server_misconfig", error="missing secret")
-        raise HTTPException(status_code=500, detail="server misconfigured")
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", outcome="error", error="missing secret", status_code=500, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=500, content={"ok": False, "code": "server_error"})
 
     body = await request.body()
     expected = _compute_signature(secret, ts, body)
     if not hmac.compare_digest(sig, expected):
-        await log_event("ui.refresh_menu", ip=ip, status="bad_signature")
-        raise HTTPException(status_code=401, detail="invalid signature")
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", ip=ip, outcome="rejected", reason="bad_signature", status_code=401, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=401, content={"ok": False, "code": "unauthorized"})
 
     # Main processing: JSON parse, idempotency, and success
     try:
@@ -126,8 +136,9 @@ async def ui_refresh_menu(request: Request):
         try:
             payload = await request.json()
         except Exception:
-            await log_event("ui.refresh_menu", ip=ip, status="bad_json")
-            raise HTTPException(status_code=400, detail="invalid json")
+            duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+            await log_event("ui.refresh_menu", ip=ip, outcome="rejected", reason="bad_json", status_code=400, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+            return JSONResponse(status_code=400, content={"ok": False, "code": "unauthorized"})
 
         user_id = str(payload.get("user_id") or payload.get("uid") or "")
         reason = str(payload.get("reason") or "manual")
@@ -135,12 +146,24 @@ async def ui_refresh_menu(request: Request):
         # Idempotency key: 30s buckets
         rounded = (ts_i // 30) * 30
         # Only enforce idempotency if we have a user_id
+        dedupe_key = None
         if user_id:
-            dedupe_key = f"dedupe:{user_id}:{reason}:{rounded}"
-            if not await _dedupe_try(dedupe_key, 30):
-                await log_event("ui.refresh_menu", ip=ip, user_id=user_id, reason=reason, status="duplicate")
-                # Signal rate limit for duplicate in the same 30s bucket
-                raise HTTPException(status_code=429, detail="duplicate")
+            dedupe_key = f"{user_id}:{reason}:{rounded}"
+            if not await _dedupe_try("dedupe:" + dedupe_key, 30):
+                duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+                await log_event("ui.refresh_menu", ip=ip, user_id=user_id, reason=reason, dedupe_key=dedupe_key, outcome="duplicate", status_code=200, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+                return JSONResponse(status_code=200, content={"ok": True, "result": "duplicate"})
+
+        # Optional: invalidate /auth/me cache for this user (if provided)
+        if user_id:
+            try:
+                await cache_service.delete_by_mask(f"authme:{user_id}")
+                try:
+                    AUTHME_INVALIDATIONS.labels(reason).inc()
+                except Exception:
+                    pass
+            except Exception:
+                pass
 
         # TODO: place business logic here (e.g., enqueue refresh, notify bot, etc.)
         # Persist marker into SESSION_STATE (best-effort)
@@ -149,18 +172,23 @@ async def ui_refresh_menu(request: Request):
             ss_save()
         except Exception:
             pass
-        await log_event("ui.refresh_menu", ip=ip, user_id=user_id, reason=reason, status="success")
-        return {"ok": True, "duplicate": False}
-    except HTTPException:
-        # Preserve intentional HTTP errors
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        await log_event("ui.refresh_menu", ip=ip, user_id=user_id, reason=reason, dedupe_key=dedupe_key, outcome="processed", status_code=200, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
+        return JSONResponse(status_code=200, content={"ok": True, "result": "processed"})
+    except HTTPException as http_e:
+        # Structured log for raised HTTP errors
+        duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+        code = http_e.status_code
+        await log_event("ui.refresh_menu", outcome="rejected", status_code=code, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
         raise
     except Exception as e:
         # Log unexpected exceptions and return JSON 500 for easier diagnostics
         try:
-            await log_event("ui.refresh_menu", ip=ip, status="error", error=str(e), tb=traceback.format_exc())
+            duration_ms = int((time.monotonic() - start_monotonic) * 1000)
+            await log_event("ui.refresh_menu", ip=ip, outcome="error", error=str(e), status_code=500, duration_ms=duration_ms, request_id=request_id, trace_id=trace_id)
         except Exception:
             pass
         tb = traceback.format_exc()
         # Trim traceback to avoid too long responses
         tb_short = " | ".join([line.strip() for line in tb.strip().splitlines()[-5:]])
-        raise HTTPException(status_code=500, detail=f"internal error: {type(e).__name__}: {str(e)} | {tb_short}")
+        return JSONResponse(status_code=500, content={"ok": False, "code": "server_error", "detail": f"{type(e).__name__}: {str(e)} | {tb_short}"})

@@ -77,6 +77,7 @@ translations_v2 = {
         'cards_count': 'Карточек',
         'views_count': 'Просмотров',
         'qr_scans': 'QR сканирований',
+        'my_cabinets': '📂 Мои кабинеты',
 
         # NEW: Category Menu (v2)
         'category_restaurants': '🍽 Рестораны',
@@ -158,6 +159,17 @@ translations_v2 = {
         'btn_metrics_category': '📈 Показатели по категории',
         'search_placeholder': 'Введите название или часть адреса…',
         'search_no_results': 'Ничего не найдено по вашему запросу.',
+
+        # NEW: Partner/User cabinet status badges (spec)
+        'cabinet.status.active': '✅',
+        'cabinet.status.pending': '⏳',
+        'cabinet.status.rejected': '⛔',
+        'cabinet.status.hidden': '🙈',
+
+        # NEW: Status toggle buttons
+        'btn_publish': '✅ Опубликовать',
+        'btn_hide': '🙈 Скрыть',
+        'btn_unhide': '♻️ Показать',
 
         # NEW: Reports
         'report_building': '⏳ Формируем отчёт… Это может занять некоторое время.',
