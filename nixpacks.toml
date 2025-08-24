@@ -1,0 +1,20 @@
+# Force Python build on Railway/Nixpacks and install dependencies
+
+[providers]
+# Disable Node detection entirely to avoid picking Node plan if package.json appears
+node.disabled = true
+python.priority = 100
+
+[phases.setup]
+# Ensure Python 3.11 and build essentials are available
+nixPkgs = ["python311", "pip", "gcc", "pkg-config"]
+
+[phases.install]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -r requirements.txt"
+]
+
+# We let Railway's startCommand in railway.toml run bash start.sh
+[phases.start]
+cmd = "bash start.sh"
