@@ -1,0 +1,45 @@
+name: Railway Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.RAILWAY_TOKEN != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      - name: Show Railway CLI version
+        run: railway --version
+
+      - name: Deploy to Railway (CI)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+        run: |
+          echo "Starting Railway deploy..."
+          if [ -n "$RAILWAY_PROJECT" ] && [ -n "$RAILWAY_ENVIRONMENT" ]; then
+            railway up --ci --project "$RAILWAY_PROJECT" --environment "$RAILWAY_ENVIRONMENT"
+          else
+            # Если проект/окружение не заданы — попытаемся задеплоить по связке репозитория
+            railway up --ci
+          fi
+          echo "Railway deploy finished"
+
+      - name: Post logs hint
+        run: |
+          echo "If deploy did not target the right project, set repository secrets:"
+          echo "  RAILWAY_TOKEN, RAILWAY_PROJECT, RAILWAY_ENVIRONMENT"
