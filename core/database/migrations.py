@@ -388,6 +388,8 @@ class DatabaseMigrator:
         self.migrate_005_loyalty_tables()
         # Seed additional categories
         self.migrate_006_seed_shops_services()
+        # Bans table
+        self.migrate_007_banned_users()
         
         logger.info("All migrations completed successfully")
 
@@ -407,6 +409,25 @@ class DatabaseMigrator:
         self.apply_migration(
             "006",
             "EXPAND: Seed category '🛍️ Магазины и услуги'",
+            sql,
+        )
+
+    def migrate_007_banned_users(self):
+        """
+        EXPAND Phase: Banned users registry
+        - banned_users: list of banned Telegram user IDs with reason and timestamps
+        """
+        sql = """
+        CREATE TABLE IF NOT EXISTS banned_users (
+            user_id INTEGER PRIMARY KEY,
+            reason TEXT,
+            banned_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            unbanned_at TEXT
+        );
+        """
+        self.apply_migration(
+            "007",
+            "EXPAND: Create banned_users table",
             sql,
         )
 

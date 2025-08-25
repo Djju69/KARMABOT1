@@ -41,9 +41,9 @@ APP_VERSION = "feature/webapp-cabinets@4c342bb"
 
 # Optional Redis client for leader lock (non-breaking)
 try:
-    import aioredis  # type: ignore
+    from redis.asyncio import Redis as AsyncRedis  # type: ignore
 except Exception:  # pragma: no cover
-    aioredis = None
+    AsyncRedis = None  # type: ignore
 
 
 async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
@@ -51,7 +51,7 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
     Returns (owned: bool, release_coro: callable|None).
     Safe no-op if Redis not available or url empty.
     """
-    if not redis_url or not aioredis:
+    if not redis_url or not AsyncRedis:
         logging.getLogger(__name__).warning(
             "Polling leader lock disabled (no REDIS_URL or aioredis)"
         )
@@ -59,7 +59,9 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
 
     token = secrets.token_hex(16)
     try:
-        redis = await aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+        redis = AsyncRedis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+        # ensure connectivity
+        await redis.ping()
     except Exception as e:
         logging.getLogger(__name__).warning(
             f"Leader lock: cannot connect to Redis, proceeding without lock: {e}"

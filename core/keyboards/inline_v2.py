@@ -46,22 +46,43 @@ def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru"
     )
 
 
-def get_admin_cabinet_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+def get_admin_cabinet_inline(lang: str = "ru", is_superadmin: bool = False) -> InlineKeyboardMarkup:
     """
     Admin cabinet inline keyboard. Callbacks use namespace adm:*
     """
+    rows = [
+        [InlineKeyboardButton(text=get_text("admin_menu_queue", lang), callback_data="adm:queue")],
+        [
+            InlineKeyboardButton(text=get_text("admin_menu_search", lang), callback_data="adm:search"),
+            InlineKeyboardButton(text=get_text("admin_menu_reports", lang), callback_data="adm:reports"),
+        ],
+    ]
+    if is_superadmin:
+        rows.insert(0, [InlineKeyboardButton(text="👑 Суперадмин", callback_data="adm:su")])
+    rows.append([InlineKeyboardButton(text=get_text("back", lang), callback_data="adm:back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def get_superadmin_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Superadmin submenu inline keyboard. Callbacks: adm:su:*"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text=get_text("admin_menu_queue", lang), callback_data="adm:queue"),
-            ],
-            [
-                InlineKeyboardButton(text=get_text("admin_menu_search", lang), callback_data="adm:search"),
-                InlineKeyboardButton(text=get_text("admin_menu_reports", lang), callback_data="adm:reports"),
-            ],
-            [
-                InlineKeyboardButton(text=get_text("back", lang), callback_data="adm:back"),
-            ],
+            [InlineKeyboardButton(text="🚫 Бан", callback_data="adm:su:ban"), InlineKeyboardButton(text="✅ Разбан", callback_data="adm:su:unban")],
+            [InlineKeyboardButton(text="🗑 Удалить", callback_data="adm:su:del")],
+            [InlineKeyboardButton(text="🗑 Удалить пользователя", callback_data="adm:su:deluser")],
+            [InlineKeyboardButton(text="➕ Добавить карточку", callback_data="adm:su:addcard")],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="adm:queue")],
+        ]
+    )
+
+def get_superadmin_delete_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Delete submenu for superadmin. Callbacks: adm:su:del*"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🗑 Выбрать все", callback_data="adm:su:delallcards")],
+            [InlineKeyboardButton(text="🗑 Удалить карточку", callback_data="adm:su:delcard")],
+            [InlineKeyboardButton(text="🗑 Все карточки партнёра", callback_data="adm:su:delcards_by_tg")],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="adm:su")],
         ]
     )
 

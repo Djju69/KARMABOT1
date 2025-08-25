@@ -16,6 +16,7 @@ from ..settings import settings
 from ..services.profile import profile_service
 from ..services.admins import admins_service
 from ..utils.telemetry import log_event
+from ..database.db_v2 import db_v2
 
 router = Router(name=__name__)
 logger = logging.getLogger(__name__)
@@ -34,13 +35,20 @@ async def _send_welcome_with_policy(message: Message):
 async def ensure_policy_accepted(message: Message) -> bool:
     """Return True if policy accepted. Otherwise send welcome and return False."""
     user_id = message.from_user.id
+    # Ban gate: block all interactions if banned
+    try:
+        if db_v2.is_user_banned(user_id):
+            await message.answer("🚫 Доступ ограничен. Обратитесь к администратору.")
+            return False
+    except Exception:
+        pass
     if not await profile_service.is_policy_accepted(user_id):
         await log_event("policy_gate_blocked", user=message.from_user, command=getattr(message, 'text', None))
         await _send_welcome_with_policy(message)
         return False
     return True
 async def get_start(message: Message):
-    from ..keyboards.reply_v2 import get_main_menu_reply
+    from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_admin
     from ..keyboards.inline_v2 import get_policy_inline
     
     user_id = message.from_user.id
@@ -73,11 +81,12 @@ async def get_start(message: Message):
     else:
         # Если политика уже принята, показываем главное меню (БЕЗ QR WebApp в главном меню)
         await log_event("main_menu_opened", user=message.from_user)
-        from ..keyboards.reply_v2 import get_main_menu_reply
-        await message.answer(
-            text=get_text('main_menu_title', lang),
-            reply_markup=get_main_menu_reply(lang)
-        )
+        from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_admin
+        if await admins_service.is_admin(user_id):
+            kb = get_main_menu_reply_admin(lang)
+        else:
+            kb = get_main_menu_reply(lang)
+        await message.answer(text=get_text('main_menu_title', lang), reply_markup=kb)
 
 
 async def main_menu(message: Message):
@@ -87,7 +96,11 @@ async def main_menu(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("main_menu_opened", user=message.from_user)
     # Главное меню без кнопки WebApp QR
-    await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
+    if await admins_service.is_admin(message.from_user.id):
+        kb = get_main_menu_reply_admin(lang)
+    else:
+        kb = get_main_menu_reply(lang)
+    await message.answer(get_text('main_menu_title', lang), reply_markup=kb)
 
 
 # ==== Language & Help (Phase 1) ====
@@ -130,8 +143,12 @@ async def on_language_set(callback: CallbackQuery):
             await callback.message.delete()
         except Exception:
             pass
-        from ..keyboards.reply_v2 import get_main_menu_reply
-        await callback.message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
+        from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_admin
+        if await admins_service.is_admin(callback.from_user.id):
+            kb = get_main_menu_reply_admin(lang)
+        else:
+            kb = get_main_menu_reply(lang)
+        await callback.message.answer(get_text('main_menu_title', lang), reply_markup=kb)
         await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
@@ -177,7 +194,7 @@ async def open_cabinet(message: Message):
     if settings.features.moderation and await admins_service.is_admin(user_id):
         await message.answer(
             f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
-            reply_markup=get_admin_cabinet_inline(lang),
+            reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
         )
         return
     # Partner cabinet (MVP): if partner FSM enabled and partner_active flag set -> show partner reply keyboard

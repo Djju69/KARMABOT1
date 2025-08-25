@@ -3,9 +3,9 @@ import logging
 from typing import Optional
 
 try:
-    import aioredis  # type: ignore
+    from redis.asyncio import Redis as AsyncRedis  # type: ignore
 except Exception:  # optional dependency
-    aioredis = None
+    AsyncRedis = None  # type: ignore
 
 from ..settings import settings
 from ..utils.telemetry import log_event
@@ -25,19 +25,20 @@ class CacheService:
 
     def __init__(self, redis_url: str):
         self._redis_url = redis_url or ""
-        self._redis = None
+        self._redis: Optional[AsyncRedis] = None
         self._mem = {}  # fallback
         self._lock = Lock()
 
     async def connect(self):
-        if self._redis_url and aioredis:
+        if self._redis_url and AsyncRedis:
             try:
-                self._redis = await aioredis.from_url(self._redis_url, encoding="utf-8", decode_responses=True)
+                self._redis = AsyncRedis.from_url(self._redis_url, encoding="utf-8", decode_responses=True)
+                await self._redis.ping()
                 logger.info("✅ CacheService connected to Redis")
             except Exception as e:
                 logger.warning(f"CacheService: Redis unavailable, fallback to memory: {e}")
         else:
-            logger.info("⚠️ CacheService running in memory mode (no REDIS_URL or aioredis)")
+            logger.info("⚠️ CacheService running in memory mode (no REDIS_URL or redis.asyncio)")
 
     async def close(self):
         try:

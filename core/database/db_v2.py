@@ -172,6 +172,106 @@ class DatabaseServiceV2:
             
             return [dict(row) for row in cursor.fetchall()]
 
+    # --- Superadmin helpers: bans and deletions ---
+    def ban_user(self, tg_user_id: int, reason: str = "") -> None:
+        """Ban Telegram user by ID (idempotent)."""
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO banned_users(user_id, reason, banned_at)
+                VALUES(?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(user_id) DO UPDATE SET reason=excluded.reason, banned_at=CURRENT_TIMESTAMP, unbanned_at=NULL
+                """,
+                (int(tg_user_id), reason or ""),
+            )
+
+    def unban_user(self, tg_user_id: int) -> None:
+        """Remove ban for Telegram user (idempotent)."""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE banned_users SET unbanned_at=CURRENT_TIMESTAMP WHERE user_id = ?",
+                (int(tg_user_id),),
+            )
+            conn.execute("DELETE FROM banned_users WHERE user_id = ?", (int(tg_user_id),))
+
+    def is_user_banned(self, tg_user_id: int) -> bool:
+        with self.get_connection() as conn:
+            cur = conn.execute("SELECT 1 FROM banned_users WHERE user_id = ?", (int(tg_user_id),))
+            return cur.fetchone() is not None
+
+    def delete_user_cascade_by_tg_id(self, tg_user_id: int) -> dict:
+        """Delete user-related data: partner, cards (via cascade), QR, moderation logs, loyalty.* tables.
+        Returns counts per table (best-effort).
+        """
+        stats = {"partners_v2": 0, "cards_v2": 0, "qr_codes_v2": 0, "moderation_log": 0,
+                 "loyalty_wallets": 0, "loy_spend_intents": 0, "user_cards": 0, "loyalty_transactions": 0}
+        with self.get_connection() as conn:
+            # Count cards before delete for stats
+            partner_id = None
+            cur = conn.execute("SELECT id FROM partners_v2 WHERE tg_user_id = ?", (int(tg_user_id),))
+            row = cur.fetchone()
+            if row:
+                partner_id = int(row[0])
+                # gather related counts
+                cur = conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ?", (partner_id,))
+                stats["cards_v2"] = int(cur.fetchone()[0])
+                cur = conn.execute("SELECT COUNT(*) FROM qr_codes_v2 WHERE card_id IN (SELECT id FROM cards_v2 WHERE partner_id = ?)", (partner_id,))
+                stats["qr_codes_v2"] = int(cur.fetchone()[0])
+                cur = conn.execute("SELECT COUNT(*) FROM moderation_log WHERE card_id IN (SELECT id FROM cards_v2 WHERE partner_id = ?)", (partner_id,))
+                stats["moderation_log"] = int(cur.fetchone()[0])
+                # delete partner (CASCADE deletes cards/qr/mod)
+                conn.execute("DELETE FROM partners_v2 WHERE id = ?", (partner_id,))
+                stats["partners_v2"] = 1
+            # loyalty tables keyed by Telegram user_id
+            for table in ("loyalty_wallets", "loy_spend_intents", "user_cards", "loyalty_transactions"):
+                res = conn.execute(f"DELETE FROM {table} WHERE user_id = ?", (int(tg_user_id),))
+                stats[table] = res.rowcount or stats.get(table, 0)
+            # clear ban if exists
+            conn.execute("DELETE FROM banned_users WHERE user_id = ?", (int(tg_user_id),))
+        return stats
+
+    def delete_card(self, card_id: int) -> bool:
+        with self.get_connection() as conn:
+            cur = conn.execute("DELETE FROM cards_v2 WHERE id = ?", (int(card_id),))
+            return (cur.rowcount or 0) > 0
+
+    def delete_cards_by_partner_tg(self, tg_user_id: int) -> int:
+        with self.get_connection() as conn:
+            cur = conn.execute("SELECT id FROM partners_v2 WHERE tg_user_id = ?", (int(tg_user_id),))
+            row = cur.fetchone()
+            if not row:
+                return 0
+            partner_id = int(row[0])
+            cur = conn.execute("DELETE FROM cards_v2 WHERE partner_id = ?", (partner_id,))
+            return cur.rowcount or 0
+
+    def delete_all_cards(self) -> int:
+        with self.get_connection() as conn:
+            cur = conn.execute("DELETE FROM cards_v2")
+            return cur.rowcount or 0
+
+    def admin_add_card(self, partner_tg_id: int, category_slug: str, title: str, **fields) -> Optional[int]:
+        """Create a card on behalf of partner by Telegram ID and category slug. Returns new card id or None."""
+        partner = self.get_or_create_partner(int(partner_tg_id))
+        category = self.get_category_by_slug(category_slug)
+        if not category:
+            return None
+        card = Card(
+            id=None,
+            partner_id=int(partner.id),
+            category_id=int(category.id),
+            title=title,
+            description=fields.get("description"),
+            contact=fields.get("contact"),
+            address=fields.get("address"),
+            google_maps_url=fields.get("google_maps_url"),
+            photo_file_id=fields.get("photo_file_id"),
+            discount_text=fields.get("discount_text"),
+            status=fields.get("status", "draft"),
+            priority_level=int(fields.get("priority_level", 0)),
+        )
+        return self.create_card(card)
+
     def get_card_by_id(self, card_id: int) -> Optional[Dict[str, Any]]:
         """Get single card by ID with joined fields"""
         with self.get_connection() as conn:

@@ -10,7 +10,7 @@ import logging
 from ..settings import settings
 from ..utils.locales_v2 import get_text
 from ..services.profile import profile_service
-from ..keyboards.inline_v2 import get_admin_cabinet_inline
+from ..keyboards.inline_v2 import get_admin_cabinet_inline, get_superadmin_inline, get_superadmin_delete_inline
 from ..keyboards.reply_v2 import get_main_menu_reply
 from ..services.admins import admins_service
 from ..database.db_v2 import db_v2
@@ -67,16 +67,43 @@ async def open_admin_cabinet(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(
         f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
-        reply_markup=get_admin_cabinet_inline(lang),
+        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
     )
 
 
 # --- Inline callbacks ---
+@router.message(F.text == "👑 Админ кабинет")
+async def open_admin_cabinet_by_button(message: Message):
+    if not settings.features.moderation:
+        await message.answer("🚧 Модуль модерации отключён.")
+        return
+    if not await admins_service.is_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещён.")
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    await message.answer(
+        f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
+        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
+    )
+
 @router.callback_query(F.data == "adm:back")
 async def admin_back(callback: CallbackQuery):
     lang = await profile_service.get_lang(callback.from_user.id)
     await callback.message.edit_text(get_text('main_menu_title', lang))
     await callback.message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
+    await callback.answer()
+
+
+@router.callback_query(F.data == "adm:su:del")
+async def su_menu_delete(callback: CallbackQuery):
+    if not _is_super_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    lang = await profile_service.get_lang(callback.from_user.id)
+    try:
+        await callback.message.edit_text("🗑 Удаление: выберите вариант", reply_markup=get_superadmin_delete_inline(lang))
+    except Exception:
+        await callback.message.answer("🗑 Удаление: выберите вариант", reply_markup=get_superadmin_delete_inline(lang))
     await callback.answer()
 
 
@@ -88,9 +115,9 @@ async def admin_queue(callback: CallbackQuery):
     lang = await profile_service.get_lang(callback.from_user.id)
     text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}"
     try:
-        await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang))
+        await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(callback.from_user.id == settings.bots.admin_id)))
     except Exception:
-        await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang))
+        await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(callback.from_user.id == settings.bots.admin_id)))
     await callback.answer()
 
 
@@ -187,39 +214,135 @@ def get_admin_cabinet_router() -> Router:
     return Router()
 
 
-# --- Super admin management commands ---
-@router.message(Command("admin_add"))
-async def cmd_admin_add(message: Message):
-    parts = message.text.strip().split()
-    if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer("Использование: /admin_add <tg_id>")
+# --- Superadmin inline UI & flows (no slash commands) ---
+def _is_super_admin(user_id: int) -> bool:
+    return int(user_id) == int(settings.bots.admin_id)
+
+
+@router.callback_query(F.data == "adm:su")
+async def su_menu(callback: CallbackQuery):
+    if not _is_super_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
         return
-    target = int(parts[1])
-    ok, msg = await admins_service.add_admin(message.from_user.id, target)
-    await message.answer(msg)
+    lang = await profile_service.get_lang(callback.from_user.id)
+    try:
+        await callback.message.edit_text("👑 Суперадмин: выберите действие", reply_markup=get_superadmin_inline(lang))
+    except Exception:
+        await callback.message.answer("👑 Суперадмин: выберите действие", reply_markup=get_superadmin_inline(lang))
+    await callback.answer()
 
 
-@router.message(Command("admin_remove"))
-async def cmd_admin_remove(message: Message):
-    parts = message.text.strip().split()
-    if len(parts) != 2 or not parts[1].isdigit():
-        await message.answer("Использование: /admin_remove <tg_id>")
+# Simple in-memory state for prompt flows
+_su_pending: dict[int, dict] = {}
+
+
+def _su_set(uid: int, action: str):
+    _su_pending[uid] = {"action": action, "ts": time.time()}
+
+
+def _su_pop(uid: int) -> dict | None:
+    return _su_pending.pop(uid, None)
+
+
+@router.callback_query(F.data.startswith("adm:su:"))
+async def su_action(callback: CallbackQuery):
+    if not _is_super_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
         return
-    target = int(parts[1])
-    ok, msg = await admins_service.remove_admin(message.from_user.id, target)
-    await message.answer(msg)
-
-
-@router.message(Command("admin_list"))
-async def cmd_admin_list(message: Message):
-    if message.from_user.id != settings.bots.admin_id:
-        await message.answer("❌ Только главный админ может смотреть список админов.")
+    action = callback.data.split(":", 2)[-1]
+    prompts = {
+        "ban": "Введите: <tg_id> [причина]",
+        "unban": "Введите: <tg_id>",
+        "deluser": "Опасно! Введите: <tg_id> ДА",
+        "delcard": "Опасно! Введите: <card_id> ДА",
+        "delcards_by_tg": "Опасно! Введите: <partner_tg_id> ДА",
+        "delallcards": "Опасно! Это удалит ВСЕ карточки. Для подтверждения введите: ДА",
+        "addcard": "Введите: <partner_tg_id> <category_slug> <title> [описание]",
+    }
+    if action not in prompts:
+        await callback.answer("Неизвестное действие", show_alert=False)
         return
-    lst = await admins_service.list_admins()
-    text = "👑 Главный админ: %d\n" % settings.bots.admin_id
-    others = [x for x in lst if x != settings.bots.admin_id]
-    if others:
-        text += "👥 Админы: " + ", ".join(str(x) for x in others)
-    else:
-        text += "👥 Админы: (пусто)"
-    await message.answer(text)
+    _su_set(callback.from_user.id, action)
+    await callback.message.answer("✍️ " + prompts[action])
+    await callback.answer()
+
+
+@router.message()
+async def su_message_prompt_handler(message: Message):
+    # Handle only pending superadmin prompts
+    st = _su_pop(message.from_user.id)
+    if not st:
+        return  # not for us
+    if not _is_super_admin(message.from_user.id):
+        await message.answer("❌ Только главный админ")
+        return
+    action = st.get("action")
+    text = (message.text or "").strip()
+    try:
+        if action == "ban":
+            parts = text.split(maxsplit=1)
+            if not parts or not parts[0].isdigit():
+                await message.answer("Неверный формат. Ожидается: <tg_id> [причина]")
+                return
+            uid = int(parts[0])
+            reason = parts[1] if len(parts) > 1 else ""
+            db_v2.ban_user(uid, reason)
+            await message.answer(f"🚫 Забанен: {uid}. {('Причина: '+reason) if reason else ''}")
+        elif action == "unban":
+            if not text.isdigit():
+                await message.answer("Неверный формат. Ожидается: <tg_id>")
+                return
+            uid = int(text)
+            db_v2.unban_user(uid)
+            await message.answer(f"✅ Разбанен: {uid}")
+        elif action == "deluser":
+            parts = text.split()
+            if len(parts) < 2 or not parts[0].isdigit() or parts[-1].upper() != "ДА":
+                await message.answer("Неверный формат. Ожидается: <tg_id> ДА")
+                return
+            uid = int(parts[0])
+            stats = db_v2.delete_user_cascade_by_tg_id(uid)
+            await message.answer(
+                "🗑 Удаление пользователя завершено.\n"
+                f"partners_v2: {stats.get('partners_v2',0)}, cards_v2: {stats.get('cards_v2',0)}, qr_codes_v2: {stats.get('qr_codes_v2',0)}, moderation_log: {stats.get('moderation_log',0)}\n"
+                f"loyalty_wallets: {stats.get('loyalty_wallets',0)}, loy_spend_intents: {stats.get('loy_spend_intents',0)}, user_cards: {stats.get('user_cards',0)}, loyalty_transactions: {stats.get('loyalty_transactions',0)}"
+            )
+        elif action == "delcard":
+            parts = text.split()
+            if len(parts) < 2 or not parts[0].isdigit() or parts[-1].upper() != "ДА":
+                await message.answer("Неверный формат. Ожидается: <card_id> ДА")
+                return
+            cid = int(parts[0])
+            ok = db_v2.delete_card(cid)
+            await message.answer("🗑 Карточка удалена" if ok else "❌ Карточка не найдена")
+        elif action == "delcards_by_tg":
+            parts = text.split()
+            if len(parts) < 2 or not parts[0].isdigit() or parts[-1].upper() != "ДА":
+                await message.answer("Неверный формат. Ожидается: <partner_tg_id> ДА")
+                return
+            pid = int(parts[0])
+            n = db_v2.delete_cards_by_partner_tg(pid)
+            await message.answer(f"🗑 Удалено карточек: {n}")
+        elif action == "delallcards":
+            if text.strip().upper() != "ДА":
+                await message.answer("Операция отменена. Для подтверждения нужно ввести: ДА")
+                return
+            n = db_v2.delete_all_cards()
+            await message.answer(f"🗑 Удалены ВСЕ карточки. Количество: {n}")
+        elif action == "addcard":
+            parts = text.split(maxsplit=3)
+            if len(parts) < 3 or not parts[0].isdigit():
+                await message.answer("Неверный формат. Ожидается: <partner_tg_id> <category_slug> <title> [описание]")
+                return
+            partner_tg = int(parts[0])
+            cat = parts[1]
+            title = parts[2]
+            desc = parts[3] if len(parts) > 3 else None
+            new_id = db_v2.admin_add_card(partner_tg, cat, title, description=desc, status="draft")
+            if new_id:
+                await message.answer(f"✅ Карточка создана ID={new_id} (draft)")
+            else:
+                await message.answer("❌ Не удалось создать карточку (проверьте категорию)")
+    except Exception as e:
+        logger.error(f"su_message_prompt_handler error: {e}")
+        await message.answer("❌ Ошибка выполнения действия")

@@ -24,6 +24,7 @@ Thumbs.db
 # Project-specific
 RAILWAY_VARS.txt
 core/database/data.db
+input
 
 # Logs and runtime artifacts
 logs/

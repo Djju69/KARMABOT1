@@ -37,6 +37,31 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         input_field_placeholder=get_text('choose_action', lang)
     )
 
+def get_main_menu_reply_admin(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """
+    Главное Reply-меню для админов: добавлена кнопка входа в админ-кабинет.
+    """
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('choose_category', lang)),
+                KeyboardButton(text=get_text('show_nearest', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('help', lang)),
+                KeyboardButton(text=get_text('choose_language', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('profile', lang)),
+            ],
+            [
+                KeyboardButton(text="👑 Админ кабинет"),
+            ],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_action', lang)
+    )
+
 def get_spa_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Клавиатура для подменю 'SPA'."""
     return ReplyKeyboardMarkup(
@@ -248,6 +273,7 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 # Export commonly used keyboards
 __all__ = [
     'get_main_menu_reply',
+    'get_main_menu_reply_admin',
     'get_main_menu_reply_with_qr',
     'get_return_to_main_menu',
     'get_categories_keyboard',
