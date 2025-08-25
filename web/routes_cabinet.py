@@ -12,6 +12,7 @@ import json, base64
 from core.security.jwt_service import verify_partner, verify_admin
 from core.settings import settings
 from core.services.partners import is_partner
+from core.services.cards import card_service
 
 router = APIRouter()
 logger = logging.getLogger("auth")
@@ -209,6 +210,36 @@ class CardUpdate(BaseModel):
 
 class CardsResponse(BaseModel):
     items: List[Card]
+
+
+# --- Card binding (plastic card UID) ---
+class BindCardRequest(BaseModel):
+    uid: str = Field(..., min_length=8, max_length=64, description="UID from card QR (typically 12 digits)")
+
+class BindCardResponse(BaseModel):
+    ok: bool
+    last4: str | None = None
+    reason: str | None = None  # invalid | taken | blocked
+
+
+@router.post("/card/bind", response_model=BindCardResponse)
+async def bind_card_api(payload: BindCardRequest, claims: Dict[str, Any] = Depends(get_current_claims)):
+    """Bind a plastic card UID to current authenticated user (by Telegram user id in token)."""
+    try:
+        tg_user_id = int(claims.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid sub in token")
+    uid = (payload.uid or "").strip()
+    # Basic normalization: keep only digits if mostly digit-based UIDs
+    if uid:
+        import re as _re
+        m = _re.findall(r"\d+", uid)
+        if m and len("".join(m)) >= 8:
+            uid = "".join(m)
+    res = card_service.bind_card(tg_user_id, uid)
+    if not res.ok:
+        return BindCardResponse(ok=False, last4=None, reason=(res.reason or "invalid"))
+    return BindCardResponse(ok=True, last4=res.last4, reason=None)
 
 
 # --- Categories for Partner UI ---

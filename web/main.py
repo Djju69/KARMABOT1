@@ -47,7 +47,11 @@ class CSPMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response: Response = await call_next(request)
         try:
-            csp_origin = getattr(getattr(settings, 'web', None), 'csp_allowed_origin', None) or getattr(settings, 'CSP_ALLOWED_ORIGIN', None)
+            csp_origin = (
+                getattr(getattr(settings, 'web', None), 'csp_allowed_origin', None)
+                or getattr(settings, 'CSP_ALLOWED_ORIGIN', None)
+                or getattr(settings, 'csp_allowed_origin', None)
+            )
             if csp_origin:
                 # CSP allowing our origin, Telegram resources and inline where necessary for WebApp
                 tg_script = "https://telegram.org"
@@ -123,7 +127,11 @@ async def _http_exc_handler(request: Request, exc: StarletteHTTPException):
 
 # CORS
 try:
-    allowed_origin = getattr(getattr(settings, 'web', None), 'allowed_origin', None) or getattr(settings, 'WEBAPP_ALLOWED_ORIGIN', None)
+    allowed_origin = (
+        getattr(getattr(settings, 'web', None), 'allowed_origin', None)
+        or getattr(settings, 'WEBAPP_ALLOWED_ORIGIN', None)
+        or getattr(settings, 'webapp_allowed_origin', None)
+    )
     if allowed_origin:
         app.add_middleware(
             CORSMiddleware,
@@ -283,6 +291,156 @@ async def favicon():
 async def legacy_dist(path: str):
     # Tell browser these bundles are gone
     return Response(status_code=410)
+
+
+# --- Minimal QR scanner page for binding plastic cards
+@app.get("/scan", response_class=HTMLResponse)
+async def scan_qr_page():
+    html = """
+<!doctype html>
+<html lang=\"ru\">
+  <head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>Сканирование карты</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b1020; color:#e5e7eb }
+      .wrap { max-width: 640px; margin: 0 auto; padding: 16px }
+      .card { background:#0f172a; border:1px solid #1f2937; border-radius: 12px; padding:12px }
+      .muted { color:#94a3b8 }
+      button { padding:10px 14px; border-radius:10px; border:1px solid #1f2937; background:#0b1327; color:#e5e7eb; cursor:pointer }
+      button.primary { background:#2563eb; border-color:#2563eb }
+      video { width:100%; border-radius:12px; border:1px solid #1f2937; background:#000 }
+      input { width:100%; padding:10px; border-radius:8px; border:1px solid #334155; background:#0b1327; color:#e5e7eb }
+    </style>
+  </head>
+  <body>
+    <div class=\"wrap\">
+      <h2>🧾 Сканирование QR</h2>
+      <p class=\"muted\">Наведите камеру на QR-код пластиковой карты или введите UID вручную.</p>
+      <div class=\"card\" style=\"margin-bottom:12px\">
+        <video id=\"v\" playsinline></video>
+        <div style=\"display:flex; gap:8px; margin-top:10px\">
+          <button id=\"start\" class=\"primary\">Включить камеру</button>
+          <button id=\"stop\">Выключить</button>
+        </div>
+      </div>
+      <div class=\"card\" style=\"margin-bottom:12px\">
+        <div style=\"display:flex; gap:8px; align-items:center\">
+          <input id=\"uid\" placeholder=\"UID (12 цифр)\" />
+          <button id=\"bind\" class=\"primary\">Привязать</button>
+        </div>
+        <div id=\"status\" class=\"muted\" style=\"margin-top:8px\"></div>
+      </div>
+      <div id=\"note\" class=\"muted\"></div>
+    </div>
+    <script>
+      const v = document.getElementById('v');
+      const startBtn = document.getElementById('start');
+      const stopBtn = document.getElementById('stop');
+      const uidInput = document.getElementById('uid');
+      const bindBtn = document.getElementById('bind');
+      const statusEl = document.getElementById('status');
+      const note = document.getElementById('note');
+
+      let authToken = null;
+      function getTokenFromUrl(){ try { return new URL(location.href).searchParams.get('token'); } catch(_) { return null } }
+      function setStatus(msg){ try { statusEl.textContent = msg || ''; } catch(_){} }
+      function normalize(text){ return (text||'').trim(); }
+
+      let stream = null;
+      let detector = null;
+      let loop = false;
+
+      async function startCamera(){
+        try {
+          if (!('BarcodeDetector' in window)) {
+            note.textContent = 'BarcodeDetector не поддерживается на этом устройстве. Введите UID вручную.';
+            return;
+          }
+          detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+          v.srcObject = stream; await v.play();
+          loop = true; scanLoop();
+          setStatus('Камера включена. Наведите на QR-код.');
+        } catch (e) {
+          setStatus('Не удалось включить камеру: ' + (e && e.message ? e.message : e));
+        }
+      }
+      async function stopCamera(){
+        loop = false;
+        try { if (v) v.pause && v.pause(); } catch(_){}
+        try { if (stream) stream.getTracks().forEach(t => t.stop()); } catch(_){ }
+        stream = null;
+        setStatus('Камера выключена');
+      }
+      async function scanLoop(){
+        while(loop && detector && v && v.readyState >= 2){
+          try {
+            const bitmaps = await createImageBitmap(v);
+            const codes = await detector.detect(bitmaps).catch(()=>[]);
+            if (codes && codes.length){
+              const raw = codes[0].rawValue || codes[0].raw || '';
+              const text = normalize(raw);
+              if (text) {
+                uidInput.value = text;
+                setStatus('Найден QR: ' + text);
+                await doBind(text);
+                break;
+              }
+            }
+          } catch(_){}
+          await new Promise(r => setTimeout(r, 250));
+        }
+      }
+      async function ensureAuth(){
+        if (authToken) return authToken;
+        const urlTok = getTokenFromUrl();
+        if (urlTok) { authToken = urlTok; return authToken; }
+        try {
+          if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) {
+            const r = await fetch('/auth/webapp', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ initData: Telegram.WebApp.initData })
+            });
+            const data = await r.json().catch(()=>null);
+            if (data && data.token) { authToken = data.token; return authToken; }
+          }
+        } catch(_){}
+        return null;
+      }
+
+      async function doBind(val){
+        const token = await ensureAuth();
+        const uid = normalize(val || uidInput.value);
+        if (!uid) { setStatus('Введите UID'); return; }
+        setStatus('Привязка…');
+        try {
+          const url = '/cabinet/card/bind' + (token ? ('?token=' + encodeURIComponent(token)) : '');
+          const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid }) });
+          const data = await r.json().catch(()=>({ ok:false }));
+          if (data && data.ok){
+            setStatus('✅ Карта привязана' + (data.last4 ? (' (…' + data.last4 + ')') : ''));
+            try { if (window.Telegram && Telegram.WebApp) Telegram.WebApp.close(); } catch(_){}
+          } else {
+            const reason = (data && data.reason) || 'invalid';
+            let msg = '❌ Ошибка привязки: ' + reason;
+            if (reason === 'taken') msg = '❌ Карта уже привязана к другому аккаунту';
+            if (reason === 'blocked') msg = '❌ Карта заблокирована';
+            setStatus(msg);
+          }
+        } catch(e){ setStatus('Ошибка сети: ' + (e && e.message ? e.message : e)); }
+      }
+
+      startBtn.addEventListener('click', startCamera);
+      stopBtn.addEventListener('click', stopCamera);
+      bindBtn.addEventListener('click', () => doBind());
+      uidInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); doBind(); } });
+    </script>
+  </body>
+</html>
+    """
+    return _html(html)
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL

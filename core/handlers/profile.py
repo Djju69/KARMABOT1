@@ -19,7 +19,9 @@ from ..services.cards import card_service
 from ..keyboards.reply_v2 import (
     get_profile_keyboard,
     get_profile_settings_keyboard,
+    get_profile_keyboard_with_qr,
 )
+from ..settings import settings
 
 profile_router = Router()
 logger = logging.getLogger(__name__)
@@ -51,7 +53,12 @@ async def render_profile(message: Message):
         logger.info("profile.render user_id=%s lang=%s notify_on=%s", user_id, lang, notify_on)
     except Exception:
         pass
-    await message.answer(text, reply_markup=get_profile_keyboard(lang))
+    # Use QR WebApp keyboard if enabled and URL present
+    if settings.features.qr_webapp and settings.webapp_qr_url:
+        kb = get_profile_keyboard_with_qr(lang, settings.webapp_qr_url)
+    else:
+        kb = get_profile_keyboard(lang)
+    await message.answer(text, reply_markup=kb)
 
 
 @profile_router.message(F.text.in_(_texts('profile_settings')))
@@ -70,7 +77,12 @@ async def on_profile_stats(message: Message):
 @profile_router.message(F.text.in_(_texts('add_card')))
 async def on_add_card(message: Message):
     lang = await profile_service.get_lang(message.from_user.id)
-    await message.answer(get_text('card.bind.prompt', lang), reply_markup=get_profile_keyboard(lang))
+    await cache_service.set(f"card_bind_wait:{message.from_user.id}", "1", ex=300)
+    # Inform about available options; keep manual UID entry as currently supported
+    await message.answer(
+        get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang),
+        reply_markup=(get_profile_keyboard_with_qr(lang, settings.webapp_qr_url) if (settings.features.qr_webapp and settings.webapp_qr_url) else get_profile_keyboard(lang))
+    )
 
 
 @profile_router.message(F.text.in_(_texts('my_cards')))
@@ -103,6 +115,17 @@ async def on_card_uid_entered(m: Message):
             await m.answer("❌ Неверный UID карты. Введите 12 цифр.")
         return
     await m.answer(f"✅ Карта с окончанием {res.last4} успешно привязана.")
+
+
+# Temporary: accept photo during bind flow and ask for manual input until QR decoding is implemented
+@profile_router.message(F.photo)
+async def on_card_photo(message: Message):
+    # Proceed only if user is in bind-await state
+    if not (await cache_service.get(f"card_bind_wait:{message.from_user.id}")):
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    await message.answer(
+        "📷 Обработка QR с фото будет доступна скоро. Пожалуйста, отправьте номер карты (12 цифр) сообщением.")
 
 
 @profile_router.message(F.text.in_(_texts('choose_language')))

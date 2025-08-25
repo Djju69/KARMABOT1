@@ -195,6 +195,21 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+def get_profile_keyboard_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
+    """Profile keyboard with WebApp 'Сканировать QR' on the first row if URL provided."""
+    base = get_profile_keyboard(lang)
+    if not webapp_url or WebAppInfo is None:
+        return base
+    try:
+        # Insert a row above with a single WebApp button
+        t = get_all_texts(lang)
+        qr_text = get_text('menu_scan_qr', lang) if callable(get_text) else t.get('menu_scan_qr', 'Сканировать QR')
+        qr_row = [KeyboardButton(text=qr_text, web_app=WebAppInfo(url=webapp_url))]
+        new_kbd = [qr_row] + base.keyboard
+        return ReplyKeyboardMarkup(keyboard=new_kbd, resize_keyboard=True)
+    except Exception:
+        return base
+
 def get_profile_settings_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Settings menu for profile as ReplyKeyboardMarkup (Language + Notifications)."""
     return ReplyKeyboardMarkup(
@@ -251,6 +266,7 @@ __all__ = [
     'get_hotels_reply_keyboard',
     'get_language_keyboard',
     'get_profile_keyboard',
+    'get_profile_keyboard_with_qr',
     'get_location_request_keyboard',
     'get_contact_request_keyboard',
     # Legacy aliases

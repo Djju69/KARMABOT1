@@ -208,6 +208,13 @@ async def main():
     return True
 
 if __name__ == "__main__":
+    # Safety guard: do NOT run this debug bot unless explicitly enabled.
+    enable = os.getenv("ENABLE_DEBUG_BOT", "0")
+    env = (os.getenv("ENVIRONMENT", "").lower() or os.getenv("ASPNETCORE_ENVIRONMENT", "").lower())
+    allowed_env = env in {"debug", "development", "local"}
+    if enable != "1" or not allowed_env:
+        logger.info("debug_main.py skipped (ENABLE_DEBUG_BOT!=1 or ENVIRONMENT not in [debug,development,local])")
+        sys.exit(0)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
