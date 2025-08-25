@@ -130,12 +130,14 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         # Handle legacy 'postgres://' scheme by upgrading to asyncpg
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
-    # Feature flags (all OFF by default for safety)
+    # Preload WebApp URL to allow feature default derived from its presence
+    default_webapp_qr_url = env.str("WEBAPP_QR_URL", "https://web-production-d51c7.up.railway.app")
+    # Feature flags (safe defaults). QR WebApp defaults to ON if WebApp URL is configured
     features = FeatureFlags(
         partner_fsm=env.bool("FEATURE_PARTNER_FSM", False),
         moderation=env.bool("FEATURE_MODERATION", False),
         new_menu=env.bool("FEATURE_NEW_MENU", False),
-        qr_webapp=env.bool("FEATURE_QR_WEBAPP", False),
+        qr_webapp=env.bool("FEATURE_QR_WEBAPP", bool(default_webapp_qr_url)),
         listen_notify=env.bool("FEATURE_LISTEN_NOTIFY", False),
         webapp_security=env.bool("FEATURE_WEBAPP_SECURITY", False)
     )
@@ -156,7 +158,7 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         pdf_partner_ko=env.str("PDF_PARTNER_KO", ""),
         support_tg=env.str("SUPPORT_TG", ""),
         # Default to production Railway domain if not provided to ensure WebApp links work (policy/help)
-        webapp_qr_url=env.str("WEBAPP_QR_URL", "https://web-production-d51c7.up.railway.app"),
+        webapp_qr_url=default_webapp_qr_url,
         default_lang=env.str("DEFAULT_LANG", "ru"),
         default_city=env.str("DEFAULT_CITY", ""),
         jwt_secret=env.str("JWT_SECRET", ""),

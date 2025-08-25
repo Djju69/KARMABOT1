@@ -53,9 +53,10 @@ async def render_profile(message: Message):
         logger.info("profile.render user_id=%s lang=%s notify_on=%s", user_id, lang, notify_on)
     except Exception:
         pass
-    # Use QR WebApp keyboard if enabled and URL present
+    # Use QR WebApp keyboard if enabled and URL present (open /scan)
     if settings.features.qr_webapp and settings.webapp_qr_url:
-        kb = get_profile_keyboard_with_qr(lang, settings.webapp_qr_url)
+        base = settings.webapp_qr_url.rstrip('/')
+        kb = get_profile_keyboard_with_qr(lang, f"{base}/scan")
     else:
         kb = get_profile_keyboard(lang)
     await message.answer(text, reply_markup=kb)
@@ -81,7 +82,12 @@ async def on_add_card(message: Message):
     # Inform about available options; keep manual UID entry as currently supported
     await message.answer(
         get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang),
-        reply_markup=(get_profile_keyboard_with_qr(lang, settings.webapp_qr_url) if (settings.features.qr_webapp and settings.webapp_qr_url) else get_profile_keyboard(lang))
+        reply_markup=(
+            get_profile_keyboard_with_qr(
+                lang,
+                f"{settings.webapp_qr_url.rstrip('/')}/scan"
+            ) if (settings.features.qr_webapp and settings.webapp_qr_url) else get_profile_keyboard(lang)
+        )
     )
 
 

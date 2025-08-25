@@ -70,8 +70,15 @@ async def get_start(message: Message):
     else:
         # Если политика уже принята, показываем главное меню
         await log_event("main_menu_opened", user=message.from_user)
-        # Веб-версия доступна только через командное меню /webapp
-        reply_kb = get_main_menu_reply(lang)
+        # Если включен QR WebApp — показываем кнопку WebApp в главном меню
+        from ..keyboards.reply_v2 import get_main_menu_reply_with_qr, get_main_menu_reply
+        scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
+        scan_url = f"{scan_url}/scan" if scan_url else None
+        reply_kb = (
+            get_main_menu_reply_with_qr(lang, scan_url)
+            if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
+            else get_main_menu_reply(lang)
+        )
         await message.answer(
             text=get_text('main_menu_title', lang),
             reply_markup=reply_kb
@@ -79,13 +86,19 @@ async def get_start(message: Message):
 
 
 async def main_menu(message: Message):
-    from ..keyboards.reply_v2 import get_main_menu_reply
+    from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_with_qr
     if not await ensure_policy_accepted(message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("main_menu_opened", user=message.from_user)
-    # Веб-версия доступна только через командное меню /webapp
-    reply_kb = get_main_menu_reply(lang)
+    # Если включен QR WebApp — показываем кнопку WebApp в главном меню
+    scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
+    scan_url = f"{scan_url}/scan" if scan_url else None
+    reply_kb = (
+        get_main_menu_reply_with_qr(lang, scan_url)
+        if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
+        else get_main_menu_reply(lang)
+    )
     await message.answer(get_text('main_menu_title', lang), reply_markup=reply_kb)
 
 
@@ -129,11 +142,15 @@ async def on_language_set(callback: CallbackQuery):
             await callback.message.delete()
         except Exception:
             pass
-        from ..keyboards.reply_v2 import get_main_menu_reply
-        await callback.message.answer(
-            get_text('main_menu_title', lang),
-            reply_markup=get_main_menu_reply(lang)
+        from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_with_qr
+        scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
+        scan_url = f"{scan_url}/scan" if scan_url else None
+        kb = (
+            get_main_menu_reply_with_qr(lang, scan_url)
+            if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
+            else get_main_menu_reply(lang)
         )
+        await callback.message.answer(get_text('main_menu_title', lang), reply_markup=kb)
         await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
@@ -305,8 +322,15 @@ async def on_policy_accept(callback: CallbackQuery):
 
     # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню
     await callback.message.delete()
-    # Веб-версия доступна только через командное меню /webapp
-    reply_kb = get_main_menu_reply(lang)
+    # Если включен QR WebApp — показываем кнопку WebApp в главном меню
+    from ..keyboards.reply_v2 import get_main_menu_reply_with_qr, get_main_menu_reply
+    scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
+    scan_url = f"{scan_url}/scan" if scan_url else None
+    reply_kb = (
+        get_main_menu_reply_with_qr(lang, scan_url)
+        if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
+        else get_main_menu_reply(lang)
+    )
     await callback.message.answer(
         get_text('main_menu_title', lang),
         reply_markup=reply_kb
