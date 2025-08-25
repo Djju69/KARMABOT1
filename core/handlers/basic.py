@@ -323,18 +323,15 @@ router.message.register(on_clear_cache, Command("clear_cache"))
 router.message.register(on_partner_on, Command("partner_on"))
 router.message.register(on_partner_off, Command("partner_off"))
 
-# Open language selection when user taps the reply button (e.g., "🌐 Язык")
-# We match by leading globe emoji to avoid hardcoding per-language labels.
-router.message.register(on_language_select, F.text.startswith("🌐"))
-
-# Open cabinet when user taps the reply button starting with person emoji (e.g., "👤 Личный кабинет")
-router.message.register(open_cabinet, F.text.startswith("👤"))
+# Note: emoji-based reply handlers for language/cabinet were removed to avoid
+# double-triggering together with main_menu_router translation-based handlers.
+# See core/handlers/main_menu_router.py for the canonical mappings.
 
 # Fallback for any other text messages (exclude known reply buttons handled elsewhere)
 @router.message(
     F.text,
-    ~F.text.startswith("🌐"),  # language
-    ~F.text.startswith("👤"),  # cabinet
+    # Exclude known reply buttons handled in main_menu_router by translation keys
+    # (no need for emoji-prefix exclusions here anymore)
     ~F.text.startswith("➕"),  # add card (partner router)
     ~F.text.startswith("📂"),  # my cards (partner router)
     ~F.text.startswith("🎁")   # quick entry points
