@@ -62,7 +62,12 @@ class CSPMiddleware(BaseHTTPMiddleware):
                     "connect-src 'self' " + str(csp_origin) + " " + tg_script + " " + tg_web + "; "
                     "style-src 'self' " + str(csp_origin) + " 'unsafe-inline'; "
                     "img-src 'self' data: " + str(csp_origin) + "; "
+                    "media-src 'self' blob: data:; "
                     "frame-ancestors 'self' " + tg_web + " " + tg_script + ";"
+                )
+                # Allow camera/microphone usage in embedded contexts (Telegram WebView)
+                response.headers["Permissions-Policy"] = (
+                    "camera=*, microphone=*, fullscreen=*"
                 )
         except Exception:
             pass
@@ -303,6 +308,7 @@ async def scan_qr_page():
     <meta charset=\"utf-8\" />
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
     <title>Сканирование карты</title>
+    <script src=\"https://telegram.org/js/telegram-web-app.js\"></script>
     <style>
       body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#0b1020; color:#e5e7eb }
       .wrap { max-width: 640px; margin: 0 auto; padding: 16px }
@@ -319,10 +325,13 @@ async def scan_qr_page():
       <h2>🧾 Сканирование QR</h2>
       <p class=\"muted\">Наведите камеру на QR-код пластиковой карты или введите UID вручную.</p>
       <div class=\"card\" style=\"margin-bottom:12px\">
-        <video id=\"v\" playsinline></video>
+        <video id=\"v\" playsinline muted></video>
         <div style=\"display:flex; gap:8px; margin-top:10px\">
           <button id=\"start\" class=\"primary\">Включить камеру</button>
           <button id=\"stop\">Выключить</button>
+          <button id=\"scanTg\" style=\"display:none\">Сканер Telegram</button>
+          <button id=\"pickPhoto\">Загрузить фото</button>
+          <input id=\"file\" type=\"file\" accept=\"image/*\" capture=\"environment\" style=\"display:none\" />
         </div>
       </div>
       <div class=\"card\" style=\"margin-bottom:12px\">
@@ -338,6 +347,9 @@ async def scan_qr_page():
       const v = document.getElementById('v');
       const startBtn = document.getElementById('start');
       const stopBtn = document.getElementById('stop');
+      const scanTgBtn = document.getElementById('scanTg');
+      const pickPhotoBtn = document.getElementById('pickPhoto');
+      const fileInput = document.getElementById('file');
       const uidInput = document.getElementById('uid');
       const bindBtn = document.getElementById('bind');
       const statusEl = document.getElementById('status');
@@ -347,6 +359,14 @@ async def scan_qr_page():
       function getTokenFromUrl(){ try { return new URL(location.href).searchParams.get('token'); } catch(_) { return null } }
       function setStatus(msg){ try { statusEl.textContent = msg || ''; } catch(_){} }
       function normalize(text){ return (text||'').trim(); }
+
+      // Telegram WebApp bootstrap (if available)
+      try {
+        if (window.Telegram && Telegram.WebApp) {
+          try { Telegram.WebApp.ready(); } catch(_){}
+          try { Telegram.WebApp.expand && Telegram.WebApp.expand(); } catch(_){}
+        }
+      } catch(_){}
 
       let stream = null;
       let detector = null;
@@ -358,9 +378,18 @@ async def scan_qr_page():
             note.textContent = 'BarcodeDetector не поддерживается на этом устройстве. Введите UID вручную.';
             return;
           }
+          if (!window.isSecureContext) {
+            setStatus('Требуется HTTPS/безопасный контекст для доступа к камере. Откройте через кнопку WebApp в Telegram.');
+            return;
+          }
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus('Доступ к камере не поддерживается в этом окружении. Используйте сканер Telegram или загрузите фото.');
+            return;
+          }
           detector = new window.BarcodeDetector({ formats: ['qr_code'] });
           stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-          v.srcObject = stream; await v.play();
+          v.srcObject = stream; try { v.muted = true; } catch(_){}
+          await v.play();
           loop = true; scanLoop();
           setStatus('Камера включена. Наведите на QR-код.');
         } catch (e) {
@@ -393,6 +422,51 @@ async def scan_qr_page():
           await new Promise(r => setTimeout(r, 250));
         }
       }
+      function setupTelegramScanner(){
+        try {
+          if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.showScanQrPopup === 'function'){
+            scanTgBtn.style.display = 'inline-block';
+            scanTgBtn.addEventListener('click', () => {
+              try {
+                Telegram.WebApp.showScanQrPopup({ text: 'Наведите на QR-код карты' }, async (data) => {
+                  try {
+                    const text = normalize(data || '');
+                    if (text){
+                      uidInput.value = text;
+                      setStatus('Найден QR (Telegram): ' + text);
+                      await doBind(text);
+                      try { Telegram.WebApp.closeScanQrPopup(); } catch(_){}
+                    }
+                  } catch(_){}
+                });
+              } catch(e){ setStatus('Не удалось открыть сканер Telegram: ' + (e && e.message ? e.message : e)); }
+            });
+          }
+        } catch(_) { /* ignore */ }
+      }
+      async function detectFromImageFile(file){
+        try {
+          if (!('BarcodeDetector' in window)){
+            setStatus('Сканирование изображения не поддерживается. Введите UID вручную.');
+            return;
+          }
+          if (!detector) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+          const bitmap = await createImageBitmap(file);
+          const codes = await detector.detect(bitmap).catch(()=>[]);
+          if (codes && codes.length){
+            const raw = codes[0].rawValue || codes[0].raw || '';
+            const text = normalize(raw);
+            if (text){
+              uidInput.value = text;
+              setStatus('Найден QR (из фото): ' + text);
+              await doBind(text);
+              return;
+            }
+          }
+          setStatus('QR на изображении не найден. Попробуйте другое фото.');
+        } catch(e){ setStatus('Ошибка анализа фото: ' + (e && e.message ? e.message : e)); }
+      }
+
       async function ensureAuth(){
         if (authToken) return authToken;
         const urlTok = getTokenFromUrl();
@@ -436,11 +510,30 @@ async def scan_qr_page():
       stopBtn.addEventListener('click', stopCamera);
       bindBtn.addEventListener('click', () => doBind());
       uidInput.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); doBind(); } });
+      pickPhotoBtn.addEventListener('click', () => fileInput && fileInput.click());
+      fileInput.addEventListener('change', async (ev) => {
+        try {
+          const f = ev.target && ev.target.files && ev.target.files[0];
+          if (f) await detectFromImageFile(f);
+        } catch(_){}
+      });
+      setupTelegramScanner();
+
+      // Fallback: global click delegation in case some WebViews drop direct listeners
+      document.addEventListener('click', (ev) => {
+        try {
+          const el = ev.target && (ev.target.closest ? ev.target.closest('button, input, [role="button"]') : null);
+          if (!el || !el.id) return;
+          if (el.id === 'start') { ev.preventDefault(); startCamera(); }
+          else if (el.id === 'stop') { ev.preventDefault(); stopCamera(); }
+          else if (el.id === 'bind') { ev.preventDefault(); doBind(); }
+          else if (el.id === 'scanTg') { /* handled by setupTelegramScanner */ }
+          else if (el.id === 'pickPhoto') { ev.preventDefault(); fileInput && fileInput.click(); }
+        } catch(_){ }
+      }, { capture: true });
     </script>
   </body>
 </html>
-    """
-    return _html(html)
 
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL
