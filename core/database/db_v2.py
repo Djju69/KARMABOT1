@@ -101,7 +101,10 @@ class DatabaseServiceV2:
             )
             row = cursor.fetchone()
             if row:
-                return Partner(**dict(row))
+                data = dict(row)
+                # Filter unknown columns (e.g., created_at, updated_at) to match dataclass fields
+                allowed = {k: data[k] for k in Partner.__dataclass_fields__.keys() if k in data}
+                return Partner(**allowed)
             return None
     
     def get_or_create_partner(self, tg_user_id: int, display_name: str = None) -> Partner:
