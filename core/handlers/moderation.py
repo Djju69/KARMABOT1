@@ -11,6 +11,7 @@ import logging
 
 from ..settings import settings
 from ..database.db_v2 import db_v2
+from ..services.admins import admins_service
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +78,8 @@ def format_card_for_moderation(card: dict) -> str:
     
     return text
 
-def is_admin(user_id: int) -> bool:
-    """Check if user is admin"""
-    return user_id == settings.bots.admin_id
+async def _ensure_admin(user_id: int) -> bool:
+    return await admins_service.is_admin(user_id)
 
 # Command to start moderation
 @moderation_router.message(Command("moderate"))
@@ -89,7 +89,7 @@ async def start_moderation(message: Message, state: FSMContext):
         await message.answer("🚧 Функция модерации временно недоступна.")
         return
     
-    if not is_admin(message.from_user.id):
+    if not await _ensure_admin(message.from_user.id):
         await message.answer("❌ Доступ запрещен. Только для администраторов.")
         return
     
@@ -128,7 +128,7 @@ async def start_moderation(message: Message, state: FSMContext):
 @moderation_router.callback_query(F.data.startswith("mod_approve:"))
 async def approve_card(callback: CallbackQuery, state: FSMContext):
     """Approve card"""
-    if not is_admin(callback.from_user.id):
+    if not await _ensure_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещен")
         return
     
@@ -178,7 +178,7 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
 @moderation_router.callback_query(F.data.startswith("mod_reject:"))
 async def show_rejection_reasons(callback: CallbackQuery, state: FSMContext):
     """Show rejection reasons"""
-    if not is_admin(callback.from_user.id):
+    if not await _ensure_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещен")
         return
     
@@ -192,7 +192,7 @@ async def show_rejection_reasons(callback: CallbackQuery, state: FSMContext):
 @moderation_router.callback_query(F.data.startswith("reject_reason:"))
 async def reject_with_reason(callback: CallbackQuery, state: FSMContext):
     """Reject card with predefined reason"""
-    if not is_admin(callback.from_user.id):
+    if not await _ensure_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещен")
         return
     
@@ -216,7 +216,7 @@ async def reject_with_reason(callback: CallbackQuery, state: FSMContext):
 @moderation_router.callback_query(F.data.startswith("reject_custom:"))
 async def request_custom_reason(callback: CallbackQuery, state: FSMContext):
     """Request custom rejection reason"""
-    if not is_admin(callback.from_user.id):
+    if not await _ensure_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещен")
         return
     
@@ -304,7 +304,7 @@ async def reject_card_with_comment(callback, state: FSMContext, card_id: int, co
 @moderation_router.callback_query(F.data.startswith("mod_feature:"))
 async def feature_card(callback: CallbackQuery, state: FSMContext):
     """Mark card as featured"""
-    if not is_admin(callback.from_user.id):
+    if not await _ensure_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещен")
         return
     
@@ -405,7 +405,7 @@ async def finish_moderation(callback: CallbackQuery, state: FSMContext):
 @moderation_router.message(Command("mod_stats"))
 async def moderation_stats(message: Message):
     """Show moderation statistics"""
-    if not is_admin(message.from_user.id):
+    if not await _ensure_admin(message.from_user.id):
         await message.answer("❌ Доступ запрещен")
         return
     

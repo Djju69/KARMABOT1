@@ -9,9 +9,12 @@ from ..keyboards.inline_v2 import (
     get_cities_inline,
     get_policy_inline,
 )
+from ..keyboards.inline_v2 import get_admin_cabinet_inline
+from ..keyboards.reply_v2 import get_profile_keyboard
 from ..utils.locales_v2 import get_text
 from ..settings import settings
 from ..services.profile import profile_service
+from ..services.admins import admins_service
 from ..utils.telemetry import log_event
 
 router = Router(name=__name__)
@@ -168,7 +171,21 @@ async def open_cabinet(message: Message):
     """Opens the user's cabinet and renders inline profile menu per spec."""
     if not await ensure_policy_accepted(message):
         return
-    # Inline cabinet (no reply keyboard here)
+    user_id = message.from_user.id
+    lang = await profile_service.get_lang(user_id)
+    # Admin cabinet (MVP): show admin inline menu if moderation feature is on and user is admin
+    if settings.features.moderation and await admins_service.is_admin(user_id):
+        await message.answer(
+            f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
+            reply_markup=get_admin_cabinet_inline(lang),
+        )
+        return
+    # Partner cabinet (MVP): if partner FSM enabled and partner_active flag set -> show partner reply keyboard
+    if settings.features.partner_fsm and await profile_service.is_partner_active(user_id):
+        kb = get_profile_keyboard(lang)
+        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+        return
+    # Default: inline user profile
     from .profile import render_profile
     try:
         logger.info("basic.open_cabinet user_id=%s", message.from_user.id)

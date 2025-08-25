@@ -74,6 +74,24 @@ def get_preview_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")]
     ])
 
+def get_partner_cards_inline() -> InlineKeyboardMarkup:
+    """Inline keyboard for partner's cards list actions."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Обновить список", callback_data="partner_cards:refresh")]
+    ])
+
+def _status_emoji(status: str) -> str:
+    s = (status or "").lower()
+    if s == "pending":
+        return "⏳"
+    if s == "published":
+        return "✅"
+    if s == "rejected":
+        return "❌"
+    if s == "draft":
+        return "📝"
+    return "•"
+
 def format_card_preview(card_data: dict, category_name: str) -> str:
     """Format card preview text"""
     text = f"📋 **Предпросмотр карточки**\n\n"
@@ -141,18 +159,50 @@ async def show_my_cards(message: Message):
         partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
         cards = db_v2.get_partner_cards(partner.id, limit=20)
         if not cards:
-            await message.answer("📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.")
+            await message.answer(
+                "📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.",
+                reply_markup=get_partner_cards_inline(),
+            )
             return
         # Render simple list
-        lines = ["📂 Ваши карточки:"]
+        lines = [f"📂 Ваши карточки (первые {len(cards)}):"]
         for c in cards:
             title = c.title or "(без названия)"
             status = c.status or "pending"
-            lines.append(f"• {title} — {status}")
-        await message.answer("\n".join(lines))
+            lines.append(f"{_status_emoji(status)} {title} — {status}")
+        await message.answer("\n".join(lines), reply_markup=get_partner_cards_inline())
     except Exception as e:
         logger.error(f"Failed to load my cards: {e}")
         await message.answer("❌ Ошибка при загрузке списка карточек. Попробуйте позже.")
+
+@partner_router.callback_query(F.data == "partner_cards:refresh")
+async def refresh_my_cards(callback: CallbackQuery):
+    """Refresh the partner's cards list (non-breaking)."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    try:
+        partner = db_v2.get_or_create_partner(callback.from_user.id, callback.from_user.full_name)
+        cards = db_v2.get_partner_cards(partner.id, limit=20)
+        if not cards:
+            await callback.message.edit_text(
+                "📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.",
+                reply_markup=get_partner_cards_inline(),
+            )
+            return
+        lines = [f"📂 Ваши карточки (первые {len(cards)}):"]
+        for c in cards:
+            title = c.title or "(без названия)"
+            status = c.status or "pending"
+            lines.append(f"{_status_emoji(status)} {title} — {status}")
+        await callback.message.edit_text("\n".join(lines), reply_markup=get_partner_cards_inline())
+    except Exception as e:
+        logger.error(f"Failed to refresh partner cards: {e}")
+        try:
+            await callback.message.edit_text("❌ Ошибка при обновлении списка. Попробуйте позже.")
+        except Exception:
+            await callback.message.answer("❌ Ошибка при обновлении списка. Попробуйте позже.")
 
 # Category selection
 @partner_router.callback_query(F.data.startswith("partner_cat:"))
@@ -425,6 +475,45 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Failed to create card: {e}")
         await callback.answer("❌ Ошибка при создании карточки. Попробуйте позже.")
 
+# Edit card (restart input from title keeping current data)
+@partner_router.callback_query(F.data == "partner_edit")
+async def edit_card(callback: CallbackQuery, state: FSMContext):
+    """Restart editing from title using current state data (non-breaking MVP)."""
+    # Acknowledge callback to prevent spinner
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    data = await state.get_data()
+    # Ensure we have at least a category selected
+    if not data.get('category_id'):
+        await callback.message.edit_text(
+            "❌ Нечего редактировать. Пожалуйста, начните заново: /add_card",
+            reply_markup=None,
+        )
+        await state.clear()
+        return
+    # Move to title entry state; keep existing fields in state for convenience
+    await state.set_state(AddCardStates.enter_title)
+    # Show current snapshot to guide the user
+    cat_name = data.get('category_name', '')
+    preview_text = format_card_preview(data, cat_name)
+    try:
+        await callback.message.edit_text(
+            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Введите новое название (или пришлите текущее ещё раз):",
+            reply_markup=None,
+        )
+    except Exception:
+        # Fallback if editing message fails (e.g., was a photo preview)
+        await callback.message.answer(
+            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Введите новое название (или пришлите текущее ещё раз):",
+        )
+    # Provide cancel keyboard
+    await callback.message.answer(
+        "Введите название:",
+        reply_markup=get_cancel_keyboard(),
+    )
+
 # Cancel adding card
 @partner_router.callback_query(F.data == "partner_cancel")
 async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
@@ -471,6 +560,15 @@ async def cancel_add_card(message: Message, state: FSMContext):
     """Cancel adding card via message"""
     await message.answer("❌ Добавление карточки отменено.")
     await state.clear()
+
+# Global cancel handler (non-breaking): reacts to '❌ Отменить' only if user is inside AddCardStates
+@partner_router.message(F.text == "❌ Отменить")
+async def cancel_anywhere(message: Message, state: FSMContext):
+    """Allow user to cancel from any AddCardStates step using the same button."""
+    cur = await state.get_state()
+    # Act only if FSM is currently within AddCardStates to avoid breaking other flows
+    if cur and cur.startswith(AddCardStates.__name__ + ":"):
+        await cancel_add_card(message, state)
 
 # Handle text messages in FSM states
 @partner_router.message(AddCardStates.choose_category)

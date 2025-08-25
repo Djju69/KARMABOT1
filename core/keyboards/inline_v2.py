@@ -46,6 +46,26 @@ def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru"
     )
 
 
+def get_admin_cabinet_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """
+    Admin cabinet inline keyboard. Callbacks use namespace adm:*
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=get_text("admin_menu_queue", lang), callback_data="adm:queue"),
+            ],
+            [
+                InlineKeyboardButton(text=get_text("admin_menu_search", lang), callback_data="adm:search"),
+                InlineKeyboardButton(text=get_text("admin_menu_reports", lang), callback_data="adm:reports"),
+            ],
+            [
+                InlineKeyboardButton(text=get_text("back", lang), callback_data="adm:back"),
+            ],
+        ]
+    )
+
+
 def get_webapp_inline(url: str, lang: str = "ru") -> InlineKeyboardMarkup:
     """Single-button inline keyboard that opens WebApp via WebAppInfo.
     This keeps WebApp accessible only when the /webapp command is used.

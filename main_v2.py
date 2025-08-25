@@ -25,12 +25,14 @@ from core.handlers.callback import router as callback_router
 from core.handlers.category_handlers_v2 import get_category_router
 from core.handlers.partner import get_partner_router
 from core.handlers.moderation import get_moderation_router
+from core.handlers.admin_cabinet import get_admin_cabinet_router
 from core.handlers.profile import get_profile_router
 
 # Services
 from core.services.profile import profile_service
 from core.services.cache import cache_service
 from core.services.pg_notify import pg_notify_listener
+from core.services.admins import admins_service
 
 logger = logging.getLogger(__name__)
 
@@ -161,6 +163,8 @@ async def setup_routers(dp: Dispatcher):
     if settings.features.moderation:
         moderation_router = get_moderation_router()
         dp.include_router(moderation_router)
+        # Admin cabinet router (inline menu under adm:*)
+        dp.include_router(get_admin_cabinet_router())
         logger.info("✅ Moderation enabled")
     else:
         logger.info("⚠️ Moderation disabled")
@@ -179,6 +183,11 @@ async def on_startup(bot: Bot):
         await pg_notify_listener.start()
     except Exception as e:
         logger.warning(f"PGNotifyListener start error: {e}")
+    # Connect admins service (Redis or memory)
+    try:
+        await admins_service.connect()
+    except Exception as e:
+        logger.warning(f"AdminsService connect error: {e}")
 
 async def on_shutdown(bot: Bot):
     """Bot shutdown handler"""
@@ -193,6 +202,10 @@ async def on_shutdown(bot: Bot):
     except Exception:
         pass
     await profile_service.disconnect()
+    try:
+        await admins_service.disconnect()
+    except Exception:
+        pass
     try:
         await bot.send_message(settings.bots.admin_id, "😴 KARMABOT1 остановлен")
     except Exception as e:
@@ -236,6 +249,10 @@ async def main():
     profile_service._redis_url = settings.database.redis_url or ""
     await profile_service.connect()
     await cache_service.connect()
+    try:
+        await admins_service.connect()
+    except Exception as e:
+        logger.warning(f"AdminsService connect error: {e}")
 
     # Register middlewares
     dp.update.middleware(LocaleMiddleware())
