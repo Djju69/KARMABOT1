@@ -129,6 +129,45 @@ class CacheService:
             except Exception:
                 pass
 
+    async def invalidate_authme(self, user_id: int, reason: str = "manual"):
+        """Invalidate a specific /auth/me cache entry and record reasoned metrics.
+        Non-breaking: works in both Redis and memory modes; logs best-effort.
+        """
+        key = f"authme:{user_id}"
+        deleted = 0
+        if self._redis:
+            try:
+                deleted = await self._redis.delete(key) or 0
+                try:
+                    if AUTHME_INVALIDATIONS is not None:
+                        AUTHME_INVALIDATIONS.labels(reason).inc(max(1, deleted))
+                except Exception:
+                    pass
+                try:
+                    create_task(log_event("authme_invalidate", backend="redis", key=key, reason=reason, deleted=deleted))
+                except Exception:
+                    pass
+                return
+            except Exception as e:
+                logger.warning(f"CacheService.invalidate_authme redis error: {e}")
+        # memory fallback
+        async with self._lock:
+            if key in self._mem:
+                self._mem.pop(key, None)
+                deleted = 1
+            # metrics: invalidations + gauge
+            try:
+                if AUTHME_INVALIDATIONS is not None:
+                    AUTHME_INVALIDATIONS.labels(reason).inc(max(1, deleted))
+                if AUTHME_ENTRIES is not None:
+                    AUTHME_ENTRIES.set(sum(1 for k in self._mem.keys() if k.startswith("authme:")))
+            except Exception:
+                pass
+            try:
+                create_task(log_event("authme_invalidate", backend="memory", key=key, reason=reason, deleted=deleted))
+            except Exception:
+                pass
+
     async def _expire_mem(self, key: str, ttl: int):
         await sleep(max(0, ttl))
         async with self._lock:

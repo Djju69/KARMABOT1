@@ -13,6 +13,7 @@ from core.security.jwt_service import verify_partner, verify_admin
 from core.settings import settings
 from core.services.partners import is_partner
 from core.services.cards import card_service
+from core.services.cache import cache_service
 
 router = APIRouter()
 logger = logging.getLogger("auth")
@@ -602,6 +603,11 @@ async def partner_cards_create(payload: CardCreate, claims: Dict[str, Any] = Dep
         card_id = int(cur.lastrowid)
         cols = _select_card_columns(conn)
         row = conn.execute(f"SELECT {cols} FROM cards_v2 WHERE id = ?", (card_id,)).fetchone()
+        # Best-effort: invalidate /auth/me cache for this user to reflect listings
+        try:
+            await cache_service.invalidate_authme(tg_user_id, reason="listings")
+        except Exception:
+            pass
         return Card(**dict(row))
 
 # --- Catch-all for HEAD/OPTIONS inside this router to prevent 405 on preflights/HEAD probes
@@ -662,8 +668,12 @@ async def partner_cards_update(
         conn.execute(f"UPDATE cards_v2 SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?", tuple(params))
         cols = _select_card_columns(conn)
         row = conn.execute(f"SELECT {cols} FROM cards_v2 WHERE id = ?", (card_id,)).fetchone()
+        # Invalidate /auth/me cache to reflect updated listings
+        try:
+            await cache_service.invalidate_authme(tg_user_id, reason="listings")
+        except Exception:
+            pass
         return Card(**dict(row))
-
 
 @router.post("/partner/cards/{card_id}/hide", response_model=Card)
 async def partner_cards_hide(card_id: int = Path(..., ge=1), claims: Dict[str, Any] = Depends(get_current_claims)):
@@ -687,6 +697,11 @@ async def partner_cards_hide(card_id: int = Path(..., ge=1), claims: Dict[str, A
             f"SELECT {cols} FROM cards_v2 WHERE id = ?",
             (card_id,),
         ).fetchone()
+        # Invalidate /auth/me cache to reflect archived listings
+        try:
+            await cache_service.invalidate_authme(tg_user_id, reason="archive")
+        except Exception:
+            pass
         return Card(**dict(row))
 
 
@@ -927,6 +942,16 @@ async def admin_block_card(card_id: int = Path(..., ge=1), claims: Dict[str, Any
     _require_admin(claims)
     with _db_connect() as conn:
         conn.execute("UPDATE cards_v2 SET status = 'blocked', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (card_id,))
+        # Also invalidate partner's /auth/me cache using linked tg_user_id
+        try:
+            owner = conn.execute("SELECT partner_id FROM cards_v2 WHERE id = ?", (card_id,)).fetchone()
+            if owner:
+                pid = int(owner["partner_id"])
+                row = conn.execute("SELECT tg_user_id FROM partners_v2 WHERE id = ?", (pid,)).fetchone()
+                if row and row["tg_user_id"] is not None:
+                    await cache_service.invalidate_authme(int(row["tg_user_id"]), reason="block")
+        except Exception:
+            pass
         return {"ok": True}
 
 
@@ -953,4 +978,9 @@ async def partner_cards_unhide(card_id: int = Path(..., ge=1), claims: Dict[str,
             f"SELECT {cols} FROM cards_v2 WHERE id = ?",
             (card_id,),
         ).fetchone()
+        # Invalidate /auth/me cache to reflect listings becoming visible
+        try:
+            await cache_service.invalidate_authme(tg_user_id, reason="listings")
+        except Exception:
+            pass
         return Card(**dict(row))

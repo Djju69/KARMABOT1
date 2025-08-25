@@ -5,6 +5,7 @@ Integrates all new components while preserving existing functionality
 import asyncio
 import logging
 import os
+import secrets
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -35,6 +36,102 @@ logger = logging.getLogger(__name__)
 
 # Explicit app version marker to verify running build in logs
 APP_VERSION = "feature/webapp-cabinets@4c342bb"
+
+# Optional Redis client for leader lock (non-breaking)
+try:
+    import aioredis  # type: ignore
+except Exception:  # pragma: no cover
+    aioredis = None
+
+
+async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
+    """Try to acquire a Redis-based leader lock.
+    Returns (owned: bool, release_coro: callable|None).
+    Safe no-op if Redis not available or url empty.
+    """
+    if not redis_url or not aioredis:
+        logging.getLogger(__name__).warning(
+            "Polling leader lock disabled (no REDIS_URL or aioredis)"
+        )
+        return True, None  # allow single-instance assumption
+
+    token = secrets.token_hex(16)
+    try:
+        redis = await aioredis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"Leader lock: cannot connect to Redis, proceeding without lock: {e}"
+        )
+        return True, None
+
+    # Try SET NX EX
+    try:
+        ok = await redis.set(key, token, ex=ttl, nx=True)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"Leader lock: SET NX failed, proceeding without lock: {e}"
+        )
+        try:
+            await redis.close()
+        except Exception:
+            pass
+        return True, None
+
+    if not ok:
+        # Someone else holds the lock
+        try:
+            await redis.close()
+        except Exception:
+            pass
+        return False, None
+
+    logger.info("✅ Polling leader lock acquired (key=%s)", key)
+
+    refresh_task = None
+
+    async def _refresh_loop():
+        try:
+            # Refresh at 1/3 of TTL
+            interval = max(1, ttl // 3)
+            while True:
+                await asyncio.sleep(interval)
+                try:
+                    # Refresh only if our token is still present
+                    cur = await redis.get(key)
+                    if cur != token:
+                        logger.warning("Leader lock token changed/lost; stopping refresh loop")
+                        break
+                    await redis.expire(key, ttl)
+                except Exception as e:
+                    logger.warning(f"Leader lock refresh error: {e}")
+                    # continue trying
+        except asyncio.CancelledError:
+            pass
+
+    refresh_task = asyncio.create_task(_refresh_loop())
+
+    async def _release():
+        try:
+            try:
+                cur = await redis.get(key)
+                if cur == token:
+                    await redis.delete(key)
+                    logger.info("🧹 Polling leader lock released (key=%s)", key)
+            except Exception:
+                pass
+            if refresh_task:
+                refresh_task.cancel()
+                try:
+                    await refresh_task
+                except Exception:
+                    pass
+        finally:
+            try:
+                await redis.close()
+            except Exception:
+                pass
+
+    return True, _release
 
 async def setup_routers(dp: Dispatcher):
     """Centralized function to set up all bot routers with correct priority."""
@@ -137,10 +234,30 @@ async def main():
     await setup_routers(dp)
     logger.info(f"✅ All routers registered successfully | version={APP_VERSION}")
 
-    # To ensure no conflicts, we delete any existing webhook
-    # and start polling cleanly.
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    # Optional leader lock to avoid multiple pollers
+    lock_enabled = os.getenv("ENABLE_POLLING_LEADER_LOCK", "1").lower() in {"1", "true", "yes"}
+    release_lock = None
+    if lock_enabled:
+        lock_ttl = int(os.getenv("POLLING_LEADER_LOCK_TTL", "120"))
+        lock_key = f"{settings.environment}:bot:polling:leader"
+        owned, release = await _acquire_leader_lock(settings.database.redis_url, lock_key, lock_ttl)
+        if not owned:
+            logger.error("❌ Another instance holds polling leader lock (%s). Staying idle.", lock_key)
+            # Keep process alive but do not touch Telegram API
+            await asyncio.Event().wait()
+            return
+        release_lock = release
+
+    try:
+        # To ensure no conflicts, we delete any existing webhook and start polling cleanly.
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot)
+    finally:
+        if release_lock:
+            try:
+                await release_lock()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
