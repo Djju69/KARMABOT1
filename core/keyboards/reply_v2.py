@@ -93,7 +93,7 @@ def get_main_menu_reply_with_qr(lang: str = 'ru', webapp_url: str | None = None)
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu keyboard"""
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=get_text('back_to_main', lang))]],
+        keyboard=[[KeyboardButton(text=get_text('back_to_main_menu', lang))]],
         resize_keyboard=True
     )
 
@@ -113,7 +113,7 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('category_tours', lang))
             ],
             [
-                KeyboardButton(text=get_text('back_to_main', lang))
+                KeyboardButton(text=get_text('back_to_main_menu', lang))
             ]
         ],
         resize_keyboard=True,
@@ -164,7 +164,7 @@ def get_language_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('language_ko', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main', lang))
+                KeyboardButton(text=get_text('back_to_main_menu', lang))
             ]
         ],
         resize_keyboard=True
@@ -187,10 +187,24 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=t['add_card']), KeyboardButton(text=t['my_cards'])],
+            # Separate row for become partner action (reply button)
+            [KeyboardButton(text=get_text('btn.partner.become', lang))],
             [KeyboardButton(text=t['profile_stats']), KeyboardButton(text=t['profile_settings'])],
-            [KeyboardButton(text=t['back_to_main'])]
+            [KeyboardButton(text=t['back_to_main_menu'])]
         ],
         resize_keyboard=True
+    )
+
+def get_profile_settings_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Settings menu for profile as ReplyKeyboardMarkup (Language + Notifications)."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('choose_language', lang))],
+            [KeyboardButton(text=get_text('btn.notify.on', lang)), KeyboardButton(text=get_text('btn.notify.off', lang))],
+            [KeyboardButton(text=get_text('back_to_main_menu', lang))]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_action', lang)
     )
 
 def get_location_request_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
@@ -199,7 +213,7 @@ def get_location_request_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text='📍 Отправить геолокацию', request_location=True)],
-            [KeyboardButton(text=t['back_to_main'])]
+            [KeyboardButton(text=t['back_to_main_menu'])]
         ],
         resize_keyboard=True
     )
@@ -211,7 +225,7 @@ def get_contact_request_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text='📞 Поделиться контактом', request_contact=True)],
             [KeyboardButton(text=t['skip'])],
-            [KeyboardButton(text=t['back_to_main'])]
+            [KeyboardButton(text=t['back_to_main_menu'])]
         ],
         resize_keyboard=True
     )
