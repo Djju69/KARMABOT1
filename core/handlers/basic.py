@@ -93,8 +93,9 @@ async def main_menu(message: Message):
 
 
 async def on_language_select(message: Message):
-    if not await ensure_policy_accepted(message):
-        return
+    """Open language selection regardless of policy acceptance.
+    This lets user pick language first on fresh start.
+    """
     lang = await profile_service.get_lang(message.from_user.id)
     await message.answer(
         get_text('choose_language', lang),
