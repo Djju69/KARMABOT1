@@ -158,6 +158,11 @@ async def show_my_cards(message: Message):
 @partner_router.callback_query(F.data.startswith("partner_cat:"))
 async def select_category(callback: CallbackQuery, state: FSMContext):
     """Handle category selection"""
+    # Acknowledge callback to stop Telegram's loading state
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     category_slug = callback.data.split(":")[1]
     category = db_v2.get_category_by_slug(category_slug)
     
@@ -353,6 +358,11 @@ async def enter_discount(message: Message, state: FSMContext):
 @partner_router.callback_query(F.data == "partner_submit")
 async def submit_card(callback: CallbackQuery, state: FSMContext):
     """Submit card for moderation"""
+    # Acknowledge callback to prevent UI lag
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     data = await state.get_data()
     
     try:
@@ -419,11 +429,43 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
 @partner_router.callback_query(F.data == "partner_cancel")
 async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
     """Cancel adding card via callback"""
+    # Acknowledge callback to prevent spinner
+    try:
+        await callback.answer()
+    except Exception:
+        pass
     await callback.message.edit_text(
         "❌ Добавление карточки отменено.",
         reply_markup=None
     )
     await state.clear()
+
+# --- Entry points to open Partner Cabinet ---
+@partner_router.message(Command("partner"))
+async def open_partner_cabinet_cmd(message: Message):
+    """Open partner cabinet via /partner command."""
+    try:
+        # Ensure partner exists
+        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        # Load language and show partner cabinet keyboard
+        lang = await profile_service.get_lang(message.from_user.id)
+        kb = get_profile_keyboard(lang)
+        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+    except Exception as e:
+        logger.error(f"Failed to open partner cabinet: {e}")
+        await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
+
+@partner_router.message(F.text.startswith("🧑‍💼"))
+async def open_partner_cabinet_button(message: Message):
+    """Open partner cabinet from '🧑‍💼 Стать партнёром' button (creates partner if missing)."""
+    try:
+        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        lang = await profile_service.get_lang(message.from_user.id)
+        kb = get_profile_keyboard(lang)
+        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+    except Exception as e:
+        logger.error(f"Failed to open partner cabinet via button: {e}")
+        await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
 
 async def cancel_add_card(message: Message, state: FSMContext):
     """Cancel adding card via message"""
