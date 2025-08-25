@@ -65,10 +65,27 @@ class CacheService:
                 pass
             return val
 
-    async def set(self, key: str, value: str, ttl_sec: int):
+    async def set(self, key: str, value: str, ttl_sec: int = 0, **kwargs):
+        """Set cache value with TTL.
+        Backward/compat helpers:
+          - supports Redis-like kwargs: ex=seconds or ttl=seconds
+        """
+        # Resolve ttl from kwargs if provided as Redis-style
+        if not ttl_sec:
+            if "ex" in kwargs and kwargs["ex"] is not None:
+                try:
+                    ttl_sec = int(kwargs["ex"]) or 0
+                except Exception:
+                    ttl_sec = 0
+            elif "ttl" in kwargs and kwargs["ttl"] is not None:
+                try:
+                    ttl_sec = int(kwargs["ttl"]) or 0
+                except Exception:
+                    ttl_sec = 0
+
         if self._redis:
             try:
-                await self._redis.set(key, value, ex=ttl_sec)
+                await self._redis.set(key, value, ex=(ttl_sec or None))
                 try:
                     create_task(log_event("cache_set", backend="redis", key=key, ttl=ttl_sec))
                 except Exception:
@@ -78,8 +95,9 @@ class CacheService:
                 logger.warning(f"CacheService.set redis error: {e}")
         async with self._lock:
             self._mem[key] = value
-            # naive TTL: schedule deletion
-            create_task(self._expire_mem(key, ttl_sec))
+            # naive TTL: schedule deletion only if positive
+            if ttl_sec and ttl_sec > 0:
+                create_task(self._expire_mem(key, ttl_sec))
             # gauge update for memory mode
             try:
                 if AUTHME_ENTRIES is not None and key.startswith("authme:"):
