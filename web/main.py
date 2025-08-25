@@ -467,10 +467,34 @@ async def scan_qr_page():
         } catch(e){ setStatus('Ошибка анализа фото: ' + (e && e.message ? e.message : e)); }
       }
 
+      // Helpers to read token from cookies/localStorage to support bookmark usage outside Telegram
+      function readCookie(name){
+        try {
+          const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\\/\+^])/g,'\\$1') + '=([^;]*)'));
+          return m ? decodeURIComponent(m[1]) : null;
+        } catch(_) { return null }
+      }
+      function pickStoredToken(){
+        try {
+          const ls = localStorage.getItem('partner_jwt') || localStorage.getItem('authToken') || localStorage.getItem('jwt');
+          if (ls) return ls;
+        } catch(_) {}
+        try {
+          const c = readCookie('partner_jwt') || readCookie('authToken') || readCookie('jwt');
+          if (c) return c;
+        } catch(_) {}
+        return null;
+      }
+
       async function ensureAuth(){
         if (authToken) return authToken;
+        // 1) token from URL (?token=...)
         const urlTok = getTokenFromUrl();
         if (urlTok) { authToken = urlTok; return authToken; }
+        // 2) token from localStorage/cookies (set previously via /auth/set-token)
+        const stored = pickStoredToken();
+        if (stored) { authToken = stored; return stored; }
+        // 3) Telegram WebApp initData flow (when opened inside Telegram)
         try {
           if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) {
             const r = await fetch('/auth/webapp', {
@@ -478,7 +502,7 @@ async def scan_qr_page():
               body: JSON.stringify({ initData: Telegram.WebApp.initData })
             });
             const data = await r.json().catch(()=>null);
-            if (data && data.token) { authToken = data.token; return authToken; }
+            if (data && data.token) { authToken = data.token; return data.token; }
           }
         } catch(_){}
         return null;
@@ -595,6 +619,7 @@ _INDEX_HTML_RAW = """
   <body>
           <button id=\"openInBrowser\" class=\"btn ghost\">🌐 Открыть в браузере</button>
           <button id=\"btnMyCards\" class=\"btn primary\">Мои карточки</button>
+          <button id=\"btnMakeScannerShortcut\" class=\"btn\" title=\"Создать ярлык сканера на главном экране\">Ярлык сканера</button>
           <button id=\"toggleDetails\" class=\"btn ghost\">Показать детали</button>
           <button id=\"showToken\" class=\"btn ghost\">Показать токен</button>
           <button id=\"copyToken\" class=\"btn\" style=\"display:none\">Копировать</button>
@@ -1064,6 +1089,30 @@ _INDEX_HTML_RAW = """
             } else {
               window.open(url, '_blank');
             }
+          });
+        }
+      } catch (e) { /* noop */ }
+      // Create/open scanner shortcut: navigate to /scan with token so it can be bookmarked
+      try {
+        const btn = document.getElementById('btnMakeScannerShortcut');
+        if (btn) {
+          btn.addEventListener('click', async () => {
+            try {
+              const token = window.__authToken || pickToken();
+              if (!token) {
+                alert('Сначала выполните авторизацию (получите токен) в Личном кабинете, затем повторите попытку.');
+                return;
+              }
+              const url = window.location.origin + '/scan?token=' + encodeURIComponent(token);
+              try {
+                alert('Открылся сканер. Добавьте страницу в закладки/на главный экран, чтобы быстро запускать сканер.');
+              } catch(_) {}
+              if (window.Telegram && Telegram.WebApp && typeof Telegram.WebApp.openLink === 'function') {
+                Telegram.WebApp.openLink(url);
+              } else {
+                window.location.href = url;
+              }
+            } catch(e) { console.error('shortcut error', e); }
           });
         }
       } catch (e) { /* noop */ }
