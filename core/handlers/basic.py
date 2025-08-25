@@ -364,8 +364,8 @@ router.message.register(on_partner_off, Command("partner_off"))
     ~F.text.startswith("🎁")   # quick entry points
 )
 async def on_unhandled_message(message: Message):
-    lang = await profile_service.get_lang(message.from_user.id)
-    await message.answer(get_text('unhandled_message', lang))
+    # Silence fallback to avoid random SMS replies. Intentionally do nothing.
+    return
 
 # Quick entry: Reply header "🎁 Баллы" opens profile points (placeholder) and logs event
 @router.message(F.text.startswith("🎁"))
