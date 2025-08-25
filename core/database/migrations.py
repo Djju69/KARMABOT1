@@ -386,8 +386,29 @@ class DatabaseMigrator:
         self.migrate_004_add_cards_optional_fields()
         # Loyalty subsystem (wallets, spend intents, cards, transactions)
         self.migrate_005_loyalty_tables()
+        # Seed additional categories
+        self.migrate_006_seed_shops_services()
         
         logger.info("All migrations completed successfully")
+
+    def migrate_006_seed_shops_services(self):
+        """
+        EXPAND Phase: Seed additional category '🛍️ Магазины и услуги'
+        Idempotent: uses INSERT OR IGNORE
+        """
+        sql = """
+        INSERT OR IGNORE INTO categories_v2 (slug, name, emoji, priority_level)
+        VALUES ('shops', '🛍️ Магазины и услуги', '🛍️', 65);
+
+        -- Backward compatibility: ensure legacy categories has this row
+        INSERT OR IGNORE INTO categories (name_ru, type)
+        VALUES ('🛍️ Магазины и услуги', 'shops');
+        """
+        self.apply_migration(
+            "006",
+            "EXPAND: Seed category '🛍️ Магазины и услуги'",
+            sql,
+        )
 
 # Global migrator instance
 migrator = DatabaseMigrator()
