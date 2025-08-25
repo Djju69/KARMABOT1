@@ -534,7 +534,9 @@ async def scan_qr_page():
     </script>
   </body>
 </html>
-
+#
+    """
+    return _html(html)
 
 # Minimal WebApp landing page so WEBAPP_QR_URL can point to the root URL
 import os as _os
