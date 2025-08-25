@@ -23,6 +23,17 @@ router = Router(name=__name__)
 _search_last_at: dict[int, float] = {}
 import time
 
+# Simple anti-spam for superadmin prompt flows
+_su_last_at: dict[int, float] = {}
+
+def _su_allowed(user_id: int, window: float = 2.5) -> bool:
+    now = time.time()
+    last = _su_last_at.get(user_id, 0.0)
+    if now - last < window:
+        return False
+    _su_last_at[user_id] = now
+    return True
+
 def _search_allowed(user_id: int, window: float = 2.5) -> bool:
     now = time.time()
     last = _search_last_at.get(user_id, 0.0)
@@ -199,12 +210,65 @@ async def admin_reports(callback: CallbackQuery):
         await callback.answer("❌ Доступ запрещён")
         return
     lang = await profile_service.get_lang(callback.from_user.id)
-    text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_reports', lang)}"
+    # Build simple statistics report
     try:
-        await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang))
-    except Exception:
-        await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang))
-    await callback.answer()
+        with db_v2.get_connection() as conn:
+            # Cards by status
+            cur = conn.execute("""
+                SELECT status, COUNT(*) as cnt
+                FROM cards_v2
+                GROUP BY status
+            """)
+            by_status = {row[0] or 'unknown': int(row[1]) for row in cur.fetchall()}
+
+            # Totals
+            cur = conn.execute("SELECT COUNT(*) FROM cards_v2")
+            total_cards = int(cur.fetchone()[0])
+
+            cur = conn.execute("SELECT COUNT(*) FROM partners_v2")
+            total_partners = int(cur.fetchone()[0])
+
+            # Recent moderation actions (7 days)
+            try:
+                cur = conn.execute(
+                    """
+                    SELECT action, COUNT(*) as cnt
+                    FROM moderation_log
+                    WHERE created_at >= datetime('now','-7 days')
+                    GROUP BY action
+                    """
+                )
+                recent_actions = {row[0]: int(row[1]) for row in cur.fetchall()}
+            except Exception:
+                recent_actions = {}
+
+        lines = [
+            "📊 Отчёты (сводка)",
+            f"Всего карточек: {total_cards}",
+            f"Всего партнёров: {total_partners}",
+            "",
+            "По статусам:",
+            f"⏳ pending: {by_status.get('pending', 0)}",
+            f"✅ published: {by_status.get('published', 0)}",
+            f"❌ rejected: {by_status.get('rejected', 0)}",
+            f"🗂️ archived: {by_status.get('archived', 0)}",
+            f"📝 draft: {by_status.get('draft', 0)}",
+        ]
+        if recent_actions:
+            lines += [
+                "",
+                "За 7 дней:",
+                *[f"• {k}: {v}" for k, v in recent_actions.items()],
+            ]
+        text = "\n".join(lines)
+        try:
+            await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang))
+        except Exception:
+            await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang))
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"admin_reports error: {e}")
+        await callback.answer("❌ Ошибка отчёта", show_alert=False)
 
 
 def get_admin_cabinet_router() -> Router:
@@ -249,6 +313,10 @@ async def su_action(callback: CallbackQuery):
     if not _is_super_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещён")
         return
+    # Simple anti-spam window for opening prompt
+    if not _su_allowed(callback.from_user.id):
+        await callback.answer("⏳ Подождите немного…", show_alert=False)
+        return
     action = callback.data.split(":", 2)[-1]
     prompts = {
         "ban": "Введите: <tg_id> [причина]",
@@ -275,6 +343,10 @@ async def su_message_prompt_handler(message: Message):
         return  # not for us
     if not _is_super_admin(message.from_user.id):
         await message.answer("❌ Только главный админ")
+        return
+    # Simple anti-spam window for submitting prompt
+    if not _su_allowed(message.from_user.id):
+        await message.answer("⏳ Подождите немного перед следующей командой…")
         return
     action = st.get("action")
     text = (message.text or "").strip()
