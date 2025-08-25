@@ -272,6 +272,17 @@ async def partner_cards_page():
 async def partner_cards_page_slash():
     return _html(INDEX_HTML)
 
+# Friendly redirects: /cabinet/partner* → /cabinet/partner/cards/page
+@app.get("/cabinet/partner")
+async def partner_root_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
+
+@app.get("/cabinet/partner/")
+async def partner_root_redirect_slash():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/cabinet/partner/cards/page", status_code=302)
+
 # Global HEAD/OPTIONS catch-all to prevent 405 for preflights and HEAD probes
 @app.api_route("/{_catch_all:path}", methods=["HEAD", "OPTIONS"])
 async def catch_all_head_options(_catch_all: str):
