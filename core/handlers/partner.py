@@ -548,10 +548,17 @@ async def open_partner_cabinet_cmd(message: Message):
 async def open_partner_cabinet_button(message: Message):
     """Open partner cabinet from '🧑‍💼 Стать партнёром' button (creates partner if missing)."""
     try:
+        logger.info(
+            "partner.open_button: user_id=%s text=%s partner_fsm=%s",
+            message.from_user.id,
+            (message.text or "")[:64],
+            getattr(settings.features, 'partner_fsm', None),
+        )
         db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
         lang = await profile_service.get_lang(message.from_user.id)
         kb = get_profile_keyboard(lang)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+        logger.info("partner.open_button: success user_id=%s", message.from_user.id)
     except Exception as e:
         logger.error(f"Failed to open partner cabinet via button: {e}")
         await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
