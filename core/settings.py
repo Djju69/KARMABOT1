@@ -155,7 +155,8 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         pdf_partner_vi=env.str("PDF_PARTNER_VI", ""),
         pdf_partner_ko=env.str("PDF_PARTNER_KO", ""),
         support_tg=env.str("SUPPORT_TG", ""),
-        webapp_qr_url=env.str("WEBAPP_QR_URL", ""),
+        # Default to production Railway domain if not provided to ensure WebApp links work (policy/help)
+        webapp_qr_url=env.str("WEBAPP_QR_URL", "https://web-production-d51c7.up.railway.app"),
         default_lang=env.str("DEFAULT_LANG", "ru"),
         default_city=env.str("DEFAULT_CITY", ""),
         jwt_secret=env.str("JWT_SECRET", ""),
@@ -177,8 +178,8 @@ def get_settings(env_path: Optional[str] = None) -> Settings:
         partner_login_password_sha256=env.str("PARTNER_LOGIN_PASSWORD_SHA256", ""),
         partner_login_pepper=env.str("PARTNER_LOGIN_PEPPER", ""),
         auth_window_sec=env.int("AUTH_WINDOW_SEC", 300),
-        webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", ""),
-        csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", ""),
+        webapp_allowed_origin=env.str("WEBAPP_ALLOWED_ORIGIN", "https://web-production-d51c7.up.railway.app"),
+        csp_allowed_origin=env.str("CSP_ALLOWED_ORIGIN", "https://web-production-d51c7.up.railway.app"),
         report_max_req_per_hour=env.int("REPORT_MAX_REQ_PER_HOUR", 3),
         policy_version=env.int("POLICY_VERSION", 1)
     )
