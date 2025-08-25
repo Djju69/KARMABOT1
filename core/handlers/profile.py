@@ -5,6 +5,7 @@ Minimal runnable stubs for complex flows (QR spend/report/lang/bind).
 import os
 import re
 import time
+import logging
 from aiogram import Router, F
 from aiogram.types import (
     Message, CallbackQuery,
@@ -19,6 +20,7 @@ from ..services.loyalty import loyalty_service
 from ..services.cards import card_service
 
 profile_router = Router()
+logger = logging.getLogger(__name__)
 
 
 def _notify_key(user_id: int) -> str:
@@ -54,6 +56,10 @@ async def render_profile(message_or_cb, *, as_edit: bool = False):
     notify_on = await _is_notify_on(user_id)
     kb = build_profile_kb(lang, notify_on)
     text = get_text('profile_main', lang)
+    try:
+        logger.info("profile.render user_id=%s lang=%s notify_on=%s as_edit=%s", user_id, lang, notify_on, as_edit)
+    except Exception:
+        pass
     if isinstance(message_or_cb, Message):
         await message_or_cb.answer(text, reply_markup=kb)
     else:

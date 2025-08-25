@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiogram import Router, F
+import logging
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message, CallbackQuery
 from ..keyboards.inline_v2 import (
@@ -14,6 +15,7 @@ from ..services.profile import profile_service
 from ..utils.telemetry import log_event
 
 router = Router(name=__name__)
+logger = logging.getLogger(__name__)
 
 # Basic text handlers (minimal implementations)
 async def _send_welcome_with_policy(message: Message):
@@ -170,6 +172,10 @@ async def open_cabinet(message: Message):
         return
     # Inline cabinet (no reply keyboard here)
     from .profile import render_profile
+    try:
+        logger.info("basic.open_cabinet user_id=%s", message.from_user.id)
+    except Exception:
+        pass
     await render_profile(message)
 
 
