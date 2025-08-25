@@ -4,6 +4,7 @@ Integrates all new components while preserving existing functionality
 """
 import asyncio
 import logging
+import os
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -105,11 +106,19 @@ async def main():
     # Centralized logging with stdout + daily rotation (retention 7d by default)
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
+    # Optional: disable polling for "empty" deploys (e.g., to avoid conflicts on Railway)
+    if os.getenv("DISABLE_POLLING", "").lower() in {"1", "true", "yes"}:
+        logger.warning("Bot polling is DISABLED by DISABLE_POLLING env. Staying idle.")
+        # Keep process alive without touching Telegram getUpdates
+        await asyncio.Event().wait()
+        return
 
     ensure_database_ready()
 
     default_properties = DefaultBotProperties(parse_mode="HTML")
-    bot = Bot(token=settings.bots.bot_token, default=default_properties)
+    # Strip accidental whitespace/newlines to satisfy aiogram token validator
+    safe_token = (settings.bots.bot_token or "").strip()
+    bot = Bot(token=safe_token, default=default_properties)
     dp = Dispatcher()
 
     # Connect services

@@ -68,38 +68,23 @@ async def get_start(message: Message):
             parse_mode='HTML'
         )
     else:
-        # Если политика уже принята, показываем главное меню
+        # Если политика уже принята, показываем главное меню (БЕЗ QR WebApp в главном меню)
         await log_event("main_menu_opened", user=message.from_user)
-        # Если включен QR WebApp — показываем кнопку WebApp в главном меню
-        from ..keyboards.reply_v2 import get_main_menu_reply_with_qr, get_main_menu_reply
-        scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
-        scan_url = f"{scan_url}/scan" if scan_url else None
-        reply_kb = (
-            get_main_menu_reply_with_qr(lang, scan_url)
-            if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
-            else get_main_menu_reply(lang)
-        )
+        from ..keyboards.reply_v2 import get_main_menu_reply
         await message.answer(
             text=get_text('main_menu_title', lang),
-            reply_markup=reply_kb
+            reply_markup=get_main_menu_reply(lang)
         )
 
 
 async def main_menu(message: Message):
-    from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_with_qr
+    from ..keyboards.reply_v2 import get_main_menu_reply
     if not await ensure_policy_accepted(message):
         return
     lang = await profile_service.get_lang(message.from_user.id)
     await log_event("main_menu_opened", user=message.from_user)
-    # Если включен QR WebApp — показываем кнопку WebApp в главном меню
-    scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
-    scan_url = f"{scan_url}/scan" if scan_url else None
-    reply_kb = (
-        get_main_menu_reply_with_qr(lang, scan_url)
-        if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
-        else get_main_menu_reply(lang)
-    )
-    await message.answer(get_text('main_menu_title', lang), reply_markup=reply_kb)
+    # Главное меню без кнопки WebApp QR
+    await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
 
 
 # ==== Language & Help (Phase 1) ====
@@ -142,15 +127,8 @@ async def on_language_set(callback: CallbackQuery):
             await callback.message.delete()
         except Exception:
             pass
-        from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_with_qr
-        scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
-        scan_url = f"{scan_url}/scan" if scan_url else None
-        kb = (
-            get_main_menu_reply_with_qr(lang, scan_url)
-            if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
-            else get_main_menu_reply(lang)
-        )
-        await callback.message.answer(get_text('main_menu_title', lang), reply_markup=kb)
+        from ..keyboards.reply_v2 import get_main_menu_reply
+        await callback.message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
         await callback.answer(get_text('language_updated', lang))
 
 # Backward-compatible alias expected by older imports
@@ -320,20 +298,12 @@ async def on_policy_accept(callback: CallbackQuery):
     # Подтверждаем действие
     await callback.answer(get_text('policy_accepted', lang))
 
-    # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню
+    # Удаляем сообщение с инлайн-клавиатурой и показываем главное меню (без QR WebApp)
     await callback.message.delete()
-    # Если включен QR WebApp — показываем кнопку WebApp в главном меню
-    from ..keyboards.reply_v2 import get_main_menu_reply_with_qr, get_main_menu_reply
-    scan_url = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
-    scan_url = f"{scan_url}/scan" if scan_url else None
-    reply_kb = (
-        get_main_menu_reply_with_qr(lang, scan_url)
-        if getattr(settings.features, 'qr_webapp', False) and getattr(settings, 'webapp_qr_url', '')
-        else get_main_menu_reply(lang)
-    )
+    from ..keyboards.reply_v2 import get_main_menu_reply
     await callback.message.answer(
         get_text('main_menu_title', lang),
-        reply_markup=reply_kb
+        reply_markup=get_main_menu_reply(lang)
     )
 
 # Register defaults to router to ensure availability

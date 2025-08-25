@@ -10,6 +10,10 @@ from aiogram.filters import Command
 import logging
 
 from ..settings import settings
+from ..services.profile import profile_service
+from ..keyboards.reply_v2 import (
+    get_profile_keyboard,
+)
 from ..database.db_v2 import db_v2, Card
 from ..utils.locales_v2 import translations
 
@@ -394,6 +398,18 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                 logger.error(f"Failed to notify admin: {e}")
         
         await state.clear()
+
+        # After successful submission, restore partner cabinet reply keyboard so UI doesn't disappear.
+        try:
+            lang = await profile_service.get_lang(callback.from_user.id)
+            # ЛК партнёра — без QR WebApp кнопки
+            kb = get_profile_keyboard(lang)
+            await callback.message.answer(
+                "🏪 Вы в личном кабинете партнёра",
+                reply_markup=kb,
+            )
+        except Exception as e:
+            logger.error(f"Failed to restore partner cabinet keyboard: {e}")
         
     except Exception as e:
         logger.error(f"Failed to create card: {e}")

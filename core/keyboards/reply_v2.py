@@ -70,25 +70,9 @@ def get_hotels_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 
 def get_main_menu_reply_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
     """
-    Главное меню c верхней кнопкой WebApp "Сканировать QR" для партнёров.
-    Падаем обратно на стандартное меню, если WebAppInfo недоступен или URL пуст.
+    Deprecated: QR WebApp button is removed per UX. Always return standard main menu without QR.
     """
-    base = get_main_menu_reply(lang)
-    if not webapp_url or WebAppInfo is None:
-        return base
-    # Prepend QR row
-    try:
-        qr_row = [KeyboardButton(text=get_text('menu_scan_qr', lang), web_app=WebAppInfo(url=webapp_url))]
-        # base.keyboard is List[List[KeyboardButtonLike]]; create a new markup with modified keyboard
-        new_kbd = [qr_row] + base.keyboard
-        return ReplyKeyboardMarkup(
-            keyboard=new_kbd,
-            resize_keyboard=True,
-            input_field_placeholder=get_text('choose_action', lang)
-        )
-    except Exception:
-        # Fallback silently in case of older aiogram
-        return base
+    return get_main_menu_reply(lang)
 
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu keyboard"""
@@ -196,19 +180,10 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     )
 
 def get_profile_keyboard_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
-    """Profile keyboard with WebApp 'Сканировать QR' on the first row if URL provided."""
-    base = get_profile_keyboard(lang)
-    if not webapp_url or WebAppInfo is None:
-        return base
-    try:
-        # Insert a row above with a single WebApp button
-        t = get_all_texts(lang)
-        qr_text = get_text('menu_scan_qr', lang) if callable(get_text) else t.get('menu_scan_qr', 'Сканировать QR')
-        qr_row = [KeyboardButton(text=qr_text, web_app=WebAppInfo(url=webapp_url))]
-        new_kbd = [qr_row] + base.keyboard
-        return ReplyKeyboardMarkup(keyboard=new_kbd, resize_keyboard=True)
-    except Exception:
-        return base
+    """
+    Deprecated: QR WebApp button is removed per UX. Always return profile keyboard without QR.
+    """
+    return get_profile_keyboard(lang)
 
 def get_profile_settings_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Settings menu for profile as ReplyKeyboardMarkup (Language + Notifications)."""

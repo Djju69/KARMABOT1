@@ -19,7 +19,6 @@ from ..services.cards import card_service
 from ..keyboards.reply_v2 import (
     get_profile_keyboard,
     get_profile_settings_keyboard,
-    get_profile_keyboard_with_qr,
 )
 from ..settings import settings
 
@@ -53,12 +52,8 @@ async def render_profile(message: Message):
         logger.info("profile.render user_id=%s lang=%s notify_on=%s", user_id, lang, notify_on)
     except Exception:
         pass
-    # Use QR WebApp keyboard if enabled and URL present (open /scan)
-    if settings.features.qr_webapp and settings.webapp_qr_url:
-        base = settings.webapp_qr_url.rstrip('/')
-        kb = get_profile_keyboard_with_qr(lang, f"{base}/scan")
-    else:
-        kb = get_profile_keyboard(lang)
+    # Личный кабинет пользователя — БЕЗ QR WebApp кнопки
+    kb = get_profile_keyboard(lang)
     await message.answer(text, reply_markup=kb)
 
 
@@ -82,12 +77,7 @@ async def on_add_card(message: Message):
     # Inform about available options; keep manual UID entry as currently supported
     await message.answer(
         get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang),
-        reply_markup=(
-            get_profile_keyboard_with_qr(
-                lang,
-                f"{settings.webapp_qr_url.rstrip('/')}/scan"
-            ) if (settings.features.qr_webapp and settings.webapp_qr_url) else get_profile_keyboard(lang)
-        )
+        reply_markup=get_profile_keyboard(lang)
     )
 
 
@@ -134,10 +124,11 @@ async def on_card_photo(message: Message):
         "📷 Обработка QR с фото будет доступна скоро. Пожалуйста, отправьте номер карты (12 цифр) сообщением.")
 
 
+# Note: language selection via reply button is handled centrally in
+# core/handlers/main_menu_router.py to avoid double responses.
 @profile_router.message(F.text.in_(_texts('choose_language')))
 async def on_choose_language(message: Message):
-    # Delegate to existing reply-language flow (other handlers listen to this text)
-    await message.answer(get_text('choose_language', await profile_service.get_lang(message.from_user.id)))
+    return
 
 
 @profile_router.message(F.text.in_(_texts('btn.notify.on')))
