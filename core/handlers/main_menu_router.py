@@ -7,6 +7,7 @@ from .basic import get_start, on_help, on_language_select, open_cabinet, ensure_
 from .category_handlers_v2 import (
     show_categories_v2, on_restaurants, on_spa, on_hotels, on_transport, on_tours,
     on_transport_submenu, on_tours_submenu, on_spa_submenu, on_hotels_submenu,
+    on_shops, on_shops_submenu,
     handle_profile, show_nearest_v2
 )
 
@@ -103,6 +104,14 @@ async def _(message: Message, bot: Bot, lang: str):
     await on_tours(message, bot, lang)
 
 
+@main_menu_router.message(F.text.in_([t.get('category_shops_services', '') for t in translations.values()]))
+async def _(message: Message, bot: Bot, lang: str):
+    if not await ensure_policy_accepted(message):
+        return
+    city_id = await profile_service.get_city_id(message.from_user.id)
+    await on_shops(message, bot, lang, city_id)
+
+
 # --- Submenus & Back Buttons ---
 @main_menu_router.message(F.text.in_([t.get('back_to_categories', '') for t in translations.values()]))
 async def _(message: Message, bot: Bot, lang: str):
@@ -149,6 +158,16 @@ async def _(message: Message, bot: Bot, lang: str):
         return
     city_id = await profile_service.get_city_id(message.from_user.id)
     await on_hotels_submenu(message, bot, lang, city_id)
+
+
+@main_menu_router.message(F.text.in_(
+    [t.get(k, '') for t in translations.values() for k in ['shops_shops', 'shops_services']]
+))
+async def _(message: Message, bot: Bot, lang: str):
+    if not await ensure_policy_accepted(message):
+        return
+    city_id = await profile_service.get_city_id(message.from_user.id)
+    await on_shops_submenu(message, bot, lang, city_id)
 
 
 @main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))

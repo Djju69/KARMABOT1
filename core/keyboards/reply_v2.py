@@ -94,6 +94,9 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('category_hotels', lang)),
             ],
             [
+                KeyboardButton(text=get_text('category_shops_services', lang)),
+            ],
+            [
                 KeyboardButton(text=get_text('category_tours', lang))
             ],
             [
@@ -127,6 +130,21 @@ def get_tours_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text=get_text('tours_group', lang)),
                 KeyboardButton(text=get_text('tours_private', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
+        ],
+        resize_keyboard=True
+    )
+
+def get_shops_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'Магазины и услуги'."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('shops_shops', lang)),
+                KeyboardButton(text=get_text('shops_services', lang)),
             ],
             [
                 KeyboardButton(text=get_text('back_to_categories', lang))
@@ -239,6 +257,7 @@ __all__ = [
     'get_tours_reply_keyboard',
     'get_spa_reply_keyboard',
     'get_hotels_reply_keyboard',
+    'get_shops_reply_keyboard',
     'get_language_keyboard',
     'get_profile_keyboard',
     'get_profile_keyboard_with_qr',

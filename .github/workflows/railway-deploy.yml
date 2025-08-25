@@ -24,22 +24,45 @@ jobs:
       - name: Show Railway CLI version
         run: railway --version
 
-      - name: Deploy to Railway (CI)
+      - name: Two-step deploy to Railway (CI)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
           RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
         run: |
-          echo "Starting Railway deploy..."
-          if [ -n "$RAILWAY_PROJECT" ] && [ -n "$RAILWAY_ENVIRONMENT" ]; then
-            railway up --ci --project "$RAILWAY_PROJECT" --environment "$RAILWAY_ENVIRONMENT"
-          else
-            # Если проект/окружение не заданы — попытаемся задеплоить по связке репозитория
-            railway up --ci
+          set -euo pipefail
+          echo "Starting two-step Railway deploy..."
+          TARGET_PREFIX="railway --ci"
+          if [ -n "${RAILWAY_PROJECT:-}" ]; then
+            TARGET_PREFIX="$TARGET_PREFIX --project \"$RAILWAY_PROJECT\""
           fi
-          echo "Railway deploy finished"
+          if [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
+            TARGET_PREFIX="$TARGET_PREFIX --environment \"$RAILWAY_ENVIRONMENT\""
+          fi
+
+          echo "Step 1/2: Empty deploy (DISABLE_POLLING=1)"
+          # Ensure Partner FSM is enabled, disable polling
+          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true"
+          # Optionally set DB/REDIS if provided (no-op if empty)
+          if [ -n "${REDIS_URL:-}" ]; then
+            bash -lc "$TARGET_PREFIX variables set REDIS_URL=\"$REDIS_URL\""
+          fi
+          # Deploy migrations/web only
+          bash -lc "$TARGET_PREFIX up"
+
+          echo "Step 2/2: Full deploy (DISABLE_POLLING=0)"
+          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=0"
+          if [ -n "${ENABLE_POLLING_LEADER_LOCK:-}" ]; then
+            bash -lc "$TARGET_PREFIX variables set ENABLE_POLLING_LEADER_LOCK=\"$ENABLE_POLLING_LEADER_LOCK\""
+          fi
+          # Final deploy with polling enabled
+          bash -lc "$TARGET_PREFIX up"
+          echo "Two-step Railway deploy finished"
 
       - name: Post logs hint
         run: |
           echo "If deploy did not target the right project, set repository secrets:"
           echo "  RAILWAY_TOKEN, RAILWAY_PROJECT, RAILWAY_ENVIRONMENT"
+          echo "Optional: REDIS_URL, ENABLE_POLLING_LEADER_LOCK"

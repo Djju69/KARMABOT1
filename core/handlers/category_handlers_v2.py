@@ -17,6 +17,7 @@ from ..keyboards.reply_v2 import (
     get_tours_reply_keyboard,
     get_spa_reply_keyboard,
     get_hotels_reply_keyboard,
+    get_shops_reply_keyboard,
 )
 from ..keyboards.inline_v2 import (
     get_pagination_row,
@@ -167,6 +168,21 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="hotels", sub_slug=sub_slug, lang=lang, city_id=city_id)
     await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
+
+async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Show Shops & Services submenu (shops/services)."""
+    await log_event("category_open", user=message.from_user, slug="shops", lang=lang, city_id=city_id)
+    await message.answer(get_text('shops_choose', lang), reply_markup=get_shops_reply_keyboard(lang))
+
+async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+    """Обработчик для кнопок подменю 'Магазины и услуги'."""
+    sub_slug_map = {
+        get_text('shops_shops', lang): 'shops',
+        get_text('shops_services', lang): 'services',
+    }
+    sub_slug = sub_slug_map.get(message.text, "all")
+    await log_event("category_sub_open", user=message.from_user, slug="shops", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced nearest places handler"""
@@ -365,7 +381,7 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
  
 
 
-@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours):([a-zA-Z0-9_]+):[0-9]+$"))
+@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours|shops):([a-zA-Z0-9_]+):[0-9]+$"))
 async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
     """Хендлер пагинации каталога. Формат: pg:<slug>:<sub_slug>:<page>"""
     try:
@@ -485,5 +501,6 @@ __all__ = [
     'on_tours',
     'on_transport_submenu',
     'on_tours_submenu'
-    , 'on_spa_submenu', 'on_hotels_submenu'
+    , 'on_spa_submenu', 'on_hotels_submenu',
+    'on_shops', 'on_shops_submenu'
 ]

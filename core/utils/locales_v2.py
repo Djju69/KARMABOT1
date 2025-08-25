@@ -84,6 +84,11 @@ translations_v2 = {
         'category_transport': '🚗 Транспорт',
         'category_hotels': '🏨 Отели',
         'category_tours': '🚶‍♂️ Экскурсии',
+        # NEW: Shops & Services main category and submenu
+        'category_shops_services': '🛍️ Магазины и услуги',
+        'shops_choose': 'Выберите раздел магазинов и услуг:',
+        'shops_shops': '🛍 Магазины',
+        'shops_services': '🧩 Услуги',
         'transport_bikes': '🛵 Байки',
         'transport_cars': '🚘 Машины',
         'transport_bicycles': '🚲 Велосипед',
