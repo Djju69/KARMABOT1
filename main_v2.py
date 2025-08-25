@@ -203,6 +203,20 @@ async def main():
     # Centralized logging with stdout + daily rotation (retention 7d by default)
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
+    # Explicit config echo for deploy diagnostics (safe/masked)
+    try:
+        dp_flag = os.getenv("DISABLE_POLLING", "").lower()
+        masked_redis = "set" if settings.database.redis_url else "empty"
+        logger.info(
+            "[CFG] env=%s partner_fsm=%s moderation=%s disable_polling=%s redis_url=%s",
+            settings.environment,
+            settings.features.partner_fsm,
+            settings.features.moderation,
+            dp_flag if dp_flag else "",
+            masked_redis,
+        )
+    except Exception:
+        pass
     # Optional: disable polling for "empty" deploys (e.g., to avoid conflicts on Railway)
     if os.getenv("DISABLE_POLLING", "").lower() in {"1", "true", "yes"}:
         logger.warning("Bot polling is DISABLED by DISABLE_POLLING env. Staying idle.")
