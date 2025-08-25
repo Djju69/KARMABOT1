@@ -3,7 +3,7 @@ from aiogram.types import Message
 
 from ..services.profile import profile_service
 from ..utils.locales_v2 import translations
-from .basic import get_start, on_help, on_language_select
+from .basic import get_start, on_help, on_language_select, open_cabinet
 from .category_handlers_v2 import (
     show_categories_v2, on_restaurants, on_spa, on_hotels, on_transport, on_tours,
     on_transport_submenu, on_tours_submenu, on_spa_submenu, on_hotels_submenu,
@@ -21,7 +21,8 @@ async def _(message: Message, bot: Bot, lang: str):
 
 @main_menu_router.message(F.text.in_([t.get('profile', '') for t in translations.values()]))
 async def _(message: Message, bot: Bot, lang: str):
-    await handle_profile(message, bot, lang)
+    # Use inline cabinet (render_profile via basic.open_cabinet) instead of legacy reply flow
+    await open_cabinet(message)
 
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))
