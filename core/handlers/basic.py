@@ -363,9 +363,10 @@ router.message.register(on_partner_off, Command("partner_off"))
     F.text,
     # Exclude known reply buttons handled in main_menu_router by translation keys
     # (no need for emoji-prefix exclusions here anymore)
-    ~F.text.startswith("➕"),  # add card (partner router)
-    ~F.text.startswith("📂"),  # my cards (partner router)
-    ~F.text.startswith("🎁")   # quick entry points
+    ~F.text.startswith("➕"),   # add card (partner router)
+    ~F.text.startswith("📂"),   # my cards (partner router)
+    ~F.text.startswith("🧑‍💼"), # become partner (partner router)
+    ~F.text.startswith("🎁")    # quick entry points
 )
 async def on_unhandled_message(message: Message):
     # Silence fallback to avoid random SMS replies. Intentionally do nothing.
