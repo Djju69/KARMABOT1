@@ -65,5 +65,5 @@
     "welcome_message": "{user_name}님, Karma System에 오신 것을 환영합니다! 👋\n\n✨ 편리한 카테고리에서 QR 코드를 통해 독점 할인 및 혜택을 받으세요:\n🍽️ 레스토랑 & 카페\n🧖‍♀️ 스파 & 마사지\n🏍️ 오토바이 대여\n🏨 호텔\n🚶‍♂️ 투어\n\n그리고 사업주라면 파트너로 가입하여 로열티 시스템을 연결하세요! 🚀\n\n지금 바로 절약 시작 - 카테고리를 선택하고 할인을 받으세요!\n\n봇을 계속 사용하면 개인 데이터 처리 정책에 동의하는 것입니다.",
     "policy_accept": "✅ 동의합니다",
     "policy_view": "📄 개인정보 처리방침",
-    "policy_url": "https://example.com/privacy"
+    "policy_url": "/policy"
 }

@@ -65,5 +65,5 @@
     "welcome_message": "{user_name}, welcome to Karma System! 👋\n\n✨ Get exclusive discounts and offers via QR code in convenient categories:\n🍽️ Restaurants & Cafes\n🧖‍♀️ SPA & Massage\n🏍️ Bike Rentals\n🏨 Hotels\n🚶‍♂️ Tours\n\nAnd if you're a business owner, join us as a partner and connect your loyalty system! 🚀\n\nStart saving now - choose a category and get your discounts!\n\nBy continuing to use the bot, you agree to the personal data processing policy.",
     "policy_accept": "✅ I agree",
     "policy_view": "📄 Privacy Policy",
-    "policy_url": "https://example.com/privacy"
+    "policy_url": "/policy"
 }
