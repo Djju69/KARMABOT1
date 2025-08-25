@@ -197,8 +197,9 @@ async def open_cabinet(message: Message):
             reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
         )
         return
-    # Partner cabinet (MVP): if partner FSM enabled and partner_active flag set -> show partner reply keyboard
-    if settings.features.partner_fsm and await profile_service.is_partner_active(user_id):
+    # Partner cabinet (MVP): if partner FSM is enabled, always show partner reply keyboard
+    # so that the user can become a partner from the reply button.
+    if settings.features.partner_fsm:
         kb = get_profile_keyboard(lang)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
         return
