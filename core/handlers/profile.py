@@ -89,7 +89,23 @@ async def on_my_cards(message: Message):
 
 @profile_router.message(F.text.in_(_texts('btn.partner.become')))
 async def on_become_partner(message: Message):
-    await message.answer("🧑‍💼 Оставьте заявку партнёра: https://webkarmaapp-production.up.railway.app/auth")
+    """Open partner cabinet instead of sending external link.
+    Keeps UX consistent with partner.open_partner_cabinet_button.
+    """
+    try:
+        # Ensure partner exists
+        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        # Load language and show partner cabinet keyboard
+        lang = await profile_service.get_lang(message.from_user.id)
+        kb = get_profile_keyboard(lang)
+        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+        try:
+            logger.info("profile.become_partner: opened cabinet user_id=%s", message.from_user.id)
+        except Exception:
+            pass
+    except Exception as e:
+        logger.error(f"Failed to open partner cabinet via become button: {e}")
+        await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
 
 
 @profile_router.message(F.text.regexp(r"^\d{12}$"))

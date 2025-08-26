@@ -34,6 +34,39 @@ class AddCardStates(StatesGroup):
 # Router for partner handlers
 partner_router = Router()
 
+def get_inline_skip_keyboard() -> InlineKeyboardMarkup:
+    """Inline keyboard with a single Skip button."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="partner_skip")]
+    ])
+
+def _valid_len(text: str, min_len: int = 0, max_len: int | None = None) -> bool:
+    """Simple length validator helper."""
+    if text is None:
+        return False if min_len > 0 else True
+    s = text.strip()
+    if len(s) < min_len:
+        return False
+    if max_len is not None and len(s) > max_len:
+        return False
+    return True
+
+def _validate_title(text: str) -> tuple[bool, str | None]:
+    """Validate title: required, 3..100 symbols."""
+    if not _valid_len(text, 3, 100):
+        if not text or len(text.strip()) < 3:
+            return False, "❌ Название слишком короткое. Минимум 3 символа."
+        return False, "❌ Название слишком длинное. Максимум 100 символов."
+    return True, None
+
+def _validate_optional_max_len(text: str | None, max_len: int, too_long_msg: str) -> tuple[bool, str | None]:
+    """Validate optional text: allow empty/None, enforce max length otherwise."""
+    if text is None:
+        return True, None
+    if not _valid_len(text, 0, max_len):
+        return False, too_long_msg
+    return True, None
+
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     """Keyboard with cancel option"""
     return ReplyKeyboardMarkup(
@@ -247,23 +280,27 @@ async def enter_title(message: Message, state: FSMContext):
         return
     
     title = message.text.strip()
-    if len(title) < 3:
-        await message.answer("❌ Название слишком короткое. Минимум 3 символа.")
-        return
-    
-    if len(title) > 100:
-        await message.answer("❌ Название слишком длинное. Максимум 100 символов.")
+    ok, err = _validate_title(title)
+    if not ok:
+        await message.answer(err)
         return
     
     await state.update_data(title=title)
     await state.set_state(AddCardStates.enter_description)
     
-    await message.answer(
+    # Основной промпт + reply-клавиатура с отменой
+    data = await state.get_data()
+    cur_descr = data.get('description')
+    base_descr_prompt = (
         f"✅ Название: **{title}**\n\n"
         f"📄 Теперь введите описание заведения:\n"
-        f"*(расскажите о ваших услугах, особенностях, атмосфере)*",
-        reply_markup=get_skip_keyboard()
+        f"*(расскажите о ваших услугах, особенностях, атмосфере)*"
     )
+    if cur_descr:
+        base_descr_prompt += f"\n\nТекущее описание: {cur_descr}"
+    await message.answer(base_descr_prompt, reply_markup=get_cancel_keyboard())
+    # Inline-кнопка пропуска
+    await message.answer("Можно пропустить шаг описания:", reply_markup=get_inline_skip_keyboard())
 
 # Description input
 @partner_router.message(AddCardStates.enter_description, F.text)
@@ -276,18 +313,24 @@ async def enter_description(message: Message, state: FSMContext):
     description = None
     if message.text != "⏭️ Пропустить":
         description = message.text.strip()
-        if len(description) > 500:
-            await message.answer("❌ Описание слишком длинное. Максимум 500 символов.")
+        ok, err = _validate_optional_max_len(description, 500, "❌ Описание слишком длинное. Максимум 500 символов.")
+        if not ok:
+            await message.answer(err)
             return
     
     await state.update_data(description=description)
     await state.set_state(AddCardStates.enter_contact)
     
-    await message.answer(
+    data = await state.get_data()
+    cur_contact = data.get('contact')
+    contact_prompt = (
         f"📞 Введите контактную информацию:\n"
-        f"*(телефон, Telegram, WhatsApp, Instagram)*",
-        reply_markup=get_skip_keyboard()
+        f"*(телефон, Telegram, WhatsApp, Instagram)*"
     )
+    if cur_contact:
+        contact_prompt += f"\n\nТекущие контакты: {cur_contact}"
+    await message.answer(contact_prompt, reply_markup=get_cancel_keyboard())
+    await message.answer("Можно пропустить контакты:", reply_markup=get_inline_skip_keyboard())
 
 # Contact input
 @partner_router.message(AddCardStates.enter_contact, F.text)
@@ -300,18 +343,24 @@ async def enter_contact(message: Message, state: FSMContext):
     contact = None
     if message.text != "⏭️ Пропустить":
         contact = message.text.strip()
-        if len(contact) > 200:
-            await message.answer("❌ Контакт слишком длинный. Максимум 200 символов.")
+        ok, err = _validate_optional_max_len(contact, 200, "❌ Контакт слишком длинный. Максимум 200 символов.")
+        if not ok:
+            await message.answer(err)
             return
     
     await state.update_data(contact=contact)
     await state.set_state(AddCardStates.enter_address)
     
-    await message.answer(
+    data = await state.get_data()
+    cur_address = data.get('address')
+    address_prompt = (
         f"📍 Введите адрес заведения:\n"
-        f"*(улица, район, ориентиры)*",
-        reply_markup=get_skip_keyboard()
+        f"*(улица, район, ориентиры)*"
     )
+    if cur_address:
+        address_prompt += f"\n\nТекущий адрес: {cur_address}"
+    await message.answer(address_prompt, reply_markup=get_cancel_keyboard())
+    await message.answer("Можно пропустить адрес:", reply_markup=get_inline_skip_keyboard())
 
 # Address input
 @partner_router.message(AddCardStates.enter_address, F.text)
@@ -324,18 +373,24 @@ async def enter_address(message: Message, state: FSMContext):
     address = None
     if message.text != "⏭️ Пропустить":
         address = message.text.strip()
-        if len(address) > 300:
-            await message.answer("❌ Адрес слишком длинный. Максимум 300 символов.")
+        ok, err = _validate_optional_max_len(address, 300, "❌ Адрес слишком длинный. Максимум 300 символов.")
+        if not ok:
+            await message.answer(err)
             return
     
     await state.update_data(address=address)
     await state.set_state(AddCardStates.upload_photo)
     
-    await message.answer(
+    data = await state.get_data()
+    has_photo = bool(data.get('photo_file_id'))
+    photo_prompt = (
         f"📸 Загрузите фото заведения:\n"
-        f"*(интерьер, блюда, фасад)*",
-        reply_markup=get_skip_keyboard()
+        f"*(интерьер, блюда, фасад)*"
     )
+    if has_photo:
+        photo_prompt += "\n\nСейчас фото уже прикреплено. Отправьте новое, чтобы заменить, или нажмите 'Пропустить' чтобы удалить."
+    await message.answer(photo_prompt, reply_markup=get_cancel_keyboard())
+    await message.answer("Можно пропустить фото:", reply_markup=get_inline_skip_keyboard())
 
 # Photo upload
 @partner_router.message(AddCardStates.upload_photo, F.photo)
@@ -346,12 +401,17 @@ async def upload_photo(message: Message, state: FSMContext):
     await state.update_data(photo_file_id=photo_file_id)
     await state.set_state(AddCardStates.enter_discount)
     
-    await message.answer(
+    data = await state.get_data()
+    cur_discount = data.get('discount_text')
+    discount_prompt = (
         f"✅ Фото загружено!\n\n"
         f"🎫 Введите информацию о скидке:\n"
-        f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
-        reply_markup=get_skip_keyboard()
+        f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*"
     )
+    if cur_discount:
+        discount_prompt += f"\n\nТекущая скидка: {cur_discount}"
+    await message.answer(discount_prompt, reply_markup=get_cancel_keyboard())
+    await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
 @partner_router.message(AddCardStates.upload_photo, F.text)
 async def skip_photo(message: Message, state: FSMContext):
@@ -361,12 +421,15 @@ async def skip_photo(message: Message, state: FSMContext):
         return
     
     if message.text == "⏭️ Пропустить":
+        # Clear photo when skipping via text
+        await state.update_data(photo_file_id=None)
         await state.set_state(AddCardStates.enter_discount)
         await message.answer(
             f"🎫 Введите информацию о скидке:\n"
             f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
-            reply_markup=get_skip_keyboard()
+            reply_markup=get_cancel_keyboard()
         )
+        await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
     else:
         await message.answer("📸 Пожалуйста, загрузите фото или нажмите 'Пропустить'")
 
@@ -381,8 +444,9 @@ async def enter_discount(message: Message, state: FSMContext):
     discount_text = None
     if message.text != "⏭️ Пропустить":
         discount_text = message.text.strip()
-        if len(discount_text) > 100:
-            await message.answer("❌ Описание скидки слишком длинное. Максимум 100 символов.")
+        ok, err = _validate_optional_max_len(discount_text, 100, "❌ Описание скидки слишком длинное. Максимум 100 символов.")
+        if not ok:
+            await message.answer(err)
             return
     
     await state.update_data(discount_text=discount_text)
@@ -403,6 +467,84 @@ async def enter_discount(message: Message, state: FSMContext):
             preview_text,
             reply_markup=get_preview_keyboard()
         )
+
+# ===== Inline Skip callback handlers for optional steps =====
+@partner_router.callback_query(AddCardStates.enter_description, F.data == "partner_skip")
+async def skip_description_cb(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Очистить описание при пропуске
+    await state.update_data(description=None)
+    await state.set_state(AddCardStates.enter_contact)
+    await callback.message.answer(
+        f"📞 Введите контактную информацию:\n"
+        f"*(телефон, Telegram, WhatsApp, Instagram)*",
+        reply_markup=get_cancel_keyboard()
+    )
+    await callback.message.answer("Можно пропустить контакты:", reply_markup=get_inline_skip_keyboard())
+
+@partner_router.callback_query(AddCardStates.enter_contact, F.data == "partner_skip")
+async def skip_contact_cb(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Очистить контакт при пропуске
+    await state.update_data(contact=None)
+    await state.set_state(AddCardStates.enter_address)
+    await callback.message.answer(
+        f"📍 Введите адрес заведения:\n"
+        f"*(улица, район, ориентиры)*",
+        reply_markup=get_cancel_keyboard()
+    )
+    await callback.message.answer("Можно пропустить адрес:", reply_markup=get_inline_skip_keyboard())
+
+@partner_router.callback_query(AddCardStates.enter_address, F.data == "partner_skip")
+async def skip_address_cb(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Очистить адрес при пропуске
+    await state.update_data(address=None)
+    await state.set_state(AddCardStates.upload_photo)
+    await callback.message.answer(
+        f"📸 Загрузите фото заведения:\n"
+        f"*(интерьер, блюда, фасад)*",
+        reply_markup=get_cancel_keyboard()
+    )
+    await callback.message.answer("Можно пропустить фото:", reply_markup=get_inline_skip_keyboard())
+
+@partner_router.callback_query(AddCardStates.upload_photo, F.data == "partner_skip")
+async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Очистить фото при пропуске
+    await state.update_data(photo_file_id=None)
+    await state.set_state(AddCardStates.enter_discount)
+    await callback.message.answer(
+        f"🎫 Введите информацию о скидке:\n"
+        f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
+        reply_markup=get_cancel_keyboard()
+    )
+    await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
+
+@partner_router.callback_query(AddCardStates.enter_discount, F.data == "partner_skip")
+async def skip_discount_cb(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Очистить скидку при пропуске
+    await state.update_data(discount_text=None)
+    await state.set_state(AddCardStates.preview_card)
+    data = await state.get_data()
+    preview_text = format_card_preview(data, data.get('category_name', ''))
+    await callback.message.answer(preview_text, reply_markup=get_preview_keyboard())
 
 # Submit card
 @partner_router.callback_query(F.data == "partner_submit")
@@ -432,9 +574,11 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         
         card_id = db_v2.create_card(card)
         
+        title = (data.get('title') or '').strip() or '(без названия)'
         await callback.message.edit_text(
             f"✅ **Карточка отправлена на модерацию!**\n\n"
-            f"📋 ID карточки: #{card_id}\n"
+            f"📋 ID: #{card_id}\n"
+            f"📝 Название: {title}\n"
             f"⏳ Статус: На рассмотрении\n\n"
             f"💡 Вы получите уведомление, когда модератор рассмотрит вашу карточку.",
             reply_markup=None
@@ -500,13 +644,13 @@ async def edit_card(callback: CallbackQuery, state: FSMContext):
     preview_text = format_card_preview(data, cat_name)
     try:
         await callback.message.edit_text(
-            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Введите новое название (или пришлите текущее ещё раз):",
+            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Текущее название: {data.get('title','(не задано)')}\nВведите новое название (или пришлите текущее ещё раз):",
             reply_markup=None,
         )
     except Exception:
         # Fallback if editing message fails (e.g., was a photo preview)
         await callback.message.answer(
-            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Введите новое название (или пришлите текущее ещё раз):",
+            f"✏️ Редактирование карточки\n\n{preview_text}\n\n📝 Текущее название: {data.get('title','(не задано)')}\nВведите новое название (или пришлите текущее ещё раз):",
         )
     # Provide cancel keyboard
     await callback.message.answer(
