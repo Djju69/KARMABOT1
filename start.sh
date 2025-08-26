@@ -133,10 +133,10 @@ echo " - FASTAPI_ONLY=${FASTAPI_ONLY}"
 echo " - DISABLE_POLLING=${DISABLE_POLLING} (set 1 on followers to avoid getUpdates conflicts)"
 echo " - ENABLE_POLLING_LEADER_LOCK=${ENABLE_POLLING_LEADER_LOCK:-0} (1 enables in-app leader election)"
 echo " - PREEMPT_LEADER=${PREEMPT_LEADER:-0} (1 forces takeover if lock is stale)"
-if [ "${DISABLE_POLLING}" = "0" ] && [ -z "${PREEMPT_LEADER}" ]; then
-  # If this instance is intended to poll and PREEMPT_LEADER is not set, default it to 1 to avoid being stuck behind a stale leader lock.
+# Variant B: force takeover on this instance when polling is enabled
+if [ "${DISABLE_POLLING}" = "0" ]; then
   export PREEMPT_LEADER=1
-  echo "[boot] PREEMPT_LEADER was not set and DISABLE_POLLING=0 → defaulting PREEMPT_LEADER=1 to ensure takeover if needed."
+  echo "[boot] Forcing PREEMPT_LEADER=1 (Variant B: force leader takeover on this instance)."
 fi
 if [ "$RUN_MODE" = "web" ] || [ "${FASTAPI_ONLY}" = "1" ] || [ "${DISABLE_POLLING}" = "1" ]; then
   echo "[decision] Bot polling will NOT start on this instance. Reason: RUN_MODE=web or FASTAPI_ONLY=1 or DISABLE_POLLING=1."
