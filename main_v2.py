@@ -145,6 +145,36 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
 
     return True, _release
 
+async def _log_pg_lock_holder(conn: "asyncpg.Connection", big_key: int) -> None:
+    """Log info about the process holding the advisory lock if possible.
+    On Postgres, bigint advisory locks are represented as (classid, objid) int4 pair in pg_locks.
+    We split the 64-bit key into two 32-bit parts: hi=classid, lo=objid.
+    """
+    hi = (big_key >> 32) & 0xFFFFFFFF
+    lo = big_key & 0xFFFFFFFF
+    rows = await conn.fetch(
+        """
+        SELECT l.pid, a.application_name, a.usename, a.client_addr, a.query
+        FROM pg_locks l
+        JOIN pg_stat_activity a ON a.pid = l.pid
+        WHERE l.locktype = 'advisory'
+          AND l.classid = $1::integer
+          AND l.objid = $2::integer
+          AND l.mode = 'ExclusiveLock'
+          AND l.granted = true
+        LIMIT 5
+        """,
+        hi, lo,
+    )
+    if not rows:
+        logger.warning("DB lock holder not found in pg_locks (key split hi=%s lo=%s)", hi, lo)
+        return
+    for r in rows:
+        logger.error(
+            "DB lock holder: pid=%s app=%s user=%s addr=%s | query=%s",
+            r["pid"], r["application_name"], r["usename"], str(r["client_addr"]), (r["query"] or "")[:120],
+        )
+
 async def _acquire_pg_leader_lock(db_url: str, key: str):
     """Acquire a Postgres advisory lock as a fallback leader lock.
     Returns (owned: bool, release_coro: callable|None).
@@ -160,9 +190,9 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
     dsn = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 
     # Derive a 64-bit signed key from string
-    h = hashlib.sha256(key.encode("utf-8")).digest()
-    big = int.from_bytes(h[:8], byteorder="big", signed=False)
-    lock_key = big % (2**63)  # fit into BIGINT signed range
+    key_hash = hashlib.sha256(key.encode()).digest()
+    big_key = int.from_bytes(key_hash[:8], byteorder="big", signed=False)
+    lock_key = big_key % (2**63)  # fit into BIGINT signed range
 
     try:
         conn = await asyncpg.connect(dsn)
@@ -173,7 +203,7 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
         return True, None
 
     try:
-        ok = await conn.fetchval("SELECT pg_try_advisory_lock($1)", lock_key)
+        ok = await conn.fetchval("SELECT pg_try_advisory_lock($1)", big_key)
     except Exception as e:
         logging.getLogger(__name__).warning(
             f"DB leader lock: pg_try_advisory_lock failed, proceeding without lock: {e}"
@@ -185,13 +215,13 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
         return True, None
 
     if not ok:
+        # Try to identify the holder for diagnostics
         try:
-            await conn.close()
-        except Exception:
-            pass
-        logging.getLogger(__name__).error(
-            "❌ Another instance holds DB advisory lock (%s). Staying idle.", key
-        )
+            await _log_pg_lock_holder(conn, big_key)
+        except Exception as e:
+            logger.warning("Could not fetch lock holder diagnostics: %s", e)
+        logger.error("❌ Another instance holds DB advisory lock (%s). Staying idle.", key)
+        await conn.close()
         return False, None
 
     logger.info("✅ DB advisory lock acquired (key=%s)", key)
@@ -199,7 +229,7 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
     async def _release():
         try:
             try:
-                await conn.fetchval("SELECT pg_advisory_unlock($1)", lock_key)
+                await conn.fetchval("SELECT pg_advisory_unlock($1)", big_key)
                 logger.info("🧹 DB advisory lock released (key=%s)", key)
             except Exception:
                 pass
