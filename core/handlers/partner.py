@@ -967,7 +967,7 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         try:
             lang = await profile_service.get_lang(callback.from_user.id)
             # ЛК партнёра — показываем партнёрскую клавиатуру с верхней кнопкой QR
-            kb = get_partner_keyboard(lang)
+            kb = get_partner_keyboard(lang, show_qr=True)
             await callback.message.answer(
                 "🏪 Вы в личном кабинете партнёра",
                 reply_markup=kb,
@@ -1039,10 +1039,20 @@ async def open_partner_cabinet_cmd(message: Message):
     """Open partner cabinet via /partner command."""
     try:
         # Ensure partner exists
-        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        # Load language and show partner cabinet keyboard (с верхней кнопкой QR)
+        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        # Determine if QR should be shown: when partner has at least one card (pending/approved/published)
+        show_qr = False
+        try:
+            cards = db_v2.get_partner_cards(partner.id)
+            for c in cards:
+                if str(c.get('status')) in ('pending', 'approved', 'published'):
+                    show_qr = True
+                    break
+        except Exception:
+            show_qr = False
+        # Load language and show partner cabinet keyboard (QR optionally on top)
         lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_partner_keyboard(lang)
+        kb = get_partner_keyboard(lang, show_qr=show_qr)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
     except Exception as e:
         logger.error(f"Failed to open partner cabinet: {e}")

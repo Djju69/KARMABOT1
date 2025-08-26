@@ -243,6 +243,112 @@ async def bind_card_api(payload: BindCardRequest, claims: Dict[str, Any] = Depen
     return BindCardResponse(ok=True, last4=res.last4, reason=None)
 
 
+class RedeemRequest(BaseModel):
+    uid: str = Field(..., min_length=8, max_length=64, description="UID from QR or plastic card")
+    amount: Optional[int] = Field(default=None, description="Optional amount/points to redeem")
+
+
+class RedeemResponse(BaseModel):
+    ok: bool
+    reason: Optional[str] = None  # not_implemented | invalid | blocked | already_redeemed | expired | limit
+
+
+@router.post("/api/qr/redeem", response_model=RedeemResponse)
+async def qr_redeem(payload: RedeemRequest, claims: Dict[str, Any] = Depends(get_current_claims)):
+    """Погашение QR-кода партнёром.
+    Валидация и атомарное обновление статуса QR в таблице `qr_codes_v2`.
+
+    Возвращает причины: invalid | already_redeemed | expired | forbidden
+    """
+    # 1) Аутентификация
+    try:
+        tg_user_id = int(claims.get("sub"))
+    except Exception:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    role = str(claims.get("role") or "").lower()
+    uid = (payload.uid or "").strip()
+    if not uid:
+        return RedeemResponse(ok=False, reason="invalid")
+
+    # 2) Идентификация партнёра и проверка владения QR через карточку
+    with _db_connect() as conn:
+        try:
+            partner_id = _ensure_partner(conn, tg_user_id)
+        except Exception:
+            # fallback: запрет, если не удалось определить партнёра
+            raise HTTPException(status_code=403, detail="forbidden")
+
+        # Найти QR и связанный card.partner_id
+        row = conn.execute(
+            """
+            SELECT q.id AS qid, q.is_redeemed, q.expires_at, q.redeemed_at,
+                   c.partner_id
+            FROM qr_codes_v2 q
+            JOIN cards_v2 c ON c.id = q.card_id
+            WHERE q.qr_token = ?
+            LIMIT 1
+            """,
+            (uid,),
+        ).fetchone()
+
+        if not row:
+            # Нет такого QR
+            logger.info("qr_redeem.invalid", extra={"uid": uid[:10]})
+            return RedeemResponse(ok=False, reason="invalid")
+
+        qr_id = int(row["qid"]) if "qid" in row.keys() else int(row[0])
+        qr_is_redeemed = bool(row["is_redeemed"]) if "is_redeemed" in row.keys() else bool(row[1])
+        qr_expires_at = row["expires_at"] if "expires_at" in row.keys() else row[2]
+        owner_partner_id = int(row["partner_id"]) if "partner_id" in row.keys() else int(row[4])
+
+        # 3) Проверка владения: либо владелец карточки, либо (супер)админ
+        if role not in ("admin", "superadmin") and owner_partner_id != partner_id:
+            # Не раскрываем, существует ли токен — 403
+            raise HTTPException(status_code=403, detail="forbidden")
+
+        # 4) Попытка атомарного погашения (idempotent через WHERE-условия)
+        cur = conn.execute(
+            """
+            UPDATE qr_codes_v2
+            SET is_redeemed = 1,
+                redeemed_at = CURRENT_TIMESTAMP,
+                redeemed_by = ?
+            WHERE id = ?
+              AND is_redeemed = 0
+              AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)
+            RETURNING id
+            """,
+            (tg_user_id, qr_id),
+        )
+        updated = cur.fetchone()
+        if updated:
+            # Успех
+            try:
+                logger.info("qr_redeem.ok", extra={"qr_id": qr_id, "by": tg_user_id})
+            except Exception:
+                pass
+            return RedeemResponse(ok=True, reason=None)
+
+        # 5) Определить причину отказа
+        # Перечитаем актуальный статус
+        row2 = conn.execute(
+            "SELECT is_redeemed, expires_at FROM qr_codes_v2 WHERE id = ?",
+            (qr_id,),
+        ).fetchone()
+        if not row2:
+            # Теоретически не должен исчезнуть из-под нас
+            return RedeemResponse(ok=False, reason="invalid")
+        is_red = bool(row2[0])
+        exp = row2[1]
+        if is_red:
+            logger.info("qr_redeem.already_redeemed", extra={"qr_id": qr_id})
+            return RedeemResponse(ok=False, reason="already_redeemed")
+        # Если не погасился и не redeemed=true, значит просрочен условием WHERE
+        logger.info("qr_redeem.expired", extra={"qr_id": qr_id, "exp": str(exp)})
+        return RedeemResponse(ok=False, reason="expired")
+
+
 # --- Categories for Partner UI ---
 class CategoryItem(BaseModel):
     id: int

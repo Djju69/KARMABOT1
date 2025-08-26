@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from aiogram import Router, F
 import logging
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
 from ..keyboards.inline_v2 import (
     get_language_inline,
@@ -360,7 +360,9 @@ router.message.register(on_partner_off, Command("partner_off"))
 # See core/handlers/main_menu_router.py for the canonical mappings.
 
 # Fallback for any other text messages (exclude known reply buttons handled elsewhere)
+# IMPORTANT: Trigger only when no FSM state is active to avoid swallowing FSM inputs
 @router.message(
+    StateFilter(None),
     F.text,
     # Exclude known reply buttons handled in main_menu_router by translation keys
     # (no need for emoji-prefix exclusions here anymore)

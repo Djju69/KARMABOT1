@@ -4,7 +4,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from starlette.exceptions import HTTPException as StarletteHTTPException
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 # Import project settings and auth utils
@@ -112,6 +111,34 @@ class TokenCookieMiddleware(BaseHTTPMiddleware):
         return resp
 
 app = FastAPI(title="KARMABOT1 WebApp API")
+
+# Simple in-memory rate limiter for /api/qr/* endpoints (5 r/s, burst 10 per IP)
+from time import monotonic as _now
+from collections import defaultdict as _dd
+
+_rl_buckets: dict[str, dict[str, float]] = _dd(dict)
+_RATE = 5.0
+_BURST = 10.0
+
+@app.middleware("http")
+async def _qr_rate_limit_middleware(request: Request, call_next):
+    try:
+        path = request.url.path or ""
+        if path.startswith("/api/qr/"):
+            ip = request.headers.get("x-forwarded-for") or request.client.host or "?"
+            b = _rl_buckets.setdefault(ip, {"tokens": _BURST, "ts": _now()})
+            now = _now()
+            # refill
+            elapsed = now - b["ts"]
+            b["ts"] = now
+            b["tokens"] = min(_BURST, b["tokens"] + elapsed * _RATE)
+            if b["tokens"] < 1.0:
+                return Response(status_code=429, content="Too Many Requests")
+            b["tokens"] -= 1.0
+    except Exception:
+        # Fail-open to avoid breaking prod
+        pass
+    return await call_next(request)
 
 # Global handler to gracefully handle Method Not Allowed (405)
 @app.exception_handler(StarletteHTTPException)
@@ -694,7 +721,7 @@ _INDEX_HTML_RAW = """
           try {
             localStorage.setItem('partner_jwt', t);
             localStorage.setItem('jwt', t);
-            localStorage.setItem('authToken', t);
+            console.info('[auth] token picked from ?token, saved to localStorage');
           } catch(_) {}
           document.cookie = 'partner_jwt=' + encodeURIComponent(t) + '; path=/';
           document.cookie = 'authToken=' + encodeURIComponent(t) + '; path=/';
@@ -1152,12 +1179,17 @@ _INDEX_HTML_RAW = """
           box.style.display = 'none';
         }
       } catch (e) { /* noop */ }
-      // QR button click placeholder
+      // QR button now opens the scanner page
       try {
         const btn = document.getElementById('btnScanQR');
         if (btn) {
           btn.addEventListener('click', () => {
-            alert('Сканер QR будет доступен в мобильном приложении. Пока заглушка.');
+            try {
+              console.log('metric.qr_menu_button_click');
+              // Best-effort fire-and-forget beacon (if you later expose metrics endpoint)
+              try { navigator.sendBeacon && navigator.sendBeacon('/qr/ping'); } catch(_e) {}
+              window.location.href = '/scan';
+            } catch(_) {}
           });
         }
       } catch (e) { /* noop */ }
@@ -1656,7 +1688,7 @@ _PARTNER_CARDS_HTML = """
             localStorage.setItem('partner_jwt', pasted.trim());
             location.reload();
           } else {
-            alert('Токен не задан. Откройте страницу со ссылкой ?token=... или вставьте JWT в появившееся окно.');
+            alert('Токен не задан. Откройте страницу со ссылкой ?token=...');
           }
         } catch(_) {
           alert('Нет токена. Откройте страницу со ссылкой ?token=...');
@@ -1697,9 +1729,9 @@ _PARTNER_CARDS_HTML = """
         if (canToggle && row.status === 'approved') actions.push(`<button class="secondary" data-act="hide" data-id="${row.id}">Скрыть</button>`);
         if (canToggle && row.status === 'archived') actions.push(`<button class="secondary" data-act="unhide" data-id="${row.id}">Показать</button>`);
         // QR: доступно только для approved & !hidden
-        if (row.status === 'approved') actions.push(`<button class="secondary" disabled data-id="${row.id}">Создать QR</button>`);
-        return actions.join(' ');
-      }
+            if (canToggle && row.status === 'approved') actions.push(`<a class="secondary" href="/scan" data-id="${row.id}">Создать QR</a>`);
+            return actions.join(' ');
+          }
 
       function applyHeaderFilter(items){
         try{

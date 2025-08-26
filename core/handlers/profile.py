@@ -138,7 +138,17 @@ async def on_become_partner(message: Message, state: FSMContext):
 
         # Fallback: просто открыть кабинет партнёра (без FSM)
         lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_partner_keyboard(lang)
+        # Условно показываем QR: если есть хотя бы одна карточка (pending/approved/published)
+        show_qr = False
+        try:
+            cards = db_v2.get_partner_cards(partner.id)
+            for c in cards:
+                if str(c.get('status')) in ('pending', 'approved', 'published'):
+                    show_qr = True
+                    break
+        except Exception:
+            show_qr = False
+        kb = get_partner_keyboard(lang, show_qr=show_qr)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
         try:
             logger.info("profile.become_partner: opened cabinet user_id=%s", message.from_user.id)
