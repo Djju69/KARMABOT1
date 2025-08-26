@@ -92,11 +92,41 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
 
     if not ok:
         # Someone else holds the lock
-        try:
-            await redis.close()
-        except Exception:
-            pass
-        return False, None
+        # Optional preempt: if PREEMPT_LEADER is set, try to delete the key and acquire again
+        if os.getenv("PREEMPT_LEADER", "").lower() in {"1", "true", "yes"}:
+            try:
+                cur = await redis.get(key)
+            except Exception:
+                cur = None
+            logging.getLogger(__name__).warning(
+                "PREEMPT (Redis): attempting to remove existing leader lock (key=%s, cur_token=%s)", key, (cur or "<unknown>")
+            )
+            try:
+                # Best-effort delete; not strictly safe but acceptable for single-service Railway setup
+                await redis.delete(key)
+            except Exception as e:
+                logging.getLogger(__name__).warning("PREEMPT (Redis): delete failed: %s", e)
+            # Small delay and retry SET NX
+            try:
+                await asyncio.sleep(0.2)
+                ok2 = await redis.set(key, token, ex=ttl, nx=True)
+            except Exception as e:
+                logging.getLogger(__name__).warning("PREEMPT (Redis): retry SET NX failed: %s", e)
+                ok2 = False
+            if ok2:
+                logging.getLogger(__name__).info("✅ PREEMPT SUCCESS: Redis leader lock acquired (key=%s)", key)
+            else:
+                try:
+                    await redis.close()
+                except Exception:
+                    pass
+                return False, None
+        else:
+            try:
+                await redis.close()
+            except Exception:
+                pass
+            return False, None
 
     logger.info("✅ Polling leader lock acquired (key=%s)", key)
 
