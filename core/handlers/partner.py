@@ -3,7 +3,7 @@ Partner FSM handlers for adding cards
 Behind FEATURE_PARTNER_FSM flag for safe deployment
 """
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.filters import Command
@@ -242,14 +242,19 @@ async def _render_cards_page(message_or_cbmsg, user_id: int, full_name: str, pag
     partner = db_v2.get_or_create_partner(user_id, full_name)
     logger.info("partner.render_cards_page: user=%s partner_id=%s page=%s", user_id, partner.id, page)
     with db_v2.get_connection() as conn:
-        total = int(conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ?", (partner.id,)).fetchone()[0])
+        total = int(
+            conn.execute(
+                "SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ? AND status IN ('approved','published')",
+                (partner.id,),
+            ).fetchone()[0]
+        )
         offset = max(page, 0) * PAGE_SIZE
         cur = conn.execute(
             """
             SELECT c.*, cat.name as category_name
             FROM cards_v2 c
             JOIN categories_v2 cat ON c.category_id = cat.id
-            WHERE c.partner_id = ?
+            WHERE c.partner_id = ? AND c.status IN ('approved','published')
             ORDER BY c.updated_at DESC
             LIMIT ? OFFSET ?
             """,
@@ -312,8 +317,12 @@ def format_card_preview(card_data: dict, category_name: str) -> str:
     if card_data.get('discount_text'):
         text += f"🎫 **Скидка:** {card_data['discount_text']}\n"
     
-    if card_data.get('photo_file_id'):
-        text += f"📸 **Фото:** Прикреплено\n"
+    # Поддержка мультифото в состоянии FSM
+    photos = card_data.get('photos')
+    if photos and isinstance(photos, list) and len(photos) > 0:
+        text += f"📸 **Фото:** Прикреплено ({len(photos)} шт.)\n"
+    elif card_data.get('photo_file_id'):
+        text += f"📸 **Фото:** Прикреплено (1 шт.)\n"
     
     text += f"\n💡 После отправки карточка попадет на модерацию."
     
@@ -396,7 +405,13 @@ async def show_my_cards(message: Message):
         # Покажем первую страницу
         # Если карточек нет вообще — короткое сообщение с навигацией
         with db_v2.get_connection() as conn:
-            total = int(conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ?", (db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name).id,)).fetchone()[0])
+            partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+            total = int(
+                conn.execute(
+                    "SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ? AND status IN ('approved','published')",
+                    (partner.id,)
+                ).fetchone()[0]
+            )
         if total == 0:
             await message.answer(
                 "📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.",
@@ -457,16 +472,51 @@ async def partner_card_view(callback: CallbackQuery):
         )
         # Кнопки действий
         act_rows: list[list[InlineKeyboardButton]] = []
-        # toggle visibility allowed for approved/published/archived
         if status in ("published", "approved", "archived"):
             toggle_label = "👁️ Скрыть" if status == "published" else "👁️ Показать"
             act_rows.append([InlineKeyboardButton(text=toggle_label, callback_data=f"pc:toggle:{card_id}:{page}")])
-        # delete
         act_rows.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"pc:del:{card_id}:{page}")])
-        # back
         act_rows.append([InlineKeyboardButton(text="↩️ К списку", callback_data=f"pc:page:{page}")])
         kb = InlineKeyboardMarkup(inline_keyboard=act_rows)
-        await callback.message.edit_text(text, reply_markup=kb)
+
+        # Попробуем получить все фото карточки и отправить медиагруппу
+        try:
+            photos = db_v2.get_card_photos(card_id)
+        except Exception:
+            photos = []
+
+        if photos:
+            # Сформируем медиагруппу (до 5 фото)
+            media: list[InputMediaPhoto] = []
+            for idx, p in enumerate(photos[:5]):
+                fid = p.get('file_id') if isinstance(p, dict) else getattr(p, 'file_id', None)
+                if not fid:
+                    continue
+                if idx == 0:
+                    media.append(InputMediaPhoto(media=fid, caption=f"{title}"))
+                else:
+                    media.append(InputMediaPhoto(media=fid))
+            # Удалим предыдущее сообщение (если возможно), затем отправим медиагруппу и отдельный текст
+            try:
+                await callback.message.delete()
+            except Exception:
+                try:
+                    await callback.message.edit_text("📷 Просмотр карточки…")
+                except Exception:
+                    pass
+            try:
+                await callback.message.answer_media_group(media)
+            except Exception:
+                # Фоллбэк: если медиагруппа не прошла, отправим первое фото отдельно
+                try:
+                    await callback.message.answer_photo(photos[0].get('file_id') if isinstance(photos[0], dict) else getattr(photos[0], 'file_id', None))
+                except Exception:
+                    pass
+            # Затем отправим текст с кнопками
+            await callback.message.answer(text, reply_markup=kb)
+        else:
+            # Фото нет — оставляем прежнее поведение
+            await callback.message.edit_text(text, reply_markup=kb)
         logger.info("partner.card_view: user=%s card_id=%s page=%s", callback.from_user.id, card_id, page)
     except Exception as e:
         logger.exception("partner.card_view failed: %s", e)
@@ -750,23 +800,27 @@ async def enter_gmaps(message: Message, state: FSMContext):
 # Photo upload
 @partner_router.message(AddCardStates.upload_photo, F.photo)
 async def upload_photo(message: Message, state: FSMContext):
-    """Handle photo upload"""
-    photo_file_id = message.photo[-1].file_id  # Get largest photo
-    
-    await state.update_data(photo_file_id=photo_file_id)
-    await state.set_state(AddCardStates.enter_discount)
-    
+    """Загрузка фото: поддержка до 5 фото с управлением."""
+    photo_file_id = message.photo[-1].file_id  # наибольшее по размеру
     data = await state.get_data()
-    cur_discount = data.get('discount_text')
-    discount_prompt = (
-        f"✅ Фото загружено!\n\n"
-        f"🎫 Введите информацию о скидке:\n"
-        f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*"
-    )
-    if cur_discount:
-        discount_prompt += f"\n\nТекущая скидка: {cur_discount}"
-    await message.answer(discount_prompt, reply_markup=get_cancel_keyboard())
-    await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
+    photos = list(data.get('photos') or [])
+    if len(photos) >= 5:
+        await message.answer("ℹ️ Достигнут лимит 5 фото. Нажмите 'Готово' или удалите лишнее.", reply_markup=get_cancel_keyboard())
+        await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
+        return
+    photos.append(photo_file_id)
+    await state.update_data(photos=photos)
+    if len(photos) < 5:
+        await message.answer(
+            f"✅ Фото добавлено ({len(photos)}/5). Пришлите ещё фото или нажмите 'Готово'.",
+            reply_markup=get_photos_control_inline(len(photos)),
+        )
+    else:
+        # Достигли лимита — сразу предлагаем перейти далее
+        await message.answer(
+            f"✅ Добавлено 5/5 фото. Нажмите 'Готово' для продолжения.",
+            reply_markup=get_photos_control_inline(len(photos)),
+        )
 
 @partner_router.message(AddCardStates.upload_photo, F.text)
 async def skip_photo(message: Message, state: FSMContext):
@@ -776,17 +830,17 @@ async def skip_photo(message: Message, state: FSMContext):
         return
     
     if message.text == "⏭️ Пропустить":
-        # Clear photo when skipping via text
-        await state.update_data(photo_file_id=None)
+        # Пропуск фото — очистить список
+        await state.update_data(photos=[] , photo_file_id=None)
         await state.set_state(AddCardStates.enter_discount)
         await message.answer(
             f"🎫 Введите информацию о скидке:\n"
             f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
-            reply_markup=get_cancel_keyboard()
+            reply_markup=get_cancel_keyboard(),
         )
         await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
     else:
-        await message.answer("📸 Пожалуйста, загрузите фото или нажмите 'Пропустить'")
+        await message.answer("📸 Пожалуйста, загрузите фото или нажмите 'Пропустить' / 'Готово'", reply_markup=get_photos_control_inline(len((await state.get_data()).get('photos') or [])))
 
 # Discount input
 @partner_router.message(AddCardStates.enter_discount, F.text)
@@ -810,17 +864,18 @@ async def enter_discount(message: Message, state: FSMContext):
     # Show preview
     data = await state.get_data()
     preview_text = format_card_preview(data, data.get('category_name', ''))
-    
-    if data.get('photo_file_id'):
+    photos = data.get('photos') or ([] if data.get('photo_file_id') is None else [data.get('photo_file_id')])
+    if photos:
+        # Показать первое фото с подписью предпросмотра
         await message.answer_photo(
-            photo=data['photo_file_id'],
+            photo=photos[0],
             caption=preview_text,
-            reply_markup=get_preview_keyboard()
+            reply_markup=get_preview_keyboard(),
         )
     else:
         await message.answer(
             preview_text,
-            reply_markup=get_preview_keyboard()
+            reply_markup=get_preview_keyboard(),
         )
 
 # ===== Inline Skip callback handlers for optional steps =====
@@ -878,13 +933,60 @@ async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
     except Exception:
         pass
-    # Очистить фото при пропуске
-    await state.update_data(photo_file_id=None)
+    # Очистить фото при пропуске (мультифото)
+    await state.update_data(photos=[], photo_file_id=None)
     await state.set_state(AddCardStates.enter_discount)
     await callback.message.answer(
         f"🎫 Введите информацию о скидке:\n"
         f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
         reply_markup=get_cancel_keyboard()
+    )
+    await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
+
+def get_photos_control_inline(current_count: int) -> InlineKeyboardMarkup:
+    """Inline-клавиатура управления фото на шаге загрузки."""
+    rows: list[list[InlineKeyboardButton]] = []
+    if current_count == 0:
+        rows.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="partner_skip")])
+    if current_count > 0:
+        rows.append([InlineKeyboardButton(text="🗑 Удалить последнее", callback_data="pfsm:photos:del_last")])
+    rows.append([InlineKeyboardButton(text=f"✅ Готово ({current_count}/5)", callback_data="pfsm:photos:done")])
+    rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+@partner_router.callback_query(AddCardStates.upload_photo, F.data == "pfsm:photos:del_last")
+async def on_photos_del_last(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    data = await state.get_data()
+    photos = list(data.get('photos') or [])
+    if photos:
+        photos.pop()
+        await state.update_data(photos=photos)
+        await callback.message.answer(
+            f"🗑 Удалено. Осталось фото: {len(photos)}/5. Загрузите ещё или нажмите 'Готово'.",
+            reply_markup=get_photos_control_inline(len(photos)),
+        )
+    else:
+        await callback.message.answer(
+            "Нет загруженных фото. Пришлите фото или нажмите 'Пропустить'.",
+            reply_markup=get_photos_control_inline(0),
+        )
+
+@partner_router.callback_query(AddCardStates.upload_photo, F.data == "pfsm:photos:done")
+async def on_photos_done(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Переход к шагу скидки
+    await state.set_state(AddCardStates.enter_discount)
+    await callback.message.answer(
+        f"🎫 Введите информацию о скидке:\n"
+        f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
+        reply_markup=get_cancel_keyboard(),
     )
     await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
@@ -923,16 +1025,27 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             contact=data.get('contact'),
             address=data.get('address'),
             google_maps_url=data.get('google_maps_url'),
-            photo_file_id=data.get('photo_file_id'),
+            # Первое фото сохраняем в карточку для обратной совместимости
+            photo_file_id=(data.get('photos') or [data.get('photo_file_id')])[0] if (data.get('photos') or data.get('photo_file_id')) else None,
             discount_text=data.get('discount_text'),
             status='pending',  # Waiting for moderation
-            # Optional taxonomy/geo
+            priority_level=0,
             subcategory_id=data.get('subcategory_id'),
             city_id=data.get('city_id'),
-            area_id=data.get('area_id'),
+            area_id=data.get('area_id')
         )
-        
         card_id = db_v2.create_card(card)
+        
+        # Сохранить все фото в card_photos с позициями
+        try:
+            photos = list((data.get('photos') or []))
+            for idx, fid in enumerate(photos):
+                try:
+                    db_v2.add_card_photo(int(card_id), str(fid), position=idx)
+                except Exception as pe:
+                    logger.error("add_card_photo failed: card_id=%s pos=%s err=%s", card_id, idx, pe)
+        except Exception as e2:
+            logger.exception("Failed to persist photos for card_id=%s: %s", card_id, e2)
         
         title = (data.get('title') or '').strip() or '(без названия)'
         await callback.message.edit_text(

@@ -390,6 +390,8 @@ class DatabaseMigrator:
         self.migrate_006_seed_shops_services()
         # Bans table
         self.migrate_007_banned_users()
+        # Card photos table for multi-photo support
+        self.migrate_008_card_photos()
         
         logger.info("All migrations completed successfully")
 
@@ -428,6 +430,31 @@ class DatabaseMigrator:
         self.apply_migration(
             "007",
             "EXPAND: Create banned_users table",
+            sql,
+        )
+
+    def migrate_008_card_photos(self):
+        """
+        EXPAND Phase: Create card_photos table to support multiple photos per card.
+        - card_photos: id, card_id (FK -> cards_v2), file_id, position, created_at
+        Indices on (card_id, position) for ordering.
+        """
+        sql = """
+        CREATE TABLE IF NOT EXISTS card_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            card_id INTEGER NOT NULL,
+            file_id TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (card_id) REFERENCES cards_v2(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_card_photos_card ON card_photos(card_id);
+        CREATE INDEX IF NOT EXISTS idx_card_photos_card_pos ON card_photos(card_id, position);
+        """
+        self.apply_migration(
+            "008",
+            "EXPAND: Create card_photos table for multi-photo support",
             sql,
         )
 

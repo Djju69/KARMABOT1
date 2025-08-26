@@ -59,6 +59,7 @@ class DefaultCardRenderer:
 {contact_section}
 {address_section}
 {discount_section}
+{photos_section}
 
 {actions}''',
             
@@ -99,6 +100,17 @@ class DefaultCardRenderer:
         # Actions (can be customized per category)
         actions = self._render_card_actions(card, t)
         
+        # Photos section (multi-photo aware)
+        photos_count = None
+        try:
+            pc = card.get('photos_count')
+            photos_count = int(pc) if pc is not None else None
+        except Exception:
+            photos_count = None
+        if photos_count is None:
+            photos_count = 1 if card.get('photo_file_id') else 0
+        photos_section = f"📸 **Фото:** {photos_count} шт." if photos_count and photos_count > 0 else ""
+        
         # Format template
         try:
             return template.format(
@@ -107,6 +119,7 @@ class DefaultCardRenderer:
                 contact_section=contact_section,
                 address_section=address_section,
                 discount_section=discount_section,
+                photos_section=photos_section,
                 actions=actions
             ).strip()
         except KeyError as e:
@@ -135,9 +148,18 @@ class DefaultCardRenderer:
         if card.get('discount_text'):
             discount_section = f"🎫 **Скидка:** {card['discount_text']}"
         
+        # Photo section (multi-photo aware)
+        photos_count = None
+        try:
+            pc = card.get('photos_count')
+            photos_count = int(pc) if pc is not None else None
+        except Exception:
+            photos_count = None
+        if photos_count is None:
+            photos_count = 1 if card.get('photo_file_id') else 0
         photo_section = ""
-        if card.get('photo_file_id'):
-            photo_section = "📸 **Фото:** Прикреплено"
+        if photos_count and photos_count > 0:
+            photo_section = f"📸 **Фото:** Прикреплено ({photos_count} шт.)"
         
         # Status translation
         status_map = {

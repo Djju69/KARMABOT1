@@ -327,11 +327,82 @@ class DatabaseServiceV2:
             )
             row = cursor.fetchone()
             return dict(row) if row else None
+
+    # --- Card photos helpers ---
+    def add_card_photo(self, card_id: int, file_id: str, position: Optional[int] = None) -> int:
+        """Add a photo to card_photos. If position is None, append to the end."""
+        with self.get_connection() as conn:
+            if position is None:
+                cur = conn.execute(
+                    "SELECT COALESCE(MAX(position), -1) + 1 FROM card_photos WHERE card_id = ?",
+                    (int(card_id),),
+                )
+                position = int(cur.fetchone()[0])
+            cursor = conn.execute(
+                """
+                INSERT INTO card_photos(card_id, file_id, position)
+                VALUES(?, ?, ?)
+                """,
+                (int(card_id), str(file_id), int(position)),
+            )
+            return cursor.lastrowid
+
+    def get_card_photos(self, card_id: int) -> List[Dict[str, Any]]:
+        """Return photos for a card ordered by position ASC."""
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                "SELECT id, file_id, position, created_at FROM card_photos WHERE card_id = ? ORDER BY position ASC",
+                (int(card_id),),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+    def delete_card_photo(self, photo_id: int) -> bool:
+        with self.get_connection() as conn:
+            cur = conn.execute("DELETE FROM card_photos WHERE id = ?", (int(photo_id),))
+            return (cur.rowcount or 0) > 0
+
+    def clear_card_photos(self, card_id: int) -> int:
+        with self.get_connection() as conn:
+            cur = conn.execute("DELETE FROM card_photos WHERE card_id = ?", (int(card_id),))
+            return cur.rowcount or 0
+
+    def count_card_photos(self, card_id: int) -> int:
+        with self.get_connection() as conn:
+            cur = conn.execute("SELECT COUNT(*) FROM card_photos WHERE card_id = ?", (int(card_id),))
+            return int(cur.fetchone()[0])
     
+    def get_partner_cards(self, partner_id: int, statuses: Optional[List[str]] = None) -> List[Dict]:
+        """Get partner cards with optional status filtering.
+        If statuses is None or empty, returns all cards for the partner.
+        """
+        with self.get_connection() as conn:
+            if statuses:
+                placeholders = ",".join(["?"] * len(statuses))
+                query = f"""
+                    SELECT c.*, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    WHERE c.partner_id = ? AND c.status IN ({placeholders})
+                    ORDER BY c.updated_at DESC
+                """
+                params = [partner_id, *statuses]
+            else:
+                query = """
+                    SELECT c.*, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    WHERE c.partner_id = ?
+                    ORDER BY c.updated_at DESC
+                """
+                params = [partner_id]
+            cursor = conn.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+
     def get_cards_pending_moderation(self, limit: int = 20) -> List[Dict]:
         """Get cards waiting for moderation"""
         with self.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT c.*, cat.name as category_name, p.display_name as partner_name
                 FROM cards_v2 c
                 JOIN categories_v2 cat ON c.category_id = cat.id
@@ -339,37 +410,10 @@ class DatabaseServiceV2:
                 WHERE c.status = 'pending'
                 ORDER BY c.created_at ASC
                 LIMIT ?
-            """, (limit,))
-            
+                """,
+                (limit,),
+            )
             return [dict(row) for row in cursor.fetchall()]
-    
-    def get_partner_cards(self, partner_id: int) -> List[Dict]:
-        """Get all cards for a partner"""
-        with self.get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT c.*, cat.name as category_name
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                WHERE c.partner_id = ?
-                ORDER BY c.updated_at DESC
-            """, (partner_id,))
-            
-            return [dict(row) for row in cursor.fetchall()]
-    
-    # Category methods
-    def get_categories(self, active_only: bool = True) -> List[Category]:
-        """Get all categories"""
-        with self.get_connection() as conn:
-            query = "SELECT id, slug, name, emoji, priority_level, is_active FROM categories_v2"
-            params = []
-            
-            if active_only:
-                query += " WHERE is_active = 1"
-            
-            query += " ORDER BY priority_level DESC, name"
-            
-            cursor = conn.execute(query, params)
-            return [Category(**dict(row)) for row in cursor.fetchall()]
     
     def get_category_by_slug(self, slug: str) -> Optional[Category]:
         """Get category by slug"""
