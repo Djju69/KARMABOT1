@@ -274,11 +274,12 @@ async def start_add_card(message: Message, state: FSMContext):
         message.from_user.full_name
     )
     
-    await state.update_data(partner_id=partner.id)
+    # Сохраняем partner_id и город по умолчанию (Нячанг = 1)
+    await state.update_data(partner_id=partner.id, city_id=1)
     await state.set_state(AddCardStates.choose_city)
     await message.answer(
         "🏪 Добавление новой карточки\n\nВыберите город (по умолчанию Нячанг):",
-        reply_markup=get_cities_inline()
+        reply_markup=get_cities_inline(active_id=1, cb_prefix="pfsm:city")
     )
 
 # ===== Reply-button entry points (no new slash commands) =====
@@ -292,13 +293,14 @@ async def start_add_card_via_button(message: Message, state: FSMContext):
     await start_add_card(message, state)
 
 # ====== City selection ======
-@partner_router.callback_query(F.data.startswith("city:set:"))
+@partner_router.callback_query(F.data.startswith("pfsm:city:"))
 async def on_city_selected(callback: CallbackQuery, state: FSMContext):
     try:
         await callback.answer()
     except Exception:
         pass
     data = callback.data.split(":")
+    # expected: pfsm:city:<id>
     city_id = int(data[-1]) if data and data[-1].isdigit() else 1
     await state.update_data(city_id=city_id)
     await state.set_state(AddCardStates.choose_category)

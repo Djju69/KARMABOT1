@@ -148,9 +148,10 @@ def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def get_cities_inline(active_id: Optional[int] = None) -> InlineKeyboardMarkup:
-    """City selection keyboard. Callback: city:set:<id>
+def get_cities_inline(active_id: Optional[int] = None, cb_prefix: str = "city:set") -> InlineKeyboardMarkup:
+    """City selection keyboard. Callback: <cb_prefix>:<id>
     Provides four cities: Нячанг (1), Дананг (2), Хошимин (3), Фукуок (4).
+    cb_prefix defaults to "city:set" for backward compatibility.
     """
     cities: List[tuple[str, int]] = [
         ("📍 Нячанг", 1),
@@ -166,7 +167,7 @@ def get_cities_inline(active_id: Optional[int] = None) -> InlineKeyboardMarkup:
 
     rows: List[List[InlineKeyboardButton]] = []
     for title, cid in cities:
-        rows.append([InlineKeyboardButton(text=label(title, cid), callback_data=f"city:set:{cid}")])
+        rows.append([InlineKeyboardButton(text=label(title, cid), callback_data=f"{cb_prefix}:{cid}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
