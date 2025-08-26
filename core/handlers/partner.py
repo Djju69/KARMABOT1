@@ -13,7 +13,7 @@ import re
 from ..settings import settings
 from ..services.profile import profile_service
 from ..keyboards.reply_v2 import (
-    get_profile_keyboard,
+    get_partner_keyboard,
 )
 from ..keyboards.inline_v2 import get_cities_inline
 from ..database.db_v2 import db_v2, Card
@@ -966,8 +966,8 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         # After successful submission, restore partner cabinet reply keyboard so UI doesn't disappear.
         try:
             lang = await profile_service.get_lang(callback.from_user.id)
-            # ЛК партнёра — без QR WebApp кнопки
-            kb = get_profile_keyboard(lang)
+            # ЛК партнёра — показываем партнёрскую клавиатуру с верхней кнопкой QR
+            kb = get_partner_keyboard(lang)
             await callback.message.answer(
                 "🏪 Вы в личном кабинете партнёра",
                 reply_markup=kb,
@@ -1040,9 +1040,9 @@ async def open_partner_cabinet_cmd(message: Message):
     try:
         # Ensure partner exists
         db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        # Load language and show partner cabinet keyboard
+        # Load language and show partner cabinet keyboard (с верхней кнопкой QR)
         lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_profile_keyboard(lang)
+        kb = get_partner_keyboard(lang)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
     except Exception as e:
         logger.error(f"Failed to open partner cabinet: {e}")

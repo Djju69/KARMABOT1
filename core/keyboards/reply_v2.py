@@ -250,8 +250,19 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 def get_partner_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Partner cabinet keyboard (minimum viable)."""
     t = get_all_texts(lang)
+    # Верхняя широкая кнопка "Сканировать QR". Если доступен WebApp и включён флаг — добавим web_app.
+    qr_btn: KeyboardButton
+    try:
+        if settings.features.qr_webapp and settings.webapp_qr_url and WebAppInfo is not None:
+            qr_btn = KeyboardButton(text=get_text('menu_scan_qr', lang), web_app=WebAppInfo(url=settings.webapp_qr_url))
+        else:
+            qr_btn = KeyboardButton(text=get_text('menu_scan_qr', lang))
+    except Exception:
+        qr_btn = KeyboardButton(text=get_text('menu_scan_qr', lang))
+
     return ReplyKeyboardMarkup(
         keyboard=[
+            [qr_btn],
             [KeyboardButton(text=t['add_card']), KeyboardButton(text=t['my_cards'])],
             [KeyboardButton(text=t['profile_stats']), KeyboardButton(text=t['profile_settings'])],
             [KeyboardButton(text=t['back_to_main_menu'])]
