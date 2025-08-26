@@ -175,6 +175,40 @@ async def _log_pg_lock_holder(conn: "asyncpg.Connection", big_key: int) -> None:
             r["pid"], r["application_name"], r["usename"], str(r["client_addr"]), (r["query"] or "")[:120],
         )
 
+async def _preempt_pg_leader(conn: "asyncpg.Connection", big_key: int) -> bool:
+    """Attempt to terminate backends that hold the advisory lock and free it.
+    Returns True if at least one backend was terminated (attempted), False otherwise.
+    Guarded by env PREEMPT_LEADER.
+    """
+    hi = (big_key >> 32) & 0xFFFFFFFF
+    lo = big_key & 0xFFFFFFFF
+    rows = await conn.fetch(
+        """
+        SELECT l.pid
+        FROM pg_locks l
+        WHERE l.locktype = 'advisory'
+          AND l.classid = $1::integer
+          AND l.objid = $2::integer
+          AND l.mode = 'ExclusiveLock'
+          AND l.granted = true
+        LIMIT 5
+        """,
+        hi, lo,
+    )
+    if not rows:
+        return False
+    terminated_any = False
+    for r in rows:
+        pid = r["pid"]
+        try:
+            ok = await conn.fetchval("SELECT pg_terminate_backend($1)", pid)
+            logger.warning("PREEMPT: pg_terminate_backend(pid=%s) -> %s", pid, ok)
+            if ok:
+                terminated_any = True
+        except Exception as e:
+            logger.warning("PREEMPT: terminate pid=%s failed: %s", pid, e)
+    return terminated_any
+
 async def _acquire_pg_leader_lock(db_url: str, key: str):
     """Acquire a Postgres advisory lock as a fallback leader lock.
     Returns (owned: bool, release_coro: callable|None).
@@ -220,6 +254,36 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
             await _log_pg_lock_holder(conn, big_key)
         except Exception as e:
             logger.warning("Could not fetch lock holder diagnostics: %s", e)
+        # Optional preempt
+        if os.getenv("PREEMPT_LEADER", "").lower() in {"1", "true", "yes"}:
+            logger.warning("PREEMPT: Attempting to preempt DB advisory lock holder(s)…")
+            try:
+                attempted = await _preempt_pg_leader(conn, big_key)
+                if attempted:
+                    # small delay to allow lock release propagation
+                    await asyncio.sleep(0.5)
+                    try:
+                        ok2 = await conn.fetchval("SELECT pg_try_advisory_lock($1)", big_key)
+                    except Exception as e:
+                        logger.warning("PREEMPT: retry pg_try_advisory_lock failed: %s", e)
+                        ok2 = False
+                    if ok2:
+                        logger.info("✅ PREEMPT SUCCESS: DB advisory lock acquired (key=%s)", key)
+                        async def _release():
+                            try:
+                                try:
+                                    await conn.fetchval("SELECT pg_advisory_unlock($1)", big_key)
+                                    logger.info("🧹 DB advisory lock released (key=%s)", key)
+                                except Exception:
+                                    pass
+                            finally:
+                                try:
+                                    await conn.close()
+                                except Exception:
+                                    pass
+                        return True, _release
+            except Exception as e:
+                logger.warning("PREEMPT: failed: %s", e)
         logger.error("❌ Another instance holds DB advisory lock (%s). Staying idle.", key)
         await conn.close()
         return False, None
