@@ -947,8 +947,7 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         # Notify admin about new card
         if settings.features.moderation:
             try:
-                from aiogram import Bot
-                bot = Bot.get_current()
+                bot = callback.bot
                 await bot.send_message(
                     settings.bots.admin_id,
                     f"🆕 **Новая карточка на модерацию**\n\n"

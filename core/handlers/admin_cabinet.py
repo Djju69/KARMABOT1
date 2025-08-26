@@ -296,8 +296,7 @@ async def admin_queue_approve(callback: CallbackQuery):
                 """, (card_id,))
                 row = cur.fetchone()
                 if row:
-                    from aiogram import Bot
-                    bot = Bot.get_current()
+                    bot = callback.bot
                     await bot.send_message(row['tg_user_id'], f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}")
         except Exception as e:
             logger.error("notify partner approve failed: %s", e)
@@ -327,8 +326,7 @@ async def admin_queue_reject(callback: CallbackQuery):
                 """, (card_id,))
                 row = cur.fetchone()
                 if row:
-                    from aiogram import Bot
-                    bot = Bot.get_current()
+                    bot = callback.bot
                     await bot.send_message(row['tg_user_id'], f"❌ Ваша карточка отклонена.\n#{card_id} — {row['title']}")
         except Exception as e:
             logger.error("notify partner reject failed: %s", e)

@@ -158,8 +158,7 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
                 row = cursor.fetchone()
                 
                 if row:
-                    from aiogram import Bot
-                    bot = Bot.get_current()
+                    bot = callback.bot
                     await bot.send_message(
                         row['tg_user_id'],
                         f"✅ **Ваша карточка одобрена!**\n\n"
@@ -251,11 +250,12 @@ async def handle_custom_rejection_reason(message: Message, state: FSMContext):
     
     # Create a fake callback for consistency
     class FakeCallback:
-        def __init__(self, user_id):
+        def __init__(self, user_id, bot):
             self.from_user = type('User', (), {'id': user_id})()
+            self.bot = bot
             self.answer = lambda text: message.answer(text)
     
-    fake_callback = FakeCallback(message.from_user.id)
+    fake_callback = FakeCallback(message.from_user.id, message.bot)
     await reject_card_with_comment(fake_callback, state, card_id, reason)
 
 async def reject_card_with_comment(callback, state: FSMContext, card_id: int, comment: str):
@@ -283,8 +283,7 @@ async def reject_card_with_comment(callback, state: FSMContext, card_id: int, co
                 row = cursor.fetchone()
                 
                 if row:
-                    from aiogram import Bot
-                    bot = Bot.get_current()
+                    bot = callback.bot
                     await bot.send_message(
                         row['tg_user_id'],
                         f"❌ **Ваша карточка отклонена**\n\n"

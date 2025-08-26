@@ -127,6 +127,18 @@ PY
 # В нём уже есть эндпоинт /health
 export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
 export DISABLE_POLLING=${DISABLE_POLLING:-0}
+echo "\n[boot] Polling config summary:"
+echo " - RUN_MODE=${RUN_MODE:-both}"
+echo " - FASTAPI_ONLY=${FASTAPI_ONLY}"
+echo " - DISABLE_POLLING=${DISABLE_POLLING} (set 1 on followers to avoid getUpdates conflicts)"
+echo " - ENABLE_POLLING_LEADER_LOCK=${ENABLE_POLLING_LEADER_LOCK:-0} (1 enables in-app leader election)"
+echo " - PREEMPT_LEADER=${PREEMPT_LEADER:-0} (1 forces takeover if lock is stale)"
+if [ "$RUN_MODE" = "web" ] || [ "${FASTAPI_ONLY}" = "1" ] || [ "${DISABLE_POLLING}" = "1" ]; then
+  echo "[decision] Bot polling will NOT start on this instance. Reason: RUN_MODE=web or FASTAPI_ONLY=1 or DISABLE_POLLING=1."
+  echo "[hint] To run a single poller: set DISABLE_POLLING=0 on the leader only; keep 1 on others. Optionally set ENABLE_POLLING_LEADER_LOCK=1 in app to guard against concurrency."
+else
+  echo "[decision] Bot polling is ALLOWED to start on this instance."
+fi
 # Optionally start web depending on RUN_MODE
 WEB_PID=""
 if [ "$RUN_MODE" = "both" ] || [ "$RUN_MODE" = "web" ]; then

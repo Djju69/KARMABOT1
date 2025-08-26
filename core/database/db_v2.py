@@ -145,6 +145,10 @@ class DatabaseServiceV2:
     def update_card_status(self, card_id: int, status: str, moderator_id: int = None, comment: str = None) -> bool:
         """Update card status with moderation log"""
         with self.get_connection() as conn:
+            try:
+                logger.debug("update_card_status: card_id=%s status=%s moderator_id=%s comment=%s", card_id, status, moderator_id, (comment or '')[:140])
+            except Exception:
+                pass
             # Update card status
             cursor = conn.execute(
                 "UPDATE cards_v2 SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
@@ -153,13 +157,38 @@ class DatabaseServiceV2:
             
             # Log moderation action
             if moderator_id:
-                # Normalize action name for log: treat 'published' as 'approved'
-                action = 'approved' if status in ['approved', 'published'] else status
-                if action in ['approved', 'rejected', 'archived']:
-                    conn.execute("""
-                        INSERT INTO moderation_log (card_id, moderator_id, action, comment)
-                        VALUES (?, ?, ?, ?)
-                    """, (card_id, moderator_id, action, comment))
+                # Normalize action name for log to match CHECK constraint
+                # Map statuses to actions: published/approved -> approve, rejected -> reject, archived -> archive
+                s = (status or '').lower()
+                if s in ('published', 'approved'):
+                    action = 'approve'
+                elif s == 'rejected':
+                    action = 'reject'
+                elif s == 'archived':
+                    action = 'archive'
+                else:
+                    action = None
+                if action in ['approve', 'reject', 'archive', 'feature']:
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO moderation_log (card_id, moderator_id, action, comment)
+                            VALUES (?, ?, ?, ?)
+                            """,
+                            (card_id, moderator_id, action, comment),
+                        )
+                    except sqlite3.IntegrityError as e:
+                        logger.error(
+                            "moderation_log insert failed: card_id=%s moderator_id=%s status=%s action=%s comment_len=%s error=%s",
+                            card_id, moderator_id, status, action, len(comment or ''), e,
+                        )
+                        raise
+                    except Exception as e:
+                        logger.exception(
+                            "unexpected error inserting into moderation_log: card_id=%s moderator_id=%s status=%s action=%s",
+                            card_id, moderator_id, status, action,
+                        )
+                        raise
             
             return cursor.rowcount > 0
     
