@@ -18,6 +18,10 @@ echo "PORT: $PORT"
 echo "ALLOW_PARTNER_FOR_CABINET: ${ALLOW_PARTNER_FOR_CABINET:-<unset>}"
 echo "APPLY_MIGRATIONS: ${APPLY_MIGRATIONS:-<unset>}"
 echo "FEATURE_PARTNER_FSM: ${FEATURE_PARTNER_FSM:-<unset>}"
+echo "ENABLE_POLLING_LEADER_LOCK: ${ENABLE_POLLING_LEADER_LOCK:-<unset>}"
+echo "PREEMPT_LEADER: ${PREEMPT_LEADER:-<unset>}"
+echo "FASTAPI_ONLY: ${FASTAPI_ONLY:-<unset>}"
+echo "DISABLE_POLLING: ${DISABLE_POLLING:-<unset>}"
 echo "LOYALTY_MIN_SPEND_PTS: ${LOYALTY_MIN_SPEND_PTS:-<unset>}"
 echo ""
 echo "Dependency versions:"
@@ -120,12 +124,13 @@ PY
 # Запускаем основной WebApp (FastAPI) вместо health_app
 # В нём уже есть эндпоинт /health
 export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
+export DISABLE_POLLING=${DISABLE_POLLING:-0}
 # Start uvicorn and capture PID
 uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
 WEB_PID=$!
 
-if [ "${FASTAPI_ONLY}" = "1" ]; then
-  echo "FASTAPI_ONLY=1 → бот не запускается на этом инстансе (избегаем getUpdates конфликта)."
+if [ "${FASTAPI_ONLY}" = "1" ] || [ "${DISABLE_POLLING}" = "1" ]; then
+  echo "FASTAPI_ONLY=${FASTAPI_ONLY} DISABLE_POLLING=${DISABLE_POLLING} → бот не запускается на этом инстансе (избегаем getUpdates конфликта)."
   echo "Waiting on web (PID=$WEB_PID) ..."
   wait "$WEB_PID"
 else
