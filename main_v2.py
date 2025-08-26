@@ -6,6 +6,8 @@ import asyncio
 import logging
 import os
 import secrets
+import hashlib
+import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
@@ -44,6 +46,12 @@ try:
     from redis.asyncio import Redis as AsyncRedis  # type: ignore
 except Exception:  # pragma: no cover
     AsyncRedis = None  # type: ignore
+
+# Optional asyncpg for Postgres advisory lock fallback
+try:
+    import asyncpg  # type: ignore
+except Exception:  # pragma: no cover
+    asyncpg = None  # type: ignore
 
 
 async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
@@ -137,6 +145,72 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
 
     return True, _release
 
+async def _acquire_pg_leader_lock(db_url: str, key: str):
+    """Acquire a Postgres advisory lock as a fallback leader lock.
+    Returns (owned: bool, release_coro: callable|None).
+    Safe no-op if asyncpg not available or db_url empty.
+    """
+    if not db_url or not asyncpg:
+        logging.getLogger(__name__).warning(
+            "Polling DB leader lock disabled (no DATABASE_URL or asyncpg)"
+        )
+        return True, None
+
+    # Convert SQLAlchemy-style URL to asyncpg-compatible DSN if needed
+    dsn = db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+
+    # Derive a 64-bit signed key from string
+    h = hashlib.sha256(key.encode("utf-8")).digest()
+    big = int.from_bytes(h[:8], byteorder="big", signed=False)
+    lock_key = big % (2**63)  # fit into BIGINT signed range
+
+    try:
+        conn = await asyncpg.connect(dsn)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"DB leader lock: cannot connect to Postgres, proceeding without lock: {e}"
+        )
+        return True, None
+
+    try:
+        ok = await conn.fetchval("SELECT pg_try_advisory_lock($1)", lock_key)
+    except Exception as e:
+        logging.getLogger(__name__).warning(
+            f"DB leader lock: pg_try_advisory_lock failed, proceeding without lock: {e}"
+        )
+        try:
+            await conn.close()
+        except Exception:
+            pass
+        return True, None
+
+    if not ok:
+        try:
+            await conn.close()
+        except Exception:
+            pass
+        logging.getLogger(__name__).error(
+            "❌ Another instance holds DB advisory lock (%s). Staying idle.", key
+        )
+        return False, None
+
+    logger.info("✅ DB advisory lock acquired (key=%s)", key)
+
+    async def _release():
+        try:
+            try:
+                await conn.fetchval("SELECT pg_advisory_unlock($1)", lock_key)
+                logger.info("🧹 DB advisory lock released (key=%s)", key)
+            except Exception:
+                pass
+        finally:
+            try:
+                await conn.close()
+            except Exception:
+                pass
+
+    return True, _release
+
 async def setup_routers(dp: Dispatcher):
     """Centralized function to set up all bot routers with correct priority."""
 
@@ -170,6 +244,32 @@ async def setup_routers(dp: Dispatcher):
         logger.info("✅ Moderation enabled")
     else:
         logger.info("⚠️ Moderation disabled")
+
+async def _preflight_polling_conflict(bot_token: str) -> bool:
+    """Call Telegram getUpdates once to detect 409 Conflict preflight.
+    Returns True if conflict is detected and we should stay idle.
+    """
+    if not bot_token:
+        return False
+    url = f"https://api.telegram.org/bot{bot_token}/getUpdates?timeout=0&offset=-1"
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as resp:
+                if resp.status == 409:
+                    text = await resp.text()
+                    logger.error("❌ Preflight: Telegram Conflict detected: %s", text[:200])
+                    return True
+                # In rare cases TG returns 200 with ok=false and description containing Conflict
+                if resp.status == 200:
+                    data = await resp.json(content_type=None)
+                    if not data.get("ok") and "Conflict" in str(data.get("description", "")):
+                        logger.error("❌ Preflight: Telegram Conflict detected (ok=false): %s", data)
+                        return True
+    except Exception as e:
+        # Do not block startup on preflight errors; assume no conflict
+        logger.warning("Preflight getUpdates check failed: %s", e)
+    return False
 
 
 async def on_startup(bot: Bot):
@@ -279,11 +379,25 @@ async def main():
             # Keep process alive but do not touch Telegram API
             await asyncio.Event().wait()
             return
-        release_lock = release
+        # If Redis lock not available (release is None), fallback to Postgres advisory lock
+        if release is None:
+            pg_owned, pg_release = await _acquire_pg_leader_lock(settings.database.url, lock_key)
+            if not pg_owned:
+                # Already logged inside _acquire_pg_leader_lock
+                await asyncio.Event().wait()
+                return
+            release_lock = pg_release
+        else:
+            release_lock = release
 
     try:
         # To ensure no conflicts, we delete any existing webhook and start polling cleanly.
         await bot.delete_webhook(drop_pending_updates=True)
+        # Preflight: if another instance is polling (even foreign), go idle
+        if await _preflight_polling_conflict(safe_token):
+            logger.error("❌ Another instance is actively polling (preflight). Staying idle.")
+            await asyncio.Event().wait()
+            return
         await dp.start_polling(bot)
     finally:
         if release_lock:
