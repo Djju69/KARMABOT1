@@ -7,6 +7,7 @@ import logging
 import os
 import secrets
 import hashlib
+import sys
 import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
@@ -430,6 +431,9 @@ async def main():
     if os.getenv("DISABLE_POLLING", "").lower() in {"1", "true", "yes"}:
         logger.warning("Bot polling is DISABLED by DISABLE_POLLING env. Staying idle.")
         # Keep process alive without touching Telegram getUpdates
+        if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:
+            logger.info("EXIT_ON_CONFLICT=1 → exiting instead of waiting (DISABLE_POLLING)")
+            return
         await asyncio.Event().wait()
         return
 
@@ -469,7 +473,11 @@ async def main():
         lock_key = f"{settings.environment}:bot:polling:leader"
         owned, release = await _acquire_leader_lock(settings.database.redis_url, lock_key, lock_ttl)
         if not owned:
-            logger.error("❌ Another instance holds polling leader lock (%s). Staying idle.", lock_key)
+            logger.error("❌ Another instance holds polling leader lock (%s).", lock_key)
+            if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:
+                logger.info("EXIT_ON_CONFLICT=1 → exiting instead of waiting (leader lock)")
+                return
+            logger.error("Staying idle.")
             # Keep process alive but do not touch Telegram API
             await asyncio.Event().wait()
             return
@@ -489,7 +497,11 @@ async def main():
         await bot.delete_webhook(drop_pending_updates=True)
         # Preflight: if another instance is polling (even foreign), go idle
         if await _preflight_polling_conflict(safe_token):
-            logger.error("❌ Another instance is actively polling (preflight). Staying idle.")
+            logger.error("❌ Another instance is actively polling (preflight).")
+            if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:
+                logger.info("EXIT_ON_CONFLICT=1 → exiting instead of waiting (preflight)")
+                return
+            logger.error("Staying idle.")
             await asyncio.Event().wait()
             return
         await dp.start_polling(bot)

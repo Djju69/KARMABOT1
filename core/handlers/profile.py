@@ -8,7 +8,7 @@ import re
 import time
 import logging
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, CallbackQuery
 
 from ..database.db_v2 import db_v2
 from ..utils.locales_v2 import get_text, translations
@@ -23,6 +23,7 @@ from ..keyboards.reply_v2 import (
     get_admin_keyboard,
     get_superadmin_keyboard,
 )
+from ..keyboards.inline_v2 import get_add_card_choice_inline
 from ..settings import settings
 
 profile_router = Router()
@@ -75,13 +76,31 @@ async def on_profile_stats(message: Message):
 
 @profile_router.message(F.text.in_(_texts('add_card')))
 async def on_add_card(message: Message):
+    """Показать выбор: партнёрская карточка или привязка пластиковой."""
     lang = await profile_service.get_lang(message.from_user.id)
-    await cache_service.set(f"card_bind_wait:{message.from_user.id}", "1", ex=300)
-    # Inform about available options; keep manual UID entry as currently supported
     await message.answer(
-        get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang),
-        reply_markup=get_profile_keyboard(lang)
+        "Выберите действие:",
+        reply_markup=get_add_card_choice_inline(lang)
     )
+
+@profile_router.callback_query(F.data == "act:bind_plastic")
+async def on_bind_plastic_cb(callback: CallbackQuery):
+    """Старт потока привязки пластиковой карты по каллбэку из меню выбора."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    lang = await profile_service.get_lang(callback.from_user.id)
+    await cache_service.set(f"card_bind_wait:{callback.from_user.id}", "1", ex=300)
+    try:
+        await callback.message.edit_text(
+            get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang),
+            reply_markup=None
+        )
+    except Exception:
+        await callback.message.answer(
+            get_text('card.bind.options', lang) + "\n\n" + get_text('card.bind.prompt', lang)
+        )
 
 
 @profile_router.message(F.text.in_(_texts('my_cards')))

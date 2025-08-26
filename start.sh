@@ -112,7 +112,9 @@ PY
 else
   echo "[migrate] skipped: APPLY_MIGRATIONS flag is not enabled"
 fi
-echo "Starting FastAPI WebApp on PORT=$PORT..."
+RUN_MODE=${RUN_MODE:-both}
+echo "RUN_MODE=$RUN_MODE"
+echo "Starting FastAPI WebApp on PORT=${PORT:-8000} (if enabled by RUN_MODE)..."
 python - << 'PY'
 import os
 port = os.getenv('PORT')
@@ -125,11 +127,17 @@ PY
 # В нём уже есть эндпоинт /health
 export FASTAPI_ONLY=${FASTAPI_ONLY:-0}
 export DISABLE_POLLING=${DISABLE_POLLING:-0}
-# Start uvicorn and capture PID
-uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
-WEB_PID=$!
+# Optionally start web depending on RUN_MODE
+WEB_PID=""
+if [ "$RUN_MODE" = "both" ] || [ "$RUN_MODE" = "web" ]; then
+  # Start uvicorn and capture PID
+  uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8000} &
+  WEB_PID=$!
+else
+  echo "RUN_MODE=$RUN_MODE → web disabled"
+fi
 
-if [ "${FASTAPI_ONLY}" = "1" ] || [ "${DISABLE_POLLING}" = "1" ]; then
+if [ "$RUN_MODE" = "web" ] || [ "${FASTAPI_ONLY}" = "1" ] || [ "${DISABLE_POLLING}" = "1" ]; then
   echo "FASTAPI_ONLY=${FASTAPI_ONLY} DISABLE_POLLING=${DISABLE_POLLING} → бот не запускается на этом инстансе (избегаем getUpdates конфликта)."
   echo "Waiting on web (PID=$WEB_PID) ..."
   wait "$WEB_PID"
@@ -148,5 +156,7 @@ except Exception as e:
 print("--- end head ---")
 PY
   python -u main_v2.py
-  wait "$WEB_PID"
+  if [ -n "$WEB_PID" ]; then
+    wait "$WEB_PID"
+  fi
 fi

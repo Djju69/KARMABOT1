@@ -6,6 +6,7 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 import logging
+import contextlib
 
 from ..settings import settings
 from ..utils.locales_v2 import get_text
@@ -50,6 +51,115 @@ def _search_keyboard() -> 'InlineKeyboardMarkup':
         [InlineKeyboardButton(text="❌ Отклонены", callback_data="adm:search:status:rejected"),
          InlineKeyboardButton(text="🆕 Последние 20", callback_data="adm:search:recent")],
         [InlineKeyboardButton(text="⬅️ Назад", callback_data="adm:queue")],
+    ])
+
+def _queue_nav_keyboard(page: int, has_prev: bool, has_next: bool) -> 'InlineKeyboardMarkup':
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    row = []
+    if has_prev:
+        row.append(InlineKeyboardButton(text="⬅️", callback_data=f"adm:q:page:{page-1}"))
+    row.append(InlineKeyboardButton(text=f"{page+1}", callback_data="noop"))
+    if has_next:
+        row.append(InlineKeyboardButton(text="➡️", callback_data=f"adm:q:page:{page+1}"))
+    return InlineKeyboardMarkup(inline_keyboard=[row, [InlineKeyboardButton(text="🔎 Поиск", callback_data="adm:search")]])
+
+def _build_queue_list_buttons(cards: list[dict], page: int) -> 'InlineKeyboardMarkup':
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    rows: list[list[InlineKeyboardButton]] = []
+    for c in cards:
+        cid = int(c.get('id'))
+        title = (c.get('title') or '(без названия)')
+        rows.append([InlineKeyboardButton(text=f"🔎 #{cid} · {title[:40]}", callback_data=f"adm:q:view:{cid}:{page}")])
+    if not rows:
+        rows = [[]]
+    rows.append([InlineKeyboardButton(text="↩️ К меню", callback_data="adm:queue")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+def _build_queue_list_text(cards: list[dict], page: int, page_size: int, total: int) -> str:
+    start = page * page_size + 1
+    end = min((page + 1) * page_size, total)
+    lines = [f"🗂️ Очередь модерации: {start}–{end} из {total}"]
+    for c in cards:
+        lines.append(f"• #{c.get('id')} — {(c.get('title') or '(без названия)')} — {c.get('category_name') or ''}")
+    return "\n".join(lines)
+
+async def _render_queue_page(message_or_cbmsg, admin_id: int, page: int, *, edit: bool = False):
+    PAGE_SIZE = 5
+    logger.info("admin.queue_render: admin=%s page=%s", admin_id, page)
+    with db_v2.get_connection() as conn:
+        total = int(conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'pending' ").fetchone()[0])
+        offset = max(page, 0) * PAGE_SIZE
+        cur = conn.execute(
+            """
+            SELECT c.id, c.title, cat.name as category_name
+            FROM cards_v2 c
+            JOIN categories_v2 cat ON c.category_id = cat.id
+            WHERE c.status = 'pending'
+            ORDER BY c.created_at ASC
+            LIMIT ? OFFSET ?
+            """,
+            (PAGE_SIZE, offset),
+        )
+        cards = [dict(r) for r in cur.fetchall()]
+    has_prev = page > 0
+    has_next = (page + 1) * PAGE_SIZE < total
+    if total == 0:
+        text = "✅ Нет карточек, ожидающих модерации."
+        kb = _queue_nav_keyboard(page=0, has_prev=False, has_next=False)
+        if edit:
+            try:
+                await message_or_cbmsg.edit_text(text, reply_markup=kb)
+            except Exception:
+                await message_or_cbmsg.answer(text, reply_markup=kb)
+        else:
+            await message_or_cbmsg.answer(text, reply_markup=kb)
+        return
+    if not cards:
+        text = "📭 На этой странице карточек нет."
+        kb = _queue_nav_keyboard(page=page, has_prev=has_prev, has_next=has_next)
+        if edit:
+            try:
+                await message_or_cbmsg.edit_text(text, reply_markup=kb)
+            except Exception:
+                await message_or_cbmsg.answer(text, reply_markup=kb)
+        else:
+            await message_or_cbmsg.answer(text, reply_markup=kb)
+        return
+    text = _build_queue_list_text(cards, page=page, page_size=PAGE_SIZE, total=total)
+    try:
+        if edit:
+            await message_or_cbmsg.edit_text(text, reply_markup=_build_queue_list_buttons(cards, page=page))
+        else:
+            await message_or_cbmsg.answer(text, reply_markup=_build_queue_list_buttons(cards, page=page))
+    except Exception:
+        await message_or_cbmsg.answer(text, reply_markup=_build_queue_list_buttons(cards, page=page))
+    # Навигация отдельным сообщением
+    await message_or_cbmsg.answer("Навигация:", reply_markup=_queue_nav_keyboard(page=page, has_prev=has_prev, has_next=has_next))
+
+def _build_card_view_text(card: dict) -> str:
+    lines = [f"🔍 Карточка #{card['id']}"]
+    lines.append(f"📝 {card.get('title') or '(без названия)'}")
+    if card.get('category_name'):
+        lines.append(f"📂 {card['category_name']}")
+    if card.get('partner_name'):
+        lines.append(f"👤 {card['partner_name']}")
+    if card.get('description'):
+        lines.append(f"📄 {card['description']}")
+    if card.get('contact'):
+        lines.append(f"📞 {card['contact']}")
+    if card.get('address'):
+        lines.append(f"📍 {card['address']}")
+    if card.get('discount_text'):
+        lines.append(f"🎫 {card['discount_text']}")
+    return "\n".join(lines)
+
+def _build_card_view_kb(card_id: int, page: int):
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Одобрить", callback_data=f"adm:q:approve:{card_id}:{page}"),
+         InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm:q:reject:{card_id}:{page}")],
+        [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"adm:q:del:{card_id}:{page}"),
+         InlineKeyboardButton(text="↩️ К списку", callback_data=f"adm:q:page:{page}")],
     ])
 
 def _format_cards_rows(rows) -> str:
@@ -123,13 +233,145 @@ async def admin_queue(callback: CallbackQuery):
     if not await admins_service.is_admin(callback.from_user.id):
         await callback.answer("❌ Доступ запрещён")
         return
-    lang = await profile_service.get_lang(callback.from_user.id)
-    text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}"
     try:
-        await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(callback.from_user.id == settings.bots.admin_id)))
-    except Exception:
-        await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(callback.from_user.id == settings.bots.admin_id)))
-    await callback.answer()
+        await _render_queue_page(callback.message, callback.from_user.id, page=0, edit=True)
+    finally:
+        with contextlib.suppress(Exception):
+            await callback.answer()
+
+@router.callback_query(F.data.startswith("adm:q:page:"))
+async def admin_queue_page(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        page = int(callback.data.split(":")[3])
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_page error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+@router.callback_query(F.data.startswith("adm:q:view:"))
+async def admin_queue_view(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[3])
+        page = int(parts[4])
+        card = db_v2.get_card_by_id(card_id)
+        if not card:
+            await callback.answer("Карточка не найдена", show_alert=False)
+            await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+            return
+        text = _build_card_view_text(card)
+        try:
+            await callback.message.edit_text(text, reply_markup=_build_card_view_kb(card_id, page))
+        except Exception:
+            await callback.message.answer(text, reply_markup=_build_card_view_kb(card_id, page))
+        await callback.answer()
+    except Exception as e:
+        logger.exception("admin_queue_view error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+@router.callback_query(F.data.startswith("adm:q:approve:"))
+async def admin_queue_approve(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[3])
+        page = int(parts[4])
+        ok = db_v2.update_card_status(card_id, 'published', callback.from_user.id, 'Одобрено модератором')
+        logger.info("admin.approve: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
+        # Уведомим партнёра (best-effort)
+        try:
+            with db_v2.get_connection() as conn:
+                cur = conn.execute("""
+                    SELECT c.title, p.tg_user_id
+                    FROM cards_v2 c JOIN partners_v2 p ON c.partner_id = p.id
+                    WHERE c.id = ?
+                """, (card_id,))
+                row = cur.fetchone()
+                if row:
+                    from aiogram import Bot
+                    bot = Bot.get_current()
+                    await bot.send_message(row['tg_user_id'], f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}")
+        except Exception as e:
+            logger.error("notify partner approve failed: %s", e)
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_approve error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+@router.callback_query(F.data.startswith("adm:q:reject:"))
+async def admin_queue_reject(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[3])
+        page = int(parts[4])
+        ok = db_v2.update_card_status(card_id, 'rejected', callback.from_user.id, 'Отклонено модератором')
+        logger.info("admin.reject: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
+        # Уведомим партнёра (best-effort)
+        try:
+            with db_v2.get_connection() as conn:
+                cur = conn.execute("""
+                    SELECT c.title, p.tg_user_id
+                    FROM cards_v2 c JOIN partners_v2 p ON c.partner_id = p.id
+                    WHERE c.id = ?
+                """, (card_id,))
+                row = cur.fetchone()
+                if row:
+                    from aiogram import Bot
+                    bot = Bot.get_current()
+                    await bot.send_message(row['tg_user_id'], f"❌ Ваша карточка отклонена.\n#{card_id} — {row['title']}")
+        except Exception as e:
+            logger.error("notify partner reject failed: %s", e)
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_reject error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+@router.callback_query(F.data.startswith("adm:q:del:"))
+async def admin_queue_delete_confirm(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[3])
+        page = int(parts[4])
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"adm:q:del:confirm:{card_id}:{page}")],
+            [InlineKeyboardButton(text="↩️ Отмена", callback_data=f"adm:q:view:{card_id}:{page}")],
+        ])
+        await callback.message.edit_reply_markup(reply_markup=kb)
+        await callback.answer()
+    except Exception as e:
+        logger.exception("admin_queue_delete_confirm error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+@router.callback_query(F.data.startswith("adm:q:del:confirm:"))
+async def admin_queue_delete(callback: CallbackQuery):
+    if not await admins_service.is_admin(callback.from_user.id):
+        await callback.answer("❌ Доступ запрещён")
+        return
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[4])
+        page = int(parts[5])
+        ok = db_v2.delete_card(card_id)
+        logger.info("admin.delete: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_delete error: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
 
 
 @router.callback_query(F.data == "adm:search")

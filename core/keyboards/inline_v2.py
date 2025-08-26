@@ -46,6 +46,19 @@ def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru"
     )
 
 
+def get_add_card_choice_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Inline-меню: выбор действия для кнопки «➕ Добавить карточку».
+    Callbacks:
+      - act:add_partner_card — запустить мастер добавления партнёрской карточки
+      - act:bind_plastic     — привязать пластиковую карту лояльности
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🧑‍💼 Карточка партнёра", callback_data="act:add_partner_card")],
+            [InlineKeyboardButton(text="🪪 Привязать пластиковую карту", callback_data="act:bind_plastic")],
+        ]
+    )
+
 def get_admin_cabinet_inline(lang: str = "ru", is_superadmin: bool = False) -> InlineKeyboardMarkup:
     """
     Admin cabinet inline keyboard. Callbacks use namespace adm:*

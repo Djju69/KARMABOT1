@@ -4,6 +4,7 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 import sys
 from pathlib import Path
+import io
 
 
 def setup_logging(level: int = logging.INFO, retention_days: int = 7, log_dir: str | None = None) -> None:
@@ -25,7 +26,16 @@ def setup_logging(level: int = logging.INFO, retention_days: int = 7, log_dir: s
     )
 
     # Stdout handler
-    sh = logging.StreamHandler(sys.stdout)
+    # On Windows console with legacy code pages (e.g., cp1251), stdout may not support emojis.
+    # Wrap stdout with a UTF-8 text wrapper to avoid UnicodeEncodeError when logging.
+    stdout_stream = sys.stdout
+    try:
+        if hasattr(sys.stdout, "buffer"):
+            stdout_stream = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    except Exception:
+        # Fallback to original stdout if wrapping fails
+        stdout_stream = sys.stdout
+    sh = logging.StreamHandler(stdout_stream)
     sh.setLevel(level)
     sh.setFormatter(formatter)
     root.addHandler(sh)

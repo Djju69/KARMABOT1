@@ -148,11 +148,14 @@ class DatabaseServiceV2:
             )
             
             # Log moderation action
-            if moderator_id and status in ['approved', 'rejected', 'archived']:
-                conn.execute("""
-                    INSERT INTO moderation_log (card_id, moderator_id, action, comment)
-                    VALUES (?, ?, ?, ?)
-                """, (card_id, moderator_id, status, comment))
+            if moderator_id:
+                # Normalize action name for log: treat 'published' as 'approved'
+                action = 'approved' if status in ['approved', 'published'] else status
+                if action in ['approved', 'rejected', 'archived']:
+                    conn.execute("""
+                        INSERT INTO moderation_log (card_id, moderator_id, action, comment)
+                        VALUES (?, ?, ?, ?)
+                    """, (card_id, moderator_id, action, comment))
             
             return cursor.rowcount > 0
     

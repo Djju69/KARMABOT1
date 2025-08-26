@@ -67,19 +67,39 @@ def _validate_optional_max_len(text: str | None, max_len: int, too_long_msg: str
         return False, too_long_msg
     return True, None
 
+def _is_cancel_text(txt: str | None) -> bool:
+    return txt in ("❌ Отменить", "⛔ Отменить")
+
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     """Keyboard with cancel option"""
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="❌ Отменить")]],
+        keyboard=[[KeyboardButton(text="⛔ Отменить")]],
         resize_keyboard=True
     )
+
+# Callback from inline choice menu: start partner card flow
+@partner_router.callback_query(F.data == "act:add_partner_card")
+async def on_add_partner_card_cb(callback: CallbackQuery, state: FSMContext):
+    """Запустить мастер добавления карточки по каллбэку из меню выбора."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    # Reuse the same flow as /add_card but via callback
+    await start_add_card(callback.message, state)
+
+# Alias: start adding card via /add_partner command
+@partner_router.message(Command("add_partner"))
+async def start_add_partner(message: Message, state: FSMContext):
+    """Alias for /add_partner to start the same add-card flow."""
+    await start_add_card(message, state)
 
 def get_skip_keyboard() -> ReplyKeyboardMarkup:
     """Keyboard with skip and cancel options"""
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="⏭️ Пропустить")],
-            [KeyboardButton(text="❌ Отменить")]
+            [KeyboardButton(text="⛔ Отменить")]
         ],
         resize_keyboard=True
     )
@@ -107,11 +127,88 @@ def get_preview_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")]
     ])
 
-def get_partner_cards_inline() -> InlineKeyboardMarkup:
-    """Inline keyboard for partner's cards list actions."""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Обновить список", callback_data="partner_cards:refresh")]
-    ])
+def get_partner_cards_inline(page: int = 0, has_prev: bool = False, has_next: bool = False) -> InlineKeyboardMarkup:
+    """Inline keyboard: навигация по страницам списка карточек."""
+    nav_row: list[InlineKeyboardButton] = []
+    if has_prev:
+        nav_row.append(InlineKeyboardButton(text="⬅️ Назад", callback_data=f"pc:page:{max(page-1,0)}"))
+    nav_row.append(InlineKeyboardButton(text="🔄 Обновить", callback_data=f"pc:page:{page}"))
+    if has_next:
+        nav_row.append(InlineKeyboardButton(text="Вперёд ➡️", callback_data=f"pc:page:{page+1}"))
+    return InlineKeyboardMarkup(inline_keyboard=[nav_row])
+
+def _build_cards_list_text(cards: list[dict], page: int, page_size: int, total: int) -> str:
+    start = page * page_size
+    end = start + len(cards)
+    header = f"📂 Ваши карточки {start+1}–{end} из {total}:\n"
+    lines = [header]
+    for c in cards:
+        title = (c.get('title') or '(без названия)')
+        status = (c.get('status') or 'pending')
+        cid = int(c.get('id'))
+        lines.append(f"{_status_emoji(status)} {title} — {status}  (#${cid})")
+    lines.append("\n👉 Нажмите ниже, чтобы открыть карточку и выполнить действие.")
+    return "\n".join(lines)
+
+def _build_cards_list_buttons(cards: list[dict], page: int) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for c in cards:
+        title = (c.get('title') or '(без названия)')
+        cid = int(c.get('id'))
+        rows.append([InlineKeyboardButton(text=f"🔎 {title[:40]}", callback_data=f"pc:view:{cid}:{page}")])
+    if not rows:
+        rows = [[]]
+    rows.append([InlineKeyboardButton(text="↩️ К списку", callback_data=f"pc:page:{page}")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+async def _render_cards_page(message_or_cbmsg, user_id: int, full_name: str, page: int, *, edit: bool = False):
+    """Общий рендер страницы списка карточек для партнёра.
+    message_or_cbmsg: объект с методами answer()/edit_text().
+    edit=True будет пытаться редактировать сообщение, иначе отправлять новое.
+    """
+    PAGE_SIZE = 5
+    partner = db_v2.get_or_create_partner(user_id, full_name)
+    logger.info("partner.render_cards_page: user=%s partner_id=%s page=%s", user_id, partner.id, page)
+    with db_v2.get_connection() as conn:
+        total = int(conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ?", (partner.id,)).fetchone()[0])
+        offset = max(page, 0) * PAGE_SIZE
+        cur = conn.execute(
+            """
+            SELECT c.*, cat.name as category_name
+            FROM cards_v2 c
+            JOIN categories_v2 cat ON c.category_id = cat.id
+            WHERE c.partner_id = ?
+            ORDER BY c.updated_at DESC
+            LIMIT ? OFFSET ?
+            """,
+            (partner.id, PAGE_SIZE, offset),
+        )
+        cards = [dict(r) for r in cur.fetchall()]
+    has_prev = page > 0
+    has_next = (page + 1) * PAGE_SIZE < total
+    if not cards:
+        # пустая страница
+        if edit:
+            await message_or_cbmsg.edit_text(
+                "📭 На этой странице карточек нет.",
+                reply_markup=get_partner_cards_inline(page=page, has_prev=has_prev, has_next=has_next),
+            )
+        else:
+            await message_or_cbmsg.answer(
+                "📭 На этой странице карточек нет.",
+                reply_markup=get_partner_cards_inline(page=page, has_prev=has_prev, has_next=has_next),
+            )
+        return
+    text = _build_cards_list_text(cards, page=page, page_size=PAGE_SIZE, total=total)
+    try:
+        if edit:
+            await message_or_cbmsg.edit_text(text, reply_markup=_build_cards_list_buttons(cards, page=page))
+        else:
+            await message_or_cbmsg.answer(text, reply_markup=_build_cards_list_buttons(cards, page=page))
+    except Exception:
+        # Фоллбэк: отправим новым сообщением
+        await message_or_cbmsg.answer(text, reply_markup=_build_cards_list_buttons(cards, page=page))
+    await message_or_cbmsg.answer("Навигация:", reply_markup=get_partner_cards_inline(page=page, has_prev=has_prev, has_next=has_next))
 
 def _status_emoji(status: str) -> str:
     s = (status or "").lower()
@@ -186,56 +283,161 @@ async def start_add_card_via_button(message: Message, state: FSMContext):
 
 @partner_router.message(F.text.startswith("📂"))
 async def show_my_cards(message: Message):
-    """Show current user's cards list in cabinet from '📂 Мои карточки'."""
+    """Показать список карточек партнёра с пагинацией (кнопка '📂 Мои карточки')."""
+    PAGE_SIZE = 5
     try:
-        # Ensure partner exists
-        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        cards = db_v2.get_partner_cards(partner.id, limit=20)
-        if not cards:
+        # Покажем первую страницу
+        # Если карточек нет вообще — короткое сообщение с навигацией
+        with db_v2.get_connection() as conn:
+            total = int(conn.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id = ?", (db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name).id,)).fetchone()[0])
+        if total == 0:
             await message.answer(
                 "📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.",
-                reply_markup=get_partner_cards_inline(),
+                reply_markup=get_partner_cards_inline(page=0, has_prev=False, has_next=False),
             )
             return
-        # Render simple list
-        lines = [f"📂 Ваши карточки (первые {len(cards)}):"]
-        for c in cards:
-            title = c.title or "(без названия)"
-            status = c.status or "pending"
-            lines.append(f"{_status_emoji(status)} {title} — {status}")
-        await message.answer("\n".join(lines), reply_markup=get_partner_cards_inline())
+        await _render_cards_page(message, message.from_user.id, message.from_user.full_name, page=0, edit=False)
     except Exception as e:
-        logger.error(f"Failed to load my cards: {e}")
+        logger.exception("partner.show_my_cards failed: %s", e)
         await message.answer("❌ Ошибка при загрузке списка карточек. Попробуйте позже.")
 
-@partner_router.callback_query(F.data == "partner_cards:refresh")
-async def refresh_my_cards(callback: CallbackQuery):
-    """Refresh the partner's cards list (non-breaking)."""
+@partner_router.callback_query(F.data.startswith("pc:page:"))
+async def partner_cards_page(callback: CallbackQuery):
+    """Пагинация списка карточек: pc:page:<page>."""
     try:
         await callback.answer()
     except Exception:
         pass
     try:
-        partner = db_v2.get_or_create_partner(callback.from_user.id, callback.from_user.full_name)
-        cards = db_v2.get_partner_cards(partner.id, limit=20)
-        if not cards:
-            await callback.message.edit_text(
-                "📭 У вас пока нет карточек. Нажмите '➕ Добавить карточку' чтобы создать первую.",
-                reply_markup=get_partner_cards_inline(),
-            )
-            return
-        lines = [f"📂 Ваши карточки (первые {len(cards)}):"]
-        for c in cards:
-            title = c.title or "(без названия)"
-            status = c.status or "pending"
-            lines.append(f"{_status_emoji(status)} {title} — {status}")
-        await callback.message.edit_text("\n".join(lines), reply_markup=get_partner_cards_inline())
+        page = int(callback.data.split(":")[2])
+        await _render_cards_page(callback.message, callback.from_user.id, callback.from_user.full_name, page=page, edit=True)
     except Exception as e:
-        logger.error(f"Failed to refresh partner cards: {e}")
+        logger.exception("partner.cards_page failed: %s", e)
         try:
             await callback.message.edit_text("❌ Ошибка при обновлении списка. Попробуйте позже.")
         except Exception:
             await callback.message.answer("❌ Ошибка при обновлении списка. Попробуйте позже.")
+
+@partner_router.callback_query(F.data.startswith("pc:view:"))
+async def partner_card_view(callback: CallbackQuery):
+    """Просмотр одной карточки и быстрые действия: pc:view:<id>:<page>."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    try:
+        _, _, id_str, page_str = callback.data.split(":", 3)
+        card_id = int(id_str)
+        page = int(page_str)
+        card = db_v2.get_card_by_id(card_id)
+        if not card:
+            await callback.message.edit_text("❌ Карточка не найдена.")
+            return
+        title = card.get('title') or '(без названия)'
+        status = card.get('status') or 'pending'
+        cat = card.get('category_name') or ''
+        discount = card.get('discount_text') or '—'
+        address = card.get('address') or '—'
+        contact = card.get('contact') or '—'
+        text = (
+            f"📋 Карточка #{card_id}\n\n"
+            f"📝 Название: {title}\n"
+            f"📂 Категория: {cat}\n"
+            f"⏱ Статус: {status}\n"
+            f"🎫 Скидка: {discount}\n"
+            f"📍 Адрес: {address}\n"
+            f"📞 Контакт: {contact}"
+        )
+        # Кнопки действий
+        act_rows: list[list[InlineKeyboardButton]] = []
+        # toggle visibility allowed for approved/published/archived
+        if status in ("published", "approved", "archived"):
+            toggle_label = "👁️ Скрыть" if status == "published" else "👁️ Показать"
+            act_rows.append([InlineKeyboardButton(text=toggle_label, callback_data=f"pc:toggle:{card_id}:{page}")])
+        # delete
+        act_rows.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"pc:del:{card_id}:{page}")])
+        # back
+        act_rows.append([InlineKeyboardButton(text="↩️ К списку", callback_data=f"pc:page:{page}")])
+        kb = InlineKeyboardMarkup(inline_keyboard=act_rows)
+        await callback.message.edit_text(text, reply_markup=kb)
+        logger.info("partner.card_view: user=%s card_id=%s page=%s", callback.from_user.id, card_id, page)
+    except Exception as e:
+        logger.exception("partner.card_view failed: %s", e)
+        await callback.message.answer("❌ Ошибка при открытии карточки.")
+
+@partner_router.callback_query(F.data.startswith("pc:toggle:"))
+async def partner_card_toggle(callback: CallbackQuery):
+    """Переключение видимости карточки: published <-> archived."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    try:
+        _, _, id_str, page_str = callback.data.split(":", 3)
+        card_id = int(id_str)
+        page = int(page_str)
+        card = db_v2.get_card_by_id(card_id)
+        if not card:
+            await callback.message.answer("❌ Карточка не найдена.")
+            return
+        cur = (card.get('status') or 'pending').lower()
+        new_status = None
+        if cur == 'published':
+            new_status = 'archived'
+        elif cur in ('approved', 'archived'):
+            new_status = 'published'
+        else:
+            await callback.message.answer("⚠️ Эту карточку пока нельзя публиковать/архивировать (статус не подходит).")
+            return
+        ok = db_v2.update_card_status(card_id, new_status)
+        logger.info("partner.card_toggle: user=%s card_id=%s %s->%s ok=%s", callback.from_user.id, card_id, cur, new_status, ok)
+        await _render_cards_page(callback.message, callback.from_user.id, callback.from_user.full_name, page=page, edit=True)
+    except Exception as e:
+        logger.exception("partner.card_toggle failed: %s", e)
+        await callback.message.answer("❌ Ошибка при изменении статуса.")
+
+@partner_router.callback_query(F.data.startswith("pc:del:"))
+async def partner_card_delete_confirm(callback: CallbackQuery):
+    """Подтверждение удаления карточки: pc:del:<id>:<page>."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    try:
+        _, _, id_str, page_str = callback.data.split(":", 3)
+        card_id = int(id_str)
+        page = int(page_str)
+        text = (
+            f"❗ Вы уверены, что хотите удалить карточку #{card_id}?\n"
+            f"Это действие нельзя отменить."
+        )
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"pc:del:confirm:{card_id}:{page}")],
+            [InlineKeyboardButton(text="↩️ Отмена", callback_data=f"pc:view:{card_id}:{page}")],
+        ])
+        await callback.message.edit_text(text, reply_markup=kb)
+        logger.info("partner.card_delete_confirm: user=%s card_id=%s page=%s", callback.from_user.id, card_id, page)
+    except Exception as e:
+        logger.exception("partner.card_delete_confirm failed: %s", e)
+        await callback.message.answer("❌ Ошибка при подготовке удаления.")
+
+@partner_router.callback_query(F.data.startswith("pc:del:confirm:"))
+async def partner_card_delete(callback: CallbackQuery):
+    """Удаление карточки после подтверждения."""
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    try:
+        parts = callback.data.split(":")
+        card_id = int(parts[3])
+        page = int(parts[4])
+        ok = db_v2.delete_card(card_id)
+        logger.info("partner.card_delete: user=%s card_id=%s ok=%s", callback.from_user.id, card_id, ok)
+        await _render_cards_page(callback.message, callback.from_user.id, callback.from_user.full_name, page=page, edit=True)
+    except Exception as e:
+        logger.exception("partner.card_delete failed: %s", e)
+        await callback.message.answer("❌ Ошибка при удалении карточки.")
 
 # Category selection
 @partner_router.callback_query(F.data.startswith("partner_cat:"))
@@ -275,7 +477,7 @@ async def select_category(callback: CallbackQuery, state: FSMContext):
 @partner_router.message(AddCardStates.enter_title, F.text)
 async def enter_title(message: Message, state: FSMContext):
     """Handle title input"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -306,7 +508,7 @@ async def enter_title(message: Message, state: FSMContext):
 @partner_router.message(AddCardStates.enter_description, F.text)
 async def enter_description(message: Message, state: FSMContext):
     """Handle description input"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -336,7 +538,7 @@ async def enter_description(message: Message, state: FSMContext):
 @partner_router.message(AddCardStates.enter_contact, F.text)
 async def enter_contact(message: Message, state: FSMContext):
     """Handle contact input"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -366,7 +568,7 @@ async def enter_contact(message: Message, state: FSMContext):
 @partner_router.message(AddCardStates.enter_address, F.text)
 async def enter_address(message: Message, state: FSMContext):
     """Handle address input"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -416,7 +618,7 @@ async def upload_photo(message: Message, state: FSMContext):
 @partner_router.message(AddCardStates.upload_photo, F.text)
 async def skip_photo(message: Message, state: FSMContext):
     """Handle photo skip"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -437,7 +639,7 @@ async def skip_photo(message: Message, state: FSMContext):
 @partner_router.message(AddCardStates.enter_discount, F.text)
 async def enter_discount(message: Message, state: FSMContext):
     """Handle discount input"""
-    if message.text == "❌ Отменить":
+    if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
     
@@ -632,7 +834,7 @@ async def edit_card(callback: CallbackQuery, state: FSMContext):
     # Ensure we have at least a category selected
     if not data.get('category_id'):
         await callback.message.edit_text(
-            "❌ Нечего редактировать. Пожалуйста, начните заново: /add_card",
+            "❌ Нечего редактировать. Пожалуйста, начните заново: /add_card или /add_partner",
             reply_markup=None,
         )
         await state.clear()
@@ -689,8 +891,8 @@ async def open_partner_cabinet_cmd(message: Message):
         await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
 
 @partner_router.message(F.text.startswith("🧑‍💼"))
-async def open_partner_cabinet_button(message: Message):
-    """Open partner cabinet from '🧑‍💼 Стать партнёром' button (creates partner if missing)."""
+async def open_partner_cabinet_button(message: Message, state: FSMContext):
+    """Become partner button → immediately start add-card wizard (creates partner if missing)."""
     try:
         logger.info(
             "partner.open_button: user_id=%s text=%s partner_fsm=%s",
@@ -698,14 +900,15 @@ async def open_partner_cabinet_button(message: Message):
             (message.text or "")[:64],
             getattr(settings.features, 'partner_fsm', None),
         )
-        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_profile_keyboard(lang)
-        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
-        logger.info("partner.open_button: success user_id=%s", message.from_user.id)
+        # ensure partner exists
+        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        await state.update_data(partner_id=partner.id)
+        # start add card flow right away
+        await start_add_card(message, state)
+        logger.info("partner.open_button: started add_card flow user_id=%s", message.from_user.id)
     except Exception as e:
-        logger.error(f"Failed to open partner cabinet via button: {e}")
-        await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
+        logger.error(f"Failed to start add-card flow via button: {e}")
+        await message.answer("❌ Не удалось запустить мастер добавления карточки. Попробуйте позже.")
 
 async def cancel_add_card(message: Message, state: FSMContext):
     """Cancel adding card via message"""
@@ -713,7 +916,7 @@ async def cancel_add_card(message: Message, state: FSMContext):
     await state.clear()
 
 # Global cancel handler (non-breaking): reacts to '❌ Отменить' only if user is inside AddCardStates
-@partner_router.message(F.text == "❌ Отменить")
+@partner_router.message(F.text.in_(["❌ Отменить", "⛔ Отменить"]))
 async def cancel_anywhere(message: Message, state: FSMContext):
     """Allow user to cancel from any AddCardStates step using the same button."""
     cur = await state.get_state()
