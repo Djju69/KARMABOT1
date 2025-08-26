@@ -9,6 +9,7 @@ import time
 import logging
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 
 from ..database.db_v2 import db_v2
 from ..utils.locales_v2 import get_text, translations
@@ -110,14 +111,32 @@ async def on_my_cards(message: Message):
 
 
 @profile_router.message(F.text.in_(_texts('btn.partner.become')))
-async def on_become_partner(message: Message):
+async def on_become_partner(message: Message, state: FSMContext):
     """Open partner cabinet instead of sending external link.
     Keeps UX consistent with partner.open_partner_cabinet_button.
     """
     try:
         # Ensure partner exists
-        db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        # Load language and show partner cabinet keyboard (partner-specific)
+        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+
+        # If Partner FSM enabled — сразу запускаем мастер добавления карточки
+        if settings.features.partner_fsm:
+            try:
+                # Lazy import to avoid potential circular deps
+                from .partner import start_add_card
+            except Exception as e:
+                logger.error(f"Failed to import start_add_card: {e}")
+            else:
+                # Сохраняем partner_id в состояние и запускаем мастер
+                await state.update_data(partner_id=partner.id)
+                await start_add_card(message, state)
+                try:
+                    logger.info("profile.become_partner: started add_card flow user_id=%s", message.from_user.id)
+                except Exception:
+                    pass
+                return
+
+        # Fallback: просто открыть кабинет партнёра (без FSM)
         lang = await profile_service.get_lang(message.from_user.id)
         kb = get_partner_keyboard(lang)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
@@ -126,7 +145,7 @@ async def on_become_partner(message: Message):
         except Exception:
             pass
     except Exception as e:
-        logger.error(f"Failed to open partner cabinet via become button: {e}")
+        logger.error(f"Failed to handle become partner: {e}")
         await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
 
 

@@ -37,6 +37,9 @@ class Card:
     discount_text: Optional[str] = None
     status: str = 'draft'
     priority_level: int = 0
+    subcategory_id: Optional[int] = None
+    city_id: Optional[int] = None
+    area_id: Optional[int] = None
 
 @dataclass
 class Category:
@@ -129,12 +132,13 @@ class DatabaseServiceV2:
                 INSERT INTO cards_v2 (
                     partner_id, category_id, title, description, contact,
                     address, google_maps_url, photo_file_id, discount_text,
-                    status, priority_level
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    status, priority_level, subcategory_id, city_id, area_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 card.partner_id, card.category_id, card.title, card.description,
                 card.contact, card.address, card.google_maps_url, card.photo_file_id,
-                card.discount_text, card.status, card.priority_level
+                card.discount_text, card.status, card.priority_level,
+                card.subcategory_id, card.city_id, card.area_id
             ))
             return cursor.lastrowid
     
@@ -272,6 +276,9 @@ class DatabaseServiceV2:
             discount_text=fields.get("discount_text"),
             status=fields.get("status", "draft"),
             priority_level=int(fields.get("priority_level", 0)),
+            subcategory_id=fields.get("subcategory_id"),
+            city_id=fields.get("city_id"),
+            area_id=fields.get("area_id"),
         )
         return self.create_card(card)
 

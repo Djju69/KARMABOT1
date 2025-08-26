@@ -8,24 +8,37 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.filters import Command
 import logging
+import re
 
 from ..settings import settings
 from ..services.profile import profile_service
 from ..keyboards.reply_v2 import (
     get_profile_keyboard,
 )
+from ..keyboards.inline_v2 import get_cities_inline
 from ..database.db_v2 import db_v2, Card
 from ..utils.locales_v2 import translations
 
 logger = logging.getLogger(__name__)
 
+def _is_valid_gmaps(url: str) -> bool:
+    """Проверка, что ссылка похожа на Google Maps."""
+    if not url:
+        return False
+    url = url.strip()
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return False
+    return any(h in url for h in ("google.com/maps", "goo.gl/maps", "maps.app.goo.gl", "g.page"))
+
 # FSM States for adding cards
 class AddCardStates(StatesGroup):
+    choose_city = State()
     choose_category = State()
     enter_title = State()
     enter_description = State()
     enter_contact = State()
     enter_address = State()
+    enter_gmaps = State()
     upload_photo = State()
     enter_discount = State()
     preview_card = State()
@@ -262,12 +275,10 @@ async def start_add_card(message: Message, state: FSMContext):
     )
     
     await state.update_data(partner_id=partner.id)
-    await state.set_state(AddCardStates.choose_category)
-    
+    await state.set_state(AddCardStates.choose_city)
     await message.answer(
-        "🏪 **Добавление новой карточки**\n\n"
-        "Выберите категорию для вашего заведения:",
-        reply_markup=get_categories_keyboard()
+        "🏪 Добавление новой карточки\n\nВыберите город (по умолчанию Нячанг):",
+        reply_markup=get_cities_inline()
     )
 
 # ===== Reply-button entry points (no new slash commands) =====
@@ -279,6 +290,22 @@ async def start_add_card_via_button(message: Message, state: FSMContext):
         return
     # Reuse the same flow as /add_card
     await start_add_card(message, state)
+
+# ====== City selection ======
+@partner_router.callback_query(F.data.startswith("city:set:"))
+async def on_city_selected(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    data = callback.data.split(":")
+    city_id = int(data[-1]) if data and data[-1].isdigit() else 1
+    await state.update_data(city_id=city_id)
+    await state.set_state(AddCardStates.choose_category)
+    await callback.message.edit_text(
+        "Выберите категорию для вашего заведения:",
+        reply_markup=get_categories_keyboard()
+    )
 
 
 @partner_router.message(F.text.startswith("📂"))
@@ -526,72 +553,83 @@ async def enter_description(message: Message, state: FSMContext):
     data = await state.get_data()
     cur_contact = data.get('contact')
     contact_prompt = (
-        f"📞 Введите контактную информацию:\n"
-        f"*(телефон, Telegram, WhatsApp, Instagram)*"
+        f"📞 Введите контактный телефон партнёра:\n"
+        f"Пример: +84 90 123 45 67"
     )
     if cur_contact:
-        contact_prompt += f"\n\nТекущие контакты: {cur_contact}"
+        contact_prompt += f"\n\nТекущий телефон: {cur_contact}"
     await message.answer(contact_prompt, reply_markup=get_cancel_keyboard())
-    await message.answer("Можно пропустить контакты:", reply_markup=get_inline_skip_keyboard())
 
 # Contact input
 @partner_router.message(AddCardStates.enter_contact, F.text)
 async def enter_contact(message: Message, state: FSMContext):
-    """Handle contact input"""
+    """Handle contact input (обязателен, телефон)."""
     if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
-    
-    contact = None
-    if message.text != "⏭️ Пропустить":
-        contact = message.text.strip()
-        ok, err = _validate_optional_max_len(contact, 200, "❌ Контакт слишком длинный. Максимум 200 символов.")
-        if not ok:
-            await message.answer(err)
-            return
-    
-    await state.update_data(contact=contact)
+    phone = (message.text or "").strip()
+    # Простой валидатор телефона: цифры, +, пробелы, дефисы, скобки, от 7 до 20 символов значащих
+    digits = re.sub(r"[^0-9]", "", phone)
+    if len(digits) < 7:
+        await message.answer("❌ Укажите корректный телефон (минимум 7 цифр). Пример: +84 90 123 45 67")
+        return
+    ok, err = _validate_optional_max_len(phone, 200, "❌ Контакт слишком длинный. Максимум 200 символов.")
+    if not ok:
+        await message.answer(err)
+        return
+    await state.update_data(contact=phone)
     await state.set_state(AddCardStates.enter_address)
-    
-    data = await state.get_data()
-    cur_address = data.get('address')
-    address_prompt = (
-        f"📍 Введите адрес заведения:\n"
-        f"*(улица, район, ориентиры)*"
-    )
-    if cur_address:
-        address_prompt += f"\n\nТекущий адрес: {cur_address}"
-    await message.answer(address_prompt, reply_markup=get_cancel_keyboard())
-    await message.answer("Можно пропустить адрес:", reply_markup=get_inline_skip_keyboard())
+    cur_addr = (await state.get_data()).get('address')
+    addr_prompt = "📍 Введите адрес (улица, район, номер дома):"
+    if cur_addr:
+        addr_prompt += f"\n\nТекущий адрес: {cur_addr}"
+    await message.answer(addr_prompt, reply_markup=get_cancel_keyboard())
 
 # Address input
 @partner_router.message(AddCardStates.enter_address, F.text)
 async def enter_address(message: Message, state: FSMContext):
-    """Handle address input"""
+    """Handle address input (требуется)."""
     if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
-    
-    address = None
-    if message.text != "⏭️ Пропустить":
-        address = message.text.strip()
-        ok, err = _validate_optional_max_len(address, 300, "❌ Адрес слишком длинный. Максимум 300 символов.")
-        if not ok:
-            await message.answer(err)
-            return
-    
+    address = (message.text or "").strip()
+    if len(address) < 5:
+        await message.answer("❌ Адрес слишком короткий. Укажите улицу и номер дома.")
+        return
+    ok, err = _validate_optional_max_len(address, 300, "❌ Адрес слишком длинный. Максимум 300 символов.")
+    if not ok:
+        await message.answer(err)
+        return
     await state.update_data(address=address)
-    await state.set_state(AddCardStates.upload_photo)
-    
-    data = await state.get_data()
-    has_photo = bool(data.get('photo_file_id'))
-    photo_prompt = (
-        f"📸 Загрузите фото заведения:\n"
-        f"*(интерьер, блюда, фасад)*"
+    # Переходим к обязательной ссылке Google Maps
+    await state.set_state(AddCardStates.enter_gmaps)
+    await message.answer(
+        "🗺️ Вставьте ссылку Google Maps (местоположение заведения):",
+        reply_markup=get_cancel_keyboard()
     )
-    if has_photo:
-        photo_prompt += "\n\nСейчас фото уже прикреплено. Отправьте новое, чтобы заменить, или нажмите 'Пропустить' чтобы удалить."
-    await message.answer(photo_prompt, reply_markup=get_cancel_keyboard())
+
+# Google Maps link input
+@partner_router.message(AddCardStates.enter_gmaps, F.text)
+async def enter_gmaps(message: Message, state: FSMContext):
+    """Handle Google Maps link input (обязателен)."""
+    if _is_cancel_text(message.text):
+        await cancel_add_card(message, state)
+        return
+    url = (message.text or "").strip()
+    if not _is_valid_gmaps(url):
+        await message.answer("❌ Пожалуйста, отправьте корректную ссылку Google Maps.")
+        return
+    ok, err = _validate_optional_max_len(url, 200, "❌ Ссылка Google Maps слишком длинная. Максимум 200 символов.")
+    if not ok:
+        await message.answer(err)
+        return
+    await state.update_data(google_maps_url=url)
+    await state.set_state(AddCardStates.upload_photo)
+    await message.answer(
+        "📸 Загрузите фото заведения:\n"
+        "*(интерьер, блюда, фасад)*",
+        reply_markup=get_cancel_keyboard()
+    )
     await message.answer("Можно пропустить фото:", reply_markup=get_inline_skip_keyboard())
 
 # Photo upload
@@ -769,9 +807,14 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             description=data.get('description'),
             contact=data.get('contact'),
             address=data.get('address'),
+            google_maps_url=data.get('google_maps_url'),
             photo_file_id=data.get('photo_file_id'),
             discount_text=data.get('discount_text'),
-            status='pending'  # Waiting for moderation
+            status='pending',  # Waiting for moderation
+            # Optional taxonomy/geo
+            subcategory_id=data.get('subcategory_id'),
+            city_id=data.get('city_id'),
+            area_id=data.get('area_id'),
         )
         
         card_id = db_v2.create_card(card)
