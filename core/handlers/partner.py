@@ -21,6 +21,56 @@ from ..utils.locales_v2 import translations
 
 logger = logging.getLogger(__name__)
 
+# --- Simple dictionaries for Areas per City and Subcategories per Category ---
+# Area IDs are composed as city_id * 100 + local_id to keep them unique.
+AREAS_BY_CITY: dict[int, list[tuple[str, int]]] = {
+    1: [("🏙 Центр", 101), ("🌊 Север", 102), ("🏝 Юг", 103)],           # Нячанг
+    2: [("🏙 Центр", 201), ("🏖️ Побережье", 202), ("🏞 Окрестности", 203)],  # Дананг
+    3: [("🏙 Центр", 301), ("📈 Район 1", 302), ("📉 Район 2", 303)],       # Хошимин (примерно)
+    4: [("🏝 Дуонг Донг", 401), ("🏖️ Бай Сао", 402), ("🏝 Онга Ланг", 403)], # Фукуок
+}
+
+# Subcategories per category slug. Use small numeric codes.
+SUBCATS_BY_CATEGORY: dict[str, list[tuple[str, int]]] = {
+    "restaurants": [
+        ("🥢 Азия", 1101), ("🍝 Европа", 1102), ("🌭 Стритфуд", 1103), ("🥗 Вегетарианское", 1104)
+    ],
+    "transport": [
+        ("🏍 Мото/Байк", 1201), ("🚗 Авто", 1202), ("🚲 Велосипед", 1203)
+    ],
+    "hotels": [
+        ("🏨 Отель", 1301), ("🏡 Гестхаус", 1302), ("🏘 Апартаменты", 1303)
+    ],
+    "tours": [
+        ("🤿 Снорк/Дайв", 1401), ("🚤 Морские", 1402), ("🚌 Наземные", 1403)
+    ],
+    "spa": [
+        ("💆‍♀️ Массаж", 1501), ("🧖‍♀️ Спа-комплекс", 1502)
+    ],
+}
+
+def get_areas_inline(city_id: int, active_id: int | None = None) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    for title, aid in AREAS_BY_CITY.get(city_id, []):
+        label = ("✅ " if active_id == aid else "") + title
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"pfsm:area:{aid}")])
+    # Always provide skip and cancel
+    rows.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="pfsm:area:skip")])
+    rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+def get_subcategories_inline(category_slug: str, active_id: int | None = None) -> InlineKeyboardMarkup | None:
+    items = SUBCATS_BY_CATEGORY.get(category_slug)
+    if not items:
+        return None
+    rows: list[list[InlineKeyboardButton]] = []
+    for title, scid in items:
+        label = ("✅ " if active_id == scid else "") + title
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"pfsm:subcat:{scid}")])
+    rows.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="pfsm:subcat:skip")])
+    rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
 def _is_valid_gmaps(url: str) -> bool:
     """Проверка, что ссылка похожа на Google Maps."""
     if not url:
@@ -33,7 +83,9 @@ def _is_valid_gmaps(url: str) -> bool:
 # FSM States for adding cards
 class AddCardStates(StatesGroup):
     choose_city = State()
+    choose_area = State()
     choose_category = State()
+    choose_subcategory = State()
     enter_title = State()
     enter_description = State()
     enter_contact = State()
@@ -81,7 +133,14 @@ def _validate_optional_max_len(text: str | None, max_len: int, too_long_msg: str
     return True, None
 
 def _is_cancel_text(txt: str | None) -> bool:
-    return txt in ("❌ Отменить", "⛔ Отменить")
+    if not txt:
+        return False
+    norm = txt.strip().lower()
+    cancel_variants = {
+        "отменить", "отмена", "cancel", "стоп",
+        "❌ отменить", "⛔ отменить", "❌ отмена", "⛔ отмена",
+    }
+    return norm in cancel_variants
 
 def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     """Keyboard with cancel option"""
@@ -303,6 +362,25 @@ async def on_city_selected(callback: CallbackQuery, state: FSMContext):
     # expected: pfsm:city:<id>
     city_id = int(data[-1]) if data and data[-1].isdigit() else 1
     await state.update_data(city_id=city_id)
+    # После города — выбор района
+    await state.set_state(AddCardStates.choose_area)
+    await callback.message.edit_text(
+        "Выберите район:",
+        reply_markup=get_areas_inline(city_id)
+    )
+
+@partner_router.callback_query(F.data.startswith("pfsm:area:"))
+async def on_area_selected(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    data = callback.data.split(":")
+    val = data[-1] if data else "skip"
+    if val != "skip" and val.isdigit():
+        await state.update_data(area_id=int(val))
+    else:
+        await state.update_data(area_id=None)
     await state.set_state(AddCardStates.choose_category)
     await callback.message.edit_text(
         "Выберите категорию для вашего заведения:",
@@ -488,15 +566,50 @@ async def select_category(callback: CallbackQuery, state: FSMContext):
         category_id=category.id,
         category_name=category.name
     )
+    # Если есть подкатегории для данной категории — спросим их сначала
+    subcat_kb = get_subcategories_inline(category.slug)
+    if subcat_kb is not None:
+        await state.set_state(AddCardStates.choose_subcategory)
+        await callback.message.edit_text(
+            f"✅ Выбрана категория: **{category.name}**\n\n"
+            f"Выберите подкатегорию:",
+            reply_markup=subcat_kb
+        )
+        return
+    # Иначе сразу переходим к названию
     await state.set_state(AddCardStates.enter_title)
-    
     await callback.message.edit_text(
         f"✅ Выбрана категория: **{category.name}**\n\n"
         f"📝 Теперь введите название вашего заведения:\n"
         f"*(например: \"Ресторан У Моря\")*",
         reply_markup=None
     )
-    
+    await callback.message.answer(
+        "Введите название:",
+        reply_markup=get_cancel_keyboard()
+    )
+
+@partner_router.callback_query(F.data.startswith("pfsm:subcat:"))
+async def on_subcategory_selected(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.answer()
+    except Exception:
+        pass
+    parts = callback.data.split(":")
+    val = parts[-1] if parts else "skip"
+    if val != "skip" and val.isdigit():
+        await state.update_data(subcategory_id=int(val))
+    else:
+        await state.update_data(subcategory_id=None)
+    await state.set_state(AddCardStates.enter_title)
+    data = await state.get_data()
+    cat_name = data.get('category_name', '')
+    await callback.message.edit_text(
+        f"✅ Выбрана категория: **{cat_name}**\n\n"
+        f"📝 Теперь введите название вашего заведения:\n"
+        f"*(например: \"Ресторан У Моря\")*",
+        reply_markup=None
+    )
     await callback.message.answer(
         "Введите название:",
         reply_markup=get_cancel_keyboard()
