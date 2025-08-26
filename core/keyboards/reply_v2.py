@@ -37,6 +37,33 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         input_field_placeholder=get_text('choose_action', lang)
     )
 
+def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Admin cabinet keyboard."""
+    t = get_all_texts(lang)
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=t['admin_menu_queue'])],
+            [KeyboardButton(text=t['admin_menu_search']), KeyboardButton(text=t['admin_menu_reports'])],
+            [KeyboardButton(text=t['back_to_main_menu'])]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_action', lang)
+    )
+
+def get_superadmin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Super-admin cabinet keyboard (can be extended with extra rows)."""
+    t = get_all_texts(lang)
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=t['admin_menu_queue'])],
+            [KeyboardButton(text=t['admin_menu_search']), KeyboardButton(text=t['admin_menu_reports'])],
+            # extra superadmin-specific entries can be added here later
+            [KeyboardButton(text=t['back_to_main_menu'])]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text('choose_action', lang)
+    )
+
 def get_main_menu_reply_admin(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """
     Главное Reply-меню для админов: добавлена кнопка входа в админ-кабинет.
@@ -220,6 +247,18 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+def get_partner_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Partner cabinet keyboard (minimum viable)."""
+    t = get_all_texts(lang)
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=t['add_card']), KeyboardButton(text=t['my_cards'])],
+            [KeyboardButton(text=t['profile_stats']), KeyboardButton(text=t['profile_settings'])],
+            [KeyboardButton(text=t['back_to_main_menu'])]
+        ],
+        resize_keyboard=True
+    )
+
 def get_profile_keyboard_with_qr(lang: str = 'ru', webapp_url: str | None = None) -> ReplyKeyboardMarkup:
     """
     Deprecated: QR WebApp button is removed per UX. Always return profile keyboard without QR.
@@ -289,5 +328,8 @@ __all__ = [
     'get_contact_request_keyboard',
     # Legacy aliases
     'return_to_main_menu',
-    'get_main_menu_keyboard'
+    'get_main_menu_keyboard',
+    'get_partner_keyboard',
+    'get_admin_keyboard',
+    'get_superadmin_keyboard'
 ]

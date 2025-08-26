@@ -19,6 +19,9 @@ from ..services.cards import card_service
 from ..keyboards.reply_v2 import (
     get_profile_keyboard,
     get_profile_settings_keyboard,
+    get_partner_keyboard,
+    get_admin_keyboard,
+    get_superadmin_keyboard,
 )
 from ..settings import settings
 
@@ -95,9 +98,9 @@ async def on_become_partner(message: Message):
     try:
         # Ensure partner exists
         db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
-        # Load language and show partner cabinet keyboard
+        # Load language and show partner cabinet keyboard (partner-specific)
         lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_profile_keyboard(lang)
+        kb = get_partner_keyboard(lang)
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
         try:
             logger.info("profile.become_partner: opened cabinet user_id=%s", message.from_user.id)
@@ -161,3 +164,18 @@ async def on_notify_off(message: Message):
 
 def get_profile_router() -> Router:
     return profile_router
+
+
+# Admin cabinet entry from main menu button "👑 Админ кабинет"
+@profile_router.message(F.text == "👑 Админ кабинет")
+async def on_admin_cabinet(message: Message):
+    user_id = message.from_user.id
+    lang = await profile_service.get_lang(user_id)
+    # Simple role detection: superadmin is OWNER (ADMIN_ID), others are admins
+    if user_id == settings.bots.admin_id:
+        kb = get_superadmin_keyboard(lang)
+        title = get_text('admin_cabinet_title', lang)
+    else:
+        kb = get_admin_keyboard(lang)
+        title = get_text('admin_cabinet_title', lang)
+    await message.answer(title, reply_markup=kb)
