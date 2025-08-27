@@ -32,6 +32,7 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
         run: |
+          set -e
           echo "Starting Railway deployment..."
           
           # Set common flags
