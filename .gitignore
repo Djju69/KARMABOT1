@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.build/
+dist/
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project-specific
+RAILWAY_VARS.txt
+core/database/data.db
+input
+
+# Logs and runtime artifacts
+logs/
+logs/*.log
+ops/SESSION_STATE*.json
+
+# Node/Web (на будущее)
+node_modules/
+.npm-cache/

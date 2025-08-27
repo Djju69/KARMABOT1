@@ -1,0 +1,10 @@
+[build]
+builder = "dockerfile"
+
+[deploy]
+startCommand = "bash start.sh"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+[env]
+PYTHON_VERSION = "3.11"
