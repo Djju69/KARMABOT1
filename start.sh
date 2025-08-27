@@ -133,6 +133,9 @@ echo " - FASTAPI_ONLY=${FASTAPI_ONLY}"
 echo " - DISABLE_POLLING=${DISABLE_POLLING} (set 1 on followers to avoid getUpdates conflicts)"
 echo " - ENABLE_POLLING_LEADER_LOCK=${ENABLE_POLLING_LEADER_LOCK:-0} (1 enables in-app leader election)"
 echo " - PREEMPT_LEADER=${PREEMPT_LEADER:-0} (1 forces takeover if lock is stale)"
+# Force single-instance mode by default: disable leader lock and preemption
+export ENABLE_POLLING_LEADER_LOCK=0
+export PREEMPT_LEADER=0
 # Respect PREEMPT_LEADER from environment; do NOT auto-force by default to avoid multi-poller conflicts
 if [ "${DISABLE_POLLING}" = "0" ]; then
   : "${PREEMPT_LEADER:=0}"
