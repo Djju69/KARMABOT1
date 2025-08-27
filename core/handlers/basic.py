@@ -364,11 +364,10 @@ router.message.register(on_partner_off, Command("partner_off"))
 @router.message(
     StateFilter(None),
     F.text,
-    # Exclude known reply buttons handled in main_menu_router by translation keys
-    # (no need for emoji-prefix exclusions here anymore)
-    ~F.text.startswith("➕"),   # add card (partner router)
-    ~F.text.startswith("📂"),   # my cards (partner router)
-    ~F.text.startswith("🧑‍💼"), # become partner (partner router)
+    # Exclude known reply buttons handled in other routers by translation keys
+    ~F.text.in_([t.get('add_card', '') for t in translations.values()]),
+    ~F.text.in_([t.get('my_cards', '') for t in translations.values()]),
+    ~F.text.in_([t.get('btn.partner.become', '') for t in translations.values()]),
     ~F.text.startswith("🎁"),   # quick entry points
     # Do not swallow admin cabinet buttons; handled in admin_cabinet.py
     ~(F.text == "👑 Админ кабинет"),

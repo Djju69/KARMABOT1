@@ -453,6 +453,19 @@ async def show_my_cards(message: Message):
         logger.exception("partner.show_my_cards failed: %s", e)
         await message.answer("❌ Ошибка при загрузке списка карточек. Попробуйте позже.")
 
+# i18n handler: react to translated text for "Мои карточки"
+@partner_router.message(F.text.in_([t.get('my_cards', '') for t in translations.values()]))
+async def show_my_cards_i18n(message: Message):
+    return await show_my_cards(message)
+
+# i18n handler: react to translated text for "Добавить карточку"
+@partner_router.message(F.text.in_([t.get('add_card', '') for t in translations.values()]))
+async def start_add_card_via_button_i18n(message: Message, state: FSMContext):
+    if not settings.features.partner_fsm:
+        await message.answer("🚧 Добавление карточек временно недоступно.")
+        return
+    await start_add_card(message, state)
+
 @partner_router.callback_query(F.data.startswith("pc:page:"))
 async def partner_cards_page(callback: CallbackQuery):
     """Пагинация списка карточек: pc:page:<page>."""
