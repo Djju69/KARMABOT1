@@ -369,7 +369,10 @@ router.message.register(on_partner_off, Command("partner_off"))
     ~F.text.startswith("➕"),   # add card (partner router)
     ~F.text.startswith("📂"),   # my cards (partner router)
     ~F.text.startswith("🧑‍💼"), # become partner (partner router)
-    ~F.text.startswith("🎁")    # quick entry points
+    ~F.text.startswith("🎁"),   # quick entry points
+    # Do not swallow admin cabinet buttons; handled in admin_cabinet.py
+    ~(F.text == "👑 Админ кабинет"),
+    ~(F.text == "Админ кабинет")
 )
 async def on_unhandled_message(message: Message):
     # Silence fallback to avoid random SMS replies. Intentionally do nothing.

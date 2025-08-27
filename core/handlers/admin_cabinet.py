@@ -10,9 +10,10 @@ import contextlib
 
 from ..settings import settings
 from ..utils.locales_v2 import get_text
+from ..utils.locales_v2 import translations
 from ..services.profile import profile_service
 from ..keyboards.inline_v2 import get_admin_cabinet_inline, get_superadmin_inline, get_superadmin_delete_inline
-from ..keyboards.reply_v2 import get_main_menu_reply
+from ..keyboards.reply_v2 import get_main_menu_reply, get_admin_keyboard, get_superadmin_keyboard
 from ..services.admins import admins_service
 from ..database.db_v2 import db_v2
 
@@ -186,9 +187,11 @@ async def open_admin_cabinet(message: Message):
         await message.answer("❌ Доступ запрещён.")
         return
     lang = await profile_service.get_lang(message.from_user.id)
+    # Top-level: use Reply keyboard (superadmin has crown in main menu; here use dedicated keyboard)
+    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
     await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
-        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
+        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+        reply_markup=kb,
     )
 
 
@@ -202,9 +205,10 @@ async def open_admin_cabinet_by_button(message: Message):
         await message.answer("❌ Доступ запрещён.")
         return
     lang = await profile_service.get_lang(message.from_user.id)
+    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
     await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
-        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
+        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+        reply_markup=kb,
     )
 
 @router.callback_query(F.data == "adm:back")
@@ -224,10 +228,95 @@ async def open_admin_cabinet_by_button_plain(message: Message):
         await message.answer("❌ Доступ запрещён.")
         return
     lang = await profile_service.get_lang(message.from_user.id)
+    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
     await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
-        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
+        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+        reply_markup=kb,
     )
+
+# --- Reply-based admin menu entries ---
+@router.message(F.text.in_([t.get('admin_menu_queue', '') for t in translations.values()]))
+async def admin_menu_queue_entry(message: Message):
+    if not await admins_service.is_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещён.")
+        return
+    await _render_queue_page(message, message.from_user.id, page=0, edit=False)
+
+@router.message(F.text.in_([t.get('admin_menu_search', '') for t in translations.values()]))
+async def admin_menu_search_entry(message: Message):
+    if not await admins_service.is_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещён.")
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    # Keep inline filters for search as they are essential controls
+    text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_search', lang)}"
+    await message.answer(text, reply_markup=_search_keyboard())
+
+@router.message(F.text.in_([t.get('admin_menu_reports', '') for t in translations.values()]))
+async def admin_menu_reports_entry(message: Message):
+    if not await admins_service.is_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещён.")
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    try:
+        with db_v2.get_connection() as conn:
+            cur = conn.execute("""
+                SELECT status, COUNT(*) as cnt
+                FROM cards_v2
+                GROUP BY status
+            """)
+            by_status = {row[0] or 'unknown': int(row[1]) for row in cur.fetchall()}
+
+            cur = conn.execute("SELECT COUNT(*) FROM cards_v2")
+            total_cards = int(cur.fetchone()[0])
+
+            cur = conn.execute("SELECT COUNT(*) FROM partners_v2")
+            total_partners = int(cur.fetchone()[0])
+
+            try:
+                cur = conn.execute(
+                    """
+                    SELECT action, COUNT(*) as cnt
+                    FROM moderation_log
+                    WHERE created_at >= datetime('now','-7 days')
+                    GROUP BY action
+                    """
+                )
+                recent_actions = {row[0]: int(row[1]) for row in cur.fetchall()}
+            except Exception:
+                recent_actions = {}
+
+        lines = [
+            "📊 Отчёты (сводка)",
+            f"Всего карточек: {total_cards}",
+            f"Всего партнёров: {total_partners}",
+            "",
+            "По статусам:",
+            f"⏳ pending: {by_status.get('pending', 0)}",
+            f"✅ published: {by_status.get('published', 0)}",
+            f"❌ rejected: {by_status.get('rejected', 0)}",
+            f"🗂️ archived: {by_status.get('archived', 0)}",
+            f"📝 draft: {by_status.get('draft', 0)}",
+        ]
+        if recent_actions:
+            lines += [
+                "",
+                "За 7 дней:",
+                *[f"• {k}: {v}" for k, v in recent_actions.items()],
+            ]
+        text = "\n".join(lines)
+        # Keep user in reply-based admin menu
+        kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
+        await message.answer(text, reply_markup=kb)
+    except Exception as e:
+        logger.error(f"admin_menu_reports_entry error: {e}")
+        await message.answer("❌ Ошибка отчёта")
+
+@router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
+async def admin_menu_back_to_main(message: Message):
+    # Route back to main menu reply keyboard
+    lang = await profile_service.get_lang(message.from_user.id)
+    await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
 
 
 @router.callback_query(F.data == "adm:su:del")
