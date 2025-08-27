@@ -838,7 +838,7 @@ async def enter_gmaps(message: Message, state: FSMContext):
         "*(интерьер, блюда, фасад)*",
         reply_markup=get_cancel_keyboard()
     )
-    await message.answer("Можно пропустить фото:", reply_markup=get_inline_skip_keyboard())
+    await message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
 
 # Photo upload
 @partner_router.message(AddCardStates.upload_photo, F.photo)
@@ -968,7 +968,7 @@ async def skip_address_cb(callback: CallbackQuery, state: FSMContext):
         f"*(интерьер, блюда, фасад)*",
         reply_markup=get_cancel_keyboard()
     )
-    await callback.message.answer("Можно пропустить фото:", reply_markup=get_inline_skip_keyboard())
+    await callback.message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
 
 @partner_router.callback_query(AddCardStates.upload_photo, F.data == "partner_skip")
 async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
