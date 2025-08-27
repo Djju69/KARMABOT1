@@ -63,7 +63,7 @@ async def is_partner(user_id: int) -> bool:
                     SELECT 1
                     FROM partner_cards
                     WHERE tg_user_id = $1
-                      AND status IN ('active','pending','verified')
+                      AND status IN ('pending','approved','published')
                       AND (archived_at IS NULL)
                     LIMIT 1
                     """,
@@ -76,7 +76,7 @@ async def is_partner(user_id: int) -> bool:
                     SELECT 1
                     FROM partner_cards
                     WHERE tg_user_id = $1
-                      AND status IN ('active','pending','verified')
+                      AND status IN ('pending','approved','published')
                     LIMIT 1
                     """,
                     user_id,

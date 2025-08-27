@@ -14,10 +14,12 @@ from ..settings import settings
 from ..services.profile import profile_service
 from ..keyboards.reply_v2 import (
     get_partner_keyboard,
+    get_main_menu_reply,
+    get_profile_keyboard,
 )
 from ..keyboards.inline_v2 import get_cities_inline
 from ..database.db_v2 import db_v2, Card
-from ..utils.locales_v2 import translations
+from ..utils.locales_v2 import translations, get_text
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +149,18 @@ def get_cancel_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="⛔ Отменить")]],
         resize_keyboard=True
+    )
+
+def get_photos_reply_keyboard(current_count: int, max_photos: int = 6) -> ReplyKeyboardMarkup:
+    """Reply-клавиатура для шага загрузки фото: 'Готово (X/max)' над 'Отменить'."""
+    # Безопасность: ограничим границы для отображения
+    c = max(0, min(int(current_count or 0), max_photos))
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=f"✅ Готово ({c}/{max_photos})")],
+            [KeyboardButton(text="⛔ Отменить")],
+        ],
+        resize_keyboard=True,
     )
 
 # Callback from inline choice menu: start partner card flow
@@ -529,9 +543,9 @@ async def partner_card_view(callback: CallbackQuery):
             photos = []
 
         if photos:
-            # Сформируем медиагруппу (до 5 фото)
+            # Сформируем медиагруппу (до 6 фото)
             media: list[InputMediaPhoto] = []
-            for idx, p in enumerate(photos[:5]):
+            for idx, p in enumerate(photos[:6]):
                 fid = p.get('file_id') if isinstance(p, dict) else getattr(p, 'file_id', None)
                 if not fid:
                     continue
@@ -836,34 +850,43 @@ async def enter_gmaps(message: Message, state: FSMContext):
     await message.answer(
         "📸 Загрузите фото заведения:\n"
         "*(интерьер, блюда, фасад)*",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_photos_reply_keyboard(0, 6)
     )
     await message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
 
 # Photo upload
 @partner_router.message(AddCardStates.upload_photo, F.photo)
 async def upload_photo(message: Message, state: FSMContext):
-    """Загрузка фото: поддержка до 5 фото с управлением."""
+    """Загрузка фото: поддержка до 6 фото с управлением."""
     photo_file_id = message.photo[-1].file_id  # наибольшее по размеру
     data = await state.get_data()
     photos = list(data.get('photos') or [])
-    if len(photos) >= 5:
-        await message.answer("ℹ️ Достигнут лимит 5 фото. Нажмите 'Готово' или удалите лишнее.", reply_markup=get_cancel_keyboard())
+    if len(photos) >= 6:
+        # Лимит достигнут — обновим reply-клавиатуру (счётчик) и покажем inline-управление
+        await message.answer(
+            "ℹ️ Достигнут лимит 6 фото. Нажмите 'Готово' или удалите лишнее.",
+            reply_markup=get_photos_reply_keyboard(len(photos), 6)
+        )
         await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
-        return
-    photos.append(photo_file_id)
-    await state.update_data(photos=photos)
-    if len(photos) < 5:
-        await message.answer(
-            f"✅ Фото добавлено ({len(photos)}/5). Пришлите ещё фото или нажмите 'Готово'.",
-            reply_markup=get_photos_control_inline(len(photos)),
-        )
+        
     else:
-        # Достигли лимита — сразу предлагаем перейти далее
-        await message.answer(
-            f"✅ Добавлено 5/5 фото. Нажмите 'Готово' для продолжения.",
-            reply_markup=get_photos_control_inline(len(photos)),
-        )
+        photos.append(photo_file_id)
+        await state.update_data(photos=photos)
+        if len(photos) < 6:
+            # 1) обновим reply-клавиатуру с текущим счётчиком
+            await message.answer(
+                f"✅ Фото добавлено ({len(photos)}/6). Пришлите ещё фото или нажмите 'Готово'.",
+                reply_markup=get_photos_reply_keyboard(len(photos), 6),
+            )
+            # 2) отдельно покажем inline-управление
+            await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
+        else:
+            # Достигли лимита — сразу предлагаем перейти далее
+            await message.answer(
+                f"✅ Добавлено 6/6 фото. Нажмите 'Готово' для продолжения.",
+                reply_markup=get_photos_reply_keyboard(len(photos), 6),
+            )
+            await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
 
 @partner_router.message(AddCardStates.upload_photo, F.text)
 async def skip_photo(message: Message, state: FSMContext):
@@ -871,7 +894,18 @@ async def skip_photo(message: Message, state: FSMContext):
     if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
-    
+
+    # Обработка reply-кнопки "Готово (X/6)"
+    if (message.text or "").strip().startswith("✅ Готово"):
+        await state.set_state(AddCardStates.enter_discount)
+        await message.answer(
+            f"🎫 Введите информацию о скидке:\n"
+            f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
+            reply_markup=get_cancel_keyboard(),
+        )
+        await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
+        return
+
     if message.text == "⏭️ Пропустить":
         # Пропуск фото — очистить список
         await state.update_data(photos=[] , photo_file_id=None)
@@ -883,7 +917,14 @@ async def skip_photo(message: Message, state: FSMContext):
         )
         await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
     else:
-        await message.answer("📸 Пожалуйста, загрузите фото или нажмите 'Пропустить' / 'Готово'", reply_markup=get_photos_control_inline(len((await state.get_data()).get('photos') or [])))
+        await message.answer(
+            "📸 Пожалуйста, загрузите фото или нажмите 'Пропустить' / 'Готово'",
+            reply_markup=get_photos_reply_keyboard(len((await state.get_data()).get('photos') or []), 6)
+        )
+        await message.answer(
+            "Управление фото:",
+            reply_markup=get_photos_control_inline(len((await state.get_data()).get('photos') or []))
+        )
 
 # Discount input
 @partner_router.message(AddCardStates.enter_discount, F.text)
@@ -966,7 +1007,7 @@ async def skip_address_cb(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
         f"📸 Загрузите фото заведения:\n"
         f"*(интерьер, блюда, фасад)*",
-        reply_markup=get_cancel_keyboard()
+        reply_markup=get_photos_reply_keyboard(0, 6)
     )
     await callback.message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
 
@@ -987,14 +1028,12 @@ async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
 def get_photos_control_inline(current_count: int) -> InlineKeyboardMarkup:
-    """Inline-клавиатура управления фото на шаге загрузки."""
+    """Inline-клавиатура управления фото на шаге загрузки (без кнопок Готово/Отменить)."""
     rows: list[list[InlineKeyboardButton]] = []
     if current_count == 0:
         rows.append([InlineKeyboardButton(text="⏭️ Пропустить", callback_data="partner_skip")])
     if current_count > 0:
         rows.append([InlineKeyboardButton(text="🗑 Удалить последнее", callback_data="pfsm:photos:del_last")])
-    rows.append([InlineKeyboardButton(text=f"✅ Готово ({current_count}/5)", callback_data="pfsm:photos:done")])
-    rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 @partner_router.callback_query(AddCardStates.upload_photo, F.data == "pfsm:photos:del_last")
@@ -1009,14 +1048,16 @@ async def on_photos_del_last(callback: CallbackQuery, state: FSMContext):
         photos.pop()
         await state.update_data(photos=photos)
         await callback.message.answer(
-            f"🗑 Удалено. Осталось фото: {len(photos)}/5. Загрузите ещё или нажмите 'Готово'.",
-            reply_markup=get_photos_control_inline(len(photos)),
+            f"🗑 Удалено. Осталось фото: {len(photos)}/6. Загрузите ещё или нажмите 'Готово'.",
+            reply_markup=get_photos_reply_keyboard(len(photos), 6),
         )
+        await callback.message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
     else:
         await callback.message.answer(
             "Нет загруженных фото. Пришлите фото или нажмите 'Пропустить'.",
-            reply_markup=get_photos_control_inline(0),
+            reply_markup=get_photos_reply_keyboard(0, 6),
         )
+        await callback.message.answer("Управление фото:", reply_markup=get_photos_control_inline(0))
 
 @partner_router.callback_query(AddCardStates.upload_photo, F.data == "pfsm:photos:done")
 async def on_photos_done(callback: CallbackQuery, state: FSMContext):
@@ -1187,6 +1228,12 @@ async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
         reply_markup=None
     )
     await state.clear()
+    # Вернём пользователя в главное меню
+    try:
+        lang = await profile_service.get_lang(callback.from_user.id)
+    except Exception:
+        lang = 'ru'
+    await callback.message.answer("🏠 Главное меню:", reply_markup=get_main_menu_reply(lang))
 
 # --- Entry points to open Partner Cabinet ---
 @partner_router.message(Command("partner"))
@@ -1197,18 +1244,29 @@ async def open_partner_cabinet_cmd(message: Message):
         partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
         # Determine if QR should be shown: when partner has at least one card (pending/approved/published)
         show_qr = False
+        has_visible = False  # approved/published cards present
         try:
             cards = db_v2.get_partner_cards(partner.id)
             for c in cards:
-                if str(c.get('status')) in ('pending', 'approved', 'published'):
+                status = str(c.get('status'))
+                if status in ('pending', 'approved', 'published'):
                     show_qr = True
-                    break
+                    # do not break: also detect if has approved/published
+                if status in ('approved', 'published'):
+                    has_visible = True
+            
         except Exception:
             show_qr = False
-        # Load language and show partner cabinet keyboard (QR optionally on top)
+            has_visible = False
+        # Load language and show correct cabinet
         lang = await profile_service.get_lang(message.from_user.id)
-        kb = get_partner_keyboard(lang, show_qr=show_qr)
-        await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
+        if not has_visible:
+            # Нет видимых карточек у партнёра — показать обычный кабинет пользователя
+            await message.answer(get_text('profile_main', lang), reply_markup=get_profile_keyboard(lang))
+        else:
+            # Партнёрский кабинет с опциональным QR
+            kb = get_partner_keyboard(lang, show_qr=show_qr)
+            await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
     except Exception as e:
         logger.error(f"Failed to open partner cabinet: {e}")
         await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
@@ -1237,6 +1295,12 @@ async def cancel_add_card(message: Message, state: FSMContext):
     """Cancel adding card via message"""
     await message.answer("❌ Добавление карточки отменено.")
     await state.clear()
+    # Вернём пользователя в главное меню
+    try:
+        lang = await profile_service.get_lang(message.from_user.id)
+    except Exception:
+        lang = 'ru'
+    await message.answer("🏠 Главное меню:", reply_markup=get_main_menu_reply(lang))
 
 # Global cancel handler (non-breaking): reacts to '❌ Отменить' only if user is inside AddCardStates
 @partner_router.message(F.text.in_(["❌ Отменить", "⛔ Отменить"]))
