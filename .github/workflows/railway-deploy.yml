@@ -10,6 +10,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/main' }}
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
+      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'main' }}
+      REDIS_URL: ${{ secrets.REDIS_URL || '' }}
+      ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,13 +31,20 @@ jobs:
       - name: Show Railway CLI version
         run: railway --version
 
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
+      - name: Check Railway configuration
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "::error::RAILWAY_TOKEN is not set in repository secrets"
+            exit 1
+          fi
+          if [ -z "$RAILWAY_PROJECT" ]; then
+            echo "::warning::RAILWAY_PROJECT is not set in repository secrets"
+          fi
+          echo "RAILWAY_PROJECT=$RAILWAY_PROJECT"
+          echo "RAILWAY_ENVIRONMENT=$RAILWAY_ENVIRONMENT"
+
+      - name: Two-step deploy to Railway (CI)
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         run: |
           set -e
           echo "Starting Railway deployment..."
