@@ -2,20 +2,19 @@ name: Railway Deploy
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ secrets.RAILWAY_TOKEN != '' }}
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'main' }}
-      REDIS_URL: ${{ secrets.REDIS_URL || '' }}
-      ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
+      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+      REDIS_URL: ${{ secrets.REDIS_URL }}
+      ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,40 +30,24 @@ jobs:
       - name: Show Railway CLI version
         run: railway --version
 
-      - name: Check Railway configuration
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "::error::RAILWAY_TOKEN is not set in repository secrets"
-            exit 1
-          fi
-          if [ -z "$RAILWAY_PROJECT" ]; then
-            echo "::warning::RAILWAY_PROJECT is not set in repository secrets"
-          fi
-          echo "RAILWAY_PROJECT=$RAILWAY_PROJECT"
-          echo "RAILWAY_ENVIRONMENT=$RAILWAY_ENVIRONMENT"
-
       - name: Two-step deploy to Railway (CI)
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         run: |
-          set -e
-          echo "Starting Railway deployment..."
-          
-          # Set common flags
-          FLAGS="--ci"
-          
-          if [ -n "$RAILWAY_PROJECT" ]; then
-            FLAGS="$FLAGS --project $RAILWAY_PROJECT"
+          set -euo pipefail
+          echo "Starting two-step Railway deploy..."
+          TARGET_PREFIX="railway --ci"
+          if [ -n "${RAILWAY_PROJECT:-}" ]; then
+            TARGET_PREFIX="$TARGET_PREFIX --project \"$RAILWAY_PROJECT\""
           fi
-          
-          if [ -n "$RAILWAY_ENVIRONMENT" ]; then
-            FLAGS="$FLAGS --environment $RAILWAY_ENVIRONMENT"
+          if [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
+            TARGET_PREFIX="$TARGET_PREFIX --environment \"$RAILWAY_ENVIRONMENT\""
           fi
-          
-          # Step 1: First deploy with polling disabled
-          echo "Step 1/2: Initial deploy with polling disabled"
-          railway $FLAGS variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true
-          
-          if [ -n "$REDIS_URL" ]; then
+
+          echo "Step 1/2: Empty deploy (DISABLE_POLLING=1)"
+          # Ensure Partner FSM is enabled, disable polling
+          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true"
+          # Optionally set DB/REDIS if provided (no-op if empty)
+          if [ -n "${REDIS_URL:-}" ]; then
+            bash -lc "$TARGET_PREFIX variables set REDIS_URL=\"$REDIS_URL\""
             railway $FLAGS variables set REDIS_URL="$REDIS_URL"
           fi
           
