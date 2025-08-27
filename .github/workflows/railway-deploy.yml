@@ -24,7 +24,7 @@ jobs:
       - name: Show Railway CLI version
         run: railway --version
 
-      - name: Two-step deploy to Railway (CI)
+      - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
@@ -32,34 +32,42 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
         run: |
-          set -euo pipefail
-          echo "Starting two-step Railway deploy..."
-          TARGET_PREFIX="railway --ci"
-          if [ -n "${RAILWAY_PROJECT:-}" ]; then
-            TARGET_PREFIX="$TARGET_PREFIX --project \"$RAILWAY_PROJECT\""
+          echo "Starting Railway deployment..."
+          
+          # Set common flags
+          FLAGS="--ci"
+          
+          if [ -n "$RAILWAY_PROJECT" ]; then
+            FLAGS="$FLAGS --project $RAILWAY_PROJECT"
           fi
-          if [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
-            TARGET_PREFIX="$TARGET_PREFIX --environment \"$RAILWAY_ENVIRONMENT\""
+          
+          if [ -n "$RAILWAY_ENVIRONMENT" ]; then
+            FLAGS="$FLAGS --environment $RAILWAY_ENVIRONMENT"
           fi
-
-          echo "Step 1/2: Empty deploy (DISABLE_POLLING=1)"
-          # Ensure Partner FSM is enabled, disable polling
-          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true"
-          # Optionally set DB/REDIS if provided (no-op if empty)
-          if [ -n "${REDIS_URL:-}" ]; then
-            bash -lc "$TARGET_PREFIX variables set REDIS_URL=\"$REDIS_URL\""
+          
+          # Step 1: First deploy with polling disabled
+          echo "Step 1/2: Initial deploy with polling disabled"
+          railway $FLAGS variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true
+          
+          if [ -n "$REDIS_URL" ]; then
+            railway $FLAGS variables set REDIS_URL="$REDIS_URL"
           fi
-          # Deploy migrations/web only
-          bash -lc "$TARGET_PREFIX up"
-
-          echo "Step 2/2: Full deploy (DISABLE_POLLING=0)"
-          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=0"
-          if [ -n "${ENABLE_POLLING_LEADER_LOCK:-}" ]; then
-            bash -lc "$TARGET_PREFIX variables set ENABLE_POLLING_LEADER_LOCK=\"$ENABLE_POLLING_LEADER_LOCK\""
+          
+          # Run initial deployment
+          railway $FLAGS up
+          
+          # Step 2: Final deploy with polling enabled
+          echo "Step 2/2: Final deploy with polling enabled"
+          railway $FLAGS variables set DISABLE_POLLING=0
+          
+          if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
+            railway $FLAGS variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK"
           fi
-          # Final deploy with polling enabled
-          bash -lc "$TARGET_PREFIX up"
-          echo "Two-step Railway deploy finished"
+          
+          # Run final deployment
+          railway $FLAGS up
+          
+          echo "Railway deployment completed successfully"
 
       - name: Post logs hint
         run: |
