@@ -1,14 +1,18 @@
 from typing import Optional, Dict, Any
 import time
 import os
+import logging
 
 from fastapi import APIRouter, HTTPException, Header
+
+logger = logging.getLogger(__name__)
 from pydantic import BaseModel
 
 # Reuse existing JWT verification used by /auth endpoints
 from core.services.webapp_auth import check_jwt
 from core.security.jwt_service import verify_partner
 from core.services.cache import cache_service
+from core.services.loyalty_points import loyalty_service
 
 router = APIRouter()
 
@@ -112,8 +116,29 @@ async def activity_claim(payload: ActivityClaimRequest, authorization: Optional[
         # fail-open: do nothing
         pass
 
-    # award
+    # Начисляем баллы через сервис
     points = int(_DEFAULT_POINTS.get(rule, 0))
-
-    # Note: persistence, logs, and transactions are out of scope for minimal version
-    return ActivityClaimResponse(ok=True, points_awarded=points)
+    try:
+        result = await loyalty_service.add_transaction(
+            user_id=user_id,
+            rule_code=rule,
+            points=points,
+            metadata={
+                "lat": payload.lat,
+                "lng": payload.lng,
+                "listing_id": payload.listing_id,
+                "source": "activity_claim"
+            }
+        )
+        return ActivityClaimResponse(ok=True, points_awarded=points)
+        
+    except ValueError as e:
+        logger.error(f"Invalid loyalty transaction: {e}", extra={"user_id": user_id, "rule": rule})
+        return ActivityClaimResponse(ok=False, code="invalid_operation")
+        
+    except Exception as e:
+        logger.error(
+            "Failed to process loyalty transaction",
+            extra={"user_id": user_id, "rule": rule, "error": str(e)}
+        )
+        return ActivityClaimResponse(ok=False, code="internal_error")
