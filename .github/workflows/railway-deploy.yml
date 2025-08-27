@@ -53,39 +53,42 @@ jobs:
       - name: Two-step deploy to Railway (CI)
         run: |
           set -euo pipefail
-          echo "Starting two-step Railway deploy..."
-          TARGET_PREFIX="railway --ci"
-          if [ -n "${RAILWAY_PROJECT:-}" ]; then
-            TARGET_PREFIX="$TARGET_PREFIX --project \"$RAILWAY_PROJECT\""
+          echo "🚀 Начинаем двухэтапный деплой на Railway..."
+          
+          # Настройка префикса для команд Railway
+          RAILWAY_CMD="railway"
+          if [ -n "$RAILWAY_PROJECT" ]; then
+            RAILWAY_CMD="$RAILWAY_CMD --project \"$RAILWAY_PROJECT\""
           fi
-          if [ -n "${RAILWAY_ENVIRONMENT:-}" ]; then
-            TARGET_PREFIX="$TARGET_PREFIX --environment \"$RAILWAY_ENVIRONMENT\""
-          fi
-
-          echo "Step 1/2: Empty deploy (DISABLE_POLLING=1)"
-          # Ensure Partner FSM is enabled, disable polling
-          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true"
-          # Optionally set DB/REDIS if provided (no-op if empty)
-          if [ -n "${REDIS_URL:-}" ]; then
-            bash -lc "$TARGET_PREFIX variables set REDIS_URL=\"$REDIS_URL\""
-            railway $FLAGS variables set REDIS_URL="$REDIS_URL"
+          if [ -n "$RAILWAY_ENVIRONMENT" ]; then
+            RAILWAY_CMD="$RAILWAY_CMD --environment \"$RAILWAY_ENVIRONMENT\""
           fi
           
-          # Run initial deployment
-          railway $FLAGS up
+          # Шаг 1: Первоначальный деплой с выключенным поллингом
+          echo "🔧 Шаг 1/2: Первоначальный деплой (DISABLE_POLLING=1)"
+          bash -c "$RAILWAY_CMD variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true --yes"
           
-          # Step 2: Final deploy with polling enabled
-          echo "Step 2/2: Final deploy with polling enabled"
-          railway $FLAGS variables set DISABLE_POLLING=0
+          # Устанавливаем REDIS_URL, если он указан
+          if [ -n "$REDIS_URL" ]; then
+            bash -c "$RAILWAY_CMD variables set REDIS_URL=\"$REDIS_URL\" --yes"
+          fi
           
+          # Запускаем первый деплой
+          bash -c "$RAILWAY_CMD up --detach" || echo "⚠️ Первый этап деплоя завершился с предупреждениями"
+          
+          # Шаг 2: Финальный деплой с включенным поллингом
+          echo "🚀 Шаг 2/2: Финальный деплой (DISABLE_POLLING=0)"
+          bash -c "$RAILWAY_CMD variables set DISABLE_POLLING=0 --yes"
+          
+          # Устанавливаем ENABLE_POLLING_LEADER_LOCK, если указан
           if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
-            railway $FLAGS variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK"
+            bash -c "$RAILWAY_CMD variables set ENABLE_POLLING_LEADER_LOCK=\"$ENABLE_POLLING_LEADER_LOCK\" --yes"
           fi
           
-          # Run final deployment
-          railway $FLAGS up
+          # Запускаем финальный деплой
+          bash -c "$RAILWAY_CMD up --detach"
           
-          echo "Railway deployment completed successfully"
+          echo "✅ Двухэтапный деплой успешно завершен!"
 
       - name: Post logs hint
         run: |

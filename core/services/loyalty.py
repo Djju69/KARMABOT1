@@ -10,6 +10,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from ..database.db_v2 import db_v2
+from .cache import cache_service
 
 
 @dataclass
@@ -29,13 +30,29 @@ class LoyaltyService:
         self.default_ttl = default_ttl_minutes
 
     # Wallets
-    def get_balance(self, user_id: int) -> int:
+    async def get_balance(self, user_id: int) -> int:
+        # Проверяем кэш
+        cache_key = f"loyalty:balance:{user_id}"
+        cached_balance = await cache_service.get(cache_key)
+        
+        # Если в кэше есть значение, возвращаем его
+        if cached_balance and cached_balance != 'None':
+            try:
+                return int(cached_balance)
+            except (ValueError, TypeError):
+                pass
+                
+        # Если в кэше нет, идем в БД
         with db_v2.get_connection() as conn:
             row = conn.execute(
                 "SELECT balance_pts FROM loyalty_wallets WHERE user_id = ?",
                 (user_id,),
             ).fetchone()
-            return int(row[0]) if row else 0
+            balance = int(row[0]) if row else 0
+            
+            # Кэшируем результат на 5 минут
+            await cache_service.set(cache_key, str(balance), ex=300)
+            return balance
 
     def ensure_wallet(self, user_id: int) -> None:
         with db_v2.get_connection() as conn:
@@ -44,7 +61,7 @@ class LoyaltyService:
                 (user_id,),
             )
 
-    def adjust_balance(self, user_id: int, delta_pts: int, note: str = "", ref: Optional[int] = None) -> int:
+    async def adjust_balance(self, user_id: int, delta_pts: int, note: str = "", ref: Optional[int] = None) -> int:
         """Atomically adjust balance and record transaction. Returns new balance."""
         with db_v2.get_connection() as conn:
             # Ensure wallet row exists
@@ -66,8 +83,52 @@ class LoyaltyService:
                 """,
                 (user_id, kind, delta_pts, new_bal, ref, note),
             )
+            
+            # Инвалидируем кэш баланса
+            cache_key = f"loyalty:balance:{user_id}"
+            await cache_service.set(cache_key, str(new_bal), ex=1)  # Обновляем кэш с новым значением
+            
             return new_bal
 
+    # Transactions
+    async def get_recent_transactions(self, user_id: int, limit: int = 10) -> list[dict]:
+        """Get recent transactions with optional caching."""
+        cache_key = f"loyalty:tx_history:{user_id}:{limit}"
+        cached = await cache_service.get(cache_key)
+        
+        # Если есть закэшированные данные и они не None
+        if cached and cached != 'None':
+            try:
+                import json
+                return json.loads(cached)
+            except (json.JSONDecodeError, TypeError):
+                pass  # В случае ошибки парсинга идем в БД
+                
+        with db_v2.get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, kind, delta_pts, balance_after, created_at, note 
+                FROM loyalty_transactions 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT ?
+                """,
+                (user_id, limit),
+            ).fetchall()
+            
+            # Конвертируем строки дат в строки для сериализации
+            transactions = []
+            for row in rows:
+                tx = dict(row)
+                if 'created_at' in tx and tx['created_at']:
+                    tx['created_at'] = str(tx['created_at'])
+                transactions.append(tx)
+            
+            # Кэшируем на 1 минуту
+            import json
+            await cache_service.set(cache_key, json.dumps(transactions), ex=60)
+            return transactions
+    
     # Spend intents
     def _gen_token(self) -> str:
         return secrets.token_urlsafe(24)

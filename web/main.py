@@ -30,6 +30,8 @@ from web.routes_cabinet import router as cabinet_router
 from web.routes_admin import router as admin_router
 from web.routes_bot import router as bot_hooks_router
 from web.routes_loyalty import router as loyalty_router
+from core.api.qr import router as qr_router
+from core.api.card import router as card_router
 from core.services.cache import cache_service
 from ops.session_state import load as ss_load, save as ss_save, update as ss_update, snapshot as ss_snapshot
 
@@ -155,7 +157,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="KARMABOT1 WebApp API", lifespan=lifespan)
 
-# Simple in-memory rate limiter for /api/qr/* endpoints (5 r/s, burst 10 per IP)
+# Simple in-memory rate limiter for /api/qr/* and /api/card/* endpoints (5 r/s, burst 10 per IP)
 from time import monotonic as _now
 from collections import defaultdict as _dd
 
@@ -164,10 +166,10 @@ _RATE = 5.0
 _BURST = 10.0
 
 @app.middleware("http")
-async def _qr_rate_limit_middleware(request: Request, call_next):
+async def _rate_limit_middleware(request: Request, call_next):
     try:
         path = request.url.path or ""
-        if path.startswith("/api/qr/"):
+        if path.startswith("/api/qr/") or path.startswith("/api/card/"):
             ip = request.headers.get("x-forwarded-for") or request.client.host or "?"
             b = _rl_buckets.setdefault(ip, {"tokens": _BURST, "ts": _now()})
             now = _now()
@@ -228,7 +230,9 @@ app.include_router(auth_email_router, prefix="/auth", tags=["auth"])
 app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet"]) 
 app.include_router(admin_router, tags=["admin"]) 
 app.include_router(bot_hooks_router, prefix="/bot/hooks", tags=["bot_hooks"]) 
-app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"]) 
+app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
+app.include_router(qr_router, prefix="/api/qr", tags=["qr"]) 
+app.include_router(card_router, prefix="/api/card", tags=["card"])
 
 # Prometheus metrics endpoint (server-side metrics)
 @app.get("/metrics")
