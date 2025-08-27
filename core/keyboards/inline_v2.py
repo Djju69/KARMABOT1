@@ -48,6 +48,25 @@ def get_restaurant_filters_inline(active: Optional[str] = None, lang: str = "ru"
     )
 
 
+def get_activity_inline(lang: str = "ru") -> InlineKeyboardMarkup:
+    """
+    Activity screen inline keyboard.
+    Callbacks:
+      - actv:checkin
+      - actv:profile
+      - actv:bindcard
+      - actv:geocheckin
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=f"🎯 {get_text('actv_checkin', lang)}", callback_data="actv:checkin")],
+            [InlineKeyboardButton(text=f"🧩 {get_text('actv_profile', lang)}", callback_data="actv:profile")],
+            [InlineKeyboardButton(text=f"🪪 {get_text('actv_bindcard', lang)}", callback_data="actv:bindcard")],
+            [InlineKeyboardButton(text=f"📍 {get_text('actv_geocheckin', lang)}", callback_data="actv:geocheckin")],
+        ]
+    )
+
+
 def get_add_card_choice_inline(lang: str = "ru") -> InlineKeyboardMarkup:
     """Inline-меню: выбор действия для кнопки «➕ Добавить карточку».
     Callbacks:

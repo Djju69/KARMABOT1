@@ -19,6 +19,24 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     Ряд 2: ❓ Помощь | 🌐 Язык
     Ряд 3: 👤 Личный кабинет
     """
+    # Legacy compact layout (2x2) for backward compatibility when new menu is disabled
+    if not settings.features.new_menu:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text=get_text('choose_category', lang)),
+                    KeyboardButton(text=get_text('show_nearest', lang)),
+                ],
+                [
+                    KeyboardButton(text=get_text('help', lang)),
+                    KeyboardButton(text=get_text('choose_language', lang)),
+                ],
+            ],
+            resize_keyboard=True,
+            input_field_placeholder=get_text('choose_action', lang)
+        )
+
+    # New layout (3 rows) when feature flag is enabled
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -246,6 +264,8 @@ def get_profile_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=t['add_card']), KeyboardButton(text=t['my_cards'])],
+            # Activity entry point
+            [KeyboardButton(text=get_text('actv_title', lang))],
             # Separate row for become partner action (reply button)
             [KeyboardButton(text=get_text('btn.partner.become', lang))],
             [KeyboardButton(text=t['profile_stats']), KeyboardButton(text=t['profile_settings'])],

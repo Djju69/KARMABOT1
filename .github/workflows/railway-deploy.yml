@@ -6,9 +6,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  check-secrets:
     runs-on: ubuntu-latest
-    if: ${{ secrets.RAILWAY_TOKEN != '' }}
+    outputs:
+      has-secrets: ${{ steps.check-secrets.outputs.has-secrets }}
+    steps:
+      - name: Check for required secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "::error::❌ RAILWAY_TOKEN is not set in repository secrets"
+            echo "has-secrets=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          if [ -z "${{ secrets.RAILWAY_PROJECT }}" ]; then
+            echo "::warning::⚠️ RAILWAY_PROJECT is not set in repository secrets"
+          fi
+          echo "has-secrets=true" >> $GITHUB_OUTPUT
+          echo "✅ All required secrets are present"
+
+  deploy:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-secrets == 'true'
+    runs-on: ubuntu-latest
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
+      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'main' }}
+      REDIS_URL: ${{ secrets.REDIS_URL || '' }}
+      ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,12 +51,6 @@ jobs:
         run: railway --version
 
       - name: Two-step deploy to Railway (CI)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK }}
         run: |
           set -euo pipefail
           echo "Starting two-step Railway deploy..."
@@ -48,18 +68,24 @@ jobs:
           # Optionally set DB/REDIS if provided (no-op if empty)
           if [ -n "${REDIS_URL:-}" ]; then
             bash -lc "$TARGET_PREFIX variables set REDIS_URL=\"$REDIS_URL\""
+            railway $FLAGS variables set REDIS_URL="$REDIS_URL"
           fi
-          # Deploy migrations/web only
-          bash -lc "$TARGET_PREFIX up"
-
-          echo "Step 2/2: Full deploy (DISABLE_POLLING=0)"
-          bash -lc "$TARGET_PREFIX variables set DISABLE_POLLING=0"
-          if [ -n "${ENABLE_POLLING_LEADER_LOCK:-}" ]; then
-            bash -lc "$TARGET_PREFIX variables set ENABLE_POLLING_LEADER_LOCK=\"$ENABLE_POLLING_LEADER_LOCK\""
+          
+          # Run initial deployment
+          railway $FLAGS up
+          
+          # Step 2: Final deploy with polling enabled
+          echo "Step 2/2: Final deploy with polling enabled"
+          railway $FLAGS variables set DISABLE_POLLING=0
+          
+          if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
+            railway $FLAGS variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK"
           fi
-          # Final deploy with polling enabled
-          bash -lc "$TARGET_PREFIX up"
-          echo "Two-step Railway deploy finished"
+          
+          # Run final deployment
+          railway $FLAGS up
+          
+          echo "Railway deployment completed successfully"
 
       - name: Post logs hint
         run: |

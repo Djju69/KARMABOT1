@@ -1,5 +1,6 @@
 {
     "back_to_main_menu": "Back to main menu🏘",
+    "back_to_main": "Back to main🏘",
     "choose_category": "🗂️ Categories",
     "show_nearest": "📍 Show nearest",
     "choose_language": "🌐 Language",
@@ -65,5 +66,16 @@
     "welcome_message": "{user_name}, welcome to Karma System! 👋\n\n✨ Get exclusive discounts and offers via QR code in convenient categories:\n🍽️ Restaurants & Cafes\n🧖‍♀️ SPA & Massage\n🏍️ Bike Rentals\n🏨 Hotels\n🚶‍♂️ Tours\n\nAnd if you're a business owner, join us as a partner and connect your loyalty system! 🚀\n\nStart saving now - choose a category and get your discounts!\n\nBy continuing to use the bot, you agree to the personal data processing policy.",
     "policy_accept": "✅ I agree",
     "policy_view": "📄 Privacy Policy",
-    "policy_url": "/policy"
+    "policy_url": "/policy",
+    "actv_title": "🎯 Activity",
+    "actv_checkin": "Daily check-in",
+    "actv_profile": "Complete profile",
+    "actv_bindcard": "Bind card",
+    "actv_geocheckin": "Geo check-in",
+    "actv_claim_ok": "✅ Points awarded",
+    "actv_cooldown": "⌛ Cooldown active. Try later",
+    "actv_rule_disabled": "⛔ Activity disabled",
+    "actv_geo_required": "📍 Location required",
+    "actv_out_of_coverage": "📍 Out of coverage",
+    "actv_send_location_prompt": "📍 Send your location using the button below"
 }

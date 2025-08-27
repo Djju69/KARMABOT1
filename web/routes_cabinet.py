@@ -88,53 +88,9 @@ def get_current_claims(
         except Exception:
             pass
         return admin_claims
+    # Strict: do not accept unsigned payloads
+    # Any further fallbacks are disabled for production safety.
 
-    # Fallback: try to parse unsigned JWT payload (base64url) and accept limited roles
-    try:
-        parts = token.split(".")
-        if len(parts) >= 2:
-            import json as _json, base64 as _b64
-            def _b64url_pad(s: str) -> str:
-                return s + "=" * ((4 - len(s) % 4) % 4)
-            payload_b64 = _b64url_pad(parts[1])
-            payload_raw = _b64.urlsafe_b64decode(payload_b64.encode("utf-8"))
-            payload = _json.loads(payload_raw.decode("utf-8", errors="ignore")) if payload_raw else {}
-            role = str(payload.get("role") or payload.get("roles") or "").lower()
-            sub = payload.get("sub") or payload.get("user_id") or payload.get("id")
-            if sub and role in ("admin", "superadmin", "partner"):
-                payload["sub"] = str(sub)
-                try:
-                    logger.warning("auth.fallback.payload_used", extra={"sub": str(sub), "role": role})
-                except Exception:
-                    pass
-                return payload
-    except Exception:
-        # Ignore errors and proceed to 401
-        pass
-
-    # Insecure last-resort fallback: accept unsigned payload if it looks valid (admin/partner)
-    try:
-        parts = token.split(".")
-        if len(parts) >= 2:
-            # Decode payload (base64url)
-            def _b64url_decode(s: str) -> bytes:
-                pad = '=' * (-len(s) % 4)
-                return base64.urlsafe_b64decode(s + pad)
-            payload = json.loads(_b64url_decode(parts[1]).decode("utf-8"))
-            sub = str(payload.get("sub")) if payload.get("sub") is not None else None
-            if sub:
-                # Accept only trusted roles to reduce risk
-                role_val = payload.get("role") or (payload.get("roles") or [None])[0]
-                role = str(role_val or "").lower()
-                if role in ("admin", "superadmin", "partner"):
-                    try:
-                        logger.warning("auth.fallback.payload_used", extra={"sub": sub, "role": role})
-                    except Exception:
-                        pass
-                    return {"sub": sub, "role": role, "src": payload.get("src", "external")}
-    except Exception:
-        pass
-    
     # Dev bypass on invalid token
     if settings.environment == "development" and allow_partner:
         return {"sub": "1", "role": "partner", "src": "tg_webapp"}
@@ -497,6 +453,24 @@ def _ensure_db_bootstrap(conn: sqlite3.Connection) -> None:
             )
             """
         )
+        # Seed default categories if empty
+        try:
+            row = conn.execute("SELECT COUNT(*) FROM categories_v2").fetchone()
+            cnt = int(row[0]) if row else 0
+            if cnt == 0:
+                conn.executemany(
+                    "INSERT INTO categories_v2 (name, emoji, is_active, priority_level) VALUES (?, ?, 1, ?)",
+                    [
+                        ("Рестораны", "🍽", 100),
+                        ("SPA/Массаж", "💆", 90),
+                        ("Транспорт/Аренда", "🚗", 80),
+                        ("Отели", "🏨", 70),
+                        ("Экскурсии", "🗺", 60),
+                    ],
+                )
+        except Exception:
+            # Non-fatal seed error
+            pass
         # cards_v2 minimal set, optional columns are handled dynamically elsewhere
         conn.execute(
             """
@@ -602,14 +576,27 @@ async def profile(claims: Dict[str, Any] = Depends(get_current_claims)):
     if role in ("admin", "superadmin", "partner"):
         pass  # keep as is
     else:
-        # 2) Fallback: auto-detect partner by ownership
+        # 2) Detect partner via SQLite (partners_v2) to avoid false downgrade to 'user'
         try:
-            if await is_partner(user_id):
-                role = "partner"
-            else:
-                role = "user"
+            with _db_connect() as conn:
+                row = conn.execute(
+                    "SELECT 1 FROM partners_v2 WHERE tg_user_id = ? LIMIT 1",
+                    (user_id,),
+                ).fetchone()
+                if row:
+                    role = "partner"
+                else:
+                    # Fallback to legacy detector (e.g., Postgres-backed)
+                    try:
+                        role = "partner" if await is_partner(user_id) else "user"
+                    except Exception:
+                        role = "user"
         except Exception:
-            role = "user"
+            # Final fallback: legacy is_partner or user
+            try:
+                role = "partner" if await is_partner(user_id) else "user"
+            except Exception:
+                role = "user"
     return Profile(user_id=user_id, lang=lang, source=str(claims.get("src", "")), role=role)
 
 
@@ -630,6 +617,7 @@ async def orders(limit: int = 10, claims: Dict[str, Any] = Depends(get_current_c
 async def partner_cards(
     status: Optional[str] = None,
     q: Optional[str] = None,
+    category_id: Optional[int] = None,
     after_id: Optional[int] = None,
     limit: int = 20,
     claims: Dict[str, Any] = Depends(get_current_claims),
@@ -656,6 +644,9 @@ async def partner_cards(
         if q:
             where += " AND title LIKE ?"
             args.append(f"%{q}%")
+        if category_id:
+            where += " AND category_id = ?"
+            args.append(int(category_id))
         if after_id:
             where += " AND id < ?"
             args.append(after_id)

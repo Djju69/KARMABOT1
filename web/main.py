@@ -6,6 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from contextlib import asynccontextmanager
 
 # Import project settings and auth utils
 try:
@@ -28,6 +29,7 @@ from .routes_auth_email import router as auth_email_router
 from web.routes_cabinet import router as cabinet_router
 from web.routes_admin import router as admin_router
 from web.routes_bot import router as bot_hooks_router
+from web.routes_loyalty import router as loyalty_router
 from core.services.cache import cache_service
 from ops.session_state import load as ss_load, save as ss_save, update as ss_update, snapshot as ss_snapshot
 
@@ -111,7 +113,47 @@ class TokenCookieMiddleware(BaseHTTPMiddleware):
             pass
         return resp
 
-app = FastAPI(title="KARMABOT1 WebApp API")
+# Lifespan: replaces deprecated on_event startup/shutdown
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    try:
+        try:
+            ok = ensure_database_ready()
+            if not ok:
+                raise RuntimeError("Database is not ready")
+        except Exception:
+            raise
+        try:
+            ss_load()
+            try:
+                feats = getattr(settings, 'features', None)
+                if feats:
+                    ss_update(patch={
+                        "feature_flags": {k: bool(getattr(feats, k)) for k in dir(feats) if not k.startswith('_')}
+                    })
+            except Exception:
+                pass
+        except Exception:
+            pass
+        await cache_service.connect()
+    except Exception:
+        # Fail-open per previous behavior
+        pass
+
+    yield
+
+    # Shutdown
+    try:
+        try:
+            ss_save()
+        except Exception:
+            pass
+        await cache_service.close()
+    except Exception:
+        pass
+
+app = FastAPI(title="KARMABOT1 WebApp API", lifespan=lifespan)
 
 # Simple in-memory rate limiter for /api/qr/* endpoints (5 r/s, burst 10 per IP)
 from time import monotonic as _now
@@ -186,56 +228,31 @@ app.include_router(auth_email_router, prefix="/auth", tags=["auth"])
 app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet"]) 
 app.include_router(admin_router, tags=["admin"]) 
 app.include_router(bot_hooks_router, prefix="/bot/hooks", tags=["bot_hooks"]) 
+app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"]) 
 
-# Prometheus metrics endpoint
+# Prometheus metrics endpoint (server-side metrics)
 @app.get("/metrics")
 async def metrics():
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-
-# Cache service lifecycle
-@app.on_event("startup")
-async def on_startup():
+# Lightweight endpoint for client-side metrics (fire-and-forget beacons)
+@app.api_route("/client-metrics", methods=["GET", "POST", "HEAD", "OPTIONS"])
+async def client_metrics(request: Request):
     try:
-        # Ensure database is migrated and ready (fail-fast on critical error)
+        # Minimal, non-blocking: read name from query for quick inspection
+        name = request.query_params.get("name")
+        # Optionally, could snapshot to session state for debugging
         try:
-            ok = ensure_database_ready()
-            if not ok:
-                # Trigger failure so platform restarts the service with logs
-                raise RuntimeError("Database is not ready")
-        except Exception as e:
-            # Re-raise to prevent starting a broken app
-            raise
-        # Load persisted session state early
-        try:
-            ss_load()
-            # Optionally enrich components with feature flags if available
-            try:
-                feats = getattr(settings, 'features', None)
-                if feats:
-                    ss_update(patch={
-                        "feature_flags": {k: bool(getattr(feats, k)) for k in dir(feats) if not k.startswith('_')}
-                    })
-            except Exception:
-                pass
+            if name:
+                ss_update(patch={"last_client_metric": {"name": name, "at": None}})
         except Exception:
             pass
-        await cache_service.connect()
     except Exception:
         pass
+    return Response(status_code=204)
 
 
-@app.on_event("shutdown")
-async def on_shutdown():
-    try:
-        # Persist final session state snapshot
-        try:
-            ss_save()
-        except Exception:
-            pass
-        await cache_service.close()
-    except Exception:
-        pass
+# Lifecycle handled via FastAPI lifespan above
 
 @app.get("/health")
 async def health():
@@ -700,8 +717,25 @@ _INDEX_HTML_RAW = """
 
         <div id=\"section-mycards\" class=\"section\"> 
           <h3>Мои карточки</h3>
+          <div id=\"cardsFilters\" class=\"row\" style=\"gap:8px; align-items:center; margin: 8px 0\">
+            <label for=\"statusFilter\" class=\"muted\">Статус:</label>
+            <select id=\"statusFilter\" style=\"background:#0b1327; color:#e5e7eb; border:1px solid #334155; border-radius:8px; padding:6px 8px\">
+              <option value=\"\">Все</option>
+              <option value=\"pending\">Черновики/Модерация</option>
+              <option value=\"published\">Опубликованные</option>
+              <option value=\"archived\">Архив</option>
+            </select>
+            <label for=\"categoryFilter\" class=\"muted\">Категория:</label>
+            <select id=\"categoryFilter\" style=\"background:#0b1327; color:#e5e7eb; border:1px solid #334155; border-radius:8px; padding:6px 8px\">
+              <option value=\"\">Все категории</option>
+            </select>
+            <button id=\"refreshCards\" class=\"btn\">🔄 Обновить</button>
+          </div>
           <div id=\"cardsEmpty\" class=\"muted\" style=\"display:none\">Карточек пока нет</div>
           <ul id=\"cardsList\" class=\"clean\"></ul>
+          <div style=\"margin-top:8px\">
+            <button id=\"loadMore\" class=\"btn\" style=\"display:none\">Ещё</button>
+          </div>
         </div>
       </div>
     </div>
@@ -711,6 +745,128 @@ _INDEX_HTML_RAW = """
       // --- Auth bootstrap helpers: read token from URL/localStorage/cookies and inject Authorization header globally
       function getQueryParam(name){
         try { return new URL(window.location.href).searchParams.get(name); } catch(_) { return null }
+      }
+      // --- Lightweight i18n for partner cards UI
+      const I18N = {
+        ru: {
+          section_title: 'Мои карточки',
+          status_label: 'Статус:',
+          status_all: 'Все',
+          status_pending: 'Черновики/Модерация',
+          status_published: 'Опубликованные',
+          status_archived: 'Архив',
+          category_label: 'Категория:',
+          category_all: 'Все категории',
+          refresh: '🔄 Обновить',
+          load_more: 'Ещё',
+          empty: 'Карточек пока нет'
+        },
+        en: {
+          section_title: 'My cards',
+          status_label: 'Status:',
+          status_all: 'All',
+          status_pending: 'Draft/Moderation',
+          status_published: 'Published',
+          status_archived: 'Archived',
+          category_label: 'Category:',
+          category_all: 'All categories',
+          refresh: '🔄 Refresh',
+          load_more: 'More',
+          empty: 'No cards yet'
+        },
+        ko: {
+          section_title: '내 카드',
+          status_label: '상태:',
+          status_all: '전체',
+          status_pending: '초안/검수',
+          status_published: '게시됨',
+          status_archived: '보관됨',
+          category_label: '카테고리:',
+          category_all: '전체 카테고리',
+          refresh: '🔄 새로고침',
+          load_more: '더보기',
+          empty: '카드가 없습니다'
+        },
+        vi: {
+          section_title: 'Thẻ của tôi',
+          status_label: 'Trạng thái:',
+          status_all: 'Tất cả',
+          status_pending: 'Nháp/Duyệt',
+          status_published: 'Đã đăng',
+          status_archived: 'Lưu trữ',
+          category_label: 'Danh mục:',
+          category_all: 'Tất cả danh mục',
+          refresh: '🔄 Làm mới',
+          load_more: 'Xem thêm',
+          empty: 'Chưa có thẻ'
+        }
+      };
+      function t(key){
+        const lang = (window.__lang || 'ru').toLowerCase();
+        const dict = I18N[lang] || I18N['ru'];
+        return (dict && dict[key]) || (I18N['ru'][key] || key);
+      }
+      function applyI18n(){
+        try {
+          const h = document.querySelector('#section-mycards h3'); if (h) h.textContent = t('section_title');
+          const lblS = document.querySelector('label[for="statusFilter"]'); if (lblS) lblS.textContent = t('status_label');
+          const lblC = document.querySelector('label[for="categoryFilter"]'); if (lblC) lblC.textContent = t('category_label');
+          const sf = document.getElementById('statusFilter');
+          if (sf && sf.options && sf.options.length >= 4) {
+            sf.options[0].textContent = t('status_all');
+            sf.options[1].textContent = t('status_pending');
+            sf.options[2].textContent = t('status_published');
+            sf.options[3].textContent = t('status_archived');
+          }
+          const cf = document.getElementById('categoryFilter');
+          if (cf && cf.options && cf.options.length >= 1) {
+            cf.options[0].textContent = t('category_all');
+          }
+          const rb = document.getElementById('refreshCards'); if (rb) rb.textContent = t('refresh');
+          const lm = document.getElementById('loadMore'); if (lm) lm.textContent = t('load_more');
+          const empty = document.getElementById('cardsEmpty'); if (empty) empty.textContent = t('empty');
+        } catch(_) {}
+      }
+      function updateFiltersInUrl() {
+        try {
+          const u = new URL(window.location.href);
+          const sf = document.getElementById('statusFilter');
+          const cf = document.getElementById('categoryFilter');
+          const status = (sf && sf.value) ? sf.value : '';
+          const cat = (cf && cf.value) ? cf.value : '';
+          if (status) { u.searchParams.set('status', status); } else { u.searchParams.delete('status'); }
+          if (cat) { u.searchParams.set('category_id', cat); } else { u.searchParams.delete('category_id'); }
+          // Never persist pagination cursor
+          u.searchParams.delete('after_id');
+          window.history.replaceState({}, '', u.toString());
+        } catch(_) {}
+      }
+      function initFiltersFromQuery(){
+        try {
+          const sf = document.getElementById('statusFilter');
+          const cf = document.getElementById('categoryFilter');
+          const qs = getQueryParam('status');
+          const qc = getQueryParam('category_id');
+          if (sf && qs != null) sf.value = qs;
+          if (cf && qc != null) cf.value = qc;
+        } catch(_) {}
+      }
+      // --- Metrics (best-effort, safe if endpoint missing)
+      function fireMetric(name, extra){
+        try {
+          const u = new URL('/client-metrics', window.location.origin);
+          u.searchParams.set('t', String(Date.now()));
+          u.searchParams.set('name', name);
+          if (extra && typeof extra === 'object') {
+            Object.keys(extra).forEach(k => {
+              const v = extra[k];
+              if (v != null) u.searchParams.set(String(k), String(v));
+            });
+          }
+          if (navigator && typeof navigator.sendBeacon === 'function') {
+            navigator.sendBeacon(u.toString());
+          }
+        } catch(_) {}
       }
 
       // Dev token flow: allow manual token entry when Telegram is unavailable
@@ -899,12 +1055,16 @@ _INDEX_HTML_RAW = """
             throw new Error('HTTP ' + r.status + (t2 ? (' · ' + t2) : ''));
           }
           const data = await r.json();
+          try { window.__lang = (data && data.lang) ? String(data.lang) : (window.__lang || 'ru'); } catch(_) {}
+          try { applyI18n(); } catch(_) {}
           box.textContent = `ID: ${data.user_id} · Язык: ${data.lang} · Источник: ${data.source}`;
           const s = document.getElementById('authStatus');
           if (s) s.textContent = 'Авторизация успешна';
           try { const cab = document.getElementById('cabinet'); if (cab) cab.style.display = 'block'; } catch(_) {}
           // После успешной загрузки профиля — подгрузим «Мои карточки»
-          try { await loadMyCards(token); } catch(_e) { console.warn('[cards] load after profile failed', _e); }
+          try { await populateCategories(token); } catch(_e) { console.warn('[cards] categories failed', _e); }
+          try { initFiltersFromQuery(); } catch(_) {}
+          try { await loadMyCards(token, { append: false }); } catch(_e) { console.warn('[cards] load after profile failed', _e); }
         } catch (e) {
           box.textContent = 'Ошибка загрузки профиля: ' + (e.message || e);
           const s = document.getElementById('authStatus');
@@ -913,37 +1073,117 @@ _INDEX_HTML_RAW = """
         }
       }
 
-      async function loadMyCards(token) {
+      async function loadMyCards(token, opts) {
         const list = document.getElementById('cardsList');
         const empty = document.getElementById('cardsEmpty');
+        const loadMore = document.getElementById('loadMore');
         if (!list || !empty) return;
-        list.innerHTML = '';
+        const append = !!(opts && opts.append);
+        const afterId = opts && opts.afterId ? Number(opts.afterId) : null;
+        if (!append) {
+          list.innerHTML = '';
+        }
         empty.style.display = 'none';
         try {
           console.info('[cards] loading…');
+          try { fireMetric('cards_load_start'); } catch(_) {}
+          try { window.__cardsLoading = true; } catch(_) {}
           const at = asciiToken(token);
-          let r = await fetch('/cabinet/partner/cards?limit=20', { headers: { 'Authorization': 'Bearer ' + at } });
+          const limit = 20;
+          let url = '/cabinet/partner/cards?limit=' + limit;
+          try {
+            const sf = document.getElementById('statusFilter');
+            const status = (sf && sf.value) ? sf.value : '';
+            if (status) url += '&status=' + encodeURIComponent(status);
+          } catch(_) {}
+          try {
+            const cf = document.getElementById('categoryFilter');
+            const cat = (cf && cf.value) ? cf.value : '';
+            if (cat) url += '&category_id=' + encodeURIComponent(cat);
+          } catch(_) {}
+          try { if (!append) updateFiltersInUrl(); } catch(_) {}
+          if (append && afterId) {
+            url += '&after_id=' + encodeURIComponent(afterId);
+          }
+          let r = await fetch(url, { headers: { 'Authorization': 'Bearer ' + at } });
           if (!r.ok) {
             const txt = await r.text().catch(()=> '');
             console.warn('[cards] header auth failed', r.status, txt);
-            r = await fetch('/cabinet/partner/cards?limit=20&token=' + encodeURIComponent(token));
+            let fbUrl = '/cabinet/partner/cards?limit=' + limit + '&token=' + encodeURIComponent(token);
+            try {
+              const sf = document.getElementById('statusFilter');
+              const status = (sf && sf.value) ? sf.value : '';
+              if (status) fbUrl += '&status=' + encodeURIComponent(status);
+            } catch(_) {}
+            try {
+              const cf = document.getElementById('categoryFilter');
+              const cat = (cf && cf.value) ? cf.value : '';
+              if (cat) fbUrl += '&category_id=' + encodeURIComponent(cat);
+            } catch(_) {}
+            if (append && afterId) { fbUrl += '&after_id=' + encodeURIComponent(afterId); }
+            r = await fetch(fbUrl);
           }
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const data = await r.json();
           const items = (data && data.items) || [];
-          if (!items.length) {
+          try { fireMetric('cards_load_ok', { count: items.length }); } catch(_) {}
+          try { window.__cardsCanLoadMore = items.length >= limit; } catch(_) {}
+          if (!items.length && !append) {
             empty.style.display = 'block';
             console.info('[cards] empty list');
             return;
           }
           for (const it of items) {
             const li = document.createElement('li');
+            li.setAttribute('data-id', String(it.id));
             li.textContent = `#${it.id} · ${it.title || '(без названия)'} · статус: ${it.status}`;
             list.appendChild(li);
           }
+          // Управление кнопкой "Ещё"
+          try {
+            if (loadMore) {
+              if (items.length >= limit) {
+                loadMore.style.display = 'inline-block';
+              } else {
+                loadMore.style.display = 'none';
+              }
+            }
+          } catch(_) {}
         } catch (e) {
           showError('Ошибка загрузки карточек: ' + (e && e.message ? e.message : e));
           console.error('[cards] error', e);
+          try { fireMetric('cards_load_err'); } catch(_) {}
+        }
+        finally {
+          try { window.__cardsLoading = false; } catch(_) {}
+        }
+      }
+
+      async function populateCategories(token){
+        try {
+          const sel = document.getElementById('categoryFilter');
+          if (!sel) return;
+          // Если уже есть опции кроме первой — не дублируем
+          if (sel.options && sel.options.length > 1) return;
+          const at = asciiToken(token);
+          let r = await fetch('/cabinet/partner/categories', { headers: { 'Authorization': 'Bearer ' + at } });
+          if (!r.ok) {
+            const txt = await r.text().catch(()=> '');
+            console.warn('[cats] header auth failed', r.status, txt);
+            r = await fetch('/cabinet/partner/categories?token=' + encodeURIComponent(token));
+          }
+          if (!r.ok) return;
+          const data = await r.json();
+          const items = Array.isArray(data) ? data : (data.items || []);
+          for (const c of items) {
+            if (!c || c.id == null) continue;
+            const opt = document.createElement('option');
+            opt.value = String(c.id);
+            opt.textContent = c.title || c.name || ('Категория #' + c.id);
+            sel.appendChild(opt);
+          }
+        } catch (e) {
+          console.warn('[cats] failed to load categories', e);
         }
       }
 
@@ -1107,7 +1347,8 @@ _INDEX_HTML_RAW = """
             try {
               const token = window.__authToken || pickToken();
               if (token) {
-                await loadMyCards(token);
+                try { await populateCategories(token); } catch(_) {}
+                await loadMyCards(token, { append: false });
               } else {
                 // как fallback оставим переход на standalone-страницу
                 const url = window.location.origin + '/cabinet/partner/cards/page';
@@ -1131,6 +1372,28 @@ _INDEX_HTML_RAW = """
           });
         }
       } catch (e) { /* noop */ }
+      // Infinite scroll: auto-click loadMore when near bottom and can load
+      try {
+        window.__cardsLoading = false;
+        window.__cardsCanLoadMore = false;
+        function nearBottom(){
+          try {
+            const doc = document.documentElement;
+            const rem = (doc.scrollHeight - window.innerHeight - window.scrollY);
+            return rem < 200;
+          } catch(_) { return false }
+        }
+        window.addEventListener('scroll', () => {
+          try {
+            const lm = document.getElementById('loadMore');
+            if (!lm || lm.style.display === 'none') return;
+            if (window.__cardsLoading) return;
+            if (!window.__cardsCanLoadMore) return;
+            if (!nearBottom()) return;
+            lm.click();
+          } catch(_) {}
+        }, { passive: true });
+      } catch(_) {}
       // Create/open scanner shortcut: navigate to /scan with token so it can be bookmarked
       try {
         const btn = document.getElementById('btnMakeScannerShortcut');
@@ -1162,6 +1425,57 @@ _INDEX_HTML_RAW = """
           btn.addEventListener('click', () => {
             const url = window.location.origin + '/cabinet/partner/cards/page';
             window.location.href = url;
+          });
+        }
+      } catch (e) { /* noop */ }
+      // Фильтры списка карточек: изменение статуса/категории и кнопки
+      try {
+        const sf = document.getElementById('statusFilter');
+        const cf = document.getElementById('categoryFilter');
+        const rb = document.getElementById('refreshCards');
+        const lm = document.getElementById('loadMore');
+        if (sf) {
+          sf.addEventListener('change', () => {
+            const t = (window && window.__authToken) ? window.__authToken : null;
+            try { if (lm) lm.style.display = 'none'; } catch(_) {}
+            try { fireMetric('cards_filter_change', { kind: 'status' }); } catch(_) {}
+            try { updateFiltersInUrl(); } catch(_) {}
+            if (t) { try { loadMyCards(t, { append: false }); } catch(_) {} }
+          });
+        }
+        if (cf) {
+          cf.addEventListener('change', () => {
+            const t = (window && window.__authToken) ? window.__authToken : null;
+            try { if (lm) lm.style.display = 'none'; } catch(_) {}
+            try { fireMetric('cards_filter_change', { kind: 'category' }); } catch(_) {}
+            try { updateFiltersInUrl(); } catch(_) {}
+            if (t) { try { loadMyCards(t, { append: false }); } catch(_) {} }
+          });
+        }
+        if (rb) {
+          rb.addEventListener('click', () => {
+            const t = (window && window.__authToken) ? window.__authToken : null;
+            try { if (lm) lm.style.display = 'none'; } catch(_) {}
+            try { fireMetric('cards_refresh_click'); } catch(_) {}
+            try { updateFiltersInUrl(); } catch(_) {}
+            if (t) { try { loadMyCards(t, { append: false }); } catch(_) {} }
+          });
+        }
+        if (lm) {
+          lm.addEventListener('click', () => {
+            try {
+              const list = document.getElementById('cardsList');
+              const t = (window && window.__authToken) ? window.__authToken : null;
+              if (!list || !t) return;
+              const items = list.querySelectorAll('li[data-id]');
+              if (!items || !items.length) return;
+              const last = items[items.length - 1];
+              const afterId = Number(last.getAttribute('data-id')) || null;
+              try { fireMetric('cards_load_more_click'); } catch(_) {}
+              if (afterId) {
+                loadMyCards(t, { append: true, afterId });
+              }
+            } catch(_) {}
           });
         }
       } catch (e) { /* noop */ }

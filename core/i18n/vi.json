@@ -1,5 +1,6 @@
 {
     "back_to_main_menu": "Quay lại menu chính🏘",
+    "back_to_main": "Quay lại chính🏘",
     "choose_category": "🗂️ Danh mục",
     "show_nearest": "📍 Hiển thị gần nhất",
     "choose_language": "🌐 Ngôn ngữ",
@@ -65,5 +66,16 @@
     "welcome_message": "{user_name}, chào mừng đến với Karma System! 👋\n\n✨ Nhận giảm giá và ưu đãi độc quyền qua mã QR trong các danh mục tiện lợi:\n🍽️ Nhà hàng & Quán cà phê\n🧖‍♀️ SPA & Mát-xa\n🏍️ Thuê xe máy\n🏨 Khách sạn\n🚶‍♂️ Tour du lịch\n\nVà nếu bạn là chủ doanh nghiệp, hãy tham gia với chúng tôi với tư cách là đối tác và kết nối hệ thống khách hàng thân thiết của bạn! 🚀\n\nBắt đầu tiết kiệm ngay bây giờ - chọn một danh mục và nhận giảm giá của bạn!\n\nBằng cách tiếp tục sử dụng bot, bạn đồng ý với chính sách xử lý dữ liệu cá nhân.",
     "policy_accept": "✅ Tôi đồng ý",
     "policy_view": "📄 Chính sách bảo mật",
-    "policy_url": "/policy"
+    "policy_url": "/policy",
+    "actv_title": "🎯 Hoạt động",
+    "actv_checkin": "Điểm danh hàng ngày",
+    "actv_profile": "Hoàn thiện hồ sơ",
+    "actv_bindcard": "Liên kết thẻ",
+    "actv_geocheckin": "Điểm danh theo vị trí",
+    "actv_claim_ok": "✅ Đã cộng điểm",
+    "actv_cooldown": "⌛ Đang trong thời gian chờ. Hãy thử lại sau",
+    "actv_rule_disabled": "⛔ Hoạt động bị tắt",
+    "actv_geo_required": "📍 Cần vị trí",
+    "actv_out_of_coverage": "📍 Ngoài phạm vi",
+    "actv_send_location_prompt": "📍 Gửi vị trí của bạn bằng nút bên dưới"
 }

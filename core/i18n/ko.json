@@ -1,5 +1,6 @@
 {
     "back_to_main_menu": "메인 메뉴로 돌아가기🏘",
+    "back_to_main": "메인으로 돌아가기🏘",
     "choose_category": "🗂️ 카테고리",
     "show_nearest": "📍 가장 가까운 곳 표시",
     "choose_language": "🌐 언어",
@@ -65,5 +66,16 @@
     "welcome_message": "{user_name}님, Karma System에 오신 것을 환영합니다! 👋\n\n✨ 편리한 카테고리에서 QR 코드를 통해 독점 할인 및 혜택을 받으세요:\n🍽️ 레스토랑 & 카페\n🧖‍♀️ 스파 & 마사지\n🏍️ 오토바이 대여\n🏨 호텔\n🚶‍♂️ 투어\n\n그리고 사업주라면 파트너로 가입하여 로열티 시스템을 연결하세요! 🚀\n\n지금 바로 절약 시작 - 카테고리를 선택하고 할인을 받으세요!\n\n봇을 계속 사용하면 개인 데이터 처리 정책에 동의하는 것입니다.",
     "policy_accept": "✅ 동의합니다",
     "policy_view": "📄 개인정보 처리방침",
-    "policy_url": "/policy"
+    "policy_url": "/policy",
+    "actv_title": "🎯 활동",
+    "actv_checkin": "일일 체크인",
+    "actv_profile": "프로필 완료",
+    "actv_bindcard": "카드 연결",
+    "actv_geocheckin": "지오 체크인",
+    "actv_claim_ok": "✅ 포인트가 적립되었습니다",
+    "actv_cooldown": "⌛ 쿨다운 중입니다. 나중에 다시 시도하세요",
+    "actv_rule_disabled": "⛔ 활동이 비활성화되었습니다",
+    "actv_geo_required": "📍 위치가 필요합니다",
+    "actv_out_of_coverage": "📍 적용 범위 밖입니다",
+    "actv_send_location_prompt": "📍 아래 버튼으로 위치를 보내주세요"
 }

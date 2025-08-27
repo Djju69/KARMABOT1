@@ -1149,6 +1149,85 @@ async def on_photos_done(callback: CallbackQuery, state: FSMContext):
     )
     await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
+@partner_router.message(AddCardStates.upload_photo, F.document)
+async def upload_photo_document(message: Message, state: FSMContext):
+    """Загрузка изображений, отправленных как документ (file)."""
+    try:
+        mt = (getattr(message.document, 'mime_type', None) or '').lower()
+    except Exception:
+        mt = ''
+    if not mt.startswith('image/'):
+        try:
+            logger.info(
+                "partner.upload_photo_document: user_id=%s skipped_non_image mime=%s",
+                message.from_user.id,
+                mt,
+            )
+        except Exception:
+            pass
+        await message.answer(
+            "❗ Это не изображение. Пришлите фото или нажмите 'Пропустить'.",
+            reply_markup=get_photos_reply_keyboard(len((await state.get_data()).get('photos') or []), 6),
+        )
+        return
+    fid = message.document.file_id
+    data = await state.get_data()
+    photos = list(data.get('photos') or [])
+    try:
+        logger.info(
+            "partner.upload_photo_document: user_id=%s got_doc_image=%s current_count=%s",
+            message.from_user.id,
+            bool(fid),
+            len(photos),
+        )
+    except Exception:
+        pass
+    if len(photos) >= 6:
+        await message.answer(
+            "ℹ️ Достигнут лимит 6 фото. Нажмите 'Готово'.",
+            reply_markup=get_photos_reply_keyboard(len(photos), 6),
+        )
+        await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
+        return
+    photos.append(fid)
+    await state.update_data(photos=photos, photo_file_id=photos[0] if photos else None)
+    try:
+        logger.info(
+            "partner.upload_photo_document: user_id=%s new_count=%s",
+            message.from_user.id,
+            len(photos),
+        )
+    except Exception:
+        pass
+    await message.answer(
+        f"✅ Добавлено фото ({len(photos)}/6). Можете прислать ещё или нажать 'Готово'.",
+        reply_markup=get_photos_reply_keyboard(len(photos), 6),
+    )
+    await message.answer("Управление фото:", reply_markup=get_photos_control_inline(len(photos)))
+
+@partner_router.message(AddCardStates.upload_photo)
+async def upload_photo_fallback(message: Message, state: FSMContext):
+    """Фоллбек на шаге загрузки фото: логируем неожиданный тип контента для диагностики."""
+    try:
+        logger.info(
+            "partner.upload_photo_fallback: user_id=%s type=%s has_photo=%s has_doc=%s media_group_id=%s",
+            message.from_user.id,
+            getattr(message, 'content_type', None),
+            bool(getattr(message, 'photo', None)),
+            bool(getattr(message, 'document', None)),
+            getattr(message, 'media_group_id', None),
+        )
+    except Exception:
+        pass
+    await message.answer(
+        "📸 Пожалуйста, отправьте фото (как изображение) или нажмите 'Пропустить' / 'Готово'.",
+        reply_markup=get_photos_reply_keyboard(len((await state.get_data()).get('photos') or []), 6),
+    )
+    await message.answer(
+        "Управление фото:",
+        reply_markup=get_photos_control_inline(len((await state.get_data()).get('photos') or [])),
+    )
+
 @partner_router.callback_query(AddCardStates.enter_discount, F.data == "partner_skip")
 async def skip_discount_cb(callback: CallbackQuery, state: FSMContext):
     try:

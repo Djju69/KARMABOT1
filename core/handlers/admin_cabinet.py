@@ -399,9 +399,15 @@ async def admin_queue_approve(callback: CallbackQuery):
                     WHERE c.id = ?
                 """, (card_id,))
                 row = cur.fetchone()
-                if row:
+                if row and row['tg_user_id'] and str(row['tg_user_id']).isdigit():
                     bot = callback.bot
-                    await bot.send_message(row['tg_user_id'], f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}")
+                    try:
+                        await bot.send_message(
+                            int(row['tg_user_id']), 
+                            f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send notification to partner {row['tg_user_id']}: {e}")
         except Exception as e:
             logger.error("notify partner approve failed: %s", e)
         await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)

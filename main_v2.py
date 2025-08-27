@@ -30,6 +30,7 @@ from core.handlers.partner import get_partner_router
 from core.handlers.moderation import get_moderation_router
 from core.handlers.admin_cabinet import get_admin_cabinet_router
 from core.handlers.profile import get_profile_router
+from core.handlers.activity import get_activity_router
 
 # Services
 from core.services.profile import profile_service
@@ -352,6 +353,9 @@ async def setup_routers(dp: Dispatcher):
 
     # 4. Profile router (inline cabinet)
     dp.include_router(get_profile_router())
+
+    # 4.1 Activity (Loyalty) router
+    dp.include_router(get_activity_router())
 
     # 5. Feature-flagged routers
     if settings.features.partner_fsm:

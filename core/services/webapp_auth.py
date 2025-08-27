@@ -102,12 +102,25 @@ def verify_init_data(init_data: str) -> bool:
 
 
 def issue_jwt(user_id: int, extra: Optional[Dict[str, Any]] = None, ttl_sec: int = 300) -> str:
-    """Issue short-lived JWT for WebApp calls. Non-breaking: returns unsigned debug token if JWT_SECRET empty."""
+    """Issue short-lived JWT for WebApp calls.
+    Production policy: requires pyjwt and non-empty JWT_SECRET; no debug/JSON fallbacks.
+    Development policy: allows debug signing or JSON fallback (with warnings).
+    """
     now = int(time.time())
     payload = {"sub": str(user_id), "iat": now, "exp": now + ttl_sec, "nonce": hashlib.sha256(f"{user_id}:{now}".encode()).hexdigest()}
     if extra:
         payload.update(extra)
     secret = settings.jwt_secret
+    # Strict production policy
+    if settings.environment == "production":
+        if not jwt:
+            logger.error("pyjwt not installed but required in production")
+            raise RuntimeError("pyjwt is required in production")
+        if not secret:
+            logger.error("JWT_SECRET is empty in production")
+            raise RuntimeError("JWT_SECRET is required in production")
+        return jwt.encode(payload, key=secret, algorithm="HS256")
+    # Development / non-production fallback behavior
     if not jwt:
         logger.warning("pyjwt not installed; returning JSON payload as debug token (development only)")
         return json.dumps(payload)
@@ -120,8 +133,19 @@ def issue_jwt(user_id: int, extra: Optional[Dict[str, Any]] = None, ttl_sec: int
 
 def check_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
+        # Strict production policy
+        if settings.environment == "production":
+            if not jwt:
+                logger.error("pyjwt not installed but required in production")
+                return None
+            if not settings.jwt_secret:
+                logger.error("JWT_SECRET is empty in production")
+                return None
+            data = jwt.decode(token, key=settings.jwt_secret, algorithms=["HS256"])
+            return data
+        # Development / non-production fallback behavior
         if not jwt:
-            # If pyjwt missing, accept JSON tokens from issue_jwt fallback
+            # If pyjwt missing, accept JSON tokens from issue_jwt fallback (development only)
             return json.loads(token)
         data = jwt.decode(token, key=(settings.jwt_secret or "debug"), algorithms=["HS256"])
         return data
