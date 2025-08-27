@@ -190,8 +190,19 @@ async def open_cabinet(message: Message):
         return
     user_id = message.from_user.id
     lang = await profile_service.get_lang(user_id)
+    try:
+        logger.info(
+            "basic.open_cabinet: user_id=%s lang=%s features: moderation=%s partner_fsm=%s",
+            user_id, lang, getattr(settings.features, 'moderation', None), getattr(settings.features, 'partner_fsm', None)
+        )
+    except Exception:
+        pass
     # Admin cabinet (MVP): show admin inline menu if moderation feature is on and user is admin
     if settings.features.moderation and await admins_service.is_admin(user_id):
+        try:
+            logger.info("basic.open_cabinet: branch=admin_cabinet user_id=%s", user_id)
+        except Exception:
+            pass
         await message.answer(
             f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
             reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
@@ -201,12 +212,16 @@ async def open_cabinet(message: Message):
     # so that the user can become a partner from the reply button.
     if settings.features.partner_fsm:
         kb = get_profile_keyboard(lang)
+        try:
+            logger.info("basic.open_cabinet: branch=partner_cabinet user_id=%s kb_rows=%s", user_id, len(getattr(kb, 'keyboard', []) or []))
+        except Exception:
+            pass
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
         return
     # Default: inline user profile
     from .profile import render_profile
     try:
-        logger.info("basic.open_cabinet user_id=%s", message.from_user.id)
+        logger.info("basic.open_cabinet: branch=user_profile user_id=%s", message.from_user.id)
     except Exception:
         pass
     await render_profile(message)

@@ -135,6 +135,7 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
     card_id = int(callback.data.split(":")[1])
     
     # Update card status
+    logger.info("moderation.approve: moderator_id=%s card_id=%s -> published", callback.from_user.id, card_id)
     success = db_v2.update_card_status(
         card_id, 
         'published', 
@@ -143,6 +144,14 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
     )
     
     if success:
+        try:
+            card_after = db_v2.get_card_by_id(card_id)
+            logger.info(
+                "moderation.approve: updated card id=%s status=%s partner_id=%s category_id=%s",
+                card_id, (card_after or {}).get('status'), (card_after or {}).get('partner_id'), (card_after or {}).get('category_id')
+            )
+        except Exception as e:
+            logger.exception("moderation.approve: failed to load card after update id=%s err=%s", card_id, e)
         await callback.answer("✅ Карточка одобрена!")
         
         # Try to notify partner
@@ -171,6 +180,7 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
         
         await show_next_card(callback, state)
     else:
+        logger.error("moderation.approve: update_card_status failed for card_id=%s", card_id)
         await callback.answer("❌ Ошибка при одобрении карточки")
 
 # Reject card - show reasons
@@ -261,6 +271,7 @@ async def handle_custom_rejection_reason(message: Message, state: FSMContext):
 async def reject_card_with_comment(callback, state: FSMContext, card_id: int, comment: str):
     """Reject card with comment"""
     # Update card status
+    logger.info("moderation.reject: moderator_id=%s card_id=%s -> rejected reason_len=%s", callback.from_user.id, card_id, len(comment or ''))
     success = db_v2.update_card_status(
         card_id, 
         'rejected', 
@@ -269,6 +280,14 @@ async def reject_card_with_comment(callback, state: FSMContext, card_id: int, co
     )
     
     if success:
+        try:
+            card_after = db_v2.get_card_by_id(card_id)
+            logger.info(
+                "moderation.reject: updated card id=%s status=%s partner_id=%s",
+                card_id, (card_after or {}).get('status'), (card_after or {}).get('partner_id')
+            )
+        except Exception as e:
+            logger.exception("moderation.reject: failed to load card after update id=%s err=%s", card_id, e)
         await callback.answer("❌ Карточка отклонена")
         
         # Try to notify partner
@@ -297,6 +316,7 @@ async def reject_card_with_comment(callback, state: FSMContext, card_id: int, co
         
         await show_next_card(callback, state)
     else:
+        logger.error("moderation.reject: update_card_status failed for card_id=%s", card_id)
         await callback.answer("❌ Ошибка при отклонении карточки")
 
 # Feature card
