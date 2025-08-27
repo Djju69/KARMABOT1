@@ -11,7 +11,7 @@ from ..keyboards.inline_v2 import (
 )
 from ..keyboards.inline_v2 import get_admin_cabinet_inline
 from ..keyboards.reply_v2 import get_profile_keyboard
-from ..utils.locales_v2 import get_text
+from ..utils.locales_v2 import get_text, translations
 from ..settings import settings
 from ..services.profile import profile_service
 from ..services.admins import admins_service
