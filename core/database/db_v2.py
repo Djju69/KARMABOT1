@@ -195,16 +195,22 @@ class DatabaseServiceV2:
     def get_cards_by_category(self, category_slug: str, status: str = 'published', limit: int = 50) -> List[Dict]:
         """Get cards by category with pagination"""
         with self.get_connection() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
-                       p.display_name as partner_name
+                       p.display_name as partner_name,
+                       COALESCE(COUNT(cp.id), 0) as photos_count
                 FROM cards_v2 c
                 JOIN categories_v2 cat ON c.category_id = cat.id
                 JOIN partners_v2 p ON c.partner_id = p.id
+                LEFT JOIN card_photos cp ON cp.card_id = c.id
                 WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
+                GROUP BY c.id
                 ORDER BY c.priority_level DESC, c.created_at DESC
                 LIMIT ?
-            """, (category_slug, status, limit))
+                """,
+                (category_slug, status, limit),
+            )
             
             return [dict(row) for row in cursor.fetchall()]
 
@@ -317,11 +323,14 @@ class DatabaseServiceV2:
             cursor = conn.execute(
                 """
                 SELECT c.*, cat.name as category_name, cat.slug as category_slug,
-                       p.display_name as partner_name
+                       p.display_name as partner_name,
+                       COALESCE(COUNT(cp.id), 0) as photos_count
                 FROM cards_v2 c
                 JOIN categories_v2 cat ON c.category_id = cat.id
                 JOIN partners_v2 p ON c.partner_id = p.id
+                LEFT JOIN card_photos cp ON cp.card_id = c.id
                 WHERE c.id = ?
+                GROUP BY c.id
                 """,
                 (card_id,)
             )
@@ -379,19 +388,25 @@ class DatabaseServiceV2:
             if statuses:
                 placeholders = ",".join(["?"] * len(statuses))
                 query = f"""
-                    SELECT c.*, cat.name as category_name
+                    SELECT c.*, cat.name as category_name,
+                           COALESCE(COUNT(cp.id), 0) as photos_count
                     FROM cards_v2 c
                     JOIN categories_v2 cat ON c.category_id = cat.id
+                    LEFT JOIN card_photos cp ON cp.card_id = c.id
                     WHERE c.partner_id = ? AND c.status IN ({placeholders})
+                    GROUP BY c.id
                     ORDER BY c.updated_at DESC
                 """
                 params = [partner_id, *statuses]
             else:
                 query = """
-                    SELECT c.*, cat.name as category_name
+                    SELECT c.*, cat.name as category_name,
+                           COALESCE(COUNT(cp.id), 0) as photos_count
                     FROM cards_v2 c
                     JOIN categories_v2 cat ON c.category_id = cat.id
+                    LEFT JOIN card_photos cp ON cp.card_id = c.id
                     WHERE c.partner_id = ?
+                    GROUP BY c.id
                     ORDER BY c.updated_at DESC
                 """
                 params = [partner_id]
@@ -414,6 +429,31 @@ class DatabaseServiceV2:
                 (limit,),
             )
             return [dict(row) for row in cursor.fetchall()]
+    
+    def get_categories(self, only_active: bool = True) -> List[Category]:
+        """Return list of categories.
+        If only_active=True, returns only categories with is_active=1.
+        Sorted by priority_level DESC, then name ASC.
+        """
+        with self.get_connection() as conn:
+            if only_active:
+                cur = conn.execute(
+                    """
+                    SELECT id, slug, name, emoji, priority_level, is_active
+                    FROM categories_v2
+                    WHERE is_active = 1
+                    ORDER BY priority_level DESC, name ASC
+                    """
+                )
+            else:
+                cur = conn.execute(
+                    """
+                    SELECT id, slug, name, emoji, priority_level, is_active
+                    FROM categories_v2
+                    ORDER BY priority_level DESC, name ASC
+                    """
+                )
+            return [Category(**dict(row)) for row in cur.fetchall()]
     
     def get_category_by_slug(self, slug: str) -> Optional[Category]:
         """Get category by slug"""

@@ -83,7 +83,7 @@ async def get_start(message: Message):
         await log_event("main_menu_opened", user=message.from_user)
         from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_admin
         if await admins_service.is_admin(user_id):
-            kb = get_main_menu_reply_admin(lang)
+            kb = get_main_menu_reply_admin(lang, is_superadmin=(user_id == settings.bots.admin_id))
         else:
             kb = get_main_menu_reply(lang)
         await message.answer(text=get_text('main_menu_title', lang), reply_markup=kb)
@@ -97,7 +97,7 @@ async def main_menu(message: Message):
     await log_event("main_menu_opened", user=message.from_user)
     # Главное меню без кнопки WebApp QR
     if await admins_service.is_admin(message.from_user.id):
-        kb = get_main_menu_reply_admin(lang)
+        kb = get_main_menu_reply_admin(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id))
     else:
         kb = get_main_menu_reply(lang)
     await message.answer(get_text('main_menu_title', lang), reply_markup=kb)
@@ -145,7 +145,7 @@ async def on_language_set(callback: CallbackQuery):
             pass
         from ..keyboards.reply_v2 import get_main_menu_reply, get_main_menu_reply_admin
         if await admins_service.is_admin(callback.from_user.id):
-            kb = get_main_menu_reply_admin(lang)
+            kb = get_main_menu_reply_admin(lang, is_superadmin=(callback.from_user.id == settings.bots.admin_id))
         else:
             kb = get_main_menu_reply(lang)
         await callback.message.answer(get_text('main_menu_title', lang), reply_markup=kb)

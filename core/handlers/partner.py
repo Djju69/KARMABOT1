@@ -178,17 +178,44 @@ def get_skip_keyboard() -> ReplyKeyboardMarkup:
 
 def get_categories_keyboard() -> InlineKeyboardMarkup:
     """Inline keyboard with categories"""
-    categories = db_v2.get_categories()
-    buttons = []
-    
-    for category in categories:
-        buttons.append([InlineKeyboardButton(
-            text=f"{category.emoji} {category.name}",
-            callback_data=f"partner_cat:{category.slug}"
-        )])
-    
+    # Основной путь: новый метод
+    try:
+        categories = db_v2.get_categories()  # список Category
+        items = []
+        for c in categories:
+            items.append({
+                'slug': getattr(c, 'slug', None),
+                'name': getattr(c, 'name', None),
+                'emoji': getattr(c, 'emoji', '') or ''
+            })
+    except AttributeError:
+        # Фоллбэк для старого билда: читаем напрямую из БД, чтобы не падать
+        items = []
+        try:
+            with db_v2.get_connection() as conn:
+                cur = conn.execute(
+                    """
+                    SELECT slug, name, COALESCE(emoji, '') AS emoji
+                    FROM categories_v2
+                    WHERE is_active = 1
+                    ORDER BY priority_level DESC, name ASC
+                    """
+                )
+                items = [dict(r) for r in cur.fetchall()]
+        except Exception:
+            items = []
+
+    buttons: list[list[InlineKeyboardButton]] = []
+    for item in items:
+        slug = item.get('slug')
+        name = item.get('name') or ''
+        emoji = item.get('emoji') or ''
+        if not slug or not name:
+            continue
+        label = f"{emoji} {name}".strip()
+        buttons.append([InlineKeyboardButton(text=label, callback_data=f"partner_cat:{slug}")])
+
     buttons.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
-    
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 def get_preview_keyboard() -> InlineKeyboardMarkup:
@@ -251,10 +278,13 @@ async def _render_cards_page(message_or_cbmsg, user_id: int, full_name: str, pag
         offset = max(page, 0) * PAGE_SIZE
         cur = conn.execute(
             """
-            SELECT c.*, cat.name as category_name
+            SELECT c.*, cat.name as category_name,
+                   COALESCE(COUNT(cp.id), 0) as photos_count
             FROM cards_v2 c
             JOIN categories_v2 cat ON c.category_id = cat.id
+            LEFT JOIN card_photos cp ON cp.card_id = c.id
             WHERE c.partner_id = ? AND c.status IN ('approved','published')
+            GROUP BY c.id
             ORDER BY c.updated_at DESC
             LIMIT ? OFFSET ?
             """,

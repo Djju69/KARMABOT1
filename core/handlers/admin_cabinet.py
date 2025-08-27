@@ -215,6 +215,21 @@ async def admin_back(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.message(F.text == "Админ кабинет")
+async def open_admin_cabinet_by_button_plain(message: Message):
+    if not settings.features.moderation:
+        await message.answer("🚧 Модуль модерации отключён.")
+        return
+    if not await admins_service.is_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещён.")
+        return
+    lang = await profile_service.get_lang(message.from_user.id)
+    await message.answer(
+        f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_queue', lang)}",
+        reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
+    )
+
+
 @router.callback_query(F.data == "adm:su:del")
 async def su_menu_delete(callback: CallbackQuery):
     if not _is_super_admin(callback.from_user.id):
