@@ -710,6 +710,15 @@ async def on_subcategory_selected(callback: CallbackQuery, state: FSMContext):
         await state.update_data(subcategory_id=None)
     await state.set_state(AddCardStates.enter_title)
     data = await state.get_data()
+    try:
+        logger.info(
+            "partner.submit_card: user_id=%s photos_count=%s first_photo_present=%s",
+            callback.from_user.id,
+            len(list(data.get('photos') or [])),
+            bool((data.get('photos') or [data.get('photo_file_id')])[0] if (data.get('photos') or data.get('photo_file_id')) else None),
+        )
+    except Exception:
+        pass
     cat_name = data.get('category_name', '')
     await callback.message.edit_text(
         f"✅ Выбрана категория: **{cat_name}**\n\n"
@@ -847,6 +856,14 @@ async def enter_gmaps(message: Message, state: FSMContext):
         return
     await state.update_data(google_maps_url=url)
     await state.set_state(AddCardStates.upload_photo)
+    try:
+        logger.info(
+            "partner.enter_gmaps -> upload_photo: user_id=%s current_state=%s",
+            message.from_user.id,
+            await state.get_state(),
+        )
+    except Exception:
+        pass
     await message.answer(
         "📸 Загрузите фото заведения:\n"
         "*(интерьер, блюда, фасад)*",
@@ -861,6 +878,15 @@ async def upload_photo(message: Message, state: FSMContext):
     photo_file_id = message.photo[-1].file_id  # наибольшее по размеру
     data = await state.get_data()
     photos = list(data.get('photos') or [])
+    try:
+        logger.info(
+            "partner.upload_photo: user_id=%s got_photo=%s current_count=%s",
+            message.from_user.id,
+            bool(photo_file_id),
+            len(photos),
+        )
+    except Exception:
+        pass
     if len(photos) >= 6:
         # Лимит достигнут — обновим reply-клавиатуру (счётчик) и покажем inline-управление
         await message.answer(
@@ -872,6 +898,14 @@ async def upload_photo(message: Message, state: FSMContext):
     else:
         photos.append(photo_file_id)
         await state.update_data(photos=photos)
+        try:
+            logger.info(
+                "partner.upload_photo: user_id=%s appended fid, new_count=%s",
+                message.from_user.id,
+                len(photos),
+            )
+        except Exception:
+            pass
         if len(photos) < 6:
             # 1) обновим reply-клавиатуру с текущим счётчиком
             await message.answer(
@@ -897,6 +931,15 @@ async def skip_photo(message: Message, state: FSMContext):
 
     # Обработка reply-кнопки "Готово (X/6)"
     if (message.text or "").strip().startswith("✅ Готово"):
+        try:
+            cur = await state.get_data()
+            logger.info(
+                "partner.skip_photo: user_id=%s pressed Done, photos_count=%s",
+                message.from_user.id,
+                len(cur.get('photos') or []),
+            )
+        except Exception:
+            pass
         await state.set_state(AddCardStates.enter_discount)
         await message.answer(
             f"🎫 Введите информацию о скидке:\n"
@@ -909,6 +952,13 @@ async def skip_photo(message: Message, state: FSMContext):
     if message.text == "⏭️ Пропустить":
         # Пропуск фото — очистить список
         await state.update_data(photos=[] , photo_file_id=None)
+        try:
+            logger.info(
+                "partner.skip_photo: user_id=%s skipped photos, photos_cleared",
+                message.from_user.id,
+            )
+        except Exception:
+            pass
         await state.set_state(AddCardStates.enter_discount)
         await message.answer(
             f"🎫 Введите информацию о скидке:\n"
@@ -1045,8 +1095,24 @@ async def on_photos_del_last(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     photos = list(data.get('photos') or [])
     if photos:
+        try:
+            logger.info(
+                "partner.photos_del_last: user_id=%s before_count=%s",
+                callback.from_user.id,
+                len(photos),
+            )
+        except Exception:
+            pass
         photos.pop()
         await state.update_data(photos=photos)
+        try:
+            logger.info(
+                "partner.photos_del_last: user_id=%s after_count=%s",
+                callback.from_user.id,
+                len(photos),
+            )
+        except Exception:
+            pass
         await callback.message.answer(
             f"🗑 Удалено. Осталось фото: {len(photos)}/6. Загрузите ещё или нажмите 'Готово'.",
             reply_markup=get_photos_reply_keyboard(len(photos), 6),
@@ -1066,6 +1132,15 @@ async def on_photos_done(callback: CallbackQuery, state: FSMContext):
     except Exception:
         pass
     # Переход к шагу скидки
+    try:
+        cur = await state.get_data()
+        logger.info(
+            "partner.photos_done: user_id=%s photos_count=%s",
+            callback.from_user.id,
+            len(cur.get('photos') or []),
+        )
+    except Exception:
+        pass
     await state.set_state(AddCardStates.enter_discount)
     await callback.message.answer(
         f"🎫 Введите информацию о скидке:\n"
@@ -1128,6 +1203,10 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                     db_v2.add_card_photo(int(card_id), str(fid), position=idx)
                 except Exception as pe:
                     logger.error("add_card_photo failed: card_id=%s pos=%s err=%s", card_id, idx, pe)
+            try:
+                logger.info("partner.submit_card: persisted photos for card_id=%s count=%s", card_id, len(photos))
+            except Exception:
+                pass
         except Exception as e2:
             logger.exception("Failed to persist photos for card_id=%s: %s", card_id, e2)
         

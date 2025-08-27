@@ -10,7 +10,7 @@ from ..keyboards.inline_v2 import (
     get_policy_inline,
 )
 from ..keyboards.inline_v2 import get_admin_cabinet_inline
-from ..keyboards.reply_v2 import get_profile_keyboard
+from ..keyboards.reply_v2 import get_profile_keyboard, get_partner_keyboard
 from ..utils.locales_v2 import get_text, translations
 from ..settings import settings
 from ..services.profile import profile_service
@@ -208,12 +208,22 @@ async def open_cabinet(message: Message):
             reply_markup=get_admin_cabinet_inline(lang, is_superadmin=(message.from_user.id == settings.bots.admin_id)),
         )
         return
-    # Partner cabinet (MVP): if partner FSM is enabled, always show partner reply keyboard
-    # so that the user can become a partner from the reply button.
+    # Partner cabinet (MVP): if partner FSM is enabled, show partner cabinet keyboard.
+    # Compute show_qr if the partner has any cards in statuses pending/approved/published.
     if settings.features.partner_fsm:
-        kb = get_profile_keyboard(lang)
+        show_qr = False
         try:
-            logger.info("basic.open_cabinet: branch=partner_cabinet user_id=%s kb_rows=%s", user_id, len(getattr(kb, 'keyboard', []) or []))
+            partner = db_v2.get_or_create_partner(user_id, message.from_user.full_name)
+            cards = db_v2.get_partner_cards(partner.id, statuses=["pending", "approved", "published"])  # only relevant statuses
+            show_qr = len(cards) > 0
+        except Exception as e:
+            try:
+                logger.error("basic.open_cabinet: failed to compute show_qr: %s", e)
+            except Exception:
+                pass
+        kb = get_partner_keyboard(lang, show_qr=show_qr)
+        try:
+            logger.info("basic.open_cabinet: branch=partner_cabinet user_id=%s show_qr=%s", user_id, show_qr)
         except Exception:
             pass
         await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
