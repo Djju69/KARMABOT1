@@ -227,7 +227,7 @@ async def me(authorization: Optional[str] = Header(default=None)):
 
 
 # Dev-only helper to mint a JWT without Telegram initData
-if settings.environment == "development" or os.getenv("FASTAPI_ONLY") == "1":
+if os.getenv("ENVIRONMENT") == "development" or os.getenv("FASTAPI_ONLY") == "1":
     @router.get("/debug-token", response_model=TokenResponse)
     async def debug_token(user_id: int = 1):
         token = issue_jwt(user_id, extra={"src": "debug"})
