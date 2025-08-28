@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from asyncio import create_task, sleep, Lock
 import logging
 from typing import Optional
@@ -221,12 +223,13 @@ def _match_glob(text: str, pattern: str) -> bool:
 
 
 # --- cache bootstrap (lazy & safe) ---
+from __future__ import annotations
 import os
 
 def _resolve_redis_url() -> str | None:
-    # сначала пробуем settings.redis_url (если есть)
+    # сначала пробуем settings.redis_url
     url = getattr(settings, "redis_url", None)
-    # пробуем старую схему settings.database.redis_url (если вдруг есть)
+    # пробуем settings.database.redis_url (если вдруг есть)
     db = getattr(settings, "database", None)
     if not url and db and hasattr(db, "redis_url"):
         url = getattr(db, "redis_url")
@@ -235,7 +238,7 @@ def _resolve_redis_url() -> str | None:
         url = os.getenv("REDIS_URL")
     return (url or "").strip() or None
 
-_cache_singleton: BaseCacheService | None = None
+_cache_singleton: "BaseCacheService | None" = None  # строковая аннотация → не ломает импорт
 
 def get_cache_service() -> BaseCacheService:
     global _cache_singleton
@@ -256,5 +259,5 @@ def get_cache_service() -> BaseCacheService:
         _cache_singleton = NullCacheService()
     return _cache_singleton
 
-# совместимость с прежним импортом
+# совместимость со старым импортом
 cache_service = get_cache_service()
