@@ -37,6 +37,11 @@ class CacheService(BaseCacheService):
             await self._r.set(key, value)
 
 
+def _resolve_redis_url() -> str | None:
+    """Resolve Redis URL from environment variables."""
+    return (os.getenv("REDIS_URL") or os.getenv("CACHE_URL") or "").strip() or None
+
+
 _cache_singleton: BaseCacheService | None = None
 
 
@@ -45,36 +50,19 @@ def get_cache_service() -> BaseCacheService:
     if _cache_singleton is not None:
         return _cache_singleton
 
-    redis_url = os.getenv("REDIS_URL") or os.getenv("CACHE_URL")
+    redis_url = _resolve_redis_url()
     if redis_url and redis:
         try:
             _cache_singleton = CacheService(redis_url)
+            print(f"[cache] Using Redis cache at {redis_url}")
             return _cache_singleton
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[cache] Failed to initialize Redis: {e}")
 
+    print("[cache] Using NullCacheService (no Redis configuration or Redis unavailable)")
     _cache_singleton = NullCacheService()
     return _cache_singleton
 
 
 # For backward compatibility
-cache_service = get_cache_service()    global _cache_singleton
-    if _cache_singleton is not None:
-        return _cache_singleton
-
-    redis_url = _resolve_redis_url()
-    if not redis_url:
-        print("[cache] redis_url not configured; using NullCacheService")
-        _cache_singleton = NullCacheService()
-        return _cache_singleton
-
-    try:
-        _cache_singleton = CacheService(redis_url)
-        print(f"[cache] Redis enabled: {redis_url}")
-    except Exception as e:
-        print(f"[cache] Redis init failed ({e}); falling back to NullCacheService")
-        _cache_singleton = NullCacheService()
-    return _cache_singleton
-
-# совместимость со старым импортом
 cache_service = get_cache_service()
