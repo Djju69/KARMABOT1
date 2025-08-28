@@ -2,9 +2,12 @@
 builder = "dockerfile"
 
 [deploy]
-startCommand = "bash start.sh"
+startCommand = "uvicorn web.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 30
 
 [env]
 PYTHON_VERSION = "3.11"
+PORT = "8080"
+DISABLE_POLLING = "1"
+# REDIS_URL = ""  # Uncomment and set your Redis URL if needed
