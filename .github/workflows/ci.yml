@@ -1,8 +1,8 @@
-name: CI & Deploy
+﻿name: CI & Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fix/deploy-web ]
   pull_request:
   workflow_dispatch: {}
 
@@ -11,18 +11,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Тесты запускаем ТОЛЬКО если в Repo Variables выставишь RUN_TESTS=1
   test:
+    if: ${{ vars.RUN_TESTS == '1' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Skip tests for minimal deploy
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      - name: Install dependencies
         run: |
-          echo "Skipping pytest: minimal web-only deploy (tests depend on bot stack)"
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          if [ -f pytest.ini ] || [ -d tests ]; then pip install pytest; fi
+      - name: Run tests
+        run: pytest -q
 
   deploy:
-    needs: test
+    # Разрешаем деплой при ручном запуске ИЛИ пуше в main ИЛИ пуше в fix/deploy-web
+    if: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/deploy-web' }}
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     env:
       RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
@@ -43,12 +54,12 @@ jobs:
           fi
           railway login --token "$RAILWAY_TOKEN"
           railway link --project "$RAILWAY_PROJECT_ID"
-      - name: Deploy bot service
-        if: ${{ env.RAILWAY_SERVICE_BOT != '' }}
-        run: railway up --ci --service "$RAILWAY_SERVICE_BOT"
       - name: Deploy web service
         if: ${{ env.RAILWAY_SERVICE_WEB != '' }}
         run: railway up --ci --service "$RAILWAY_SERVICE_WEB"
+      - name: Deploy bot service (optional)
+        if: ${{ env.RAILWAY_SERVICE_BOT != '' }}
+        run: railway up --ci --service "$RAILWAY_SERVICE_BOT"
       - name: Deploy default service (fallback)
-        if: ${{ env.RAILWAY_SERVICE_BOT == '' && env.RAILWAY_SERVICE_WEB == '' }}
+        if: ${{ env.RAILWAY_SERVICE_WEB == '' && env.RAILWAY_SERVICE_BOT == '' }}
         run: railway up --ci
