@@ -1,4 +1,4 @@
-name: Railway Deploy
+name: Deploy to Railway
 
 on:
   push:
@@ -6,100 +6,71 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-secrets:
-    runs-on: ubuntu-latest
-    outputs:
-      has-secrets: ${{ steps.check-secrets.outputs.has-secrets }}
-    steps:
-      - name: Check for required secrets
-        id: check-secrets
-        run: |
-          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "::error::❌ RAILWAY_TOKEN is not set in repository secrets"
-            echo "has-secrets=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          if [ -z "${{ secrets.RAILWAY_PROJECT }}" ] && [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
-            echo "::error::❌ RAILWAY_PROJECT or RAILWAY_PROJECT_ID is not set in repository secrets"
-            echo "has-secrets=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          echo "has-secrets=true" >> $GITHUB_OUTPUT
-          echo "✅ All required secrets are present"
-
   deploy:
-    needs: check-secrets
-    if: needs.check-secrets.outputs.has-secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
+          cache: 'npm'
+      
+      - name: Install Railway CLI
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq
-          npm install -g @railway/cli@2.0.5
-
-      - name: Show Railway version
-        run: railway --version
-
+          npm install -g @railway/cli
+          railway --version
+        
+      - name: Login to Railway
+        run: |
+          echo "Logging in to Railway..."
+          echo ${{ secrets.RAILWAY_TOKEN }} | railway login --ci || {
+            echo "Failed to log in to Railway"
+            exit 1
+          }
+          
+      - name: Link to Railway project
+        run: |
+          echo "Linking to project: ${{ secrets.RAILWAY_PROJECT_ID }}"
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }} || {
+            echo "Failed to link to Railway project"
+            exit 1
+          }
+          
+      - name: Show environment info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          echo ""
+          echo "Dockerfile exists: $(test -f Dockerfile && echo 'Yes' || echo 'No')"
+          echo "start.sh exists: $(test -f start.sh && echo 'Yes' || echo 'No')"
+          echo ""
+          echo "Railway status:"
+          railway status || true
+          
+      - name: Set environment variables
+        run: |
+          echo "Setting environment variables..."
+          railway variables set NODE_ENV=production --json
+          railway variables set ENABLE_POLLING_LEADER_LOCK=true --json
+          railway variables set RAILWAY_ENVIRONMENT=production --json
+          railway variables set REDIS_URL=${{ secrets.REDIS_URL }} --json
+          
       - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT || secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
-          REDIS_URL: ${{ secrets.REDIS_URL || '' }}
-          ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
         run: |
-          set -ex
+          echo "Starting deployment..."
+          railway up -y --debug
           
-          echo "🚀 Starting deployment..."
+      - name: Verify deployment
+        run: |
+          echo "Verifying deployment..."
+          railway status
+          railway logs --tail 10 || true
           
-          # Login to Railway
-          echo "🔑 Logging in to Railway..."
-          echo "$RAILWAY_TOKEN" | railway login --ci
-          
-          # Link project
-          echo "🔗 Linking project $RAILWAY_PROJECT..."
-          railway link "$RAILWAY_PROJECT"
-          
-          # Set environment
-          echo "🌍 Setting environment to $RAILWAY_ENVIRONMENT..."
-          railway environment use "$RAILWAY_ENVIRONMENT"
-          
-          # Step 1: First deploy with polling disabled
-          echo "🔧 Step 1/2: Initial deploy with polling disabled"
-          railway variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true --yes
-          
-          if [ -n "$REDIS_URL" ]; then
-            railway variables set REDIS_URL="$REDIS_URL" --yes
-          fi
-          
-          # First deploy
-          railway up --detach
-          
-          # Wait a bit before second step
-          sleep 30
-          
-          # Step 2: Final deploy with polling enabled
-          echo "🚀 Step 2/2: Final deploy with polling enabled"
-          railway variables set DISABLE_POLLING=0 --yes
-          
-          if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
-            railway variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK" --yes
-          fi
-          
-          # Final deploy
-          railway up --detach
-          
-          # Get service URL
-          SERVICE_URL=$(railway status --json | jq -r '.service.privateDomain' 2>/dev/null || echo "unknown")
-          
-          echo "✅ Deployment completed successfully!"
-          echo "🌐 Service URL: $SERVICE_URL"
+      - name: Show Railway variables
+        run: |
+          echo "Current Railway variables:"
+          railway variables list || true
