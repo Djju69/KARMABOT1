@@ -305,25 +305,97 @@ class DatabaseMigrator:
         """
         EXPAND Phase: Seed default categories (idempotent)
         """
-        sql = """
-        -- Insert default categories if they don't exist
-        INSERT OR IGNORE INTO categories_v2 (slug, name, emoji, priority_level) VALUES
-        ('restaurants', '🍜 Рестораны', '🍜', 100),
-        ('spa', '🧘 SPA и массаж', '🧘', 90),
-        ('transport', '🛵 Аренда байков', '🛵', 80),
-        ('hotels', '🏨 Отели', '🏨', 70),
-        ('tours', '🗺️ Экскурсии', '🗺️', 60);
-        
-        -- Backward compatibility: sync with legacy categories
-        INSERT OR IGNORE INTO categories (name_ru, type) 
-        SELECT name, slug FROM categories_v2;
-        """
-        
-        self.apply_migration(
-            "003",
-            "EXPAND: Seed default categories with backward compatibility",
-            sql
-        )
+        version = "003"
+        desc = "EXPAND: Seed default categories with backward compatibility"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+
+        def _apply(conn: sqlite3.Connection):
+            # Check if we're using PostgreSQL (has pg_catalog) or SQLite
+            is_postgres = False
+            try:
+                cursor = conn.execute("SELECT 1 FROM pg_catalog.pg_tables LIMIT 1")
+                is_postgres = cursor.fetchone() is not None
+            except (sqlite3.OperationalError, sqlite3.DatabaseError):
+                pass  # Not PostgreSQL
+
+            # Add missing columns if they don't exist
+            if is_postgres:
+                # PostgreSQL version
+                conn.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='categories' AND column_name='name_ru'
+                    ) THEN
+                        ALTER TABLE categories ADD COLUMN name_ru TEXT;
+                    END IF;
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='categories' AND column_name='name_en'
+                    ) THEN
+                        ALTER TABLE categories ADD COLUMN name_en TEXT;
+                    END IF;
+                END $$;
+                """)
+            else:
+                # SQLite version
+                cursor = conn.execute("PRAGMA table_info(categories)")
+                columns = {row[1] for row in cursor.fetchall()}
+                if 'name_ru' not in columns:
+                    conn.execute("ALTER TABLE categories ADD COLUMN name_ru TEXT")
+                if 'name_en' not in columns:
+                    conn.execute("ALTER TABLE categories ADD COLUMN name_en TEXT")
+
+            # Insert default categories if they don't exist
+            conn.execute("""
+            INSERT OR IGNORE INTO categories_v2 (slug, name, emoji, priority_level) VALUES
+            ('restaurants', '🍜 Рестораны', '🍜', 100),
+            ('spa', '🧘 SPA и массаж', '🧘', 90),
+            ('transport', '🛵 Аренда байков', '🛵', 80),
+            ('hotels', '🏨 Отели', '🏨', 70),
+            ('tours', '🗺️ Экскурсии', '🗺️', 60);
+            """)
+            
+            # Backward compatibility: sync with legacy categories
+            # First try with all columns, if it fails, fallback to minimal columns
+            try:
+                conn.execute("""
+                INSERT OR IGNORE INTO categories (id, name, name_ru, name_en, created_at)
+                SELECT id, name, name, slug, datetime('now') FROM categories_v2;
+                """)
+            except sqlite3.OperationalError as e:
+                logger.warning(f"Could not insert with all columns, falling back to minimal: {e}")
+                conn.execute("""
+                INSERT OR IGNORE INTO categories (id, name, name_ru, name_en)
+                SELECT id, name, name, slug FROM categories_v2;
+                """)
+
+            # Record migration
+            conn.execute(
+                "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                (version, desc),
+            )
+
+        if self._is_memory:
+            conn = self.get_connection()
+            try:
+                _apply(conn)
+                conn.commit()
+                logger.info(f"Applied migration {version}: {desc}")
+            except Exception as e:
+                logger.error(f"Failed to apply migration {version}: {e}")
+                raise
+        else:
+            with self.get_connection() as conn:
+                try:
+                    _apply(conn)
+                    logger.info(f"Applied migration {version}: {desc}")
+                except Exception as e:
+                    logger.error(f"Failed to apply migration {version}: {e}")
+                    raise
 
     def migrate_004_add_cards_optional_fields(self):
         """
@@ -463,9 +535,15 @@ migrator = DatabaseMigrator()
 
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
+    # Only run migrations if APPLY_MIGRATIONS=1
+    if os.getenv("APPLY_MIGRATIONS", "0") != "1":
+        logger.info("Skipping database migrations (APPLY_MIGRATIONS != 1)")
+        return
+        
     try:
+        logger.info("Running database migrations...")
         migrator.run_all_migrations()
-        return True
     except Exception as e:
-        logger.error(f"Database migration failed: {e}")
-        return False
+        logger.error(f"Failed to run migrations: {e}")
+        if os.getenv("APP_ENV") != "production":
+            raise
