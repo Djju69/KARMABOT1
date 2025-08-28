@@ -1,10 +1,12 @@
 [build]
-builder = "dockerfile"
+builder = "nixpacks"
 
 [deploy]
-startCommand = "bash start.sh"
+startCommand = "uvicorn web.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 300000
 
 [env]
 PYTHON_VERSION = "3.11"
+DISABLE_POLLING = "1"
+# DATABASE_URL = "sqlite:///app.db"
