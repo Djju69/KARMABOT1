@@ -1,4 +1,4 @@
-name: Deploy to Railway
+name: Railway Deploy
 
 on:
   push:
@@ -6,75 +6,100 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  check-secrets:
     runs-on: ubuntu-latest
-    
+    outputs:
+      has-secrets: ${{ steps.check-secrets.outputs.has-secrets }}
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y jq
-        npm install -g @railway/cli@2.0.5
-    
-    - name: Show Railway version
-      run: railway --version
-    
-    - name: Deploy to Railway
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
-        REDIS_URL: ${{ secrets.REDIS_URL || '' }}
-        ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
-      run: |
-        set -e
-        
-        echo "🚀 Starting deployment..."
-        
-        # Login to Railway
-        echo "🔑 Logging in to Railway..."
-        echo "$RAILWAY_TOKEN" | railway login --ci
-        
-        # Link project
-        echo "🔗 Linking project $RAILWAY_PROJECT_ID..."
-        railway link "$RAILWAY_PROJECT_ID"
-        
-        # Set environment
-        echo "🌍 Setting environment to $RAILWAY_ENVIRONMENT..."
-        railway environment use "$RAILWAY_ENVIRONMENT"
-        
-        # Step 1: First deploy with polling disabled
-        echo "🔧 Step 1/2: Initial deploy with polling disabled"
-        railway variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true --yes
-        
-        if [ -n "$REDIS_URL" ]; then
-          railway variables set REDIS_URL="$REDIS_URL" --yes
-        fi
-        
-        # First deploy
-        railway up --detach
-        
-        # Step 2: Final deploy with polling enabled
-        echo "🚀 Step 2/2: Final deploy with polling enabled"
-        railway variables set DISABLE_POLLING=0 --yes
-        
-        if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
-          railway variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK" --yes
-        fi
-        
-        # Final deploy
-        railway up --detach
-        
-        # Get service URL
-        SERVICE_URL=$(railway status --json | jq -r '.service.privateDomain' 2>/dev/null || echo "unknown")
-        
-        echo "✅ Deployment completed successfully!"
-        echo "🌐 Service URL: $SERVICE_URL"
+      - name: Check for required secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "::error::❌ RAILWAY_TOKEN is not set in repository secrets"
+            echo "has-secrets=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          if [ -z "${{ secrets.RAILWAY_PROJECT }}" ] && [ -z "${{ secrets.RAILWAY_PROJECT_ID }}" ]; then
+            echo "::error::❌ RAILWAY_PROJECT or RAILWAY_PROJECT_ID is not set in repository secrets"
+            echo "has-secrets=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          echo "has-secrets=true" >> $GITHUB_OUTPUT
+          echo "✅ All required secrets are present"
+
+  deploy:
+    needs: check-secrets
+    if: needs.check-secrets.outputs.has-secrets == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          npm install -g @railway/cli@2.0.5
+
+      - name: Show Railway version
+        run: railway --version
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT || secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT || 'production' }}
+          REDIS_URL: ${{ secrets.REDIS_URL || '' }}
+          ENABLE_POLLING_LEADER_LOCK: ${{ secrets.ENABLE_POLLING_LEADER_LOCK || '' }}
+        run: |
+          set -ex
+          
+          echo "🚀 Starting deployment..."
+          
+          # Login to Railway
+          echo "🔑 Logging in to Railway..."
+          echo "$RAILWAY_TOKEN" | railway login --ci
+          
+          # Link project
+          echo "🔗 Linking project $RAILWAY_PROJECT..."
+          railway link "$RAILWAY_PROJECT"
+          
+          # Set environment
+          echo "🌍 Setting environment to $RAILWAY_ENVIRONMENT..."
+          railway environment use "$RAILWAY_ENVIRONMENT"
+          
+          # Step 1: First deploy with polling disabled
+          echo "🔧 Step 1/2: Initial deploy with polling disabled"
+          railway variables set DISABLE_POLLING=1 FEATURE_PARTNER_FSM=true --yes
+          
+          if [ -n "$REDIS_URL" ]; then
+            railway variables set REDIS_URL="$REDIS_URL" --yes
+          fi
+          
+          # First deploy
+          railway up --detach
+          
+          # Wait a bit before second step
+          sleep 30
+          
+          # Step 2: Final deploy with polling enabled
+          echo "🚀 Step 2/2: Final deploy with polling enabled"
+          railway variables set DISABLE_POLLING=0 --yes
+          
+          if [ -n "$ENABLE_POLLING_LEADER_LOCK" ]; then
+            railway variables set ENABLE_POLLING_LEADER_LOCK="$ENABLE_POLLING_LEADER_LOCK" --yes
+          fi
+          
+          # Final deploy
+          railway up --detach
+          
+          # Get service URL
+          SERVICE_URL=$(railway status --json | jq -r '.service.privateDomain' 2>/dev/null || echo "unknown")
+          
+          echo "✅ Deployment completed successfully!"
+          echo "🌐 Service URL: $SERVICE_URL"
