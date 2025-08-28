@@ -220,4 +220,41 @@ def _match_glob(text: str, pattern: str) -> bool:
     return True
 
 
-cache_service = CacheService(settings.database.redis_url)
+# --- cache bootstrap (lazy & safe) ---
+import os
+
+def _resolve_redis_url() -> str | None:
+    # сначала пробуем settings.redis_url (если есть)
+    url = getattr(settings, "redis_url", None)
+    # пробуем старую схему settings.database.redis_url (если вдруг есть)
+    db = getattr(settings, "database", None)
+    if not url and db and hasattr(db, "redis_url"):
+        url = getattr(db, "redis_url")
+    # окружение как последний приоритет
+    if not url:
+        url = os.getenv("REDIS_URL")
+    return (url or "").strip() or None
+
+_cache_singleton: BaseCacheService | None = None
+
+def get_cache_service() -> BaseCacheService:
+    global _cache_singleton
+    if _cache_singleton is not None:
+        return _cache_singleton
+
+    redis_url = _resolve_redis_url()
+    if not redis_url:
+        print("[cache] redis_url not configured; using NullCacheService")
+        _cache_singleton = NullCacheService()
+        return _cache_singleton
+
+    try:
+        _cache_singleton = CacheService(redis_url)
+        print(f"[cache] Redis enabled: {redis_url}")
+    except Exception as e:
+        print(f"[cache] Redis init failed ({e}); falling back to NullCacheService")
+        _cache_singleton = NullCacheService()
+    return _cache_singleton
+
+# совместимость с прежним импортом
+cache_service = get_cache_service()
