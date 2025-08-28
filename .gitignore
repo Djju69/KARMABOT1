@@ -1,36 +1,48 @@
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-.build/
-dist/
-.venv/
-venv/
+﻿# --- Secrets ---
 .env
 .env.*
-!.env.example
-*.db
-*.sqlite
-*.sqlite3
+*.pem
+*.key
+*.crt
 
-# IDE / OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.dist-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage*
+.coverage
+htmlcov/
 
-# Project-specific
-RAILWAY_VARS.txt
-core/database/data.db
-input
-
-# Logs and runtime artifacts
-logs/
-logs/*.log
-ops/SESSION_STATE*.json
-
-# Node/Web (на будущее)
+# --- Node/Web ---
 node_modules/
 .npm-cache/
+web/node_modules/
+web/.next/
+web/.nuxt/
+web/.turbo/
+web/.vercel/
+web/.cache/
+web/dist/
+dist/
+build/
+
+# --- OS/IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Logs & temp ---
+logs/
+*.log
+tmp/
+cache/
