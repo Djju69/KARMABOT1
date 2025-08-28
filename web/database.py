@@ -1,8 +1,46 @@
 """
-Database health check module for KarmaBot web service.
+Database configuration and session management for KarmaBot web service.
 """
 import os
-from typing import Tuple
+from typing import Tuple, Generator
+from contextlib import contextmanager
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+
+# Get database URL from environment
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./karmabot.db")
+
+# Create SQLAlchemy engine
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {},
+    pool_pre_ping=True
+)
+
+# Session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Base class for models
+Base = declarative_base()
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency for getting database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@contextmanager
+def get_db_ctx() -> Generator[Session, None, None]:
+    """Context manager for database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def check_database_health() -> Tuple[bool, str]:
     """
@@ -11,7 +49,7 @@ def check_database_health() -> Tuple[bool, str]:
     Returns:
         Tuple[bool, str]: (is_healthy, detail_message)
     """
-    url = os.getenv("DATABASE_URL", "").strip()
+    url = DATABASE_URL.strip()
     
     if not url:
         return False, "DATABASE_URL not set"
@@ -45,3 +83,9 @@ def check_database_health() -> Tuple[bool, str]:
             return False, f"PostgreSQL check failed: {str(e)}"
     
     return False, f"Unsupported database type: {url.split(':')[0]}"
+
+def init_db():
+    """Initialize database tables."""
+    import web.models  # Import models to register them with SQLAlchemy
+    Base.metadata.create_all(bind=engine)
+    return "Database tables created"
