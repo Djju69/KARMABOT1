@@ -223,7 +223,6 @@ def _match_glob(text: str, pattern: str) -> bool:
 
 
 # --- cache bootstrap (lazy & safe) ---
-from __future__ import annotations
 import os
 
 def _resolve_redis_url() -> str | None:
