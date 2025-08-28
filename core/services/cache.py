@@ -220,4 +220,23 @@ def _match_glob(text: str, pattern: str) -> bool:
     return True
 
 
-cache_service = CacheService(settings.database.redis_url)
+class NullCacheService:
+    async def connect(self): pass
+    async def close(self): pass
+    async def get(self, *a, **kw): return None
+    async def set(self, *a, **kw): return None
+    async def delete(self, *a, **kw): return None
+
+# ↓ вместо: cache_service = CacheService(settings.database.redis_url)
+try:
+    _redis_url = getattr(getattr(settings, "database", None), "redis_url", None)
+except Exception:
+    _redis_url = None
+
+_redis_url = _redis_url or os.getenv("REDIS_URL")
+
+if _redis_url:
+    cache_service = CacheService(_redis_url)
+else:
+    print("[cache] redis_url not configured; using NullCacheService")
+    cache_service = NullCacheService()
