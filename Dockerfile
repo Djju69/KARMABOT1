@@ -30,5 +30,5 @@ COPY . .
 # Expose port (Railway will set PORT env)
 EXPOSE 8080
 
-# Default command runs our startup script
-CMD ["bash", "start.sh"]
+# Run uvicorn with sh -c to properly handle environment variables
+CMD ["sh", "-c", "uvicorn web.main:app --host 0.0.0.0 --port ${PORT}"]
