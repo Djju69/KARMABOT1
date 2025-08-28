@@ -1,71 +1,47 @@
-from __future__ import annotations
+"""
+Database health check module for KarmaBot web service.
+"""
 import os
-import sqlite3
 from typing import Tuple
 
-def _is_sqlite(url: str) -> bool:
-    return url.startswith("sqlite:///")
-
-def _sqlite_path(url: str) -> str:
-    return url.replace("sqlite:///", "", 1)
-
-def _table_exists_sqlite(conn: sqlite3.Connection, table: str) -> bool:
-    cur = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    )
-    return cur.fetchone() is not None
-
-def _col_exists_sqlite(conn: sqlite3.Connection, table: str, col: str) -> bool:
-    cur = conn.execute(f"PRAGMA table_info('{table}')")
-    return any(r[1] == col for r in cur.fetchall())
-
-def _ensure_sqlite_schema(path: str) -> Tuple[bool, str]:
-    conn = sqlite3.connect(path)
-    try:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                created_at TEXT
-            );
-        """)
-        if not _col_exists_sqlite(conn, "categories", "name_ru"):
-            conn.execute("ALTER TABLE categories ADD COLUMN name_ru TEXT;")
-        if not _col_exists_sqlite(conn, "categories", "name_en"):
-            conn.execute("ALTER TABLE categories ADD COLUMN name_en TEXT;")
-
-        conn.execute("""
-            INSERT OR IGNORE INTO categories (id, name, name_ru, name_en, created_at)
-            VALUES (1, 'Restaurants', 'Рестораны', 'Restaurants', datetime('now'));
-        """)
-        conn.commit()
-        return True, "sqlite schema ok"
-    except Exception as e:
-        return False, f"sqlite schema error: {str(e)}"
-    finally:
-        conn.close()
-
 def check_database_health() -> Tuple[bool, str]:
-    """Check if the database is accessible and has the required schema.
+    """
+    Check database connection health.
     
     Returns:
-        Tuple of (is_healthy: bool, message: str)
+        Tuple[bool, str]: (is_healthy, detail_message)
     """
-    url = os.getenv("DATABASE_URL", "sqlite:///app.db").strip()
-    if _is_sqlite(url):
-        path = _sqlite_path(url)
-        ok, detail = _ensure_sqlite_schema(path)
-        if not ok:
-            return False, detail
-        conn = sqlite3.connect(path)
+    url = os.getenv("DATABASE_URL", "").strip()
+    
+    if not url:
+        return False, "DATABASE_URL not set"
+        
+    if url.startswith('sqlite'):
+        # SQLite health check
         try:
-            required = ["categories"]
-            missing = [t for t in required if not _table_exists_sqlite(conn, t)]
-            if missing:
-                return False, f"Missing required tables: {', '.join(missing)}"
-        finally:
+            import sqlite3
+            db_path = url.replace('sqlite://', '')
+            if db_path.startswith('/'):
+                db_path = db_path[1:]
+            conn = sqlite3.connect(db_path)
             conn.close()
-        return True, "ok (sqlite)"
-    else:
-        return True, "ok (non-sqlite url; check skipped)"
+            return True, "ok (sqlite)"
+        except Exception as e:
+            return False, f"SQLite check failed: {str(e)}"
+    
+    elif url.startswith('postgres'):
+        # PostgreSQL health check
+        try:
+            import psycopg2
+            conn = psycopg2.connect(url)
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                if cur.fetchone()[0] == 1:
+                    return True, "ok (postgres)"
+            return False, "PostgreSQL query failed"
+        except ImportError:
+            return False, "psycopg2 not installed"
+        except Exception as e:
+            return False, f"PostgreSQL check failed: {str(e)}"
+    
+    return False, f"Unsupported database type: {url.split(':')[0]}"
