@@ -5,9 +5,41 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
+
+# Safe import for prometheus_client
+try:
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+except Exception:
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+    def generate_latest(*args, **kwargs):
+        return b""
+
+# Safe import for ops.session_state
+try:
+    from ops.session_state import (
+        load as ss_load,
+        save as ss_save,
+        update as ss_update,
+        snapshot as ss_snapshot,
+    )
+except Exception:
+    import logging
+    log = logging.getLogger("uvicorn.error")
+    log.warning("ops.session_state not found — using no-op stubs")
+
+    def ss_load(*args, **kwargs): 
+        return {}
+
+    def ss_save(*args, **kwargs): 
+        return None
+
+    def ss_update(*args, **kwargs): 
+        return None
+
+    def ss_snapshot(*args, **kwargs): 
+        return {}
 
 # Minimal web mode flag - disable heavy routes that require DB access
 MINIMAL_WEB = os.getenv("MINIMAL_WEB", "1") == "1"
@@ -37,7 +69,6 @@ if not MINIMAL_WEB:
     from web.routes_bot import router as bot_hooks_router
     from web.routes_loyalty import router as loyalty_router
 from core.services.cache import cache_service
-from ops.session_state import load as ss_load, save as ss_save, update as ss_update, snapshot as ss_snapshot
 
 # Helper: HTML no-store (avoid stale cached bundles)
 def _html(content: str, status_code: int = 200) -> HTMLResponse:
