@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from core.services.webapp_auth import check_jwt
 from core.security.jwt_service import verify_partner
 from core.services.cache import cache_service
-from core.services.loyalty_points import loyalty_service
+from core.services.loyalty import loyalty_service
 
 router = APIRouter()
 
