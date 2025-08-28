@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request, Response, Query, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +8,9 @@ from starlette.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
+
+# Minimal web mode flag - disable heavy routes that require DB access
+MINIMAL_WEB = os.getenv("MINIMAL_WEB", "1") == "1"
 
 # Import project settings and auth utils
 try:
@@ -24,12 +28,14 @@ except Exception:
         web = _Web()
     settings = _Simple()  # type: ignore
 
-from .routes_auth import router as auth_router
-from .routes_auth_email import router as auth_email_router
-from web.routes_cabinet import router as cabinet_router
-from web.routes_admin import router as admin_router
-from web.routes_bot import router as bot_hooks_router
-from web.routes_loyalty import router as loyalty_router
+# Import routes conditionally based on MINIMAL_WEB flag
+if not MINIMAL_WEB:
+    from .routes_auth import router as auth_router
+    from .routes_auth_email import router as auth_email_router
+    from web.routes_cabinet import router as cabinet_router
+    from web.routes_admin import router as admin_router
+    from web.routes_bot import router as bot_hooks_router
+    from web.routes_loyalty import router as loyalty_router
 from core.services.cache import cache_service
 from ops.session_state import load as ss_load, save as ss_save, update as ss_update, snapshot as ss_snapshot
 
@@ -222,13 +228,23 @@ except Exception:
 app.add_middleware(CSPMiddleware)
 app.add_middleware(TokenCookieMiddleware)
 
-# Routers
-app.include_router(auth_router, prefix="/auth", tags=["auth"]) 
-app.include_router(auth_email_router, prefix="/auth", tags=["auth"]) 
-app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet"]) 
-app.include_router(admin_router, tags=["admin"]) 
-app.include_router(bot_hooks_router, prefix="/bot/hooks", tags=["bot_hooks"]) 
-app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"]) 
+# Include routers conditionally based on MINIMAL_WEB flag
+if not MINIMAL_WEB:
+    app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+    app.include_router(auth_email_router, prefix="/api/auth/email", tags=["auth"])
+    app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
+    app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+    app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
+    app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
+else:
+    # Minimal health check endpoint
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "minimal": True}
+
+    @app.get("/healthz")
+    async def healthz():
+        return {"status": "ok", "minimal": True}
 
 # Prometheus metrics endpoint (server-side metrics)
 @app.get("/metrics")
