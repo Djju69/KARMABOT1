@@ -1,21 +1,25 @@
 name: CI & Deploy
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch: {}
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -24,35 +28,48 @@ jobs:
 
       - name: Run tests
         run: |
-          if [ -f pytest.ini ] || [ -d tests ]; then pytest -q || true; else echo "No tests"; fi
+          if [ -f pytest.ini ] || [ -d tests ]; then pytest -q; else echo "No tests"; fi
 
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js (for Railway CLI)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - name: Install Railway CLI
         run: npm i -g @railway/cli
 
-      - name: Deploy to Railway (conditional)
+      - name: Login & link project
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
-          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ]; then
+          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ] ; then
             echo "Railway secrets not set; skipping deploy."
             exit 0
           fi
           railway login --token "$RAILWAY_TOKEN"
-          # Ensure project context
           railway link --project "$RAILWAY_PROJECT_ID"
-          # Trigger deploy for default service detected by Railway
-          railway up --ci
+
+      # Если у вас один сервис — оставьте один шаг ниже.
+      - name: Deploy bot service
+        if: ${{ secrets.RAILWAY_SERVICE_BOT != '' }}
+        env:
+          RAILWAY_SERVICE_BOT: ${{ secrets.RAILWAY_SERVICE_BOT }}
+        run: railway up --ci --service "$RAILWAY_SERVICE_BOT"
+
+      - name: Deploy web service
+        if: ${{ secrets.RAILWAY_SERVICE_WEB != '' }}
+        env:
+          RAILWAY_SERVICE_WEB: ${{ secrets.RAILWAY_SERVICE_WEB }}
+        run: railway up --ci --service "$RAILWAY_SERVICE_WEB"
+
+      # Фоллбек: если сервисы не заданы, деплоим дефолтный
+      - name: Deploy default service (fallback)
+        if: ${{ secrets.RAILWAY_SERVICE_BOT == '' && secrets.RAILWAY_SERVICE_WEB == '' }}
+        run: railway up --ci
