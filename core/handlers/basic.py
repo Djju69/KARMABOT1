@@ -139,21 +139,86 @@ async def get_location(message: Message, bot: Bot, state: FSMContext):
     await main_menu(message, bot, state)
 
 
-async def on_language_select(callback_query):
+async def on_language_select(callback_query, bot: Bot, state: FSMContext):
     """Обработчик выбора языка"""
-    from aiogram.types import CallbackQuery
+    lang = callback_query.data.split('_')[-1]  # Получаем выбранный язык из callback_data
+    await state.update_data(lang=lang)
     
-    if isinstance(callback_query, CallbackQuery):
-        # Обработка выбора языка
-        selected_lang = callback_query.data.replace('lang_', '')
-        
-        # Здесь должна быть логика смены языка
-        await callback_query.message.edit_text(
-            f"Язык изменен на: {selected_lang}",
-            reply_markup=None
+    # Отправляем сообщение о выборе языка
+    await bot.answer_callback_query(
+        callback_query.id,
+        text=f"✅ Language set to {lang.upper()}"
+    )
+    
+    # Показываем основное меню
+    await main_menu(
+        message=callback_query.message,
+        bot=bot,
+        state=state
+    )
+
+
+async def open_cabinet(message: Message, bot: Bot, state: FSMContext):
+    """Открывает личный кабинет пользователя"""
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    
+    # Базовая информация о пользователе
+    user_info = (
+        f"👤 <b>Личный кабинет</b>\n\n"
+        f"🆔 ID: {message.from_user.id}\n"
+        f"👤 Имя: {message.from_user.full_name}\n"
+        f"🌐 Язык: {lang.upper()}\n"
+    )
+    
+    # Здесь можно добавить дополнительную логику, например, баланс, статистику и т.д.
+    
+    await message.answer(
+        text=user_info,
+        parse_mode='HTML'
+    )
+    
+    # Возвращаем пользователя в главное меню
+    await main_menu(message, bot, state)
+
+
+async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext):
+    """
+    Проверяет, принял ли пользователь политику конфиденциальности.
+    Если нет, показывает политику и просит принять её.
+    """
+    user_data = await state.get_data()
+    
+    # Проверяем, принял ли пользователь политику
+    if not user_data.get('policy_accepted', False):
+        # Показываем политику конфиденциальности
+        policy_text = (
+            "🔒 <b>Политика конфиденциальности</b>\n\n"
+            "Перед продолжением работы с ботом, пожалуйста, ознакомьтесь с нашей политикой конфиденциальности.\n\n"
+            "1. Мы собираем только необходимые данные для работы бота\n"
+            "2. Ваши данные защищены и не передаются третьим лицам\n"
+            "3. Вы можете запросить удаление ваших данных в любое время\n\n"
+            "Нажимая кнопку 'Принять', вы соглашаетесь с нашей политикой конфиденциальности."
         )
-        await callback_query.answer()
-    else:
-        # Показ меню выбора языка
-        from core.keyboards.language import get_language_keyboard
-        await callback_query.answer("Выберите язык:", reply_markup=get_language_keyboard())
+        
+        # Создаем клавиатуру с кнопкой принятия политики
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="✅ Принять политику")]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(
+            text=policy_text,
+            reply_markup=keyboard,
+            parse_mode='HTML'
+        )
+        
+        # Устанавливаем состояние ожидания принятия политики
+        await state.set_state("waiting_for_policy_acceptance")
+        return False
+    
+    return True
