@@ -547,33 +547,29 @@ async def main():
     redis_url = _get_redis_url()
     ensure_database_ready()
     
-    # Set bot commands
-    try:
-        await set_commands()
-    except Exception as e:
-        logger.error("❌ Failed to set bot commands: %s", e, exc_info=True)
-        return
-
     default_properties = DefaultBotProperties(parse_mode="HTML")
     
     # Get and validate token
-    if not getattr(settings, 'bots', None) or not settings.bots.bot_token:
-        logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
-        return
-    
-    # Resolve token from environment
     token = resolve_bot_token(settings)
-    env = _env_name(settings)
-    
-    logger.info("🔑 Environment: %s", env)
-    logger.info("🔑 Using bot token: %s", _mask_token(token))
-    
     if not token:
         logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
         return
     
-    # Initialize bot with token
+    # Log environment info
+    env = _env_name(settings)
+    logger.info("🔑 Environment: %s", env)
+    logger.info("🔑 Using bot token: %s", _mask_token(token))
+    
+    # Initialize bot
     bot = Bot(token=token, default=default_properties)
+    
+    # Set bot commands
+    try:
+        await set_commands(bot)
+        logger.info("✅ Bot commands set")
+    except Exception as e:
+        logger.error("❌ Failed to set bot commands: %s", e, exc_info=True)
+        return
     
     # Preflight check with Telegram API
     try:
