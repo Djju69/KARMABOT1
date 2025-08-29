@@ -6,18 +6,33 @@ class Bots(BaseModel):
     admin_id: int
 
 class FeatureFlags(BaseModel):
+    # Явные флаги, используемые в проекте
     partner_fsm: bool = False
+    moderation: bool = False
     loyalty_points: bool = True
     referrals: bool = True
     web_cabinets: bool = True
+    anti_flood: bool = True
+    rate_limit: bool = True
+    captcha: bool = False
+    support_ai: bool = False
+    partner_portal: bool = True
+    web_qr: bool = True
+
+    class Config:
+        extra = "allow"  # позволяем незадекларированные флаги из ENV
+
+    def __getattr__(self, name: str) -> bool:
+        # Любой неизвестный флаг — безопасно считаем выключенным
+        return False
 
 class Settings(BaseSettings):
     bots: Bots
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     class Config:
-        env_nested_delimiter = "__"   # FEATURES__PARTNER_FSM=1 и т.п.
+        env_nested_delimiter = "__"   # FEATURES__MODERATION=1 и т.д.
         case_sensitive = False
 
-# Глобальный экземпляр (если у вас так принято)
+# Глобальный экземпляр
 settings = Settings()

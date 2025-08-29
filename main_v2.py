@@ -387,21 +387,22 @@ async def setup_routers(dp: Dispatcher):
     dp.include_router(get_activity_router())
 
     # 5. Feature-flagged routers
-    if settings.features.partner_fsm:
+    if getattr(settings.features, "partner_fsm", False):
         partner_router = get_partner_router()
         dp.include_router(partner_router)
         logger.info("✅ Partner FSM enabled")
     else:
         logger.info("⚠️ Partner FSM disabled")
 
-    if settings.features.moderation:
+    if getattr(settings.features, "moderation", False):
         moderation_router = get_moderation_router()
         dp.include_router(moderation_router)
         # Admin cabinet router (inline menu under adm:*)
-        dp.include_router(get_admin_cabinet_router())
-        logger.info("✅ Moderation enabled")
+        admin_router = get_admin_cabinet_router()
+        dp.include_router(admin_router)
+        logger.info("✅ Moderation and Admin Cabinet enabled")
     else:
-        logger.info("⚠️ Moderation disabled")
+        logger.info("⚠️ Moderation and Admin Cabinet disabled")
 
 async def _preflight_polling_conflict(bot_token: str) -> bool:
     """Call Telegram getUpdates once to detect 409 Conflict preflight.
@@ -488,8 +489,8 @@ async def main():
         logger.info(
             "[CFG] env=%s partner_fsm=%s moderation=%s disable_polling=%s redis_url=%s",
             settings.environment,
-            settings.features.partner_fsm,
-            settings.features.moderation,
+            getattr(settings.features, "partner_fsm", False),
+            getattr(settings.features, "moderation", False),
             dp_flag if dp_flag else "",
             masked_redis,
         )
