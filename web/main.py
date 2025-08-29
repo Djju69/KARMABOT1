@@ -1,5 +1,30 @@
 import os
+import asyncio
 from fastapi import FastAPI, Request, Response, Query, Form
+from contextlib import asynccontextmanager
+
+# Bot initialization moved to a separate function
+async def start_bot_polling():
+    """Start the bot polling in the background"""
+    try:
+        from main_v2 import main as bot_main
+        # Start the bot in a separate task
+        asyncio.create_task(bot_main())
+        print("Bot polling started in background")
+    except Exception as e:
+        print(f"Failed to start bot polling: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan with bot startup control"""
+    # Only start polling if not disabled
+    if os.getenv("DISABLE_POLLING", "1") != "1":
+        await start_bot_polling()
+    
+    yield  # App runs here
+    
+    # Cleanup if needed
+    print("Shutting down...")
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -191,6 +216,18 @@ async def lifespan(app: FastAPI):
         pass
 
 app = FastAPI(title="KARMABOT1 WebApp API", lifespan=lifespan)
+
+# Add startup event to handle bot initialization
+@app.on_event("startup")
+async def startup_event():
+    """Handle startup events"""
+    # Initialize database if needed
+    if os.getenv("DISABLE_POLLING", "1") != "1":
+        from core.database.migrations import ensure_database_ready
+        try:
+            await ensure_database_ready()
+        except Exception as e:
+            print(f"Database initialization warning: {e}")
 
 # Simple in-memory rate limiter for /api/qr/* endpoints (5 r/s, burst 10 per IP)
 from time import monotonic as _now
