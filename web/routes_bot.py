@@ -12,7 +12,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Request, HTTPException
 from starlette.responses import JSONResponse
 
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 from ops.session_state import mark_webhook_ui_refresh, save as ss_save
 from core.utils.telemetry import log_event
 

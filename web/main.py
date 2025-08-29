@@ -2,6 +2,7 @@ import os
 import asyncio
 from fastapi import FastAPI, Request, Response, Query, Form
 from contextlib import asynccontextmanager
+from core.services.cache import init_cache_service, get_cache_service
 
 # Bot initialization moved to a separate function
 async def start_bot_polling():
@@ -16,15 +17,29 @@ async def start_bot_polling():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan with bot startup control"""
+    """Lifespan with bot startup control and cache initialization"""
+    # Initialize cache service
+    try:
+        await init_cache_service()
+        print("Cache service initialized")
+    except Exception as e:
+        print(f"Cache initialization warning: {e}")
+    
     # Only start polling if not disabled
     if os.getenv("DISABLE_POLLING", "1") != "1":
         await start_bot_polling()
     
     yield  # App runs here
     
-    # Cleanup if needed
+    # Cleanup
     print("Shutting down...")
+    try:
+        cache_service = get_cache_service()
+        if hasattr(cache_service, 'close') and callable(getattr(cache_service, 'close')):
+            await cache_service.close()
+            print("Cache service closed")
+    except Exception as e:
+        print(f"Error closing cache service: {e}")
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,7 +108,7 @@ if not MINIMAL_WEB:
     from web.routes_admin import router as admin_router
     from web.routes_bot import router as bot_hooks_router
     from web.routes_loyalty import router as loyalty_router
-from core.services.cache import cache_service
+from core.services.cache import init_cache_service, get_cache_service
 
 # Helper: HTML no-store (avoid stale cached bundles)
 def _html(content: str, status_code: int = 200) -> HTMLResponse:
@@ -217,10 +232,22 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="KARMABOT1 WebApp API", lifespan=lifespan)
 
+# Initialize cache service on startup
+@app.on_event("startup")
+async def _init_cache():
+    await init_cache_service()
+
 # Add startup event to handle bot initialization
 @app.on_event("startup")
 async def startup_event():
     """Handle startup events"""
+    # Initialize cache service
+    try:
+        await init_cache_service()
+        print("Cache service initialized")
+    except Exception as e:
+        print(f"Cache initialization warning: {e}")
+    
     # Initialize database if needed
     if os.getenv("DISABLE_POLLING", "1") != "1":
         from core.database.migrations import ensure_database_ready
@@ -1657,17 +1684,33 @@ async def qr_ping():
     return {"status": "ok"}
 
 
-@app.post("/cache/invalidate")
+@app.post("/api/cache/invalidate")
 async def cache_invalidate(payload: dict | None = None):
-    # Safe no-op stub for local testing; integrate cache_service if needed
-    scope = (payload or {}).get("scope") if isinstance(payload, dict) else None
+    """Invalidate cache (admin only). Accepts { "key": "prefix:*" } or invalidates all if no key provided."""
+    if os.getenv("ENABLE_CACHE_INVALIDATION", "0") != "1":
+        return {"status": "error", "message": "Cache invalidation is disabled"}
+    
+    # Simple rate limiting
+    if not hasattr(cache_invalidate, "last_call"):
+        cache_invalidate.last_call = 0
+    now = time.time()
+    if now - cache_invalidate.last_call < 1:  # 1s cooldown
+        return {"status": "error", "message": "Rate limited"}
+    cache_invalidate.last_call = now
+    
+    # Get the current cache service instance
+    cache_service = get_cache_service()
+    key = (payload or {}).get("key")
+    
     try:
-        # If cache_service has clear/invalidate in your project, you can call it here.
-        # We keep it a stub to avoid import/runtime issues.
-        pass
-    except Exception:
-        pass
-    return {"status": "ok", "scope": scope or "*"}
+        if key:
+            await cache_service.delete_pattern(key)
+            return {"status": "ok", "message": f"Cache invalidated for pattern: {key}"}
+        else:
+            await cache_service.flushdb()
+            return {"status": "ok", "message": "Cache fully invalidated"}
+    except Exception as e:
+        return {"status": "error", "message": f"Cache invalidation failed: {str(e)}"}
 
 
 @app.get("/reports/rate_limit")

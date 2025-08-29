@@ -11,7 +11,7 @@ from pydantic import BaseModel
 # Reuse existing JWT verification used by /auth endpoints
 from core.services.webapp_auth import check_jwt
 from core.security.jwt_service import verify_partner
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 from core.services.loyalty_points import loyalty_service
 
 router = APIRouter()

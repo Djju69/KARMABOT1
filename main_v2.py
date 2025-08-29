@@ -46,7 +46,7 @@ from core.handlers.activity import get_activity_router
 
 # Services
 from core.services.profile import profile_service
-from core.services.cache import cache_service
+from core.services.cache import init_cache_service, get_cache_service, BaseCacheService
 from core.services.pg_notify import pg_notify_listener
 from core.services.admins import admins_service
 
@@ -441,14 +441,18 @@ async def on_shutdown(bot: Bot):
     except Exception:
         pass
     try:
-        await cache_service.close()
-    except Exception:
-        pass
+        # Use get_cache_service to get the current cache service instance
+        cache_service = get_cache_service()
+        if hasattr(cache_service, 'close') and callable(getattr(cache_service, 'close')):
+            await cache_service.close()
+    except Exception as e:
+        logger.warning(f"Error closing cache service: {e}")
+    
     await profile_service.disconnect()
     try:
         await admins_service.disconnect()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Error disconnecting admins service: {e}")
     try:
         await bot.send_message(settings.bots.admin_id, "😴 KARMABOT1 остановлен")
     except Exception as e:
@@ -493,13 +497,19 @@ async def main():
     dp = Dispatcher()
 
     # Connect services
-    profile_service._redis_url = _get_redis_url()
-    await profile_service.connect()
-    await cache_service.connect()
+    # Initialize cache service
+    redis_url = _get_redis_url()
     try:
-        await admins_service.connect()
+        await init_cache_service(redis_url)
+        cache_service = get_cache_service()
+        if isinstance(cache_service._r, aioredis.Redis):
+            logger.info(f"Initialized Redis cache at {redis_url}")
+        else:
+            logger.warning("Using NullCacheService - Redis not available")
     except Exception as e:
-        logger.warning(f"AdminsService connect error: {e}")
+        logger.error(f"Cache initialization error: {e}")
+        logger.warning("Falling back to NullCacheService")
+    cache_service = get_cache_service()
 
     # Register middlewares
     dp.update.middleware(LocaleMiddleware())

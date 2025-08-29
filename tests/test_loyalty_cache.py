@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, ANY
 from core.services.loyalty import LoyaltyService, loyalty_service
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 from core.database.db_v2 import db_v2
 
 # Импортируем настройки для тестовой БД

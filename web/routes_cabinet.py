@@ -13,7 +13,7 @@ from core.security.jwt_service import verify_partner, verify_admin
 from core.settings import settings
 from core.services.partners import is_partner
 from core.services.cards import card_service
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 
 router = APIRouter()
 logger = logging.getLogger("auth")

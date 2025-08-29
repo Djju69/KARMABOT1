@@ -10,7 +10,7 @@ from httpx import ASGITransport
 
 from web.main import app
 from core.services.webapp_auth import issue_jwt
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 
 
 def _auth_headers(user_id: int = 12345) -> dict:

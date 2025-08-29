@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 import asyncpg
 from core.security.deps import require_admin
 from core.security import policy
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 import pyotp
 
 TFA_PREFIX = "admin2fa"

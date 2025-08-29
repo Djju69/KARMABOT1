@@ -17,7 +17,7 @@ from core.services.webapp_auth import (
 from core.settings import settings
 from core.security.jwt_service import verify_partner
 from core.services.partners import is_partner
-from core.services.cache import cache_service
+from core.services.cache import get_cache_service
 from core.utils.metrics import (
     AUTHME_REQUESTS,
     AUTHME_BUILD_LATENCY,
