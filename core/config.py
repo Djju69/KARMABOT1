@@ -28,6 +28,11 @@ class FeatureFlags(BaseModel):
 
 class Settings(BaseSettings):
     bots: Bots
+    # Читаем из нескольких популярных переменных окружения
+    environment: str = Field(
+        default="prod",
+        env=["ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"],
+    )
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     class Config:

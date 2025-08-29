@@ -548,7 +548,9 @@ async def main():
     release_lock = None
     if lock_enabled:
         lock_ttl = int(os.getenv("POLLING_LEADER_LOCK_TTL", "120"))
-        lock_key = f"{settings.environment}:bot:polling:leader"
+        # Safe environment detection with fallback
+        env = getattr(settings, "environment", None) or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "prod"
+        lock_key = f"{env}:bot:polling:leader"
         owned, release = await _acquire_leader_lock(_get_redis_url(), lock_key, lock_ttl)
         if not owned:
             logger.error("❌ Another instance holds polling leader lock (%s).", lock_key)
