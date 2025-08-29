@@ -1,6 +1,9 @@
 from aiogram.types import Message, CallbackQuery 
-from aiogram import Bot
+from aiogram import Bot, Router
 from aiogram.fsm.context import FSMContext
+
+# Экспортируемый роутер, который подключает main_v2.py
+router = Router(name="basic")
 
 # Локализация
 from core.utils.locales import translations, get_text
