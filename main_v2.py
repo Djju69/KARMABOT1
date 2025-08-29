@@ -10,11 +10,18 @@ import hashlib
 import sys
 import aiohttp
 from typing import Optional
+from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.exceptions import TelegramUnauthorizedError
+
+# Load environment variables (only in non-production)
+if not (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production"):
+    # Try to load from .env.production first, then .env
+    load_dotenv(".env.production", override=False)
+    load_dotenv(override=False)  # Load .env with lower priority
 
 def _get_redis_url() -> str:
     """Safely get Redis URL from environment or settings.
@@ -518,30 +525,41 @@ async def main():
         logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
         return
         
-    # Strip accidental whitespace/newlines to satisfy aiogram token validator
-    safe_token = settings.bots.bot_token.strip()
-    
     # Safe token masking for logging
     def _mask_token(t: str | None) -> str:
         if not t: return "<none>"
         return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
     
-    logger.info("🔑 Using bot token: %s", _mask_token(getattr(settings.bots, "bot_token", None)))
+    # Log environment info for debugging
+    logger.info("🔑 Environment: %s", settings.environment)
+    logger.info("🔑 Using bot token: %s", _mask_token(settings.bots.bot_token))
+    
+    # Strip accidental whitespace/newlines to satisfy aiogram token validator
+    safe_token = settings.bots.bot_token.strip()
     
     # Initialize bot with token
     bot = Bot(token=safe_token, default=default_properties)
     
-    # Preflight token check
+    # Preflight token check with Telegram API
     try:
         me = await bot.get_me()
         logger.info("✅ Bot authorized: @%s (id=%s)", me.username, me.id)
+        
+        # Delete any existing webhook to ensure clean state
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("🗑️  Deleted any existing webhook")
+        except Exception as e:
+            logger.warning("⚠️  Could not delete webhook: %s", e)
+            
     except TelegramUnauthorizedError as e:
         logger.error("❌ Invalid BOT TOKEN (BOTS__BOT_TOKEN). %s", e)
         # Properly close the session before exiting
         try:
             await bot.session.close()
-        finally:
-            raise
+        except Exception as e:
+            logger.error("Error closing bot session: %s", e)
+        return  # Exit if token is invalid
             
     dp = Dispatcher()
 
