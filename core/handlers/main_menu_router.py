@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from aiogram import Bot, F, Router
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
 from ..services.profile import profile_service
