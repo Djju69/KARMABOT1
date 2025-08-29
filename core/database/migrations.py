@@ -4,10 +4,39 @@ Non-breaking migrations with backward compatibility
 """
 import sqlite3
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import logging
+import os
 
 logger = logging.getLogger(__name__)
+
+def _col_exists(conn: sqlite3.Connection, table: str, col: str) -> bool:
+    """Check if a column exists in a SQLite table"""
+    try:
+        cur = conn.execute(f"PRAGMA table_info('{table}')")
+        return any(r[1] == col for r in cur.fetchall())
+    except sqlite3.Error as e:
+        logger.warning(f"Error checking column {col} in {table}: {e}")
+        return False
+
+def _ensure_table_categories(conn: sqlite3.Connection) -> None:
+    """Ensure categories table exists with all required columns"""
+    # Create the base table if it doesn't exist
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            created_at TEXT
+        );
+    """)
+    
+    # Add columns if they don't exist
+    for col in ["name_ru", "name_en", "type"]:
+        if not _col_exists(conn, "categories", col):
+            default = "''" if col.startswith("name_") else "'shop'"
+            conn.execute(f"ALTER TABLE categories ADD COLUMN {col} TEXT DEFAULT {default};")
+    
+    conn.commit()
 
 class DatabaseMigrator:
     def __init__(self, db_path: str = "core/database/data.db"):
@@ -472,13 +501,19 @@ class DatabaseMigrator:
         EXPAND Phase: Seed additional category '🛍️ Магазины и услуги'
         Idempotent: uses INSERT OR IGNORE
         """
+        # Ensure categories table exists with all required columns
+        with self.get_connection() as conn:
+            _ensure_table_categories(conn)
+            conn.commit()
+            
         sql = """
+        -- Insert into new categories_v2 table if it exists
         INSERT OR IGNORE INTO categories_v2 (slug, name, emoji, priority_level)
         VALUES ('shops', '🛍️ Магазины и услуги', '🛍️', 65);
 
         -- Backward compatibility: ensure legacy categories has this row
-        INSERT OR IGNORE INTO categories (name_ru, type)
-        VALUES ('🛍️ Магазины и услуги', 'shops');
+        INSERT OR IGNORE INTO categories (name_ru, name_en, name_ko, type)
+        VALUES ('🛍️ Магазины и услуги', '🛍️ Shops & Services', '🛍️ 쇼핑 & 서비스', 'shops');
         """
         self.apply_migration(
             "006",

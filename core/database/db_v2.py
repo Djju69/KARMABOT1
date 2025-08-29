@@ -65,13 +65,20 @@ class DatabaseServiceV2:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
             self._conn = None
         
-        # Run migrations against the same database (same URI for memory)
-        try:
-            migrator_path = self._memory_uri if self._is_memory else str(self.db_path)
-            migrator = DatabaseMigrator(migrator_path)
-            migrator.run_all_migrations()
-        except Exception as e:
-            raise RuntimeError(f"Failed to initialize database: {e}")
+        # Run migrations only if APPLY_MIGRATIONS=1
+        apply_migrations = os.environ.get('APPLY_MIGRATIONS', '0') == '1'
+        if apply_migrations:
+            try:
+                migrator_path = self._memory_uri if self._is_memory else str(self.db_path)
+                migrator = DatabaseMigrator(migrator_path)
+                migrator.run_all_migrations()
+                logger.info("Database migrations completed successfully")
+            except Exception as e:
+                # Log the error but don't crash - allow the app to start
+                logger.error(f"Database migration failed: {e}")
+                logger.warning("Continuing without applying migrations")
+        else:
+            logger.info("Skipping database migrations (APPLY_MIGRATIONS=0)")
     
     def get_connection(self) -> sqlite3.Connection:
         """Get database connection with row factory"""
