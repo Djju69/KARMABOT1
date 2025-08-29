@@ -560,6 +560,9 @@ async def main():
     logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Using bot token: %s", _mask_token(token))
     
+    # Define safe_token for preflight check
+    safe_token = _mask_token(token)
+    
     # Initialize bot
     bot = Bot(token=token, default=default_properties)
     
