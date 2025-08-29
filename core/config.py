@@ -1,9 +1,29 @@
 from __future__ import annotations
 from pydantic import BaseSettings, BaseModel, Field
 
+def mask_token(token: str | None) -> str:
+    """Securely mask a token for logging purposes.
+    
+    Args:
+        token: The token to mask
+        
+    Returns:
+        str: Masked token (first 4 and last 4 chars visible, rest masked)
+    """
+    if not token or not isinstance(token, str):
+        return "<not_set>"
+    token = token.strip()
+    if len(token) <= 8:
+        return "<invalid_length>"
+    return f"{token[:4]}...{token[-4:]}"
+
 class Bots(BaseModel):
     bot_token: str
     admin_id: int
+    
+    def masked_token(self) -> str:
+        """Get a masked version of the bot token for logging."""
+        return mask_token(self.bot_token)
 
 class FeatureFlags(BaseModel):
     # Явные флаги, используемые в проекте

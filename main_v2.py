@@ -512,8 +512,17 @@ async def main():
     ensure_database_ready()
 
     default_properties = DefaultBotProperties(parse_mode="HTML")
+    
+    # Get and validate token
+    if not settings.bots.bot_token:
+        logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
+        return
+        
     # Strip accidental whitespace/newlines to satisfy aiogram token validator
-    safe_token = (settings.bots.bot_token or "").strip()
+    safe_token = settings.bots.bot_token.strip()
+    logger.info("🔑 Using bot token: %s", settings.bots.masked_token())
+    
+    # Initialize bot with token
     bot = Bot(token=safe_token, default=default_properties)
     
     # Preflight token check
