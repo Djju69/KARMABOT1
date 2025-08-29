@@ -9,6 +9,7 @@ import logging
 
 from ..database.db_v2 import db_v2
 from ..services.card_renderer import card_service
+from ..utils.helpers import get_city_id_from_message
 from ..keyboards.reply_v2 import (
     get_return_to_main_menu, 
     get_location_request_keyboard,
@@ -489,6 +490,11 @@ def get_category_router() -> Router:
 __all__ = [
     'show_categories_v2',
     'show_nearest_v2',
+    'show_places_page',
+    'show_offers_page',
+    'show_place_details',
+    'show_offer_details',
+    'show_category_items',
     'handle_location_v2',
     'category_selected_v2',
     'handle_profile',

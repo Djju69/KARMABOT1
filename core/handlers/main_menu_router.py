@@ -13,14 +13,48 @@ from ..utils.locales_v2 import translations
 from .basic import (
     ensure_policy_accepted, feedback_user, get_file, get_hello, get_inline,
     get_location, get_photo, get_start, get_video, hiw_user, main_menu,
-    on_language_select, open_cabinet, user_regional_rest, show_nearest_v2, show_categories_v2
+    on_language_select, open_cabinet, user_regional_rest
 )
+
+# Импорт функций из category_handlers_v2
 from .category_handlers_v2 import (
     handle_profile, on_hotels, on_hotels_submenu, on_restaurants, on_shops, on_spa,
     on_transport, on_tours, on_shops_submenu, on_tours_submenu, on_spa_submenu,
-    on_transport_submenu, show_places_page, show_offers_page, show_place_details, show_offer_details,
-    show_category_items
+    on_transport_submenu, show_catalog_page, show_nearest_v2, show_categories_v2
 )
+
+# Фолбэк на старые версии функций, если новые недоступны
+if 'show_nearest_v2' not in globals():
+    from .basic import show_nearest as show_nearest_v2  # type: ignore
+
+if 'show_categories_v2' not in globals():
+    from .basic import show_categories as show_categories_v2  # type: ignore
+
+# Заглушки для отсутствующих функций
+async def show_places_page(*args, **kwargs):
+    """Заглушка для функции показа страницы мест"""
+    logger.warning("show_places_page function is not implemented")
+    return None
+
+async def show_offers_page(*args, **kwargs):
+    """Заглушка для функции показа страницы предложений"""
+    logger.warning("show_offers_page function is not implemented")
+    return None
+
+async def show_place_details(*args, **kwargs):
+    """Заглушка для функции показа деталей места"""
+    logger.warning("show_place_details function is not implemented")
+    return None
+
+async def show_offer_details(*args, **kwargs):
+    """Заглушка для функции показа деталей предложения"""
+    logger.warning("show_offer_details function is not implemented")
+    return None
+
+async def show_category_items(*args, **kwargs):
+    """Заглушка для функции показа элементов категории"""
+    logger.warning("show_category_items function is not implemented")
+    return None
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
