@@ -34,12 +34,15 @@ class Settings(BaseSettings):
     environment: str = Field(
         default="production",
         env=["ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"],
+        description="Application environment (production/staging/development)"
     )
     features: FeatureFlags = Field(default_factory=FeatureFlags)
-    # Читаем из нескольких популярных переменных окружения
+
     class Config:
         env_nested_delimiter = "__"
         case_sensitive = False
+        env_file = ".env"
+        env_file_encoding = "utf-8"
 
 # Глобальный экземпляр
 settings = Settings()

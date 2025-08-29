@@ -17,6 +17,25 @@ from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.exceptions import TelegramUnauthorizedError
 
+def _env_name(settings) -> str:
+    """Get environment name with fallback to common environment variables.
+    
+    Args:
+        settings: The settings object that may contain environment attribute
+        
+    Returns:
+        str: Environment name (defaults to 'production' if not specified)
+    """
+    v = getattr(settings, "environment", None)
+    if v:
+        return v
+    # fallback to common environment variables
+    for key in ("ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"):
+        val = os.getenv(key)
+        if val:
+            return val
+    return "production"
+
 # Load environment variables (only in non-production)
 if not (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production"):
     # Try to load from .env.production first, then .env
@@ -531,7 +550,8 @@ async def main():
         return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
     
     # Log environment info for debugging
-    logger.info("🔑 Environment: %s", settings.environment)
+    env = _env_name(settings)
+    logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Using bot token: %s", _mask_token(settings.bots.bot_token))
     
     # Strip accidental whitespace/newlines to satisfy aiogram token validator
