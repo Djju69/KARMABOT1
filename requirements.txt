@@ -14,4 +14,4 @@ passlib[bcrypt]
 sqlalchemy>=2.0.0
 aiosqlite
 jinja2
-redis
+redis>=5.0.0  # Required for async support
