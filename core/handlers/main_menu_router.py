@@ -3,7 +3,7 @@ from aiogram.types import Message
 
 from ..services.profile import profile_service
 from ..utils.locales_v2 import translations
-from .basic import get_start, on_help, on_language_select, open_cabinet, ensure_policy_accepted
+from .basic import get_start, on_language_select, open_cabinet, ensure_policy_accepted
 from .category_handlers_v2 import (
     show_categories_v2, on_restaurants, on_spa, on_hotels, on_transport, on_tours,
     on_transport_submenu, on_tours_submenu, on_spa_submenu, on_hotels_submenu,
