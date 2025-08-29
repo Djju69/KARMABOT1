@@ -2,6 +2,7 @@
 Enhanced database service with backward compatibility
 Implements new schema while maintaining legacy support
 """
+import os
 import sqlite3
 from pathlib import Path
 from typing import List, Dict, Optional, Any
