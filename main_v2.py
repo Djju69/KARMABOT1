@@ -2,6 +2,7 @@
 KARMABOT1 - Enhanced main entry point with backward compatibility
 Integrates all new components while preserving existing functionality
 """
+
 import asyncio
 import logging
 import os
@@ -11,11 +12,19 @@ import sys
 import aiohttp
 from typing import Optional
 
-# Safe environment loading
+# В проде .env не загружаем; локально можно, но без override системных переменных
 try:
     from dotenv import load_dotenv
 except Exception:
     load_dotenv = None
+
+IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
+if load_dotenv and not IS_PROD:
+    load_dotenv(override=False)
+
+# Санитизируем токен из ENV (убираем случайные \n и пробелы)
+if os.getenv("BOTS__BOT_TOKEN"):
+    os.environ["BOTS__BOT_TOKEN"] = os.environ["BOTS__BOT_TOKEN"].strip()
 
 # Configure logging first
 logging.basicConfig(
@@ -27,26 +36,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Safe environment loading
+try:
+    from dotenv import load_dotenv
+except Exception as e:
+    logger.warning("Failed to import dotenv: %s", str(e))
+    load_dotenv = None
+
+# Detect production environment
+IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
+
+
 def _mask_token(t: str | None) -> str:
     if not t: return "<none>"
-    return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else ("***" if t else "<none>")
+    return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
+
+def resolve_bot_token(settings) -> str:
+    t = os.getenv("BOTS__BOT_TOKEN")
+    if t and t.strip():
+        return t.strip()
+    return getattr(getattr(settings, "bots", None), "bot_token", "")
 
 def _env_name(settings) -> str:
     v = getattr(settings, "environment", None)
     if v: return v
-    for key in ("ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"):
-        if os.getenv(key): 
-            return os.getenv(key)
+    for key in ("ENVIRONMENT","ENV","APP_ENV","RAILWAY_ENVIRONMENT","RAILWAY_STAGE"):
+        if os.getenv(key): return os.getenv(key)
     return "production"
 
-# Sanitize token from environment
-if os.getenv("BOTS__BOT_TOKEN"):
-    os.environ["BOTS__BOT_TOKEN"] = os.environ["BOTS__BOT_TOKEN"].strip()
-
-# Load .env only in non-production
-IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
-if load_dotenv and not IS_PROD:
-    load_dotenv(override=False)
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
@@ -526,21 +543,16 @@ async def main():
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
     # Explicit config echo for deploy diagnostics (safe/masked)
-    try:
-        dp_flag = os.getenv("DISABLE_POLLING", "").lower()
-        redis_url = _get_redis_url()
-        masked_redis = "set" if redis_url else "empty"
-        logger.info(
-            "[CFG] env=%s partner_fsm=%s moderation=%s disable_polling=%s redis_url=%s",
-            settings.environment,
-            getattr(settings.features, "partner_fsm", False),
-            getattr(settings.features, "moderation", False),
-            dp_flag if dp_flag else "",
-            masked_redis,
-        )
-    except Exception:
-        pass
+    dp_flag = os.getenv("DISABLE_POLLING", "").lower()
+    redis_url = _get_redis_url()
     ensure_database_ready()
+    
+    # Set bot commands
+    try:
+        await set_commands()
+    except Exception as e:
+        logger.error("❌ Failed to set bot commands: %s", e, exc_info=True)
+        return
 
     default_properties = DefaultBotProperties(parse_mode="HTML")
     
@@ -549,32 +561,27 @@ async def main():
         logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
         return
     
-    # Log environment info for debugging
+    # Resolve token from environment
+    token = resolve_bot_token(settings)
     env = _env_name(settings)
-    logger.info("🔑 Environment: %s", env)
-    logger.info("🔑 Using bot token: %s", _mask_token(settings.bots.bot_token))
     
-    # Sanitize token
-    safe_token = settings.bots.bot_token.strip()
-    if not safe_token:
-        logger.error("❌ BOTS__BOT_TOKEN is empty after sanitization")
+    logger.info("🔑 Environment: %s", env)
+    logger.info("🔑 Using bot token: %s", _mask_token(token))
+    
+    if not token:
+        logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
         return
     
     # Initialize bot with token
-    bot = Bot(token=safe_token, default=default_properties)
+    bot = Bot(token=token, default=default_properties)
     
-    # Preflight token check with Telegram API
+    # Preflight check with Telegram API
     try:
         me = await bot.get_me()
         logger.info("✅ Bot authorized: @%s (id=%s)", me.username, me.id)
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("🗑️  Deleted any existing webhook")
         
-        # Delete any existing webhook to ensure clean state
-        try:
-            await bot.delete_webhook(drop_pending_updates=True)
-            logger.info("🗑️  Deleted any existing webhook")
-        except Exception as e:
-            logger.warning("⚠️  Could not delete webhook: %s", e)
-            
     except TelegramUnauthorizedError as e:
         logger.error("❌ Invalid BOT TOKEN (BOTS__BOT_TOKEN). %s", e)
         # Properly close the session before exiting
@@ -583,6 +590,13 @@ async def main():
         except Exception as e:
             logger.error("Error closing bot session: %s", e)
         return  # Exit if token is invalid
+    except Exception as e:
+        logger.error("❌ Preflight check failed: %s", e, exc_info=True)
+        try:
+            await bot.session.close()
+        except Exception:
+            pass
+        return
             
     dp = Dispatcher()
 
