@@ -2,8 +2,7 @@
 builder = "nixpacks"
 
 [deploy]
-# Run both web and bot in the same container, exit if either fails
-startCommand = "sh -lc 'set -e; python3 main_v2.py & python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080} & wait -n'"
+startCommand = "sh -lc 'python3 main_v2.py & BOT_PID=$!; python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080} & WEB_PID=$!; while kill -0 $BOT_PID 2>/dev/null && kill -0 $WEB_PID 2>/dev/null; do sleep 1; done; if ! kill -0 $BOT_PID 2>/dev/null; then wait $BOT_PID; S=$?; echo Bot exited:$S; kill $WEB_PID 2>/dev/null || true; wait $WEB_PID || true; exit $S; else wait $WEB_PID; S=$?; echo Web exited:$S; kill $BOT_PID 2>/dev/null || true; wait $BOT_PID || true; exit $S; fi'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300000
 
