@@ -119,4 +119,12 @@ class _CacheFacade(BaseCacheService):
 # Экспорт как раньше: теперь импорт `cache_service` снова работает
 cache_service: BaseCacheService = _CacheFacade()
 
-__all__ = ["get_cache_service", "cache_service", "BaseCacheService"]
+# ---- back-compat shim for older imports ----
+async def init_cache_service() -> BaseCacheService:
+    """
+    Back-compat: некоторые модули импортируют init_cache_service.
+    Ленивая инициализация без блокировок; просто возвращает singleton.
+    """
+    return await get_cache_service()
+
+__all__ = ["get_cache_service", "cache_service", "init_cache_service", "BaseCacheService"]
