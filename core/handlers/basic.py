@@ -137,3 +137,23 @@ async def get_file(message: Message, bot: Bot, state: FSMContext):
 async def get_location(message: Message, bot: Bot, state: FSMContext):
     await message.answer(text=get_location_text)
     await main_menu(message, bot, state)
+
+
+async def on_language_select(callback_query):
+    """Обработчик выбора языка"""
+    from aiogram.types import CallbackQuery
+    
+    if isinstance(callback_query, CallbackQuery):
+        # Обработка выбора языка
+        selected_lang = callback_query.data.replace('lang_', '')
+        
+        # Здесь должна быть логика смены языка
+        await callback_query.message.edit_text(
+            f"Язык изменен на: {selected_lang}",
+            reply_markup=None
+        )
+        await callback_query.answer()
+    else:
+        # Показ меню выбора языка
+        from core.keyboards.language import get_language_keyboard
+        await callback_query.answer("Выберите язык:", reply_markup=get_language_keyboard())
