@@ -1,28 +1,40 @@
 #!/bin/bash
-echo "=== RAILWAY STARTUP SCRIPT ==="
+
+# Set default DISABLE_POLLING if not set
+export DISABLE_POLLING=${DISABLE_POLLING:-0}
+
+echo "=== KARMA BOT STARTUP SCRIPT ==="
 echo "Current directory: $(pwd)"
-echo "Files in directory:"
-ls -la
-echo ""
-echo "Files in web/:"
-ls -la web || echo "[warn] cannot list web/"
-echo ""
-echo "Python version:"
-python --version
-echo ""
+echo "Python version: $(python --version)"
 echo "Environment variables:"
 echo "BOT_TOKEN: ${BOT_TOKEN:0:10}...${BOT_TOKEN: -4}"
 echo "ADMIN_ID: $ADMIN_ID"
 echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
-echo "PORT: $PORT"
-echo "ALLOW_PARTNER_FOR_CABINET: ${ALLOW_PARTNER_FOR_CABINET:-<unset>}"
-echo "APPLY_MIGRATIONS: ${APPLY_MIGRATIONS:-<unset>}"
-echo "FEATURE_PARTNER_FSM: ${FEATURE_PARTNER_FSM:-<unset>}"
+echo "PORT: ${PORT:-<not set>}"
+echo "DISABLE_POLLING: $DISABLE_POLLING"
 echo "ENABLE_POLLING_LEADER_LOCK: ${ENABLE_POLLING_LEADER_LOCK:-<unset>}"
 echo "PREEMPT_LEADER: ${PREEMPT_LEADER:-<unset>}"
 echo "FASTAPI_ONLY: ${FASTAPI_ONLY:-<unset>}"
-echo "DISABLE_POLLING: ${DISABLE_POLLING:-<unset>}"
 echo "LOYALTY_MIN_SPEND_PTS: ${LOYALTY_MIN_SPEND_PTS:-<unset>}"
+
+# Start the bot if polling is enabled
+if [ "$DISABLE_POLLING" = "0" ]; then
+    echo "Starting bot in background..."
+    python3 main_v2.py &
+    BOT_PID=$!
+    echo "Bot started with PID: $BOT_PID"
+fi
+
+# Always start the web server
+echo "Starting web server..."
+python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080}
+
+# If we get here, the web server has exited
+if [ -n "${BOT_PID:-}" ]; then
+    echo "Web server stopped, stopping bot..."
+    kill $BOT_PID 2>/dev/null
+    wait $BOT_PID 2>/dev/null || true
+fi
 echo ""
 echo "Dependency versions:"
 python - << 'PY'
