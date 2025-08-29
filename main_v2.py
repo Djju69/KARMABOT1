@@ -9,10 +9,22 @@ import secrets
 import hashlib
 import sys
 import aiohttp
+from typing import Optional
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
+
+def _get_redis_url() -> str:
+    """Safely get Redis URL from environment or settings.
+    Priority: ENV -> settings.redis_url -> settings.database.redis_url
+    """
+    return (
+        os.getenv("REDIS_URL")
+        or getattr(__import__("core.settings", fromlist=["settings"]).settings, "redis_url", None)
+        or getattr(getattr(__import__("core.settings", fromlist=["settings"]).settings, "database", None), "redis_url", None)
+        or ""
+    )
 
 # Core imports
 from core.settings import settings
@@ -450,7 +462,8 @@ async def main():
     # Explicit config echo for deploy diagnostics (safe/masked)
     try:
         dp_flag = os.getenv("DISABLE_POLLING", "").lower()
-        masked_redis = "set" if settings.database.redis_url else "empty"
+        redis_url = _get_redis_url()
+        masked_redis = "set" if redis_url else "empty"
         logger.info(
             "[CFG] env=%s partner_fsm=%s moderation=%s disable_polling=%s redis_url=%s",
             settings.environment,
@@ -480,7 +493,7 @@ async def main():
     dp = Dispatcher()
 
     # Connect services
-    profile_service._redis_url = settings.database.redis_url or ""
+    profile_service._redis_url = _get_redis_url()
     await profile_service.connect()
     await cache_service.connect()
     try:
@@ -505,7 +518,7 @@ async def main():
     if lock_enabled:
         lock_ttl = int(os.getenv("POLLING_LEADER_LOCK_TTL", "120"))
         lock_key = f"{settings.environment}:bot:polling:leader"
-        owned, release = await _acquire_leader_lock(settings.database.redis_url, lock_key, lock_ttl)
+        owned, release = await _acquire_leader_lock(_get_redis_url(), lock_key, lock_ttl)
         if not owned:
             logger.error("❌ Another instance holds polling leader lock (%s).", lock_key)
             if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:

@@ -2,12 +2,14 @@
 builder = "nixpacks"
 
 [deploy]
-# Запускаем веб-хелсчек в фоне и бот — в переднем плане
-startCommand = 'sh -lc "python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080} & export DISABLE_POLLING=0; exec python3 main_v2.py"'
+# Run both web and bot in the same container, exit if either fails
+startCommand = "sh -lc 'set -e; python3 main_v2.py & python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080} & wait -n'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300000
 
 [env]
 PYTHON_VERSION = "3.11"
-# BOT_TOKEN и ADMIN_ID НЕ прописывай здесь; они задаются в Railway как секреты/переменные
-# DISABLE_POLLING управляется в startCommand
+DISABLE_POLLING = "0"
+
+# Note: BOT_TOKEN and other sensitive variables should be set in Railway secrets
+# DISABLE_POLLING can be set to "1" to disable the bot temporarily

@@ -12,7 +12,16 @@ try:
 except Exception:  # pragma: no cover
     AsyncRedis = None  # type: ignore
 
-from ..settings import settings
+def _get_redis_url() -> str:
+    """Safely get Redis URL from environment or settings.
+    Priority: ENV -> settings.redis_url -> settings.database.redis_url
+    """
+    return (
+        os.getenv("REDIS_URL")
+        or getattr(__import__("core.settings", fromlist=["settings"]).settings, "redis_url", None)
+        or getattr(getattr(__import__("core.settings", fromlist=["settings"]).settings, "database", None), "redis_url", None)
+        or ""
+    )
 
 
 class AdminsService:
