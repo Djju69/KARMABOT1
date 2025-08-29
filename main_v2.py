@@ -30,6 +30,23 @@ def _get_redis_url() -> str:
 from core.settings import settings
 from core.utils.commands import set_commands
 from core.utils.logging_setup import setup_logging
+
+# Ensure settings.features exists
+try:
+    from core.config import FeatureFlags  # if exists in config.py
+except ImportError:
+    # minimal local stub to prevent crashes
+    from pydantic import BaseModel
+    class FeatureFlags(BaseModel):
+        partner_fsm: bool = False
+        loyalty_points: bool = True
+        referrals: bool = True
+        web_cabinets: bool = True
+
+# Ensure settings.features exists
+if not hasattr(settings, "features") or settings.features is None:
+    settings.features = FeatureFlags()  # type: ignore[attr-defined]
+
 from core.middlewares.locale import LocaleMiddleware
 from core.database.migrations import ensure_database_ready
 
@@ -500,16 +517,19 @@ async def main():
     # Initialize cache service
     redis_url = _get_redis_url()
     try:
-        await init_cache_service(redis_url)
-        cache_service = get_cache_service()
-        if isinstance(cache_service._r, aioredis.Redis):
+        # Initialize and get the cache service with proper await
+        cache_service = await get_cache_service()
+        # Check if we're using Redis
+        if hasattr(cache_service, 'client') and cache_service.client is not None:
+            await cache_service.ping()  # Test connection
             logger.info(f"Initialized Redis cache at {redis_url}")
         else:
             logger.warning("Using NullCacheService - Redis not available")
     except Exception as e:
         logger.error(f"Cache initialization error: {e}")
         logger.warning("Falling back to NullCacheService")
-    cache_service = get_cache_service()
+        from core.services.cache import NullCacheService
+        cache_service = NullCacheService()
 
     # Register middlewares
     dp.update.middleware(LocaleMiddleware())
