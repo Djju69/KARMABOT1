@@ -10,37 +10,52 @@ import hashlib
 import sys
 import aiohttp
 from typing import Optional
-from dotenv import load_dotenv
+
+# Safe environment loading
+try:
+    from dotenv import load_dotenv
+except Exception:
+    load_dotenv = None
+
+# Configure logging first
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+def _mask_token(t: str | None) -> str:
+    if not t: return "<none>"
+    return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else ("***" if t else "<none>")
+
+def _env_name(settings) -> str:
+    v = getattr(settings, "environment", None)
+    if v: return v
+    for key in ("ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"):
+        if os.getenv(key): 
+            return os.getenv(key)
+    return "production"
+
+# Sanitize token from environment
+if os.getenv("BOTS__BOT_TOKEN"):
+    os.environ["BOTS__BOT_TOKEN"] = os.environ["BOTS__BOT_TOKEN"].strip()
+
+# Load .env only in non-production
+IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
+if load_dotenv and not IS_PROD:
+    load_dotenv(override=False)
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
 from aiogram.exceptions import TelegramUnauthorizedError
 
-def _env_name(settings) -> str:
-    """Get environment name with fallback to common environment variables.
-    
-    Args:
-        settings: The settings object that may contain environment attribute
-        
-    Returns:
-        str: Environment name (defaults to 'production' if not specified)
-    """
-    v = getattr(settings, "environment", None)
-    if v:
-        return v
-    # fallback to common environment variables
-    for key in ("ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"):
-        val = os.getenv(key)
-        if val:
-            return val
-    return "production"
-
-# Load environment variables (only in non-production)
-if not (os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production"):
-    # Try to load from .env.production first, then .env
-    load_dotenv(".env.production", override=False)
-    load_dotenv(override=False)  # Load .env with lower priority
+# Environment loading is already handled at the top of the file
+# Remove duplicate _env_name function and environment loading code
 
 def _get_redis_url() -> str:
     """Safely get Redis URL from environment or settings.
@@ -525,37 +540,25 @@ async def main():
         )
     except Exception:
         pass
-    # Optional: disable polling for "empty" deploys (e.g., to avoid conflicts on Railway)
-    if os.getenv("DISABLE_POLLING", "").lower() in {"1", "true", "yes"}:
-        logger.warning("Bot polling is DISABLED by DISABLE_POLLING env. Staying idle.")
-        # Keep process alive without touching Telegram getUpdates
-        if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:
-            logger.info("EXIT_ON_CONFLICT=1 → exiting instead of waiting (DISABLE_POLLING)")
-            return
-        await asyncio.Event().wait()
-        return
-
     ensure_database_ready()
 
     default_properties = DefaultBotProperties(parse_mode="HTML")
     
     # Get and validate token
-    if not settings.bots.bot_token:
+    if not getattr(settings, 'bots', None) or not settings.bots.bot_token:
         logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
         return
-        
-    # Safe token masking for logging
-    def _mask_token(t: str | None) -> str:
-        if not t: return "<none>"
-        return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
     
     # Log environment info for debugging
     env = _env_name(settings)
     logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Using bot token: %s", _mask_token(settings.bots.bot_token))
     
-    # Strip accidental whitespace/newlines to satisfy aiogram token validator
+    # Sanitize token
     safe_token = settings.bots.bot_token.strip()
+    if not safe_token:
+        logger.error("❌ BOTS__BOT_TOKEN is empty after sanitization")
+        return
     
     # Initialize bot with token
     bot = Bot(token=safe_token, default=default_properties)

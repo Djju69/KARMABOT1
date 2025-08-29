@@ -1,5 +1,11 @@
 from __future__ import annotations
-from pydantic import BaseSettings, BaseModel, Field
+from __future__ import annotations
+import os
+from typing import Optional
+from pydantic import BaseSettings, BaseModel, Field, validator
+
+# Detect production environment
+IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
 
 class Bots(BaseModel):
     bot_token: str
@@ -8,6 +14,12 @@ class Bots(BaseModel):
     def masked_token(self) -> str:
         t = self.bot_token or ""
         return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else ("***" if t else "<none>")
+
+    @validator('bot_token', pre=True)
+    def sanitize_token(cls, v):
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 class FeatureFlags(BaseModel):
     partner_fsm: bool = False
@@ -33,16 +45,23 @@ class Settings(BaseSettings):
     bots: Bots
     environment: str = Field(
         default="production",
+        description="Application environment (production/staging/development)",
         env=["ENVIRONMENT", "ENV", "APP_ENV", "RAILWAY_ENVIRONMENT", "RAILWAY_STAGE"],
-        description="Application environment (production/staging/development)"
     )
     features: FeatureFlags = Field(default_factory=FeatureFlags)
 
     class Config:
         env_nested_delimiter = "__"
         case_sensitive = False
-        env_file = ".env"
+        env_file = ".env" if not IS_PROD else None
         env_file_encoding = "utf-8"
+
+    def __str__(self) -> str:
+        # Safe string representation that doesn't expose sensitive data
+        return (
+            f"<Settings environment='{self.environment}' "
+            f"bot_token='{self.bots.masked_token()}'>"
+        )
 
 # Глобальный экземпляр
 settings = Settings()
