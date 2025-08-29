@@ -2,11 +2,11 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "sh -c 'python -m uvicorn web.main:app --host 0.0.0.0 --port $PORT'"
+startCommand = "sh -lc 'export DISABLE_POLLING=0; python3 main_v2.py & python3 -m uvicorn web.main:app --host 0.0.0.0 --port ${PORT:-8080}'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300000
 
 [env]
 PYTHON_VERSION = "3.11"
-DISABLE_POLLING = "1"
-# PYTHON_VERSION can stay if already present
+# В рантайме DISABLE_POLLING принудительно ставим 0 через startCommand, чтобы бот запустился
+DISABLE_POLLING = "0"
