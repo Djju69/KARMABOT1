@@ -520,7 +520,13 @@ async def main():
         
     # Strip accidental whitespace/newlines to satisfy aiogram token validator
     safe_token = settings.bots.bot_token.strip()
-    logger.info("🔑 Using bot token: %s", settings.bots.masked_token())
+    
+    # Safe token masking for logging
+    def _mask_token(t: str | None) -> str:
+        if not t: return "<none>"
+        return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
+    
+    logger.info("🔑 Using bot token: %s", _mask_token(getattr(settings.bots, "bot_token", None)))
     
     # Initialize bot with token
     bot = Bot(token=safe_token, default=default_properties)
