@@ -26,9 +26,9 @@ main_menu_router = Router(name="main_menu_router")
         ]
     )
 )
-async def _(message: Message):
+async def _(message: Message, bot: Bot, state: FSMContext):
     # Force-open the main menu when users type "menu" manually
-    await get_start(message)
+    await get_start(message, bot, state)
 
 @main_menu_router.message(F.text.in_([t.get('choose_category', '') for t in translations.values()]))
 async def _(message: Message, bot: Bot, lang: str):
@@ -171,5 +171,5 @@ async def _(message: Message, bot: Bot, lang: str):
 
 
 @main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
-async def _(message: Message, lang: str):
-    await get_start(message)
+async def _(message: Message, bot: Bot, state: FSMContext, lang: str):
+    await get_start(message, bot, state)

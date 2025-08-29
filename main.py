@@ -74,8 +74,14 @@ async def start():
     dp.include_router(callback_router)
 
     # Старт, смена языка
-    dp.message.register(get_start, CommandStart())
-    dp.message.register(get_start, F.text.in_(localized_texts['choose_language']))
+    dp.message.register(
+        lambda message, bot, state: get_start(message, bot, state), 
+        CommandStart()
+    )
+    dp.message.register(
+        lambda message, bot, state: get_start(message, bot, state), 
+        F.text.in_(localized_texts['choose_language'])
+    )
     dp.callback_query.register(language_callback, F.data.startswith("lang_"))
 
     # Помощь, отзывы, главное меню
