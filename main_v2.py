@@ -90,6 +90,15 @@ from core.settings import settings
 from core.utils.commands import set_commands
 from core.utils.logging_setup import setup_logging
 
+# Router imports
+from core.handlers import basic_router, callback_router, main_menu_router
+from core.handlers.profile import get_profile_router
+from core.handlers.activity import get_activity_router
+from core.handlers.partner import get_partner_router
+from core.handlers.moderation import get_moderation_router
+from core.handlers.admin_cabinet import get_admin_cabinet_router
+from core.handlers.category_handlers import get_category_router
+
 # Ensure settings.features exists
 try:
     from core.config import FeatureFlags  # if exists in config.py
@@ -427,43 +436,127 @@ async def _acquire_pg_leader_lock(db_url: str, key: str):
 
     return True, _release
 
+def dump_router(router, prefix=""):
+    """Debug function to dump router's message handlers and sub-routers."""
+    try:
+        obs = router.observers.get("message")
+        if obs:
+            for h in getattr(obs, "handlers", []):
+                cb = getattr(h, "callback", None)
+                name = getattr(cb, "__name__", repr(cb))
+                filters = getattr(h, "filters", None)
+                logger.info("%s📌 message handler: %s | filters=%s", prefix, name, filters)
+    except Exception as e:
+        logger.error("%sError dumping router: %s", prefix, e, exc_info=True)
+
+    # Recursively process sub-routers
+    for child in getattr(router, "sub_routers", []):
+        logger.info("%s➡️ child router: %r id=%s", prefix, child, id(child))
+        dump_router(child, prefix + "  ")
+
 async def setup_routers(dp: Dispatcher):
     """Centralized function to set up all bot routers with correct priority."""
+    logger.info("🔧 Setting up routers...")
+    
+    # Add a catch-all handler at the end to log unhandled updates
+    @dp.update()
+    async def unhandled_update(update: Update, bot: Bot, state: FSMContext):
+        """Log all unhandled updates for debugging."""
+        logger.warning("⚠️ Unhandled update: %s", update)
+        
+        # Log more details about the update
+        if update.message:
+            logger.warning("📩 Unhandled message: %s (chat_id=%s, from_id=%s, text=%s)",
+                         update.message.message_id,
+                         update.message.chat.id,
+                         update.message.from_user.id if update.message.from_user else None,
+                         update.message.text)
+        elif update.callback_query:
+            logger.warning("🔘 Unhandled callback: %s (data=%s, from_id=%s)",
+                         update.callback_query.id,
+                         update.callback_query.data,
+                         update.callback_query.from_user.id)
 
     # 1. Main menu router must be first to catch main commands
+    logger.info("\n🔵 [ROUTER SETUP] Including main_menu_router...")
+    logger.info("🔍 Router details: %r id=%s from %s", 
+               main_menu_router, id(main_menu_router), "core.handlers.main_menu_router")
+    
+    # Add middleware for debugging
+    @main_menu_router.message.middleware()
+    async def log_middleware(handler, event: Message, data: dict):
+        logger.debug(f"📨 [MAIN_MENU] Received message: {event.text} (chat_id={event.chat.id})")
+        result = await handler(event, data)
+        logger.debug(f"✅ [MAIN_MENU] Handled message: {event.text}")
+        return result
+    
     dp.include_router(main_menu_router)
+    logger.info("✅ [ROUTER SETUP] main_menu_router included successfully")
 
     # 2. Basic and callback routers for general commands
+    logger.info("\n🔗 Including basic_router...")
+    logger.info("🔎 will include %r id=%s from %s", basic_router, id(basic_router), "core.handlers.basic")
     dp.include_router(basic_router)
+    logger.info("🔗 include_router: %r id=%s", basic_router, id(basic_router))
+
+    logger.info("\n🔗 Including callback_router...")
+    logger.info("🔎 will include %r id=%s from %s", callback_router, id(callback_router), "core.handlers.callback")
     dp.include_router(callback_router)
+    logger.info("🔗 include_router: %r id=%s", callback_router, id(callback_router))
 
     # 3. Category router for category-specific logic
+    logger.info("\n🔗 Creating and including category_router...")
     category_router = get_category_router()
+    logger.info("🔎 will include %r id=%s from %s", category_router, id(category_router), "get_category_router()")
     dp.include_router(category_router)
+    logger.info("🔗 include_router: %r id=%s", category_router, id(category_router))
 
     # 4. Profile router (inline cabinet)
-    dp.include_router(get_profile_router())
+    logger.info("\n🔗 Creating and including profile_router...")
+    profile_router = get_profile_router()
+    logger.info("🔎 will include %r id=%s from %s", profile_router, id(profile_router), "get_profile_router()")
+    dp.include_router(profile_router)
+    logger.info("🔗 include_router: %r id=%s", profile_router, id(profile_router))
 
     # 4.1 Activity (Loyalty) router
-    dp.include_router(get_activity_router())
+    logger.info("\n🔗 Creating and including activity_router...")
+    activity_router = get_activity_router()
+    logger.info("🔎 will include %r id=%s from %s", activity_router, id(activity_router), "get_activity_router()")
+    dp.include_router(activity_router)
+    logger.info("🔗 include_router: %r id=%s", activity_router, id(activity_router))
 
     # 5. Feature-flagged routers
     if getattr(settings.features, "partner_fsm", False):
+        logger.info("\n🔗 Creating and including partner_router...")
         partner_router = get_partner_router()
+        logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
         dp.include_router(partner_router)
+        logger.info("🔗 include_router: %r id=%s", partner_router, id(partner_router))
         logger.info("✅ Partner FSM enabled")
     else:
         logger.info("⚠️ Partner FSM disabled")
 
     if getattr(settings.features, "moderation", False):
+        logger.info("\n🔗 Creating and including moderation_router...")
         moderation_router = get_moderation_router()
+        logger.info("🔎 will include %r id=%s from %s", moderation_router, id(moderation_router), "get_moderation_router()")
         dp.include_router(moderation_router)
+        logger.info("🔗 include_router: %r id=%s", moderation_router, id(moderation_router))
+        
         # Admin cabinet router (inline menu under adm:*)
+        logger.info("\n🔗 Creating and including admin_router...")
         admin_router = get_admin_cabinet_router()
+        logger.info("🔎 will include %r id=%s from %s", admin_router, id(admin_router), "get_admin_cabinet_router()")
         dp.include_router(admin_router)
+        logger.info("🔗 include_router: %r id=%s", admin_router, id(admin_router))
         logger.info("✅ Moderation and Admin Cabinet enabled")
     else:
         logger.info("⚠️ Moderation and Admin Cabinet disabled")
+    
+    # Dump all registered handlers for debugging
+    logger.info("\n==== ROUTERS DUMP START ====")
+    dump_router(dp)
+    logger.info("==== ROUTERS DUMP END ====\n")
 
 async def _preflight_polling_conflict(bot_token: str) -> bool:
     """Call Telegram getUpdates once to detect 409 Conflict preflight.
