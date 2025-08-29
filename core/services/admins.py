@@ -2,7 +2,7 @@
 Admins service: dynamic admin list with super admin, optional Redis backend, in-memory fallback.
 """
 from __future__ import annotations
-from typing import Optional, Set, List
+from typing import Optional, Set, List, Any
 import time
 import os
 import logging
@@ -153,5 +153,18 @@ class AdminsService:
             return False, "❌ Ошибка при удалении админа."
 
 
-# Singleton
-admins_service = AdminsService(redis_url=settings.database.redis_url)
+def _get_redis_url() -> Optional[str]:
+    """Safely get Redis URL from various sources with fallbacks."""
+    return (
+        os.getenv("REDIS_URL")
+        or getattr(settings, "redis_url", None)
+        or getattr(getattr(settings, "cache", None), "redis_url", None)
+        or getattr(getattr(settings, "database", None), "redis_url", None)
+    )
+
+# Initialize with safe fallback
+try:
+    admins_service = AdminsService(redis_url=_get_redis_url())
+except Exception as e:
+    logging.warning(f"[admins] fallback to in-memory; reason: {e}")
+    admins_service = AdminsService(redis_url=None)
