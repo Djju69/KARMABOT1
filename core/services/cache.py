@@ -120,10 +120,10 @@ class _CacheFacade(BaseCacheService):
 cache_service: BaseCacheService = _CacheFacade()
 
 # ---- back-compat shim for older imports ----
-async def init_cache_service() -> BaseCacheService:
+async def init_cache_service(*_args, **_kwargs) -> BaseCacheService:
     """
-    Back-compat: некоторые модули импортируют init_cache_service.
-    Ленивая инициализация без блокировок; просто возвращает singleton.
+    Back-compat shim: некоторые места вызывают init_cache_service(app|settings).
+    Аргументы игнорируются. Возвращаем инициализированный singleton.
     """
     return await get_cache_service()
 
