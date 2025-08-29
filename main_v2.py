@@ -14,6 +14,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
+from aiogram.exceptions import TelegramUnauthorizedError
 
 def _get_redis_url() -> str:
     """Safely get Redis URL from environment or settings.
@@ -190,17 +191,19 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
                 if cur == token:
                     await redis.delete(key)
                     logger.info("🧹 Polling leader lock released (key=%s)", key)
-            except Exception:
-                pass
-            if refresh_task:
-                refresh_task.cancel()
-                try:
-                    await refresh_task
-                except Exception:
-                    pass
+            finally:
+                if refresh_task:
+                    refresh_task.cancel()
+                    try:
+                        await refresh_task
+                    except Exception:
+                        pass
         finally:
             try:
-                await redis.close()
+                if hasattr(redis, 'aclose'):
+                    await redis.aclose()  # redis-py 5.x+
+                else:
+                    await redis.close()   # backward compatibility
             except Exception:
                 pass
 
@@ -512,6 +515,19 @@ async def main():
     # Strip accidental whitespace/newlines to satisfy aiogram token validator
     safe_token = (settings.bots.bot_token or "").strip()
     bot = Bot(token=safe_token, default=default_properties)
+    
+    # Preflight token check
+    try:
+        me = await bot.get_me()
+        logger.info("✅ Bot authorized: @%s (id=%s)", me.username, me.id)
+    except TelegramUnauthorizedError as e:
+        logger.error("❌ Invalid BOT TOKEN (BOTS__BOT_TOKEN). %s", e)
+        # Properly close the session before exiting
+        try:
+            await bot.session.close()
+        finally:
+            raise
+            
     dp = Dispatcher()
 
     # Connect services
@@ -586,11 +602,29 @@ async def main():
             return
         await dp.start_polling(bot)
     finally:
+        # Release distributed lock if held
         if release_lock:
             try:
                 await release_lock()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Error releasing lock: %s", e)
+                
+        # Close bot session
+        try:
+            await bot.session.close()
+        except Exception as e:
+            logger.warning("Error closing bot session: %s", e)
+            
+        # Close Redis connection if it exists in cache service
+        try:
+            cache_service = await get_cache_service()
+            if hasattr(cache_service, 'client') and cache_service.client is not None:
+                if hasattr(cache_service.client, 'aclose'):
+                    await cache_service.client.aclose()
+                elif hasattr(cache_service.client, 'close'):
+                    await cache_service.client.close()
+        except Exception as e:
+            logger.warning("Error closing Redis connection: %s", e)
 
 
 if __name__ == "__main__":
