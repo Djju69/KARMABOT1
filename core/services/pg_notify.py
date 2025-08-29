@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import Optional
+import os
+from typing import Optional, Any
 
 try:
     import asyncpg  # type: ignore
@@ -99,4 +100,38 @@ class PGNotifyListener:
             logger.warning(f"PGNotifyListener payload error: {e}")
 
 
-pg_notify_listener = PGNotifyListener(settings.database.url)
+def _get_db_url():
+    # Приоритет: ENV -> settings.database_url -> settings.database.url (если вдруг есть)
+    return (
+        os.getenv("DATABASE_URL")
+        or getattr(settings, "database_url", None)
+        or getattr(getattr(settings, "database", None), "url", None)
+    )
+
+def _is_postgres(url: str | None) -> bool:
+    return bool(url and (url.startswith("postgres://") or url.startswith("postgresql://")))
+
+def _pg_notify_enabled() -> bool:
+    # Включается либо флагом окружения, либо фичей в конфиге
+    return os.getenv("ENABLE_PG_NOTIFY", "0") == "1" or \
+           getattr(getattr(settings, "features", None), "listen_notify", False)
+
+class NoopPGNotifyListener:
+    def __init__(self, *_args, **_kwargs): 
+        pass
+    async def start(self): 
+        pass
+    async def stop(self): 
+        pass
+
+# Инициализация с безопасным фолбэком
+try:
+    DB_URL = _get_db_url()
+    if _pg_notify_enabled() and _is_postgres(DB_URL):
+        pg_notify_listener = PGNotifyListener(DB_URL)
+    else:
+        print(f"[pg_notify] disabled or not Postgres (url={DB_URL}); using Noop")
+        pg_notify_listener = NoopPGNotifyListener()
+except Exception as e:
+    print(f"[pg_notify] init failed: {e}. Using Noop.")
+    pg_notify_listener = NoopPGNotifyListener()
