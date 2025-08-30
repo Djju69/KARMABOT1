@@ -25,20 +25,51 @@ INSTANCE_ID = f"{socket.gethostname()}:{os.getpid()}"
 def get_bot_token_from_env_or_settings(settings):
     """
     ЕДИНЫЙ источник токена: BOTS__BOT_TOKEN > BOT_TOKEN > settings.bots.bot_token
+    Возвращает очищенный токен без пробельных символов.
     """
-    token = os.getenv("BOTS__BOT_TOKEN") or os.getenv("BOT_TOKEN") \
-            or getattr(getattr(settings, "bots", None), "bot_token", None)
-    if not token:
+    import re
+    
+    # Получаем токен из любого источника
+    raw_token = os.getenv("BOTS__BOT_TOKEN") or os.getenv("BOT_TOKEN") \
+               or getattr(getattr(settings, "bots", None), "bot_token", None)
+    
+    if not raw_token:
         raise RuntimeError("BOT token is not set (BOTS__BOT_TOKEN / BOT_TOKEN / settings.bots.bot_token).")
+    
+    # Удаляем все пробельные символы (пробелы, переносы строк, табы)
+    token = re.sub(r'\s+', '', str(raw_token))
+    
+    # Проверяем формат токена (число:буквенно-цифровые_символы)
+    if not re.match(r'^\d+:[A-Za-z0-9_-]+$', token):
+        logger.error(f"❌ Invalid bot token format. First 9 chars: {token[:9]!r}...")
+        raise ValueError("Invalid bot token format. Expected format: '123456789:ABCdefGHIJKLMNOPQRSTUVWXYZ'")
+    
     return token
 
 def make_lock_key(token: str) -> str:
     """
-    Уникальный ключ лидер-лока на окружение и токен.
+    Генерирует безопасный ключ для блокировки на основе окружения и префикса токена.
     Пример: production:bot:83635304:polling:leader
+    
+    Args:
+        token: Токен бота в формате '123456789:ABCdef...'
     """
+    # Безопасно извлекаем первую часть токена (до двоеточия)
+    try:
+        token_id = token.split(':', 1)[0]
+    except (AttributeError, IndexError):
+        token_id = 'invalid'
+    
+    # Очищаем ID от недопустимых символов
+    import re
+    token_id = re.sub(r'[^a-zA-Z0-9_-]', '', token_id)
+    
     env = os.getenv("ENV", "production")
-    return f"{env}:bot:{token[:8]}:polling:leader"
+    # Убедимся, что в ключе нет переносов строк
+    lock_key = f"{env}:bot:{token_id}:polling:leader".replace('\n', '').replace('\r', '')
+    
+    logger.debug(f"Generated lock key: {lock_key}")
+    return lock_key
 
 def _mask(t: str|None) -> str:
     """Mask sensitive information in logs."""
@@ -47,29 +78,13 @@ def _mask(t: str|None) -> str:
     return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
 
 def resolve_bot_token(settings):
-    """Resolve bot token from settings or environment."""
-    # First try environment variable
-    token = get_bot_token_from_env_or_settings(settings)
-    if not token and hasattr(settings, 'bots') and hasattr(settings.bots, 'bot_token'):
-        token = settings.bots.bot_token
-    
-    if not token:
-        logger.error("❌ No bot token found in environment or settings")
+    """Resolve and validate bot token from settings or environment."""
+    try:
+        # Используем нашу улучшенную функцию, которая уже делает санитизацию
+        return get_bot_token_from_env_or_settings(settings)
+    except Exception as e:
+        logger.error(f"❌ Failed to resolve bot token: {e}")
         return None
-        
-    # Ensure token is a string and strip any whitespace
-    token = str(token).strip()
-    
-    # Log first 5 chars of token for debugging (mask the rest)
-    masked = f"{token[:5]}..." if len(token) > 5 else "[too_short]"
-    logger.debug(f"Resolved token (first 5 chars): {masked}")
-    
-    # Basic validation
-    if ':' not in token:
-        logger.error("❌ Invalid token format. Token must be in the format '1234567890:ABCdefGHIjklmNOPQRSTUVWXYZ0123456789'")
-        return None
-        
-    return token
 
 # Load settings after environment is set up
 try:
