@@ -145,3 +145,5 @@ async def on_choose_language_msg(message: Message):
         logger.error("LANG_LEGACY_MENU_FAILED user=%s error=%s", user_id, str(e))
     
     logger.info("LANG_LEGACY_CHANGED user=%s lang=%s", user_id, lang)
+
+# redeploy marker 2025-08-30T11:56:29.3300283+07:00
