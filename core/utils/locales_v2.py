@@ -8,6 +8,74 @@ from pathlib import Path
 
 # Extended translations (backward compatible)
 translations_v2 = {
+    'ko': {
+        # Existing keys
+        'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
+        'choose_category': '🗂️ 카테고리',
+        'show_nearest': '📍 가까운 매장',
+        'choose_language': '🌐 언어',
+        'choose_district': '🌆 지역별',
+        
+        # Keyboard menu items
+        'keyboard.categories': '🗂️ 카테고리',
+        'keyboard.nearest': '📍 가까운 매장',
+        'keyboard.help': '❓ 도움말',
+        'keyboard.choose_language': '🌐 언어 변경',
+        'keyboard.back_to_main': '🏠 메인 메뉴',
+        
+        # Profile/help
+        'profile': '👤 내 정보',
+        'help': '❓ 도움말',
+        
+        # Partner FSM texts
+        'add_card': '➕ 카드 추가',
+        'my_cards': '📋 내 카드',
+        'card_status_draft': '📝 초안',
+        'card_status_pending': '⏳ 검토 중',
+        'card_status_approved': '✅ 승인됨',
+        'card_status_published': '🎉 게시됨',
+        'card_status_rejected': '❌ 거부됨',
+        'card_status_archived': '🗂️ 보관됨',
+        
+        # Moderation texts
+        'moderation_title': '🔍 검토',
+        'approve_card': '✅ 승인',
+        'reject_card': '❌ 거부',
+        'feature_card': '⭐ 추천',
+        'archive_card': '🗂️ 보관',
+        
+        # Common actions
+        'cancel': '❌ 취소',
+        'skip': '⏭️ 건너뛰기',
+        'back': '🔙 뒤로',
+        
+        # Help text
+        'help_text': '''안녕하세요! KarmaBot을 이용해 주셔서 감사합니다.\n\n사용 가능한 명령어:\n/start - 봇 시작\n/help - 도움말\n/menu - 메인 메뉴\n/language - 언어 변경\n\n도움이 필요하시면 @support_bot으로 문의해 주세요.''',
+        
+        # Profile texts
+        'profile_main': '👤 **내 정보**',
+        'profile_stats': '📊 통계',
+        'profile_settings': '⚙️ 설정',
+        'profile_help': '❓ 도움말',
+        
+        # Policy
+        'policy_text': '''개인정보 처리방침에 동의해 주세요.\n\n계속하시면 개인정보 처리방침에 동의하는 것으로 간주됩니다.''',
+        'policy_accept': '✅ 동의합니다',
+        'policy_view': '📄 개인정보 처리방침',
+        'policy_url': '/policy',
+        
+        # Common UI
+        'error_occurred': '⚠️ 오류가 발생했습니다. 나중에 다시 시도해 주세요.',
+        'not_available': '🚧 현재 사용할 수 없는 기능입니다.',
+        'thanks': '🙏 감사합니다!',
+        'loading': '로드 중...',
+        'saved': '저장되었습니다!',
+        'select_option': '옵션을 선택하세요:',
+        'no_results': '결과가 없습니다.',
+        'try_again': '다시 시도하세요.',
+        'success': '성공!',
+        'failed': '실패했습니다.'
+    },
     'ru': {
         # Existing keys (preserved for compatibility)
         'back_to_main_menu': 'Вернуться в главное меню🏘',
