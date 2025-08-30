@@ -54,14 +54,27 @@ LANG_TEXT_TO_CODE = {
     "Tiếng Việt 🇻🇳": "vi",
 }
 
-def build_language_inline_kb() -> InlineKeyboardMarkup:
-    """Build inline keyboard for language selection"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Русский (RU)", callback_data="lang:set:ru")],
-        [InlineKeyboardButton(text="English (EN)", callback_data="lang:set:en")],
-        [InlineKeyboardButton(text="Tiếng Việt (VI)", callback_data="lang:set:vi")],
-        [InlineKeyboardButton(text="한국어 (KO)", callback_data="lang:set:ko")],
-    ])
+def build_language_inline_kb(current: str | None = None) -> InlineKeyboardMarkup:
+    """Build inline keyboard for language selection
+    
+    Args:
+        current: Current language code to hide from the list
+    """
+    languages = [
+        ("Русский (RU)", "ru"),
+        ("English (EN)", "en"),
+        ("Tiếng Việt (VI)", "vi"),
+        ("한국어 (KO)", "ko"),
+    ]
+    
+    # Filter out current language if specified
+    buttons = [
+        [InlineKeyboardButton(text=text, callback_data=f"lang:set:{code}")]
+        for text, code in languages 
+        if code != current
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def _apply_language(user_id: int, lang_code: str, state: FSMContext):
     """Apply language selection for user"""
@@ -69,35 +82,50 @@ async def _apply_language(user_id: int, lang_code: str, state: FSMContext):
     await state.update_data(lang=lang_code)
     # Здесь можно добавить сохранение в БД, если нужно
 
-@router.callback_query(F.data.regexp(r"^lang:(set:)?(ru|en|vi|ko)$"))
+@router.callback_query(F.data.regexp(r'^lang:(?:set:)?(ru|en|vi|ko)$'))
 async def on_choose_language_cb(callback: CallbackQuery, state: FSMContext, bot: Bot):
     """Handle language selection from inline keyboard"""
     try:
         # Extract language code from both lang:ru and lang:set:ru formats
-        lang_code = callback.data.split(":")[-1]
+        lang_code = callback.data.split(":")[-1].lower()
+        
         if lang_code not in {"ru", "en", "ko", "vi"}:
             await callback.answer("Unsupported language", show_alert=True)
             return
         
+        logger.info(f"Setting language to {lang_code} for user {callback.from_user.id}")
         await _apply_language(callback.from_user.id, lang_code, state)
+        
+        # Get user data for localization
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Get localized message
+        success_msg = translations.get(lang, {}).get(
+            'language_changed',
+            '✅ Язык обновлён / Language updated / 언어가 업데이트되었습니다 / Đã cập nhật ngôn ngữ'
+        )
         
         # Remove inline keyboard
         with contextlib.suppress(Exception):
-            await callback.message.edit_reply_markup()
+            await callback.message.edit_reply_markup(reply_markup=None)
         
         # Send confirmation
-        await callback.answer("✅ Язык обновлён")
+        await callback.answer(success_msg)
         
-        # Redraw main menu
-        from core.windows.main_menu import get_main_menu
+        # Redraw main menu with new language
+        main_menu = get_main_menu()
         await callback.message.answer(
-            "Главное меню",
-            reply_markup=get_main_menu()
+            translations.get(lang, {}).get('main_menu_title', 'Главное меню'),
+            reply_markup=main_menu
         )
         
     except Exception as e:
-        logger.error(f"Language selection error: {e}")
-        await callback.answer("❌ Ошибка при смене языка", show_alert=True)
+        logger.error(f"Language selection error: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Ошибка при смене языка / Error changing language", 
+            show_alert=True
+        )
 
 @router.message(F.text.in_(LANG_TEXT_TO_CODE.keys()))
 async def on_choose_language_msg(message: Message, state: FSMContext, bot: Bot):

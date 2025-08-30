@@ -154,19 +154,23 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
     """Обработчик кнопки выбора языка."""
     logger.debug(f"User {message.from_user.id} chose language selection")
     try:
-        # Показываем инлайн-клавиатуру с выбором языка
+        # Get current language from state
+        user_data = await state.get_data()
+        current_lang = user_data.get('lang', 'ru')
+        
+        # Show inline keyboard with language selection, hiding current language
         await message.answer(
             "Выберите язык / Select language / 언어를 선택하세요 / Chọn ngôn ngữ:",
-            reply_markup=build_language_inline_kb()
+            reply_markup=build_language_inline_kb(current=current_lang)
         )
     except Exception as e:
-        logger.error(f"Error showing language selection: {e}")
+        logger.error(f"Error showing language selection: {e}", exc_info=True)
         await message.answer("❌ Не удалось загрузить выбор языка. Пожалуйста, попробуйте позже.")
 
-# Обработчик выбора языка из инлайн-клавиатуры
-@main_menu_router.callback_query(F.data.regexp(r"^lang:(set:)?(ru|en|vi|ko)$"))
-async def handle_lang_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):
-    """Обработчик выбора языка из инлайн-клавиатуры"""
+# Proxy handler for language selection callbacks
+@main_menu_router.callback_query(F.data.regexp(r'^lang:(?:set:)?(ru|en|vi|ko)$'))
+async def handle_lang_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """Proxy handler for language selection callbacks"""
     await on_choose_language_cb(callback, state, bot)
 
 
