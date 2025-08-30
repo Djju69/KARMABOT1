@@ -14,88 +14,69 @@ import inspect
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Union, Callable, Awaitable
 
-from aiogram import Bot, Dispatcher, F
+import redis.asyncio as aioredis
+from aiogram import Dispatcher, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.exceptions import TelegramUnauthorizedError
-from aiogram.client.default import DefaultBotProperties
+from aiogram.client.bot import Bot, DefaultBotProperties
 from aiogram.enums import ParseMode
-from redis.asyncio import Redis
 
 from core.config import Settings, load_settings
 
-# --- BEGIN: Token and lock configuration ---
+# --- Leader lock settings ---
+LOCK_TTL = 300
+BOT_ID_STR = os.getenv("BOT_ID", "8363530491")  # можно вынести в env
+LOCK_KEY = f"production:bot:{BOT_ID_STR}:polling:leader"
+INSTANCE = f"{os.environ.get('HOSTNAME','local')}:{os.getpid()}"
+FORCE = os.getenv("LEADER_FORCE", "0") == "1"
+
+# Redis URL должен совпадать с Railway (env), здесь пример:
+REDIS_URL = os.getenv("REDIS_URL", "redis://default:password@redis.railway.internal:6379")
+redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+
+# --- END: Leader lock settings ---
 
 # Read and validate bot token
 BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
 if not BOT_TOKEN or ":" not in BOT_TOKEN:
     raise SystemExit("❌ BOT_TOKEN is empty or contains spaces/newlines - fix in Variables")
 
-# Redis and lock configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://default@redis.railway.internal:6379/0")
-LOCK_TTL = int(os.getenv("LOCK_TTL", "300"))
-BOT_ID = "8363530491"  # As per logs; consider moving to ENV
-LOCK_KEY = f"production:bot:{BOT_ID}:polling:leader"
-INSTANCE = f"{os.getenv('HOSTNAME','local')}:{os.getpid()}"
-FORCE_LOCK = os.getenv("LEADER_FORCE", "0") == "1"
+async def acquire_leader_lock(redis: aioredis.Redis, key: str, instance: str, ttl: int, retries: int = 12):
+    """Acquire leader lock with retries and force option."""
+    for i in range(retries):
+        if FORCE:
+            await redis.set(key, instance, ex=ttl)
+            logging.warning(f"⚠️ Forced leader lock acquired (key={key}, holder={instance})")
+            return True
+        ok = await redis.set(key, instance, nx=True, ex=ttl)
+        if ok:
+            logging.info(f"✅ Polling leader lock acquired (key={key}, holder={instance})")
+            return True
+        holder = await redis.get(key)
+        remain = await redis.ttl(key)
+        logging.error(f"❌ Lock held by {holder}, ttl={remain}; retry {i+1}/{retries}")
+        await asyncio.sleep(max(3, min(10, (remain or 5)//3)))
+    return False
 
-# Initialize bot with DefaultBotProperties for aiogram 3.7+
-bot = Bot(
-    token=BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
-
-# Initialize Redis client
-redis = Redis.from_url(REDIS_URL, decode_responses=True)
-
-async def acquire_leader_lock():
-    """Acquire leader lock with force option and proper error handling."""
-    try:
-        ok = await redis.ping()
-        if not ok:
-            raise RuntimeError("Redis ping returned False")
-        print("✅ Redis ping: True")
-        
-        if FORCE_LOCK:
-            await redis.set(LOCK_KEY, INSTANCE, ex=LOCK_TTL)
-            print(f"⚠️ Forced leader lock acquired (key={LOCK_KEY}, holder={INSTANCE})")
-        else:
-            ok = await redis.set(LOCK_KEY, INSTANCE, nx=True, ex=LOCK_TTL)
-            if not ok:
-                holder = await redis.get(LOCK_KEY)
-                ttl = await redis.ttl(LOCK_KEY)
-                print(f"❌ Another instance holds polling leader lock (key={LOCK_KEY}, holder={holder}, ttl={ttl})")
-                return False
-            print(f"✅ Polling leader lock acquired (key={LOCK_KEY})")
-        return True
-    except Exception as e:
-        print(f"❌ Redis/Lock error: {e}")
-        await close_redis()
-        return False
-
-async def close_redis():
-    """Safely close Redis connection and release lock if held."""
-    try:
-        if redis:
-            # Release lock if we hold it
-            current = await redis.get(LOCK_KEY)
-            if current == INSTANCE:
-                await redis.delete(LOCK_KEY)
-            
-            # Close connection
-            close = getattr(redis, "aclose", None) or getattr(redis, "close", None)
-            if close:
-                res = close()
-                if asyncio.iscoroutine(res):
-                    await res
-    except Exception as e:
-        print(f"⚠️ Error during Redis close: {e}")
+def make_shutdown_handler(redis: aioredis.Redis):
+    """Create a shutdown handler that releases the leader lock."""
+    async def _shutdown_handler(event):
         try:
-            if hasattr(redis, 'aclose'):
+            cur = await redis.get(LOCK_KEY)
+            if cur == INSTANCE:
+                await redis.delete(LOCK_KEY)
+                logging.info(f"🔓 Leader lock released (key={LOCK_KEY})")
+        finally:
+            # Close Redis connection properly
+            if hasattr(redis, "aclose"):
                 await redis.aclose()
-        except Exception as e:
-            print(f"⚠️ Error during forced Redis close: {e}")
-        raise SystemExit(1)
+            else:
+                try:
+                    redis.close()
+                except Exception:
+                    pass
+    return _shutdown_handler
 # --- END: Token and lock configuration ---
 
 def get_bot_token_from_env_or_settings(settings):
@@ -918,8 +899,11 @@ async def main():
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
     
-    # Explicit config echo for deploy diagnostics (safe/masked)
-    dp_flag = os.getenv("DISABLE_POLLING", "").lower()
+    # Initialize Dispatcher and register shutdown handler
+    dp = Dispatcher()
+    dp.shutdown.register(make_shutdown_handler(redis))
+    
+    # Ensure database is ready
     ensure_database_ready()
     
     # Log environment info
@@ -927,26 +911,38 @@ async def main():
     logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Lock key: %s", LOCK_KEY)
     
-    # Initialize Redis and acquire leader lock
     try:
-        if not await acquire_leader_lock():
-            logger.error("❌ Failed to acquire leader lock, exiting...")
-            await close_redis()
-            return
+        # Initialize bot with context manager
+        async with Bot(
+            token=BOT_TOKEN.strip(),
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+        ) as bot:
+            # Test Redis connection
+            ok = await redis.ping()
+            logger.info(f"✅ Redis ping: {ok}")
             
-        # Set bot commands
-        try:
-            await set_commands(bot)
-            logger.info("✅ Bot commands set")
-        except Exception as e:
-            logger.error("❌ Failed to set bot commands: %s", e, exc_info=True)
-            await close_redis()
-            return
+            # Try to acquire leader lock
+            got_lock = await acquire_leader_lock(redis, LOCK_KEY, INSTANCE, LOCK_TTL, retries=12)
+            if not got_lock:
+                logger.error("❌ Failed to acquire leader lock after retries, exiting...")
+                return
+            
+            # Set bot commands
+            try:
+                await set_commands(bot)
+                logger.info("✅ Bot commands set")
+            except Exception as e:
+                logger.error(f"❌ Failed to set bot commands: {e}", exc_info=True)
+                return
+            
+            # Start the bot
+            logger.info("🚀 Starting bot polling...")
+            await dp.start_polling(bot)
             
     except Exception as e:
-        logger.error("❌ Fatal error during initialization: %s", e, exc_info=True)
-        await close_redis()
-        return
+        logger.error(f"❌ Fatal error in main: {e}", exc_info=True)
+        # The shutdown handler will be called automatically by aiogram
+        raise
     
     # Preflight check with Telegram API
     try:
