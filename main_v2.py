@@ -19,8 +19,54 @@ from aiogram.exceptions import TelegramUnauthorizedError
 
 from core.config import Settings, load_settings
 
-# Global instance ID for leader lock
+# --- BEGIN: Token and lock configuration ---
+import re
+
+def _pick_token() -> str:
+    """Get and sanitize bot token from environment."""
+    raw = os.getenv("BOTS__BOT_TOKEN") or os.getenv("BOT_TOKEN") or ""
+    return re.sub(r"\s+", "", raw)  # Remove all whitespace
+
+# Get and validate bot token
+BOT_TOKEN = _pick_token()
+if not BOT_TOKEN or not re.match(r"^\d+:[A-Za-z0-9_-]+$", BOT_TOKEN):
+    print(f"ERROR: Invalid bot token format. Starts with: {BOT_TOKEN[:9]!r}")
+    raise SystemExit(1)
+
+# Extract bot ID from token (part before ':')
+BOT_ID = int(BOT_TOKEN.split(":", 1)[0]) if ":" in BOT_TOKEN else 0
+ENV = os.getenv("ENV", "production")
+LOCK_TTL = int(os.getenv("LEADER_LOCK_TTL", "300"))
 INSTANCE_ID = f"{socket.gethostname()}:{os.getpid()}"
+LOCK_KEY = f"{ENV}:bot:{BOT_ID}:polling:leader"
+
+# Log token and lock info (masked for security)
+print(f"🔑 Using bot token (masked): {BOT_TOKEN[:3]}***{BOT_TOKEN[-4:]}")
+print(f"🔑 Environment: {ENV}")
+print(f"🔑 Lock key: {LOCK_KEY}")
+
+async def acquire_leader_lock(redis):
+    """Acquire leader lock with proper error handling and logging."""
+    print(f"🔄 Acquiring leader lock (key={LOCK_KEY}, instance={INSTANCE_ID}, ttl={LOCK_TTL}s)")
+    try:
+        ok = await redis.set(LOCK_KEY, INSTANCE_ID, ex=LOCK_TTL, nx=True)
+        if not ok:
+            holder = await redis.get(LOCK_KEY)
+            print(f"❌ Another instance holds polling leader lock (key={LOCK_KEY}, holder={holder})")
+            try:
+                await redis.aclose()
+            finally:
+                raise SystemExit(0)
+        print(f"✅ Polling leader lock acquired (key={LOCK_KEY})")
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"❌ Failed to acquire leader lock: {e!r}")
+        try:
+            await redis.aclose()
+        finally:
+            raise SystemExit(1)
+# --- END: Token and lock configuration ---
 
 def get_bot_token_from_env_or_settings(settings):
     """
@@ -753,9 +799,17 @@ async def on_startup(bot: Bot):
     except Exception as e:
         logger.warning(f"AdminsService connect error: {e}")
 
-async def on_shutdown(bot: Bot):
+async def on_shutdown(bot: Bot, redis=None):
     """Bot shutdown handler"""
     logger.info("😴 Stopping KARMABOT1...")
+    
+    # Close Redis connection if exists
+    if redis:
+        try:
+            await redis.aclose()
+            logger.info("✅ Redis connection closed")
+        except Exception as e:
+            logger.warning(f"Error closing Redis connection: {e}")
     
     # Try to send shutdown notification to admin
     try:
@@ -808,41 +862,43 @@ async def main():
     # Centralized logging with stdout + daily rotation (retention 7d by default)
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
+    
     # Explicit config echo for deploy diagnostics (safe/masked)
     dp_flag = os.getenv("DISABLE_POLLING", "").lower()
     redis_url = _get_redis_url()
     ensure_database_ready()
-    
-    default_properties = DefaultBotProperties(parse_mode="HTML")
-    
-    # Get and validate token using the unified token resolver
-    try:
-        token = get_bot_token_from_env_or_settings(settings)
-        LOCK_KEY = make_lock_key(token)
-        logger.info("🔑 Using bot token (masked): %s***%s", token[:4], token[-4:])
-    except Exception as e:
-        logger.error(f"❌ Failed to get bot token: {e}")
-        return
     
     # Log environment info
     env = _env_name(settings)
     logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Lock key: %s", LOCK_KEY)
     
-    # For backward compatibility
-    safe_token = f"{token[:4]}***{token[-4:]}"
-    
-    # Initialize bot with proper token validation
+    # Initialize Redis and acquire leader lock
+    redis = None
     try:
-        from aiogram.utils.token import validate_token
-        validate_token(token)
-        logger.info("✅ Token format is valid")
-    except Exception as e:
-        logger.error("❌ Invalid bot token format: %s", str(e))
-        logger.error("Token starts with: %s", token[:10] if token else 'None')
-        return
+        import redis as redis_lib
+        if redis_url:
+            redis = redis_lib.Redis.from_url(redis_url, decode_responses=True)
+            # Test Redis connection
+            try:
+                await redis.ping()
+                logger.info("✅ Redis connection successful")
+                
+                # Acquire leader lock
+                await acquire_leader_lock(redis)
+                
+            except Exception as e:
+                logger.error(f"❌ Redis connection failed: {e}")
+                if redis:
+                    await redis.aclose()
+                raise SystemExit(1)
+        else:
+            logger.warning("⚠️ Redis URL not configured, leader lock disabled")
+    except ImportError:
+        logger.warning("⚠️ Redis not available, leader lock disabled")
     
-    bot = Bot(token=token, default=default_properties)
+    # Initialize bot with our pre-validated token
+    bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
     
     # Set bot commands
     try:
@@ -898,9 +954,14 @@ async def main():
     # Register middlewares
     dp.update.middleware(LocaleMiddleware())
 
-    # Register startup/shutdown handlers
+    # Setup dispatcher with our bot
+    dp = Dispatcher()
     dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
+    
+    # Create a partial function to pass redis to on_shutdown
+    from functools import partial
+    shutdown_handler = partial(on_shutdown, redis=redis)
+    dp.shutdown.register(shutdown_handler)
 
     # Setup all routers
     await setup_routers(dp)
