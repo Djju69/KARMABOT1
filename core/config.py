@@ -23,7 +23,11 @@ class Bots(BaseModel):
         or os.getenv("BOT_TOKEN")
         or ""
     ))
-    admin_id: int | None = Field(default=None)
+    admin_id: int | None = Field(default_factory=lambda: (
+        int(os.getenv("BOTS__ADMIN_ID")) 
+        if os.getenv("BOTS__ADMIN_ID") and os.getenv("BOTS__ADMIN_ID").isdigit() 
+        else None
+    ))
 
     def masked_token(self) -> str:
         t = self.bot_token or ""

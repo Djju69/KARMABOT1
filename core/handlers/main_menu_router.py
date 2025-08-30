@@ -147,21 +147,21 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
+from ..handlers.language import build_language_inline_kb
+
 @main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
-async def handle_choose_language(message: Message, bot: Bot, state: FSMContext) -> None:
+async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
     """Обработчик кнопки выбора языка."""
     logger.debug(f"User {message.from_user.id} chose language selection")
     try:
-        await on_language_select(message, bot, state)
-    except Exception as e:
-        logger.error(f"Error in language selection: {e}", exc_info=True)
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        error_text = translations.get(lang, {}).get(
-            'language_error', 
-            'Произошла ошибка при выборе языка. Пожалуйста, попробуйте снова.'
+        # Показываем инлайн-клавиатуру с выбором языка
+        await message.answer(
+            "🌐 Выберите язык / Select language / 언어를 선택하세요 / Chọn ngôn ngữ:",
+            reply_markup=build_language_inline_kb()
         )
-        await message.answer(error_text, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Error showing language selection: {e}")
+        await message.answer("❌ Не удалось загрузить выбор языка. Пожалуйста, попробуйте позже.")
 
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))

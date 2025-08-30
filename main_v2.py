@@ -7,6 +7,7 @@ import asyncio
 import logging
 import logging.handlers
 import secrets
+import aiohttp
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Union
 
@@ -175,9 +176,13 @@ async def main():
 
     # Include routers from core.handlers
     from core.handlers import basic_router, callback_router, main_menu_router
+    from core.handlers.language import router as language_router
+    
+    # Include all routers
     dp.include_router(basic_router)
     dp.include_router(callback_router)
     dp.include_router(main_menu_router)
+    dp.include_router(language_router)  # Add language router for callback handlers
 
     # Set up bot commands
     await set_commands(bot)
@@ -692,10 +697,15 @@ async def on_startup(bot: Bot):
     """Bot startup handler"""
     await set_commands(bot)
     logger.info("Bot started and commands set.")
-    try:
-        await bot.send_message(settings.bots.admin_id, f"🚀 KARMABOT1 запущен | version: {APP_VERSION}")
-    except Exception as e:
-        logger.warning(f"Could not send startup message to admin: {e}")
+    # Send startup message to admin
+    admin_id = getattr(settings.bots, "admin_id", None)
+    if isinstance(admin_id, int):
+        try:
+            await bot.send_message(admin_id, "✅ Bot started and commands set.")
+        except Exception as e:
+            logger.warning("Could not send startup message to admin: %s", e)
+    else:
+        logger.warning("Admin ID is not set or invalid; skip startup notify.")
     # Start PG LISTEN (no-op if disabled)
     try:
         await pg_notify_listener.start()
