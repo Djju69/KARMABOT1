@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from aiogram import Bot, Router
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart, Text
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message, Update
 
 from core.settings import settings
 

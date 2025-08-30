@@ -1,16 +1,36 @@
 import os
+import logging
 from environs import Env
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 @dataclass
 class Features:
     """Feature flags configuration"""
-    new_menu: bool = False
-    partner_fsm: bool = False
-    moderation: bool = False
-    qr_webapp: bool = False
-    listen_notify: bool = False
+    new_menu: bool = field(default=True)  # Включено по умолчанию
+    partner_fsm: bool = field(default=False)
+    moderation: bool = field(default=False)
+    qr_webapp: bool = field(default=False)
+    listen_notify: bool = field(default=False)
+    
+    def __post_init__(self):
+        """Initialize feature flags from environment variables"""
+        env = Env()
+        
+        # Load from environment variables if they exist
+        self.new_menu = env.bool('FEATURE_NEW_MENU', self.new_menu)
+        self.partner_fsm = env.bool('FEATURE_PARTNER_FSM', self.partner_fsm)
+        self.moderation = env.bool('FEATURE_MODERATION', self.moderation)
+        self.qr_webapp = env.bool('FEATURE_QR_WEBAPP', self.qr_webapp)
+        self.listen_notify = env.bool('FEATURE_LISTEN_NOTIFY', self.listen_notify)
+        
+        # Log current feature flags
+        logger = logging.getLogger(__name__)
+        logger.info(f"[FEATURES] New Menu: {self.new_menu}")
+        logger.info(f"[FEATURES] Partner FSM: {self.partner_fsm}")
+        logger.info(f"[FEATURES] Moderation: {self.moderation}")
+        logger.info(f"[FEATURES] QR WebApp: {self.qr_webapp}")
+        logger.info(f"[FEATURES] Listen Notify: {self.listen_notify}")
 
 @dataclass
 class Bots:
@@ -30,14 +50,9 @@ def get_settings(path: Optional[str] = None):
     if path and os.path.exists(path):
         env.read_env(path)
     
-    # Load feature flags from environment variables
-    features = Features(
-        new_menu=env.bool('FEATURE_NEW_MENU', False),
-        partner_fsm=env.bool('FEATURE_PARTNER_FSM', False),
-        moderation=env.bool('FEATURE_MODERATION', False),
-        qr_webapp=env.bool('FEATURE_QR_WEBAPP', False),
-        listen_notify=env.bool('FEATURE_LISTEN_NOTIFY', False)
-    )
+    # Initialize features with default values
+    # The __post_init__ will update from environment variables
+    features = Features()
     
     return Settings(
         bots=Bots(

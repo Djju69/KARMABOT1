@@ -1,8 +1,11 @@
 """
 Command handlers and utilities for the bot
 """
-from aiogram import Bot
-from aiogram.types import BotCommand, BotCommandScopeDefault
+import logging
+from aiogram import Bot, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.types import BotCommand, BotCommandScopeDefault, Message
+from aiogram.fsm.context import FSMContext
 
 async def set_commands(bot: Bot) -> None:
     """
@@ -32,44 +35,32 @@ def register_commands(router):
     Args:
         router: Роутер для регистрации обработчиков
     """
-    from aiogram import F
-    from aiogram.filters import Command
+    from aiogram.filters import Command, CommandStart
     from aiogram.types import Message
     
-    @router.message(Command("start", "help"))
-    async def cmd_start(message: Message):
+    @router.message(CommandStart())
+    @router.message(Command("help"))
+    async def cmd_start(message: Message, bot: Bot, state: FSMContext):
         """Обработчик команд /start и /help"""
-        from .basic import start_cmd
-        from ..compat import call_compat
+        from .basic import get_start
         
-        # Получаем бота из контекста
-        from aiogram import Bot
-        from aiogram.fsm.context import FSMContext
-        
-        bot = Bot.get_current()
-        state = FSMContext(
-            storage=router.fsm.storage,
-            key=router.fsm.storage_key,
-            user=message.from_user.id,
-            chat=message.chat.id
-        )
-        
-        await call_compat(start_cmd, message, bot, state)
+        try:
+            await get_start(message, bot, state)
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in cmd_start: {e}", exc_info=True)
+            await message.reply("Произошла ошибка при обработке команды. Пожалуйста, попробуйте позже.")
     
     @router.message(Command("profile"))
-    async def cmd_profile(message: Message):
+    async def cmd_profile(message: Message, bot: Bot, state: FSMContext):
         """Обработчик команды /profile"""
-        from .basic import show_profile
-        from ..compat import call_compat
+        from .basic import open_cabinet
         
-        bot = Bot.get_current()
-        state = FSMContext(
-            storage=router.fsm.storage,
-            key=router.fsm.storage_key,
-            user=message.from_user.id,
-            chat=message.chat.id
-        )
-        
-        await call_compat(show_profile, message, bot, state)
+        try:
+            await open_cabinet(message, bot, state)
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in cmd_profile: {e}", exc_info=True)
+            await message.reply("Произошла ошибка при открытии профиля. Пожалуйста, попробуйте позже.")
     
     return router

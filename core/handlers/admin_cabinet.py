@@ -2,17 +2,24 @@
 Admin cabinet: inline menu and callbacks under adm:* namespace.
 Conditioned by FEATURE_MODERATION and admin whitelist (settings.bots.admin_id for MVP).
 """
-from aiogram import Router, F
-from aiogram.filters import Command
-from aiogram.types import Message, CallbackQuery
+import logging
 import logging
 import contextlib
+from aiogram import Router, F, Bot
+from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 
-from ..settings import settings
-from ..utils.locales_v2 import get_text
-from ..utils.locales_v2 import translations
-from ..services.profile import profile_service
-from ..keyboards.inline_v2 import get_admin_cabinet_inline, get_superadmin_inline, get_superadmin_delete_inline
+from core.settings import settings
+from core.utils.locales_v2 import get_text, translations
+from core.services import admins_service, profile_service
+from core.keyboards.inline_v2 import (
+    get_admin_cabinet_inline, 
+    get_superadmin_inline, 
+    get_superadmin_delete_inline,
+    get_superadmin_keyboard,
+    get_admin_keyboard
+)
 from ..keyboards.reply_v2 import get_main_menu_reply, get_admin_keyboard, get_superadmin_keyboard
 from ..services.admins import admins_service
 from ..database.db_v2 import db_v2
@@ -178,87 +185,128 @@ def _format_cards_rows(rows) -> str:
 
 
 @router.message(Command("admin"))
-async def open_admin_cabinet(message: Message):
-    """Open admin cabinet if moderation feature is on and user is admin."""
-    if not settings.features.moderation:
-        await message.answer("🚧 Модуль модерации отключён.")
-        return
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    lang = await profile_service.get_lang(message.from_user.id)
-    # Top-level: use Reply keyboard (superadmin has crown in main menu; here use dedicated keyboard)
-    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
-    await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
-        reply_markup=kb,
-    )
+async def open_admin_cabinet(message: Message, bot: Bot, state: FSMContext):
+    """
+    Открывает админ-панель, если включена функция модерации и пользователь является администратором.
+    
+    Args:
+        message: Входящее сообщение
+        bot: Экземпляр бота
+        state: Контекст состояния FSM
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        if not settings.features.moderation:
+            await message.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not await admins_service.is_admin(message.from_user.id):
+            await message.answer("❌ Доступ запрещён.")
+            return
+            
+        lang = await profile_service.get_lang(message.from_user.id)
+        # Top-level: use Reply keyboard (superadmin has crown in main menu; here use dedicated keyboard)
+        kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
+        await message.answer(
+            f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+            reply_markup=kb,
+        )
+    except Exception as e:
+        logger.error(f"Error in open_admin_cabinet: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при открытии админ-панели. Пожалуйста, попробуйте позже.")
 
 
 # --- Inline callbacks ---
 @router.message(F.text == "👑 Админ кабинет")
-async def open_admin_cabinet_by_button(message: Message):
-    if not settings.features.moderation:
-        await message.answer("🚧 Модуль модерации отключён.")
-        return
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    lang = await profile_service.get_lang(message.from_user.id)
-    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
-    await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
-        reply_markup=kb,
-    )
+async def open_admin_cabinet_by_button(message: Message, bot: Bot, state: FSMContext):
+    """
+    Открывает админ-панель при нажатии на кнопку в основном меню.
+    
+    Args:
+        message: Входящее сообщение
+        bot: Экземпляр бота
+        state: Контекст состояния FSM
+    """
+    try:
+        if not settings.features.moderation:
+            await message.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not await admins_service.is_admin(message.from_user.id):
+            await message.answer("❌ Доступ запрещён.")
+            return
+            
+        lang = await profile_service.get_lang(message.from_user.id)
+        kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
+        await message.answer(
+            f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+            reply_markup=kb,
+        )
+    except Exception as e:
+        logger.error(f"Error in open_admin_cabinet_by_button: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при открытии админ-панели. Пожалуйста, попробуйте позже.")
 
 @router.callback_query(F.data == "adm:back")
 async def admin_back(callback: CallbackQuery):
-    lang = await profile_service.get_lang(callback.from_user.id)
-    await callback.message.edit_text(get_text('main_menu_title', lang))
-    await callback.message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
-    await callback.answer()
-
-
-@router.message(F.text == "Админ кабинет")
-async def open_admin_cabinet_by_button_plain(message: Message):
-    if not settings.features.moderation:
-        await message.answer("🚧 Модуль модерации отключён.")
-        return
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    lang = await profile_service.get_lang(message.from_user.id)
-    kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
-    await message.answer(
-        f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
-        reply_markup=kb,
-    )
+    """Обработчик кнопки 'Назад' в админ-меню."""
+    try:
+        lang = await profile_service.get_lang(callback.from_user.id)
+        await callback.message.edit_text(get_text('main_menu_title', lang))
+        await callback.message.answer(
+            get_text('main_menu_title', lang), 
+            reply_markup=get_main_menu_reply(lang)
+        )
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in admin_back: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка. Пожалуйста, попробуйте ещё раз.")
 
 # --- Reply-based admin menu entries ---
 @router.message(F.text.in_([t.get('admin_menu_queue', '') for t in translations.values()]))
-async def admin_menu_queue_entry(message: Message):
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    await _render_queue_page(message, message.from_user.id, page=0, edit=False)
-
-@router.message(F.text.in_([t.get('admin_menu_search', '') for t in translations.values()]))
-async def admin_menu_search_entry(message: Message):
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    lang = await profile_service.get_lang(message.from_user.id)
-    # Keep inline filters for search as they are essential controls
-    text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_search', lang)}"
-    await message.answer(text, reply_markup=_search_keyboard())
+async def admin_menu_queue_entry(message: Message, bot: Bot, state: FSMContext) -> None:
+    """
+    Обработчик кнопки очереди на модерацию в админ-меню.
+    
+    Args:
+        message: Входящее сообщение
+        bot: Экземпляр бота
+        state: Контекст состояния FSM
+    """
+    try:
+        if not settings.features.moderation:
+            await message.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not await admins_service.is_admin(message.from_user.id):
+            await message.answer("❌ Доступ запрещён.")
+            return
+            
+        await _render_queue_page(message, message.from_user.id, 0)
+    except Exception as e:
+        logger.error(f"Error in admin_menu_queue_entry: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при загрузке очереди. Пожалуйста, попробуйте позже.")
 
 @router.message(F.text.in_([t.get('admin_menu_reports', '') for t in translations.values()]))
-async def admin_menu_reports_entry(message: Message):
-    if not await admins_service.is_admin(message.from_user.id):
-        await message.answer("❌ Доступ запрещён.")
-        return
-    lang = await profile_service.get_lang(message.from_user.id)
+async def admin_menu_reports_entry(message: Message, bot: Bot, state: FSMContext) -> None:
+    """
+    Обработчик кнопки отчётов в админ-меню.
+    
+    Args:
+        message: Входящее сообщение
+        bot: Экземпляр бота
+        state: Контекст состояния FSM
+    """
     try:
+        if not settings.features.moderation:
+            await message.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not await admins_service.is_admin(message.from_user.id):
+            await message.answer("❌ Доступ запрещён.")
+            return
+            
+        lang = await profile_service.get_lang(message.from_user.id)
         with db_v2.get_connection() as conn:
             cur = conn.execute("""
                 SELECT status, COUNT(*) as cnt
@@ -309,316 +357,527 @@ async def admin_menu_reports_entry(message: Message):
         kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
         await message.answer(text, reply_markup=kb)
     except Exception as e:
-        logger.error(f"admin_menu_reports_entry error: {e}")
-        await message.answer("❌ Ошибка отчёта")
+        logger.error(f"Error in admin_menu_reports_entry: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при загрузке отчёта. Пожалуйста, попробуйте позже.")
 
 @router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
-async def admin_menu_back_to_main(message: Message):
-    # Route back to main menu reply keyboard
-    lang = await profile_service.get_lang(message.from_user.id)
-    await message.answer(get_text('main_menu_title', lang), reply_markup=get_main_menu_reply(lang))
+async def admin_menu_back_to_main(message: Message, bot: Bot, state: FSMContext) -> None:
+    """
+    Возвращает пользователя в главное меню из админ-панели.
+    
+    Args:
+        message: Входящее сообщение
+        bot: Экземпляр бота
+        state: Контекст состояния FSM
+    """
+    try:
+        lang = await profile_service.get_lang(message.from_user.id)
+        await message.answer(
+            get_text('main_menu_title', lang), 
+            reply_markup=get_main_menu_reply(lang)
+        )
+    except Exception as e:
+        logger.error(f"Error in admin_menu_back_to_main: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при возврате в главное меню. Пожалуйста, попробуйте ещё раз.")
 
 
 @router.callback_query(F.data == "adm:su:del")
-async def su_menu_delete(callback: CallbackQuery):
-    if not _is_super_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    lang = await profile_service.get_lang(callback.from_user.id)
+async def su_menu_delete(callback: CallbackQuery) -> None:
+    """
+    Обработчик кнопки удаления в меню суперадмина.
+    
+    Args:
+        callback: Callback запрос
+    """
     try:
-        await callback.message.edit_text("🗑 Удаление: выберите вариант", reply_markup=get_superadmin_delete_inline(lang))
-    except Exception:
-        await callback.message.answer("🗑 Удаление: выберите вариант", reply_markup=get_superadmin_delete_inline(lang))
-    await callback.answer()
+        if not _is_super_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        lang = await profile_service.get_lang(callback.from_user.id)
+        try:
+            await callback.message.edit_text(
+                "🗑 Удаление: выберите вариант", 
+                reply_markup=get_superadmin_delete_inline(lang)
+            )
+        except Exception:
+            await callback.message.answer(
+                "🗑 Удаление: выберите вариант", 
+                reply_markup=get_superadmin_delete_inline(lang)
+            )
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Error in su_menu_delete: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка. Пожалуйста, попробуйте ещё раз.", show_alert=True)
 
 
 @router.callback_query(F.data == "adm:queue")
-async def admin_queue(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
+async def admin_queue(callback: CallbackQuery) -> None:
+    """
+    Обработчик кнопки очереди на модерацию.
+    
+    Args:
+        callback: Callback запрос
+    """
     try:
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
         await _render_queue_page(callback.message, callback.from_user.id, page=0, edit=True)
+    except Exception as e:
+        logger.error(f"Error in admin_queue: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка при загрузке очереди. Пожалуйста, попробуйте позже.", show_alert=True)
     finally:
         with contextlib.suppress(Exception):
             await callback.answer()
 
 @router.callback_query(F.data.startswith("adm:q:page:"))
-async def admin_queue_page(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
+async def admin_queue_page(callback: CallbackQuery) -> None:
+    """
+    Обработчик пагинации в очереди на модерацию.
+    
+    Args:
+        callback: Callback запрос, содержащий номер страницы
+    """
     try:
-        page = int(callback.data.split(":")[3])
-        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        try:
+            page = int(callback.data.split(":")[3])
+            await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+        except (IndexError, ValueError) as e:
+            logger.error(f"Invalid page number in callback data: {callback.data}")
+            await callback.answer("❌ Неверный номер страницы", show_alert=True)
+        except Exception as e:
+            raise e
     except Exception as e:
-        logger.exception("admin_queue_page error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
+        logger.error(f"Error in admin_queue_page: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка при загрузке страницы. Пожалуйста, попробуйте ещё раз.", show_alert=True)
 
 @router.callback_query(F.data.startswith("adm:q:view:"))
-async def admin_queue_view(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
+async def admin_queue_view(callback: CallbackQuery) -> None:
+    """
+    Просмотр деталей карточки в очереди модерации.
+    
+    Args:
+        callback: Callback запрос, содержащий ID карточки и номер страницы
+    """
     try:
-        parts = callback.data.split(":")
-        card_id = int(parts[3])
-        page = int(parts[4])
-        card = db_v2.get_card_by_id(card_id)
-        if not card:
-            await callback.answer("Карточка не найдена", show_alert=False)
-            await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
             return
-        text = _build_card_view_text(card)
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
         try:
-            await callback.message.edit_text(text, reply_markup=_build_card_view_kb(card_id, page))
-        except Exception:
-            await callback.message.answer(text, reply_markup=_build_card_view_kb(card_id, page))
-        await callback.answer()
+            parts = callback.data.split(":")
+            if len(parts) < 5:
+                raise ValueError("Неверный формат callback данных")
+                
+            card_id = int(parts[3])
+            page = int(parts[4])
+            
+            card = db_v2.get_card_by_id(card_id)
+            if not card:
+                await callback.answer("❌ Карточка не найдена", show_alert=True)
+                await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+                return
+                
+            text = _build_card_view_text(card)
+            try:
+                await callback.message.edit_text(
+                    text, 
+                    reply_markup=_build_card_view_kb(card_id, page)
+                )
+            except Exception as e:
+                logger.warning(f"Failed to edit message, sending new one: {e}")
+                await callback.message.answer(
+                    text, 
+                    reply_markup=_build_card_view_kb(card_id, page)
+                )
+            
+            await callback.answer()
+            
+        except (IndexError, ValueError) as e:
+            logger.error(f"Invalid callback data format: {callback.data}")
+            await callback.answer("❌ Ошибка формата данных", show_alert=True)
+            
     except Exception as e:
-        logger.exception("admin_queue_view error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
+        logger.error(f"Error in admin_queue_approve: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла ошибка при одобрении карточки. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
-@router.callback_query(F.data.startswith("adm:q:approve:"))
-async def admin_queue_approve(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    try:
-        parts = callback.data.split(":")
-        card_id = int(parts[3])
-        page = int(parts[4])
-        ok = db_v2.update_card_status(card_id, 'published', callback.from_user.id, 'Одобрено модератором')
-        logger.info("admin.approve: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
-        # Уведомим партнёра (best-effort)
-        try:
-            with db_v2.get_connection() as conn:
-                cur = conn.execute("""
-                    SELECT c.title, p.tg_user_id
-                    FROM cards_v2 c JOIN partners_v2 p ON c.partner_id = p.id
-                    WHERE c.id = ?
-                """, (card_id,))
-                row = cur.fetchone()
-                if row and row['tg_user_id'] and str(row['tg_user_id']).isdigit():
-                    bot = callback.bot
-                    try:
-                        await bot.send_message(
-                            int(row['tg_user_id']), 
-                            f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}"
-                        )
-                    except Exception as e:
-                        logger.error(f"Failed to send notification to partner {row['tg_user_id']}: {e}")
-        except Exception as e:
-            logger.error("notify partner approve failed: %s", e)
-        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
-    except Exception as e:
-        logger.exception("admin_queue_approve error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
 
-@router.callback_query(F.data.startswith("adm:q:reject:"))
-async def admin_queue_reject(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
+async def _notify_partner_about_approval(bot: Bot, card_id: int) -> None:
+    """Отправляет уведомление партнёру об одобрении карточки."""
     try:
-        parts = callback.data.split(":")
-        card_id = int(parts[3])
-        page = int(parts[4])
-        ok = db_v2.update_card_status(card_id, 'rejected', callback.from_user.id, 'Отклонено модератором')
-        logger.info("admin.reject: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
-        # Уведомим партнёра (best-effort)
-        try:
-            with db_v2.get_connection() as conn:
-                cur = conn.execute("""
-                    SELECT c.title, p.tg_user_id
-                    FROM cards_v2 c JOIN partners_v2 p ON c.partner_id = p.id
-                    WHERE c.id = ?
-                """, (card_id,))
-                row = cur.fetchone()
-                if row:
-                    bot = callback.bot
-                    await bot.send_message(row['tg_user_id'], f"❌ Ваша карточка отклонена.\n#{card_id} — {row['title']}")
-        except Exception as e:
-            logger.error("notify partner reject failed: %s", e)
-        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+        with db_v2.get_connection() as conn:
+            cur = conn.execute("""
+                SELECT c.title, p.tg_user_id
+                FROM cards_v2 c 
+                JOIN partners_v2 p ON c.partner_id = p.id
+                WHERE c.id = ?
+            """, (card_id,))
+            row = cur.fetchone()
+            
+            if row and row['tg_user_id'] and str(row['tg_user_id']).isdigit():
+                try:
+                    await bot.send_message(
+                        int(row['tg_user_id']), 
+                        f"✅ Ваша карточка одобрена!\n#{card_id} — {row['title']}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to send notification to partner {row['tg_user_id']} "
+                        f"about approval of card {card_id}: {e}"
+                    )
     except Exception as e:
-        logger.exception("admin_queue_reject error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
-
-@router.callback_query(F.data.startswith("adm:q:del:"))
-async def admin_queue_delete_confirm(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    try:
-        parts = callback.data.split(":")
-        card_id = int(parts[3])
-        page = int(parts[4])
-        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"adm:q:del:confirm:{card_id}:{page}")],
-            [InlineKeyboardButton(text="↩️ Отмена", callback_data=f"adm:q:view:{card_id}:{page}")],
-        ])
-        await callback.message.edit_reply_markup(reply_markup=kb)
-        await callback.answer()
-    except Exception as e:
-        logger.exception("admin_queue_delete_confirm error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
+        logger.error(f"Error in _notify_partner_about_approval for card {card_id}: {e}")
 
 @router.callback_query(F.data.startswith("adm:q:del:confirm:"))
-async def admin_queue_delete(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
+async def admin_queue_delete(callback: CallbackQuery) -> None:
+    """
+    Удаление карточки из очереди модерации после подтверждения.
+    
+    Args:
+        callback: Callback запрос, содержащий ID карточки и номер страницы
+    """
     try:
-        parts = callback.data.split(":")
-        card_id = int(parts[4])
-        page = int(parts[5])
-        ok = db_v2.delete_card(card_id)
-        logger.info("admin.delete: moderator=%s card=%s ok=%s", callback.from_user.id, card_id, ok)
-        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        try:
+            parts = callback.data.split(":")
+            if len(parts) < 6:
+                raise ValueError("Неверный формат callback данных")
+                
+            card_id = int(parts[4])
+            page = int(parts[5])
+            
+            # Удаляем карточку
+            ok = db_v2.delete_card(card_id)
+            logger.info(
+                "admin.delete: moderator=%s card=%s ok=%s", 
+                callback.from_user.id, 
+                card_id, 
+                ok
+            )
+            
+            # Возвращаемся к очереди
+            await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+            await callback.answer("🗑 Карточка удалена", show_alert=False)
+            
+        except (IndexError, ValueError) as e:
+            logger.error(f"Invalid callback data format: {callback.data}")
+            await callback.answer("❌ Ошибка формата данных", show_alert=True)
+            
     except Exception as e:
-        logger.exception("admin_queue_delete error: %s", e)
-        await callback.answer("❌ Ошибка", show_alert=False)
+        logger.error(f"Error in admin_queue_delete: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла ошибка при удалении карточки. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
 
 @router.callback_query(F.data == "adm:search")
-async def admin_search(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    lang = await profile_service.get_lang(callback.from_user.id)
-    text = f"{get_text('admin_cabinet_title', lang)}\n\n{get_text('admin_hint_search', lang)}"
-    # Show search filters keyboard
+async def admin_search(callback: CallbackQuery) -> None:
+    """
+    Отображает меню поиска в админ-панели.
+    
+    Args:
+        callback: Callback запрос
+    """
     try:
-        await callback.message.edit_text(text, reply_markup=_search_keyboard())
-    except Exception:
-        await callback.message.answer(text, reply_markup=_search_keyboard())
-    await callback.answer()
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        lang = await profile_service.get_lang(callback.from_user.id)
+        text = (
+            f"{get_text('admin_cabinet_title', lang)}\n\n"
+            f"{get_text('admin_hint_search', lang)}"
+        )
+        
+        # Показываем клавиатуру с фильтрами поиска
+        try:
+            await callback.message.edit_text(
+                text, 
+                reply_markup=_search_keyboard()
+            )
+        except Exception as e:
+            logger.warning(f"Failed to edit message, sending new one: {e}")
+            await callback.message.answer(
+                text, 
+                reply_markup=_search_keyboard()
+            )
+            
+        await callback.answer()
+        
+    except Exception as e:
+        logger.error(f"Error in admin_search: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла ошибка при загрузке поиска. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
 
 @router.callback_query(F.data.startswith("adm:search:status:"))
-async def admin_search_by_status(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    if not _search_allowed(callback.from_user.id):
-        await callback.answer("⏳ Подождите немного…", show_alert=False)
-        return
-    status = callback.data.split(":")[-1]
+async def admin_search_by_status(callback: CallbackQuery) -> None:
+    """
+    Поиск карточек по статусу.
+    
+    Args:
+        callback: Callback запрос, содержащий статус для поиска
+    """
     try:
-        with db_v2.get_connection() as conn:
-            cur = conn.execute(
-                """
-                SELECT c.id, c.title, c.status, cat.name as category_name
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                WHERE c.status = ?
-                ORDER BY c.updated_at DESC
-                LIMIT 20
-                """,
-                (status,)
-            )
-            rows = [dict(r) for r in cur.fetchall()]
-        text = _format_cards_rows(rows)
-        await callback.message.edit_text(text, reply_markup=_search_keyboard())
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not _search_allowed(callback.from_user.id):
+            await callback.answer("⏳ Подождите немного перед следующим поиском…", show_alert=False)
+            return
+            
+        try:
+            status = callback.data.split(":")[-1]
+            if not status:
+                raise ValueError("Не указан статус для поиска")
+                
+            with db_v2.get_connection() as conn:
+                cur = conn.execute(
+                    """
+                    SELECT c.id, c.title, c.status, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    WHERE c.status = ?
+                    ORDER BY c.updated_at DESC
+                    LIMIT 20
+                    """,
+                    (status,)
+                )
+                rows = [dict(r) for r in cur.fetchall()]
+                
+            if not rows:
+                text = f"🔍 Карточек со статусом '{status}' не найдено"
+            else:
+                text = _format_cards_rows(rows)
+                
+            try:
+                await callback.message.edit_text(
+                    text, 
+                    reply_markup=_search_keyboard()
+                )
+            except Exception as e:
+                logger.warning(f"Failed to edit message, sending new one: {e}")
+                await callback.message.answer(
+                    text, 
+                    reply_markup=_search_keyboard()
+                )
+                
+            await callback.answer()
+            
+        except Exception as e:
+            logger.error(f"Error in admin_search_by_status: {e}", exc_info=True)
+            await callback.answer("❌ Ошибка при выполнении поиска", show_alert=True)
+            
     except Exception as e:
-        logger.error(f"admin_search_by_status error: {e}")
-        await callback.answer("❌ Ошибка поиска", show_alert=False)
+        logger.error(f"Unexpected error in admin_search_by_status: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
 
 @router.callback_query(F.data == "adm:search:recent")
-async def admin_search_recent(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    if not _search_allowed(callback.from_user.id):
-        await callback.answer("⏳ Подождите немного…", show_alert=False)
-        return
+async def admin_search_recent(callback: CallbackQuery) -> None:
+    """
+    Поиск недавно созданных карточек.
+    
+    Args:
+        callback: Callback запрос
+    """
     try:
-        with db_v2.get_connection() as conn:
-            cur = conn.execute(
-                """
-                SELECT c.id, c.title, c.status, cat.name as category_name
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                ORDER BY c.created_at DESC
-                LIMIT 20
-                """
-            )
-            rows = [dict(r) for r in cur.fetchall()]
-        text = _format_cards_rows(rows)
-        await callback.message.edit_text(text, reply_markup=_search_keyboard())
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        if not settings.features.moderation:
+            await callback.answer("🚧 Модуль модерации отключён.")
+            return
+            
+        if not _search_allowed(callback.from_user.id):
+            await callback.answer("⏳ Подождите немного перед следующим поиском…", show_alert=False)
+            return
+            
+        try:
+            with db_v2.get_connection() as conn:
+                cur = conn.execute(
+                    """
+                    SELECT c.id, c.title, c.status, cat.name as category_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    ORDER BY c.created_at DESC
+                    LIMIT 20
+                    """
+                )
+                rows = [dict(r) for r in cur.fetchall()]
+                
+            if not rows:
+                text = "🔍 Недавно созданных карточек не найдено"
+            else:
+                text = _format_cards_rows(rows)
+                
+            try:
+                await callback.message.edit_text(
+                    text, 
+                    reply_markup=_search_keyboard()
+                )
+            except Exception as e:
+                logger.warning(f"Failed to edit message, sending new one: {e}")
+                await callback.message.answer(
+                    text, 
+                    reply_markup=_search_keyboard()
+                )
+                
+            await callback.answer()
+            
+        except Exception as e:
+            logger.error(f"Error in admin_search_recent: {e}", exc_info=True)
+            await callback.answer("❌ Ошибка при выполнении поиска", show_alert=True)
+            
     except Exception as e:
-        logger.error(f"admin_search_recent error: {e}")
-        await callback.answer("❌ Ошибка поиска", show_alert=False)
+        logger.error(f"Unexpected error in admin_search_recent: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
 
 @router.callback_query(F.data == "adm:reports")
-async def admin_reports(callback: CallbackQuery):
-    if not await admins_service.is_admin(callback.from_user.id):
-        await callback.answer("❌ Доступ запрещён")
-        return
-    lang = await profile_service.get_lang(callback.from_user.id)
-    # Build simple statistics report
+async def admin_reports(callback: CallbackQuery) -> None:
+    """
+    Показывает отчёт по статистике системы.
+    
+    Args:
+        callback: Callback запрос
+    """
     try:
-        with db_v2.get_connection() as conn:
-            # Cards by status
-            cur = conn.execute("""
-                SELECT status, COUNT(*) as cnt
-                FROM cards_v2
-                GROUP BY status
-            """)
-            by_status = {row[0] or 'unknown': int(row[1]) for row in cur.fetchall()}
-
-            # Totals
-            cur = conn.execute("SELECT COUNT(*) FROM cards_v2")
-            total_cards = int(cur.fetchone()[0])
-
-            cur = conn.execute("SELECT COUNT(*) FROM partners_v2")
-            total_partners = int(cur.fetchone()[0])
-
-            # Recent moderation actions (7 days)
-            try:
-                cur = conn.execute(
-                    """
-                    SELECT action, COUNT(*) as cnt
-                    FROM moderation_log
-                    WHERE created_at >= datetime('now','-7 days')
-                    GROUP BY action
-                    """
-                )
-                recent_actions = {row[0]: int(row[1]) for row in cur.fetchall()}
-            except Exception:
-                recent_actions = {}
-
-        lines = [
-            "📊 Отчёты (сводка)",
-            f"Всего карточек: {total_cards}",
-            f"Всего партнёров: {total_partners}",
-            "",
-            "По статусам:",
-            f"⏳ pending: {by_status.get('pending', 0)}",
-            f"✅ published: {by_status.get('published', 0)}",
-            f"❌ rejected: {by_status.get('rejected', 0)}",
-            f"🗂️ archived: {by_status.get('archived', 0)}",
-            f"📝 draft: {by_status.get('draft', 0)}",
-        ]
-        if recent_actions:
-            lines += [
-                "",
-                "За 7 дней:",
-                *[f"• {k}: {v}" for k, v in recent_actions.items()],
-            ]
-        text = "\n".join(lines)
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+            
+        lang = await profile_service.get_lang(callback.from_user.id)
+        
         try:
-            await callback.message.edit_text(text, reply_markup=get_admin_cabinet_inline(lang))
-        except Exception:
-            await callback.message.answer(text, reply_markup=get_admin_cabinet_inline(lang))
-        await callback.answer()
+            with db_v2.get_connection() as conn:
+                # Cards by status
+                cur = conn.execute("""
+                    SELECT status, COUNT(*) as cnt
+                    FROM cards_v2
+                    GROUP BY status
+                """)
+                by_status = {row[0] or 'unknown': int(row[1]) for row in cur.fetchall()}
+
+                # Totals
+                cur = conn.execute("SELECT COUNT(*) FROM cards_v2")
+                total_cards = int(cur.fetchone()[0])
+
+                cur = conn.execute("SELECT COUNT(*) FROM partners_v2")
+                total_partners = int(cur.fetchone()[0])
+
+                # Recent moderation actions (7 days)
+                try:
+                    cur = conn.execute(
+                        """
+                        SELECT action, COUNT(*) as cnt
+                        FROM moderation_log
+                        WHERE created_at >= datetime('now','-7 days')
+                        GROUP BY action
+                        """
+                    )
+                    recent_actions = {row[0]: int(row[1]) for row in cur.fetchall()}
+                except Exception as e:
+                    logger.warning(f"Failed to get recent actions: {e}")
+                    recent_actions = {}
+
+            # Формируем текст отчёта
+            lines = [
+                "📊 <b>Отчёт по системе</b>",
+                "",
+                f"<b>Всего карточек:</b> {total_cards}",
+                f"<b>Всего партнёров:</b> {total_partners}",
+                "",
+                "<b>По статусам:</b>",
+                f"⏳ Ожидают модерации: {by_status.get('pending', 0)}",
+                f"✅ Опубликовано: {by_status.get('published', 0)}",
+                f"❌ Отклонено: {by_status.get('rejected', 0)}",
+                f"🗂️ В архиве: {by_status.get('archived', 0)}",
+                f"📝 Черновики: {by_status.get('draft', 0)}",
+            ]
+            
+            if recent_actions:
+                lines += [
+                    "",
+                    "<b>Действия за 7 дней:</b>",
+                    *[f"• {k}: {v}" for k, v in recent_actions.items()],
+                ]
+                
+            text = "\n".join(lines)
+            
+            try:
+                await callback.message.edit_text(
+                    text, 
+                    reply_markup=get_admin_cabinet_inline(lang),
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"Failed to edit message, sending new one: {e}")
+                await callback.message.answer(
+                    text, 
+                    reply_markup=get_admin_cabinet_inline(lang),
+                    parse_mode="HTML"
+                )
+                
+            await callback.answer()
+            
+        except Exception as e:
+            logger.error(f"Error generating reports: {e}", exc_info=True)
+            await callback.answer("❌ Ошибка при формировании отчёта", show_alert=True)
+            
     except Exception as e:
-        logger.error(f"admin_reports error: {e}")
-        await callback.answer("❌ Ошибка отчёта", show_alert=False)
+        logger.error(f"Unexpected error in admin_reports: {e}", exc_info=True)
+        await callback.answer(
+            "❌ Произошла непредвиденная ошибка. Пожалуйста, попробуйте ещё раз.", 
+            show_alert=True
+        )
 
 
 def get_admin_cabinet_router() -> Router:
