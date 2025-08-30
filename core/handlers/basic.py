@@ -6,7 +6,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from core.config import settings
+from core.settings import settings
 
 # Экспортируемый роутер, который подключает main_v2.py
 router = Router(name="basic")
