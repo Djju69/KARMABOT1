@@ -487,6 +487,8 @@ class DatabaseMigrator:
         self.migrate_004_add_cards_optional_fields()
         # Loyalty subsystem (wallets, spend intents, cards, transactions)
         self.migrate_005_loyalty_tables()
+        # Add name_ko column to categories table if it doesn't exist
+        self.migrate_005_5_add_name_ko_column()
         # Seed additional categories
         self.migrate_006_seed_shops_services()
         # Bans table
@@ -496,6 +498,30 @@ class DatabaseMigrator:
         
         logger.info("All migrations completed successfully")
 
+    def migrate_005_5_add_name_ko_column(self):
+        """
+        EXPAND Phase: Add name_ko column to categories table if it doesn't exist
+        This is a compatibility migration to support Korean language in categories
+        """
+        with self.get_connection() as conn:
+            # Check if column already exists
+            if not _col_exists(conn, "categories", "name_ko"):
+                conn.execute("""
+                    ALTER TABLE categories 
+                    ADD COLUMN name_ko TEXT DEFAULT ''
+                """)
+                conn.commit()
+                
+        self.apply_migration(
+            "005.5",
+            "EXPAND: Add name_ko column to categories table",
+            """
+            -- This migration is applied programmatically
+            -- to ensure SQLite compatibility
+            SELECT 1;
+            """
+        )
+
     def migrate_006_seed_shops_services(self):
         """
         EXPAND Phase: Seed additional category '🛍️ Магазины и услуги'
@@ -504,7 +530,10 @@ class DatabaseMigrator:
         # Ensure categories table exists with all required columns
         with self.get_connection() as conn:
             _ensure_table_categories(conn)
-            conn.commit()
+            # Ensure name_ko column exists
+            if not _col_exists(conn, "categories", "name_ko"):
+                conn.execute("ALTER TABLE categories ADD COLUMN name_ko TEXT DEFAULT ''")
+                conn.commit()
             
         sql = """
         -- Insert into new categories_v2 table if it exists
