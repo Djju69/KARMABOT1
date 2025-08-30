@@ -148,7 +148,7 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
 
 
 # Импорт language_router должен быть в начале файла с другими импортами
-from ..handlers.language import build_language_inline_kb, language_router
+from ..handlers.language import build_language_inline_kb, on_choose_language_cb, language_router
 
 # Включить роутер языка в главный роутер
 main_menu_router.include_router(language_router)
@@ -172,7 +172,7 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
         await message.answer("❌ Не удалось загрузить выбор языка. Пожалуйста, попробуйте позже.")
 
 # Прокси-хендлер для колбэков выбора языка (на случай, если нужен)
-@main_menu_router.callback_query(F.data.regexp(r'^lang:(?:set:)?(ru|en|vi|ko)$'))
+@main_menu_router.callback_query(F.data.startswith("lang:"))
 async def proxy_lang_cb(cb: CallbackQuery, state: FSMContext, bot: Bot):
     """Прокси-обработчик для выбора языка"""
     from ..handlers.language import on_choose_language_cb
