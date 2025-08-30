@@ -133,11 +133,20 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         
     Returns:
         ReplyKeyboardMarkup: Configured reply keyboard with fallback values
-        
-    Raises:
-        Exception: If keyboard generation fails
     """
     logger = logging.getLogger(__name__)
+    
+    # Emergency fallback keyboard
+    emergency_keyboard = ReplyKeyboardMarkup(
+        keyboard=[[
+            KeyboardButton(text="🗂️ Категории"),
+            KeyboardButton(text="📍 Ближайшие")
+        ], [
+            KeyboardButton(text="❓ Помощь"),
+            KeyboardButton(text="🌐 Язык")
+        ]],
+        resize_keyboard=True
+    )
     
     # Default fallback values
     default_buttons = {
@@ -150,25 +159,38 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     def safe_get_text(key: str, lang: str) -> str:
         """Safely get translated text with fallback to defaults"""
         try:
-            return get_text(key, lang) or default_buttons.get(key, key)
+            text = get_text(key, lang)
+            if not text:
+                logger.warning(f"Empty text for key '{key}'")
+                return default_buttons.get(key, key)
+            return text
         except Exception as e:
             logger.warning(f"Failed to get text for key '{key}': {str(e)}")
             return default_buttons.get(key, key)
     
     try:
-        # Build keyboard with error handling for each button
+        logger.info(f"[MENU] Generating menu for lang: {lang}")
         keyboard = []
         
         # Row 1: Categories and Nearest
         try:
+            categories = safe_get_text("keyboard.categories", lang)
+            nearest = safe_get_text("keyboard.nearest", lang)
+            
+            if not categories or not nearest:
+                logger.error(f"[MENU] Invalid button text: categories='{categories}', nearest='{nearest}'")
+                return emergency_keyboard
+                
             row1 = [
-                KeyboardButton(text=safe_get_text("keyboard.categories", lang)),
-                KeyboardButton(text=safe_get_text("keyboard.nearest", lang))
+                KeyboardButton(text=categories),
+                KeyboardButton(text=nearest)
             ]
             keyboard.append(row1)
+            logger.debug("[MENU] Added first row")
+            
         except Exception as e:
-            logger.error(f"Failed to create first row: {str(e)}")
-            raise
+            logger.error(f"[MENU] Failed to create first row: {str(e)}", exc_info=True)
+            return emergency_keyboard
             
         # Row 2: Help and Language
         try:

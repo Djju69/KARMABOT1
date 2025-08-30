@@ -45,38 +45,60 @@ async def main_menu(message: Message, bot: Bot, state: FSMContext):
 
 async def get_start(message: Message, bot: Bot, state: FSMContext):
     logger = logging.getLogger(__name__)
-    logger.info(f"[MENU_DEBUG] Starting get_start for user {message.from_user.id}")
+    logger.info(f"[START] Starting get_start for user {message.from_user.id}")
     
     try:
-        # Сброс данных
-        await state.set_data({})
+        # Debug: Log feature flags
+        logger.info(f"[DEBUG] Feature flags: new_menu={settings.features.new_menu}")
+        
+        # Get or set default language
+        user_data = await state.get_data()
+        current_lang = user_data.get('lang', 'ru')
+        
+        logger.info(f"[DEBUG] Current language: {current_lang}")
+        
+        # Force update user data
         await state.update_data({
             'started': True,
-            'lang': 'ru'  # Устанавливаем русский по умолчанию
+            'lang': 'ru'
         })
         
-        # Получаем клавиатуру главного меню
-        keyboard = get_main_menu_reply('ru')
-        logger.info(f"[MENU_DEBUG] Generated menu keyboard: {keyboard}")
+        # Debug: Force enable menu
+        logger.info("[DEBUG] Forcing menu generation...")
+        keyboard = get_main_menu_reply(current_lang)
         
-        # Отправляем приветственное сообщение с главным меню
+        if not keyboard:
+            logger.error("[ERROR] Failed to generate menu: keyboard is None")
+            # Fallback to simple keyboard
+            from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="Test Button")]],
+                resize_keyboard=True
+            )
+        
+        logger.info(f"[DEBUG] Sending menu to user {message.from_user.id}")
+        
+        # Send welcome message with menu
         await bot.send_message(
             chat_id=message.chat.id,
             text="👋 Добро пожаловать! Выберите действие:",
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode='HTML'
         )
-        logger.info("[MENU_DEBUG] Welcome message with main menu sent successfully")
+        
+        logger.info("[SUCCESS] Menu sent successfully")
         
     except Exception as e:
-        logger.error(f"[MENU_ERROR] Error in get_start: {str(e)}", exc_info=True)
-        # Пытаемся отправить сообщение об ошибке
+        logger.error(f"[ERROR] get_start failed: {str(e)}", exc_info=True)
         try:
+            # Пытаемся отправить хотя бы простое сообщение об ошибке
             await bot.send_message(
                 chat_id=message.chat.id,
-                text="❌ Произошла ошибка при загрузке меню. Пожалуйста, попробуйте снова."
+                text="❌ Ошибка при загрузке меню. Пожалуйста, попробуйте снова.",
+                parse_mode='HTML'
             )
         except Exception as send_error:
-            logger.error(f"[MENU_CRITICAL] Failed to send error message: {str(send_error)}")
+            logger.critical(f"[CRITICAL] Failed to send error message: {str(send_error)}")
 
 
 async def language_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
@@ -110,14 +132,32 @@ async def test_menu_command(message: Message, bot: Bot, state: FSMContext):
     user_id = message.from_user.id
     
     try:
-        logger.info(f"[MENU_DEBUG] test_menu_command started for user {user_id}")
+        logger.info(f"[DEBUG] ===== MENU DEBUG START =====")
+        logger.info(f"[DEBUG] User ID: {user_id}")
+        logger.info(f"[DEBUG] Chat ID: {chat_id}")
         
-        # Get current state data
+        # Get current state and settings
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         
-        logger.info(f"[MENU_DEBUG] User {user_id} language: {lang}")
-        logger.info(f"[MENU_DEBUG] Feature flags: {settings.features.dict()}")
+        # Log all relevant info
+        logger.info(f"[DEBUG] Current language: {lang}")
+        logger.info(f"[DEBUG] Feature flags: {settings.features.dict()}")
+        logger.info(f"[DEBUG] User data: {user_data}")
+        
+        # Force enable menu for testing
+        logger.info("[DEBUG] Forcing menu generation...")
+        keyboard = get_main_menu_reply(lang)
+        
+        if not keyboard:
+            logger.error("[ERROR] Menu generation returned None!")
+            # Create emergency keyboard
+            from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[[KeyboardButton(text="Test Button")]],
+                resize_keyboard=True
+            )
+            await message.answer("⚠️ Меню не загружено, показан аварийный вариант")
         
         # Get the menu with error handling
         try:
