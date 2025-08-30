@@ -1,9 +1,12 @@
 """Configuration settings for the application."""
 from __future__ import annotations
 
-from __future__ import annotations
 import os
+import sys
+import logging
 from pydantic import BaseModel, Field
+
+log = logging.getLogger(__name__)
 
 # Надёжный фоллбэк: pydantic_settings (v2) → pydantic.BaseSettings (v1) → BaseModel
 try:
@@ -16,17 +19,32 @@ except Exception:
 
 IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
 
+def _pick_bot_token() -> str:
+    """Get and validate bot token from environment variables."""
+    # Primary source
+    primary = os.getenv("BOT_TOKEN", "").strip()
+    # Legacy source (for backward compatibility)
+    legacy = os.getenv("BOTS__BOT_TOKEN", "").strip()
+
+    if primary and legacy and primary != legacy:
+        log.error("BOT_TOKEN и BOTS__BOT_TOKEN заданы и РАЗНЫЕ — используем BOT_TOKEN и игнорируем legacy")
+    
+    token = primary or legacy
+    if not token:
+        log.critical("❌ Не найден BOT_TOKEN (или BOTS__BOT_TOKEN) в переменных окружения")
+        sys.exit(1)
+    
+    # Mask token for logging
+    mask = token[:8] + "…" + token[-6:] if len(token) > 14 else "***"
+    log.info(f"✅ Используется BOT_TOKEN={mask}")
+    return token
+
 class Bots(BaseModel):
-    # берём токен из окружения, чтобы не падать, если Settings соберётся без BaseSettings
-    bot_token: str = Field(default_factory=lambda: (
-        os.getenv("BOTS__BOT_TOKEN")
-        or os.getenv("BOT_TOKEN")
-        or ""
-    ))
+    # Use the token from environment with proper validation
+    bot_token: str = Field(default_factory=_pick_bot_token)
+    
     admin_id: int | None = Field(default_factory=lambda: (
-        int(os.getenv("BOTS__ADMIN_ID")) 
-        if os.getenv("BOTS__ADMIN_ID") and os.getenv("BOTS__ADMIN_ID").isdigit() 
-        else None
+        int(os.getenv("ADMIN_ID") or os.getenv("BOTS__ADMIN_ID") or "0") or None
     ))
 
     def masked_token(self) -> str:

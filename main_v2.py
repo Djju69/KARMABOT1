@@ -26,13 +26,18 @@ from core.config import Settings, load_settings
 
 # --- Leader lock settings ---
 LOCK_TTL = 300
-BOT_ID_STR = os.getenv("BOT_ID", "8363530491")  # можно вынести в env
+# Get BOT_ID from environment or extract from BOT_TOKEN
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+BOT_ID_STR = os.getenv("BOT_ID", BOT_TOKEN.split(":")[0] if BOT_TOKEN and ":" in BOT_TOKEN else "0")
 LOCK_KEY = f"production:bot:{BOT_ID_STR}:polling:leader"
 INSTANCE = f"{os.environ.get('HOSTNAME','local')}:{os.getpid()}"
 FORCE = os.getenv("LEADER_FORCE", "0") == "1"
 
-# Redis URL должен совпадать с Railway (env), здесь пример:
-REDIS_URL = os.getenv("REDIS_URL", "redis://default:password@redis.railway.internal:6379")
+# Redis URL from environment (required for Railway)
+REDIS_URL = os.getenv("REDIS_URL")
+if not REDIS_URL:
+    raise ValueError("REDIS_URL environment variable is required")
+    
 redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
 
 # --- END: Leader lock settings ---
@@ -220,33 +225,22 @@ def resolve_bot_token(settings) -> str:
         return t.strip()
     return getattr(getattr(settings, "bots", None), "bot_token", "")
 
-def _env_name(settings) -> str:
-    v = getattr(settings, "environment", None)
-    if v: return v
-    for key in ("ENVIRONMENT","ENV","APP_ENV","RAILWAY_ENVIRONMENT","RAILWAY_STAGE"):
-        if os.getenv(key): return os.getenv(key)
-    return "production"
-
-
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart
 from aiogram.client.bot import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramUnauthorizedError
 
-# Environment loading is already handled at the top of the file
-# Remove duplicate _env_name function and environment loading code
+# Import core config
+from core.config import BOT_TOKEN, load_settings
+
+# Load settings
+settings = load_settings()
 
 def _get_redis_url() -> str:
-    """Safely get Redis URL from environment or settings.
-    Priority: ENV -> settings.redis_url -> settings.database.redis_url
-    """
-    return (
-        os.getenv("REDIS_URL")
-        or getattr(__import__("core.settings", fromlist=["settings"]).settings, "redis_url", None)
-        or getattr(getattr(__import__("core.settings", fromlist=["settings"]).settings, "database", None), "redis_url", None)
-        or ""
-    )
+    """Safely get Redis URL from environment or settings."""
+    return os.getenv("REDIS_URL") or ""
 
 async def set_commands(bot: Bot) -> None:
     """Set bot commands"""
@@ -899,30 +893,53 @@ async def main():
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
     
+    # Initialize Redis
+    redis_url = _get_redis_url()
+    if not redis_url:
+        logger.error("❌ REDIS_URL not configured")
+        return
+        
+    redis = aioredis.from_url(redis_url, decode_responses=True)
+    
     # Initialize Dispatcher and register shutdown handler
     dp = Dispatcher()
     dp.shutdown.register(make_shutdown_handler(redis))
+    
+    # Include routers
+    from core.handlers import ping
+    dp.include_router(ping.router)
     
     # Ensure database is ready
     ensure_database_ready()
     
     # Log environment info
-    env = _env_name(settings)
-    logger.info("🔑 Environment: %s", env)
-    logger.info("🔑 Lock key: %s", LOCK_KEY)
+    env = settings.environment or "production"
+    logger.info(f"🔑 Environment: {env}")
+    
+    # Leader lock settings
+    lock_key = f"production:bot:{BOT_TOKEN.split(':')[0]}:polling:leader"
+    instance = f"{os.getenv('HOSTNAME','local')}:{os.getpid()}"
+    lock_ttl = 300  # 5 minutes TTL for lock
+    
+    logger.info(f"🔑 Lock key: {lock_key}")
+    logger.info(f"🔑 Instance: {instance}")
     
     try:
         # Initialize bot with context manager
         async with Bot(
-            token=BOT_TOKEN.strip(),
-            default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+            token=BOT_TOKEN,
+            default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         ) as bot:
             # Test Redis connection
-            ok = await redis.ping()
-            logger.info(f"✅ Redis ping: {ok}")
+            try:
+                ok = await redis.ping()
+                logger.info(f"✅ Redis ping: {ok}")
+            except Exception as e:
+                logger.error(f"❌ Redis connection failed: {e}")
+                return
             
             # Try to acquire leader lock
-            got_lock = await acquire_leader_lock(redis, LOCK_KEY, INSTANCE, LOCK_TTL, retries=12)
+            got_lock = await acquire_leader_lock(redis, lock_key, instance, lock_ttl, retries=12)
             if not got_lock:
                 logger.error("❌ Failed to acquire leader lock after retries, exiting...")
                 return
@@ -935,13 +952,16 @@ async def main():
                 logger.error(f"❌ Failed to set bot commands: {e}", exc_info=True)
                 return
             
-            # Start the bot
+            # Start the bot with allowed updates
             logger.info("🚀 Starting bot polling...")
-            await dp.start_polling(bot)
+            await dp.start_polling(
+                bot,
+                allowed_updates=dp.resolve_used_update_types(),
+                drop_pending_updates=True
+            )
             
     except Exception as e:
         logger.error(f"❌ Fatal error in main: {e}", exc_info=True)
-        # The shutdown handler will be called automatically by aiogram
         raise
     
     # Preflight check with Telegram API
