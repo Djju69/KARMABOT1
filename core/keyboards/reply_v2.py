@@ -48,8 +48,7 @@ def get_main_menu_reply(lang: str = 'ru', user_id: int | None = None) -> ReplyKe
         feature_enabled = False
     
     # Legacy compact layout (2x2) for backward compatibility when new menu is disabled
-    if not feature_enabled:
-    if not getattr(settings.features, 'new_menu', False):
+    if not feature_enabled or not getattr(settings.features, 'new_menu', False):
         logger.info("[MENU_DEBUG] Using legacy menu layout (2x2)")
         return ReplyKeyboardMarkup(
             keyboard=[
