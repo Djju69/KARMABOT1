@@ -18,6 +18,8 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
 from aiogram.exceptions import TelegramUnauthorizedError
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 from core.config import Settings, load_settings
 
@@ -903,8 +905,13 @@ async def main():
         logger.error(f"❌ redis.asyncio is required, but not importable: {e}")
         raise SystemExit(1)
     
-    # Initialize bot with our pre-validated token
-    bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
+    # Initialize bot with DefaultBotProperties for aiogram 3.7+
+    bot = Bot(
+        token=BOT_TOKEN,
+        default=DefaultBotProperties(
+            parse_mode=ParseMode.HTML
+        )
+    )
     
     # Set bot commands
     try:
