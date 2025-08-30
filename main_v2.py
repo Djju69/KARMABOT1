@@ -807,8 +807,36 @@ async def _preflight_polling_conflict(bot_token: str) -> bool:
 
 async def on_startup(bot: Bot):
     """Bot startup handler"""
-    await set_commands(bot)
-    logger.info("Bot started and commands set.")
+    logger.info("🚀 Bot startup sequence started")
+    
+    # Set bot commands
+    try:
+        await set_commands(bot)
+        logger.info("✅ Bot commands set")
+    except Exception as e:
+        logger.error(f"❌ Failed to set bot commands: {e}")
+        raise
+    
+    # Initialize database connection pool
+    try:
+        from core.database import init_db
+        await init_db()
+        logger.info("✅ Database pool initialized")
+    except Exception as e:
+        logger.error(f"❌ Database initialization failed: {e}")
+        raise
+    
+    # Verify Redis connection
+    try:
+        if not hasattr(bot, '_redis_initialized'):
+            await redis.ping()
+            bot._redis_initialized = True
+            logger.info("✅ Redis connection verified")
+    except Exception as e:
+        logger.error(f"❌ Redis connection failed: {e}")
+        raise
+    
+    logger.info("🚀 Bot startup completed")
     # Send startup message to admin
     admin_id = getattr(settings.bots, "admin_id", None)
     if isinstance(admin_id, int):
@@ -829,7 +857,7 @@ async def on_startup(bot: Bot):
     except Exception as e:
         logger.warning(f"AdminsService connect error: {e}")
 
-async def on_shutdown(bot: Bot):
+async def on_shutdown(dp: Dispatcher):
     """Bot shutdown handler"""
     logger.info("😴 Stopping KARMABOT1...")
     
