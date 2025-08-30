@@ -1,40 +1,107 @@
 """
-KARMABOT1 - Enhanced main entry point with backward compatibility
-Integrates all new components while preserving existing functionality
+KARMABOT1 - Main entry point with aiogram v3 compatibility
 """
-
+from __future__ import annotations
+import os
 import asyncio
 import logging
-import os
-import secrets
-import hashlib
-import sys
-import aiohttp
-from typing import Optional
+import logging.handlers
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Union
 
-# В проде .env не загружаем; локально можно, но без override системных переменных
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart, Command
+from aiogram.exceptions import TelegramUnauthorizedError
+
+from core.config import Settings, load_settings
+
+def _mask(t: str|None) -> str:
+    """Mask sensitive information in logs."""
+    if not t:
+        return "<none>"
+    return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
+
+def resolve_bot_token(settings):
+    """Resolve bot token from settings or environment."""
+    # First try environment variable
+    token = os.getenv("BOTS__BOT_TOKEN")
+    if not token and hasattr(settings, 'bots') and hasattr(settings.bots, 'bot_token'):
+        token = settings.bots.bot_token
+    
+    if not token:
+        logger.error("❌ No bot token found in environment or settings")
+        return None
+        
+    # Ensure token is a string and strip any whitespace
+    token = str(token).strip()
+    
+    # Log first 5 chars of token for debugging (mask the rest)
+    masked = f"{token[:5]}..." if len(token) > 5 else "[too_short]"
+    logger.debug(f"Resolved token (first 5 chars): {masked}")
+    
+    # Basic validation
+    if ':' not in token:
+        logger.error("❌ Invalid token format. Token must be in the format '1234567890:ABCdefGHIjklmNOPQRSTUVWXYZ0123456789'")
+        return None
+        
+    return token
+
+# Load settings after environment is set up
 try:
-    from dotenv import load_dotenv
-except Exception:
-    load_dotenv = None
+    settings = load_settings()
+except Exception as e:
+    logging.error("Failed to load settings: %s", str(e))
+    raise
 
-IS_PROD = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("ENVIRONMENT") == "production")
-if load_dotenv and not IS_PROD:
-    load_dotenv(override=False)
+def setup_logging(level=logging.INFO, retention_days: int = 7):
+    """Configure logging with file and console handlers.
+    
+    Args:
+        level: Logging level
+        retention_days: Number of days to keep log files
+    """
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Set up file handler with rotation
+    log_file = logs_dir / "bot.log"
+    file_handler = logging.handlers.TimedRotatingFileHandler(
+        log_file, when="midnight", backupCount=retention_days, encoding="utf-8"
+    )
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+    )
+    
+    # Set up console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%H:%M:%S"
+        )
+    )
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=level,
+        handlers=[file_handler, console_handler],
+        force=True  # Override any existing handlers
+    )
+    
+    # Log environment info
+    logger = logging.getLogger(__name__)
+    logger.info("Starting in %s environment", settings.environment)
+    logger.info("Using bot token: %s", _mask(settings.bots.bot_token))
+    
+    return logger
 
-# Санитизируем токен из ENV (убираем случайные \n и пробелы)
-if os.getenv("BOTS__BOT_TOKEN"):
-    os.environ["BOTS__BOT_TOKEN"] = os.environ["BOTS__BOT_TOKEN"].strip()
-
-# Configure logging first
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+# Initialize logging
+logger = setup_logging(level=logging.INFO, retention_days=7)
 
 # Safe environment loading
 try:
@@ -85,19 +152,54 @@ def _get_redis_url() -> str:
         or ""
     )
 
-# Core imports
-from core.settings import settings
-from core.utils.commands import set_commands
-from core.utils.logging_setup import setup_logging
+async def set_commands(bot: Bot) -> None:
+    """Set bot commands"""
+    from aiogram.types import BotCommand, BotCommandScopeDefault
+    
+    cmds = [
+        BotCommand(command="start", description="Старт / меню"),
+        BotCommand(command="help",  description="Помощь"),
+    ]
+    await bot.set_my_commands(cmds, scope=BotCommandScopeDefault())
 
-# Router imports
-from core.handlers import basic_router, callback_router, main_menu_router
-from core.handlers.profile import get_profile_router
-from core.handlers.activity import get_activity_router
-from core.handlers.partner import get_partner_router
-from core.handlers.moderation import get_moderation_router
-from core.handlers.admin_cabinet import get_admin_cabinet_router
-from core.handlers.category_handlers import get_category_router
+async def main():
+    """Main entry point"""
+    settings = Settings()
+    token = resolve_token(settings)
+    logger.info("🔑 Environment: %s", settings.environment)
+    logger.info("🔑 Using bot token: %s", _mask(token))
+
+    bot = Bot(token=token)
+    dp = Dispatcher()
+
+    # Include routers from core.handlers
+    from core.handlers import basic_router, callback_router, main_menu_router
+    dp.include_router(basic_router)
+    dp.include_router(callback_router)
+    dp.include_router(main_menu_router)
+
+    # Set up bot commands
+    await set_commands(bot)
+    logger.info("✅ Bot commands set")
+
+    try:
+        # Verify bot token and get bot info
+        me = await bot.get_me()
+        logger.info("✅ Bot authorized: @%s (id=%s)", me.username, me.id)
+        
+        # Delete any existing webhook to ensure we're using polling
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("🗑️  Deleted any existing webhook")
+        
+    except TelegramUnauthorizedError as e:
+        logger.error("❌ Invalid BOT TOKEN. %s", e)
+        try: 
+            await bot.session.close()
+        finally: 
+            raise
+
+    logger.info("🚀 Start polling")
+    await dp.start_polling(bot)
 
 # Ensure settings.features exists
 try:
@@ -656,7 +758,16 @@ async def main():
     # Define safe_token for preflight check
     safe_token = _mask_token(token)
     
-    # Initialize bot
+    # Initialize bot with proper token validation
+    try:
+        from aiogram.utils.token import validate_token
+        validate_token(token)
+        logger.info("✅ Token format is valid")
+    except Exception as e:
+        logger.error("❌ Invalid bot token format: %s", str(e))
+        logger.error("Token starts with: %s", token[:10] if token else 'None')
+        return
+    
     bot = Bot(token=token, default=default_properties)
     
     # Set bot commands
@@ -793,5 +904,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logger.info("Bot stopped by user.")
+        logger.info("Bot stopped")
+    except Exception as e:
+        logger.exception("Fatal error in main()")
         raise

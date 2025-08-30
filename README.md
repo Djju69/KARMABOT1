@@ -1,5 +1,24 @@
 # Karma System Bot
 
+## Обновление до aiogram v3
+
+### Основные изменения
+
+1. **Новая структура настроек**:
+   - Унифицированный класс `Settings` в `core/config.py`
+   - Поддержка переменных окружения с префиксом `BOTS__`
+   - Автоматическая загрузка `.env` только в режиме разработки
+
+2. **Обновленные обработчики**:
+   - Совместимость с aiogram v3
+   - Улучшенная обработка ошибок
+   - Поддержка старых и новых сигнатур хэндлеров
+
+3. **Новые возможности**:
+   - Улучшенное логирование
+   - Более надежная обработка команд
+   - Поддержка FSM из коробки
+
 ## Настройка окружения
 
 ### Проверка переменных окружения
@@ -8,13 +27,10 @@
 
 ```bash
 # Проверка переменных окружения
-printenv | grep -i -E 'BOTS__BOT_TOKEN|BOT_TOKEN|TELEGRAM_TOKEN'
+printenv | grep -i -E 'BOTS__BOT_TOKEN|BOT_TOKEN|TELEGRAM_TOKEN|ENVIRONMENT'
 
 # Проверка токена бота
-python - <<'PY'
-import os
-print("BOTS__BOT_TOKEN repr =", repr(os.getenv("BOTS__BOT_TOKEN")))
-PY
+python -c "import os; print('BOTS__BOT_TOKEN =', repr(os.getenv('BOTS__BOT_TOKEN')))"
 
 # Проверка доступа к Telegram API
 curl -s "https://api.telegram.org/bot${BOTS__BOT_TOKEN}/getMe"
@@ -27,17 +43,19 @@ curl -s "https://api.telegram.org/bot${BOTS__BOT_TOKEN}/getMe"
 
 ### Файлы окружения
 
-#### .env.example
+#### .env (для разработки)
 ```env
-BOTS__BOT_TOKEN=REPLACE_ME
+BOTS__BOT_TOKEN=your_bot_token_here
 BOTS__ADMIN_ID=6391215556
 ENVIRONMENT=development
 FEATURES__BOT_ENABLED=1
+FEATURES__PARTNER_FSM=0
+FEATURES__MODERATION=0
 ```
 
-#### .env.production
+#### Настройки Railway/Production
 ```env
-BOTS__BOT_TOKEN=
+BOTS__BOT_TOKEN=your_production_token
 ENVIRONMENT=production
 FEATURES__BOT_ENABLED=1
 ```
@@ -53,6 +71,21 @@ FEATURES__BOT_ENABLED=1
    ```bash
    python main_v2.py
    ```
+
+## Тестирование
+
+Запустите тесты для проверки работоспособности:
+
+```bash
+python -m pytest tests/test_imports.py -v
+```
+
+## Обратная совместимость
+
+Для поддержки старых обработчиков используется модуль `core.compat`:
+- `@compat_handler` - декоратор для старых хэндлеров
+- `call_compat()` - функция для вызова старых обработчиков
+- Автоматические алиасы для устаревших имен функций
 
 ## Проверка работы
 
