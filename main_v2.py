@@ -7,9 +7,10 @@ import asyncio
 import logging
 import logging.handlers
 import secrets
+import socket
 import aiohttp
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Union
+from typing import Optional, Dict, Any, List, Union, Callable, Awaitable
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery
@@ -17,6 +18,27 @@ from aiogram.filters import CommandStart, Command
 from aiogram.exceptions import TelegramUnauthorizedError
 
 from core.config import Settings, load_settings
+
+# Global instance ID for leader lock
+INSTANCE_ID = f"{socket.gethostname()}:{os.getpid()}"
+
+def get_bot_token_from_env_or_settings(settings):
+    """
+    ЕДИНЫЙ источник токена: BOTS__BOT_TOKEN > BOT_TOKEN > settings.bots.bot_token
+    """
+    token = os.getenv("BOTS__BOT_TOKEN") or os.getenv("BOT_TOKEN") \
+            or getattr(getattr(settings, "bots", None), "bot_token", None)
+    if not token:
+        raise RuntimeError("BOT token is not set (BOTS__BOT_TOKEN / BOT_TOKEN / settings.bots.bot_token).")
+    return token
+
+def make_lock_key(token: str) -> str:
+    """
+    Уникальный ключ лидер-лока на окружение и токен.
+    Пример: production:bot:83635304:polling:leader
+    """
+    env = os.getenv("ENV", "production")
+    return f"{env}:bot:{token[:8]}:polling:leader"
 
 def _mask(t: str|None) -> str:
     """Mask sensitive information in logs."""
@@ -27,7 +49,7 @@ def _mask(t: str|None) -> str:
 def resolve_bot_token(settings):
     """Resolve bot token from settings or environment."""
     # First try environment variable
-    token = os.getenv("BOTS__BOT_TOKEN")
+    token = get_bot_token_from_env_or_settings(settings)
     if not token and hasattr(settings, 'bots') and hasattr(settings.bots, 'bot_token'):
         token = settings.bots.bot_token
     
@@ -272,10 +294,9 @@ async def _acquire_leader_lock(redis_url: str, key: str, ttl: int):
         )
         return True, None  # allow single-instance assumption
 
-    token = secrets.token_hex(16)
     try:
         redis = AsyncRedis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-        # ensure connectivity
+        # Try to acquire the lock with instance ID as value
         await redis.ping()
     except Exception as e:
         logging.getLogger(__name__).warning(
@@ -720,28 +741,52 @@ async def on_startup(bot: Bot):
 async def on_shutdown(bot: Bot):
     """Bot shutdown handler"""
     logger.info("😴 Stopping KARMABOT1...")
-    # Stop listeners/services
+    
+    # Try to send shutdown notification to admin
+    try:
+        admin_id = getattr(settings.bots, "admin_id", None)
+        if isinstance(admin_id, int):
+            await bot.send_message(admin_id, "😴 KARMABOT1 остановлен")
+    except Exception as e:
+        logger.warning(f"Could not send shutdown message to admin: {e}")
+    
+    # Stop PG notify listener
     try:
         await pg_notify_listener.stop()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Error stopping PG notify listener: {e}")
+    
+    # Close cache service
     try:
-        # Use get_cache_service to get the current cache service instance
         cache_service = get_cache_service()
         if hasattr(cache_service, 'close') and callable(getattr(cache_service, 'close')):
             await cache_service.close()
+            logger.info("✅ Cache service closed")
     except Exception as e:
         logger.warning(f"Error closing cache service: {e}")
     
-    await profile_service.disconnect()
+    # Disconnect services
+    try:
+        await profile_service.disconnect()
+        logger.info("✅ Profile service disconnected")
+    except Exception as e:
+        logger.warning(f"Error disconnecting profile service: {e}")
+    
     try:
         await admins_service.disconnect()
+        logger.info("✅ Admins service disconnected")
     except Exception as e:
         logger.warning(f"Error disconnecting admins service: {e}")
+    
+    # Ensure bot session is closed
     try:
-        await bot.send_message(settings.bots.admin_id, "😴 KARMABOT1 остановлен")
+        if not bot.session.closed:
+            await bot.session.close()
+            logger.info("✅ Bot session closed")
     except Exception as e:
-        logger.warning(f"Could not send shutdown message to admin: {e}")
+        logger.warning(f"Error closing bot session: {e}")
+    
+    logger.info("✅ KARMABOT1 shutdown complete")
 
 async def main():
     """Main entry point for the bot"""
@@ -755,19 +800,22 @@ async def main():
     
     default_properties = DefaultBotProperties(parse_mode="HTML")
     
-    # Get and validate token
-    token = resolve_bot_token(settings)
-    if not token:
-        logger.error("❌ BOTS__BOT_TOKEN is not set in environment variables")
+    # Get and validate token using the unified token resolver
+    try:
+        token = get_bot_token_from_env_or_settings(settings)
+        LOCK_KEY = make_lock_key(token)
+        logger.info("🔑 Using bot token (masked): %s***%s", token[:4], token[-4:])
+    except Exception as e:
+        logger.error(f"❌ Failed to get bot token: {e}")
         return
     
     # Log environment info
     env = _env_name(settings)
     logger.info("🔑 Environment: %s", env)
-    logger.info("🔑 Using bot token: %s", _mask_token(token))
+    logger.info("🔑 Lock key: %s", LOCK_KEY)
     
-    # Define safe_token for preflight check
-    safe_token = _mask_token(token)
+    # For backward compatibility
+    safe_token = f"{token[:4]}***{token[-4:]}"
     
     # Initialize bot with proper token validation
     try:
@@ -846,31 +894,64 @@ async def main():
     # Optional leader lock to avoid multiple pollers
     lock_enabled = os.getenv("ENABLE_POLLING_LEADER_LOCK", "1").lower() in {"1", "true", "yes"}
     release_lock = None
+    
     if lock_enabled:
-        lock_ttl = int(os.getenv("POLLING_LEADER_LOCK_TTL", "120"))
-        # Safe environment detection with fallback
-        env = getattr(settings, "environment", None) or os.getenv("ENVIRONMENT") or os.getenv("ENV") or "prod"
-        lock_key = f"{env}:bot:polling:leader"
-        owned, release = await _acquire_leader_lock(_get_redis_url(), lock_key, lock_ttl)
+        lock_ttl = int(os.getenv("POLLING_LEADER_TTL", "300"))  # 5 minutes by default
+        
+        # Log instance info for debugging
+        logger.info(f"🔄 Acquiring leader lock (key={LOCK_KEY}, instance={INSTANCE_ID}, ttl={lock_ttl}s)")
+        
+        # Try Redis lock first
+        owned, release = await _acquire_leader_lock(redis_url, LOCK_KEY, lock_ttl)
+        
         if not owned:
-            logger.error("❌ Another instance holds polling leader lock (%s).", lock_key)
-            if os.getenv("EXIT_ON_CONFLICT", "").lower() in {"1", "true", "yes"}:
-                logger.info("EXIT_ON_CONFLICT=1 → exiting instead of waiting (leader lock)")
+            logger.error("❌ Another instance holds the leader lock")
+            if os.getenv("EXIT_ON_CONFLICT", "1").lower() in {"1", "true", "yes"}:
+                logger.info("EXIT_ON_CONFLICT=1 → Exiting (leader lock held by another instance)")
                 return
-            logger.error("Staying idle.")
-            # Keep process alive but do not touch Telegram API
-            await asyncio.Event().wait()
-            return
-        # If Redis lock not available (release is None), fallback to Postgres advisory lock
-        if release is None:
-            pg_owned, pg_release = await _acquire_pg_leader_lock(settings.database.url, lock_key)
-            if not pg_owned:
-                # Already logged inside _acquire_pg_leader_lock
-                await asyncio.Event().wait()
-                return
-            release_lock = pg_release
-        else:
-            release_lock = release
+                
+            # If not exiting, wait forever to keep the container alive
+            logger.warning("🔄 Waiting for leader lock to be released...")
+            while True:
+                await asyncio.sleep(60)
+                owned, _ = await _acquire_leader_lock(redis_url, LOCK_KEY, lock_ttl)
+                if owned:
+                    logger.info("✅ Acquired leader lock after waiting")
+                    break
+                    
+        release_lock = release
+        
+        # Start background task to refresh the lock
+        async def refresh_lock():
+            while True:
+                await asyncio.sleep(lock_ttl // 2)  # Refresh at half TTL
+                if release_lock is None:
+                    break
+                try:
+                    redis = AsyncRedis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+                    await redis.setex(LOCK_KEY, lock_ttl, INSTANCE_ID)
+                    await redis.close()
+                    logger.debug(f"♻️ Refreshed leader lock (ttl={lock_ttl}s)")
+                except Exception as e:
+                    logger.error(f"❌ Failed to refresh leader lock: {e}")
+        
+        # Start the refresh task
+        refresh_task = asyncio.create_task(refresh_lock())
+        
+        # Cleanup function to stop refresh and release lock
+        async def cleanup():
+            if release_lock:
+                logger.info("🔓 Releasing leader lock on shutdown")
+                await release_lock()
+            refresh_task.cancel()
+            try:
+                await refresh_task
+            except asyncio.CancelledError:
+                pass
+        
+        # Register cleanup
+        import atexit
+        atexit.register(lambda: asyncio.run(cleanup()))
 
     try:
         # To ensure no conflicts, we delete any existing webhook and start polling cleanly.
