@@ -12,15 +12,45 @@ from typing import Optional
 from ..settings import settings
 from ..utils.locales_v2 import get_text, get_all_texts
 
-def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
+def get_main_menu_reply(lang: str = 'ru', user_id: int | None = None) -> ReplyKeyboardMarkup:
     """
     Главное Reply-меню согласно финальному ТЗ.
-    Ряд 1: 🗂 Категории | 📍 По районам / Рядом
-    Ряд 2: ❓ Помощь | 🌐 Язык
-    Ряд 3: 👤 Личный кабинет
+    
+    Args:
+        lang: Язык интерфейса
+        user_id: ID пользователя для логирования
+        
+    Returns:
+        ReplyKeyboardMarkup: Клавиатура основного меню
+        
+    Menu layouts:
+    - New (3 rows):
+      [Категории] [По районам/Рядом]
+      [Помощь] [Язык]
+      [Личный кабинет]
+      
+    - Legacy (2x2):
+      [Категории] [По районам/Рядом]
+      [Помощь] [Язык]
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Log feature flag status
+    try:
+        feature_enabled = getattr(settings.features, 'new_menu', False)
+        logger.info(
+            f"[MENU_DEBUG] Building menu | user_id={user_id} | "
+            f"new_menu={feature_enabled} | lang={lang}"
+        )
+    except Exception as e:
+        logger.error(f"[MENU_ERROR] Failed to check feature flag: {e}")
+        feature_enabled = False
+    
     # Legacy compact layout (2x2) for backward compatibility when new menu is disabled
-    if not settings.features.new_menu:
+    if not feature_enabled:
+    if not getattr(settings.features, 'new_menu', False):
+        logger.info("[MENU_DEBUG] Using legacy menu layout (2x2)")
         return ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -37,20 +67,27 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
         )
 
     # New layout (3 rows) when feature flag is enabled
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [
-                KeyboardButton(text=get_text('choose_category', lang)),
-                KeyboardButton(text=get_text('show_nearest', lang)),
-            ],
-            [
-                KeyboardButton(text=get_text('help', lang)),
-                KeyboardButton(text=get_text('choose_language', lang)),
-            ],
-            [
-                KeyboardButton(text=get_text('profile', lang)),
-            ]
+    menu_layout = [
+        [
+            KeyboardButton(text=get_text('choose_category', lang)),
+            KeyboardButton(text=get_text('show_nearest', lang)),
         ],
+        [
+            KeyboardButton(text=get_text('help', lang)),
+            KeyboardButton(text=get_text('choose_language', lang)),
+        ],
+        [
+            KeyboardButton(text=get_text('profile', lang)),
+        ]
+    ]
+    
+    logger.debug(
+        f"[MENU_DEBUG] Using new menu layout | "
+        f"user_id={user_id} | buttons={[[b.text for b in row] for row in menu_layout]}"
+    )
+    
+    return ReplyKeyboardMarkup(
+        keyboard=menu_layout,
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
     )

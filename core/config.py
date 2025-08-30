@@ -52,9 +52,44 @@ class Bots(BaseModel):
         return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else ("***" if t else "<none>")
 
 class FeatureFlags(BaseModel):
-    partner_fsm: bool = False
-    moderation: bool = False
-    bot_enabled: bool = True
+    partner_fsm: bool = Field(default=False, description="Enable FSM for partner interactions")
+    moderation: bool = Field(default=False, description="Enable moderation features")
+    bot_enabled: bool = Field(default=True, description="Global bot enabled/disabled")
+    new_menu: bool = Field(
+        default=os.getenv("FEATURE_NEW_MENU", "false").lower() == "true",
+        description="Enable new menu layout with 3 rows"
+    )
+    qr_webapp: bool = Field(default=False, description="Enable QR code webapp functionality")
+    listen_notify: bool = Field(default=False, description="Enable database notifications")
+    
+    def __init__(self, **data):
+        # First set defaults
+        default_values = {
+            'partner_fsm': False,
+            'moderation': False,
+            'bot_enabled': True,
+            'new_menu': False,
+            'qr_webapp': False,
+            'listen_notify': False
+        }
+        
+        # Update with any provided values
+        default_values.update(data)
+        
+        # Handle environment variables if not explicitly set
+        if 'new_menu' not in data:
+            default_values['new_menu'] = os.getenv("FEATURE_NEW_MENU", "false").lower() == "true"
+            
+        super().__init__(**default_values)
+        
+        # Log feature flags on initialization
+        self._log_feature_flags()
+    
+    def _log_feature_flags(self):
+        """Log current feature flags status"""
+        flags = [f"{k}={v}" for k, v in self.dict().items()]
+        log.info(f"[FEATURE_FLAGS] {', '.join(flags)}")
+    
     class Config:
         extra = "allow"
 
