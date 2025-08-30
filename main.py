@@ -24,12 +24,60 @@ if not db.get_categories():
         qr_code="https://example.com/qr.png"
     )
 
-from core.handlers.basic import (
-    get_start, get_photo, get_hello, get_inline, feedback_user,
-    hiw_user, main_menu, user_regional_rest,
-    get_location, get_video, get_file, language_callback, main_menu_callback,
-    test_menu_command  # Добавляем тестовую команду
-)
+# Basic handlers with minimal imports
+get_start = None
+get_photo = None
+get_hello = None
+get_inline = None
+feedback_user = None
+hiw_user = None
+main_menu = None
+user_regional_rest = None
+get_location = None
+get_video = None
+get_file = None
+language_callback = None
+main_menu_callback = None
+test_menu_command = None
+
+# Lazy imports to avoid circular dependencies
+def _import_handlers():
+    global get_start, get_photo, get_hello, get_inline, feedback_user
+    global hiw_user, main_menu, user_regional_rest, get_location
+    global get_video, get_file, language_callback, main_menu_callback, test_menu_command
+    
+    from core.handlers.basic import (
+        get_start as _get_start,
+        get_photo as _get_photo,
+        get_hello as _get_hello,
+        get_inline as _get_inline,
+        feedback_user as _feedback_user,
+        hiw_user as _hiw_user,
+        main_menu as _main_menu,
+        user_regional_rest as _user_regional_rest,
+        get_location as _get_location,
+        get_video as _get_video,
+        get_file as _get_file,
+        language_callback as _language_callback,
+        main_menu_callback as _main_menu_callback,
+        test_menu_command as _test_menu_command
+    )
+    
+    # Assign to globals
+    get_start = _get_start
+    get_photo = _get_photo
+    get_hello = _get_hello
+    get_inline = _get_inline
+    feedback_user = _feedback_user
+    hiw_user = _hiw_user
+    main_menu = _main_menu
+    user_regional_rest = _user_regional_rest
+    get_location = _get_location
+    get_video = _get_video
+    get_file = _get_file
+    language_callback = _language_callback
+    main_menu_callback = _main_menu_callback
+    test_menu_command = _test_menu_command
 from core.handlers.main_menu_router import main_menu_router  # Импортируем роутер меню
 from core.handlers.callback import (
     rests_by_district_handler, rest_near_me_handler,
@@ -76,6 +124,9 @@ async def start():
     dp.include_router(callback_router)
     dp.include_router(main_menu_router)  # Добавляем роутер меню
 
+    # Импортируем обработчики при первом запуске
+    _import_handlers()
+    
     # Старт, смена языка
     dp.message.register(
         lambda message, bot, state: get_start(message, bot, state), 
@@ -89,6 +140,11 @@ async def start():
 
     # Тестовая команда для отладки меню
     dp.message.register(test_menu_command, Command(commands='test_menu'))
+    
+    # Добавляем логирование для отладки
+    @dp.startup()
+    async def on_startup():
+        logger.info("Bot started with features: %s", settings.features.dict())
     
     # Помощь, отзывы, главное меню
     dp.message.register(hiw_user, Command(commands='help'))

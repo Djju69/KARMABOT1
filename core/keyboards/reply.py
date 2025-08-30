@@ -2,6 +2,7 @@
 Reply keyboard layouts following the v4.1 specification.
 Centralized keyboard builder for all reply keyboards in the application.
 """
+import logging
 from typing import Optional, List, Dict, Any, Callable, Union
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from core.utils.locales_v2 import get_text, get_all_texts
@@ -125,30 +126,78 @@ def get_reply_keyboard(user: Optional[Dict[str, Any]] = None, screen: str = SCRE
 
 def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """
-    Generate main menu reply keyboard.
+    Generate main menu reply keyboard with fallbacks for missing translations.
     
     Args:
         lang: Language code (default: 'ru')
         
     Returns:
-        ReplyKeyboardMarkup: Configured reply keyboard
+        ReplyKeyboardMarkup: Configured reply keyboard with fallback values
+        
+    Raises:
+        Exception: If keyboard generation fails
     """
-    keyboard = [
-        [
-            KeyboardButton(text=get_text("keyboard.categories", lang)),
-            KeyboardButton(text=get_text("keyboard.nearest", lang))
-        ],
-        [
-            KeyboardButton(text=get_text("keyboard.help", lang)),
-            KeyboardButton(text=get_text("keyboard.choose_language", lang))
-        ]
-    ]
+    logger = logging.getLogger(__name__)
     
-    return ReplyKeyboardMarkup(
-        keyboard=keyboard,
-        resize_keyboard=True,
-        one_time_keyboard=False
-    )
+    # Default fallback values
+    default_buttons = {
+        'keyboard.categories': '🗂️ Категории',
+        'keyboard.nearest': '📍 Ближайшие',
+        'keyboard.help': '❓ Помощь',
+        'keyboard.choose_language': '🌐 Сменить язык'
+    }
+    
+    def safe_get_text(key: str, lang: str) -> str:
+        """Safely get translated text with fallback to defaults"""
+        try:
+            return get_text(key, lang) or default_buttons.get(key, key)
+        except Exception as e:
+            logger.warning(f"Failed to get text for key '{key}': {str(e)}")
+            return default_buttons.get(key, key)
+    
+    try:
+        # Build keyboard with error handling for each button
+        keyboard = []
+        
+        # Row 1: Categories and Nearest
+        try:
+            row1 = [
+                KeyboardButton(text=safe_get_text("keyboard.categories", lang)),
+                KeyboardButton(text=safe_get_text("keyboard.nearest", lang))
+            ]
+            keyboard.append(row1)
+        except Exception as e:
+            logger.error(f"Failed to create first row: {str(e)}")
+            raise
+            
+        # Row 2: Help and Language
+        try:
+            row2 = [
+                KeyboardButton(text=safe_get_text("keyboard.help", lang)),
+                KeyboardButton(text=safe_get_text("keyboard.choose_language", lang))
+            ]
+            keyboard.append(row2)
+        except Exception as e:
+            logger.error(f"Failed to create second row: {str(e)}")
+            # If we can't create the second row, at least return the first one
+            if not keyboard:
+                raise
+                
+        logger.debug(f"Created menu keyboard with {len(keyboard)} rows")
+        
+        return ReplyKeyboardMarkup(
+            keyboard=keyboard,
+            resize_keyboard=True,
+            one_time_keyboard=False
+        )
+        
+    except Exception as e:
+        logger.critical(f"Critical error in get_main_menu_reply: {str(e)}", exc_info=True)
+        # Return a minimal working keyboard as fallback
+        return ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="Главное меню")]],
+            resize_keyboard=True
+        )
 
 
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:

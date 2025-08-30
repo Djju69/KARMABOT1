@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import logging
 from aiogram import Bot, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+
+from core.config import settings
 
 # Экспортируемый роутер, который подключает main_v2.py
 router = Router(name="basic")
@@ -95,29 +99,71 @@ async def language_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
 # Новый обработчик callback для кнопок главного меню
 @router.message(Command("test_menu"))
 async def test_menu_command(message: Message, bot: Bot, state: FSMContext):
-    """Test command to debug menu display"""
+    """
+    Test command to debug menu display.
+    
+    This command helps verify that the menu system is working correctly.
+    It shows the current menu state and feature flags.
+    """
     logger = logging.getLogger(__name__)
-    logger.info(f"[MENU_DEBUG] Test menu command from user {message.from_user.id}")
+    chat_id = message.chat.id
+    user_id = message.from_user.id
     
     try:
-        # Try to get current language or use default
+        logger.info(f"[MENU_DEBUG] test_menu_command started for user {user_id}")
+        
+        # Get current state data
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         
-        # Get menu keyboard
-        keyboard = get_main_menu_reply(lang)
-        logger.info(f"[MENU_DEBUG] Generated keyboard: {keyboard}")
+        logger.info(f"[MENU_DEBUG] User {user_id} language: {lang}")
+        logger.info(f"[MENU_DEBUG] Feature flags: {settings.features.dict()}")
         
-        # Send test message with menu
-        await message.answer(
-            "🔧 Тестовое меню (debug):",
-            reply_markup=keyboard
-        )
-        logger.info("[MENU_DEBUG] Test menu sent successfully")
-        
+        # Get the menu with error handling
+        try:
+            keyboard = get_main_menu_reply(lang)
+            logger.info(f"[MENU_DEBUG] Menu generated successfully")
+        except Exception as e:
+            logger.error(f"[MENU_ERROR] Failed to generate menu: {str(e)}", exc_info=True)
+            await bot.send_message(
+                chat_id=chat_id,
+                text="❌ Ошибка при создании меню. Пожалуйста, проверьте логи."
+            )
+            return
+            
+        # Send the menu with error handling
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="🔧 Тестовое меню:",
+                reply_markup=keyboard
+            )
+            logger.info(f"[MENU_DEBUG] Menu sent to user {user_id}")
+            
+            # Send debug info
+            debug_info = (
+                "✅ Меню успешно загружено\n"
+                f"🌐 Язык: {lang}\n"
+                f"🚩 Флаги: new_menu={settings.features.new_menu}"
+            )
+            await bot.send_message(chat_id, debug_info)
+            
+        except Exception as e:
+            logger.error(f"[MENU_ERROR] Failed to send menu to {user_id}: {str(e)}", exc_info=True)
+            await bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ Ошибка при отправке меню: {str(e)}"
+            )
+            
     except Exception as e:
-        logger.error(f"[MENU_ERROR] Error in test_menu_command: {str(e)}", exc_info=True)
-        await message.answer("❌ Ошибка при отображении тестового меню")
+        logger.error(f"[MENU_CRITICAL] Unhandled error in test_menu_command: {str(e)}", exc_info=True)
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="❌ Критическая ошибка при обработке команды. Администратор уведомлен."
+            )
+        except:
+            logger.error("[MENU_CRITICAL] Could not send error message to user")
 
 
 async def main_menu_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
