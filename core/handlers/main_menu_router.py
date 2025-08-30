@@ -147,7 +147,7 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-from ..handlers.language import build_language_inline_kb, on_choose_language_cb
+from ..handlers.language import build_language_inline_kb, on_choose_language_cb, language_router
 
 @main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
 async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
@@ -169,9 +169,15 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
 
 # Proxy handler for language selection callbacks
 @main_menu_router.callback_query(F.data.regexp(r'^lang:(?:set:)?(ru|en|vi|ko)$'))
-async def handle_lang_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    """Proxy handler for language selection callbacks"""
-    await on_choose_language_cb(callback, state, bot)
+async def proxy_lang_cb(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """Прокси-обработчик для выбора языка"""
+    return await on_choose_language_cb(callback, state, bot)
+
+# Comment out or remove old message handlers that might interfere with language selection
+# These are just examples - adjust based on actual handlers in your code
+# @main_menu_router.message(F.text.in_(["Русский", "English", "Tiếng Việt", "한국어"]))
+# async def old_language_handler(message: Message, state: FSMContext, bot: Bot):
+#     pass
 
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))

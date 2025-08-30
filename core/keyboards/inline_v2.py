@@ -152,21 +152,32 @@ def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") 
 
 
 def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
-    """Language selection keyboard. Callbacks: lang:set:(ru|en|vi|ko)"""
-    langs: List[tuple[str, str]] = [
-        ("🇷🇺 Русский", "ru"),
-        ("🇺🇸 English", "en"),
-        ("🇻🇳 Tiếng Việt", "vi"),
-        ("🇰🇷 한국어", "ko"),
+    """
+    Language selection inline keyboard.
+    
+    Args:
+        active: Active language code to mark as selected (optional)
+        
+    Returns:
+        InlineKeyboardMarkup with language selection buttons
+        
+    Callback format: lang:set:(ru|en|vi|ko)
+    """
+    languages = [
+        ("Русский (RU)", "ru"),
+        ("English (EN)", "en"),
+        ("Tiếng Việt (VI)", "vi"),
+        ("한국어 (KO)", "ko"),
     ]
-
-    def label(txt: str, code: str) -> str:
-        return ("✅ " if active == code else "") + txt
-
-    rows: List[List[InlineKeyboardButton]] = []
-    for title, code in langs:
-        rows.append([InlineKeyboardButton(text=label(title, code), callback_data=f"lang:set:{code}")])
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+    
+    # Filter out current language if specified
+    buttons = [
+        [InlineKeyboardButton(text=text, callback_data=f"lang:set:{code}")]
+        for text, code in languages
+        if code != active
+    ]
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def get_cities_inline(active_id: Optional[int] = None, cb_prefix: str = "city:set") -> InlineKeyboardMarkup:
