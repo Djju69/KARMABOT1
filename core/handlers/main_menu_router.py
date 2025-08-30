@@ -147,7 +147,11 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-from ..handlers.language import build_language_inline_kb, on_choose_language_cb, language_router
+# Импорт language_router должен быть в начале файла с другими импортами
+from ..handlers.language import build_language_inline_kb, language_router
+
+# Включить роутер языка в главный роутер
+main_menu_router.include_router(language_router)
 
 @main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
 async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
@@ -161,23 +165,18 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
         # Show inline keyboard with language selection, hiding current language
         await message.answer(
             "Выберите язык / Select language / 언어를 선택하세요 / Chọn ngôn ngữ:",
-            reply_markup=build_language_inline_kb(current=current_lang)
+            reply_markup=build_language_inline_kb(active=current_lang)
         )
     except Exception as e:
         logger.error(f"Error showing language selection: {e}", exc_info=True)
         await message.answer("❌ Не удалось загрузить выбор языка. Пожалуйста, попробуйте позже.")
 
-# Proxy handler for language selection callbacks
+# Прокси-хендлер для колбэков выбора языка (на случай, если нужен)
 @main_menu_router.callback_query(F.data.regexp(r'^lang:(?:set:)?(ru|en|vi|ko)$'))
-async def proxy_lang_cb(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def proxy_lang_cb(cb: CallbackQuery, state: FSMContext, bot: Bot):
     """Прокси-обработчик для выбора языка"""
-    return await on_choose_language_cb(callback, state, bot)
-
-# Comment out or remove old message handlers that might interfere with language selection
-# These are just examples - adjust based on actual handlers in your code
-# @main_menu_router.message(F.text.in_(["Русский", "English", "Tiếng Việt", "한국어"]))
-# async def old_language_handler(message: Message, state: FSMContext, bot: Bot):
-#     pass
+    from ..handlers.language import on_choose_language_cb
+    return await on_choose_language_cb(cb, state, bot)
 
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))
