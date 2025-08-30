@@ -12,7 +12,8 @@ from core.utils.locales import translations, get_text
 
 # Клавиатуры
 from core.keyboards.inline import select_restoran, regional_restoran, language_keyboard
-from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran, get_main_menu_reply  # добавлен импорт
+from core.keyboards.reply import get_main_menu_reply
+from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran
 
 # Тексты
 from core.windows.feedback import feedback_text
@@ -39,14 +40,39 @@ async def main_menu(message: Message, bot: Bot, state: FSMContext):
 
 
 async def get_start(message: Message, bot: Bot, state: FSMContext):
-    await state.set_data({})  # Сброс данных
-    await state.update_data(started=True)
-    # Отправляем выбор языка локализованно, но тут можно оставить простой текст
-    await bot.send_message(
-        chat_id=message.chat.id,
-        text="🌐 Choose your language / Выберите язык / 언어를 선택하세요:",
-        reply_markup=language_keyboard
-    )
+    logger = logging.getLogger(__name__)
+    logger.info(f"[MENU_DEBUG] Starting get_start for user {message.from_user.id}")
+    
+    try:
+        # Сброс данных
+        await state.set_data({})
+        await state.update_data({
+            'started': True,
+            'lang': 'ru'  # Устанавливаем русский по умолчанию
+        })
+        
+        # Получаем клавиатуру главного меню
+        keyboard = get_main_menu_reply('ru')
+        logger.info(f"[MENU_DEBUG] Generated menu keyboard: {keyboard}")
+        
+        # Отправляем приветственное сообщение с главным меню
+        await bot.send_message(
+            chat_id=message.chat.id,
+            text="👋 Добро пожаловать! Выберите действие:",
+            reply_markup=keyboard
+        )
+        logger.info("[MENU_DEBUG] Welcome message with main menu sent successfully")
+        
+    except Exception as e:
+        logger.error(f"[MENU_ERROR] Error in get_start: {str(e)}", exc_info=True)
+        # Пытаемся отправить сообщение об ошибке
+        try:
+            await bot.send_message(
+                chat_id=message.chat.id,
+                text="❌ Произошла ошибка при загрузке меню. Пожалуйста, попробуйте снова."
+            )
+        except Exception as send_error:
+            logger.error(f"[MENU_CRITICAL] Failed to send error message: {str(send_error)}")
 
 
 async def language_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
@@ -67,6 +93,33 @@ async def language_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
 
 
 # Новый обработчик callback для кнопок главного меню
+@router.message(Command("test_menu"))
+async def test_menu_command(message: Message, bot: Bot, state: FSMContext):
+    """Test command to debug menu display"""
+    logger = logging.getLogger(__name__)
+    logger.info(f"[MENU_DEBUG] Test menu command from user {message.from_user.id}")
+    
+    try:
+        # Try to get current language or use default
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Get menu keyboard
+        keyboard = get_main_menu_reply(lang)
+        logger.info(f"[MENU_DEBUG] Generated keyboard: {keyboard}")
+        
+        # Send test message with menu
+        await message.answer(
+            "🔧 Тестовое меню (debug):",
+            reply_markup=keyboard
+        )
+        logger.info("[MENU_DEBUG] Test menu sent successfully")
+        
+    except Exception as e:
+        logger.error(f"[MENU_ERROR] Error in test_menu_command: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при отображении тестового меню")
+
+
 async def main_menu_callback(call: CallbackQuery, bot: Bot, state: FSMContext):
     data = call.data
 

@@ -16,6 +16,13 @@ translations_v2 = {
         'choose_language': '🌐 Язык',
         'choose_district': '🌆 По районам',
         
+        # Keyboard menu items
+        'keyboard.categories': '🗂️ Категории',
+        'keyboard.nearest': '📍 Ближайшие',
+        'keyboard.help': '❓ Помощь',
+        'keyboard.choose_language': '🌐 Сменить язык',
+        'keyboard.back_to_main': '🏠 В главное меню',
+        
         # NEW: P1 additions (profile/help)
         'profile': '👤 Личный кабинет',
         'help': '❓ Помощь',

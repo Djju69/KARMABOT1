@@ -27,8 +27,10 @@ if not db.get_categories():
 from core.handlers.basic import (
     get_start, get_photo, get_hello, get_inline, feedback_user,
     hiw_user, main_menu, user_regional_rest,
-    get_location, get_video, get_file, language_callback, main_menu_callback
+    get_location, get_video, get_file, language_callback, main_menu_callback,
+    test_menu_command  # Добавляем тестовую команду
 )
+from core.handlers.main_menu_router import main_menu_router  # Импортируем роутер меню
 from core.handlers.callback import (
     rests_by_district_handler, rest_near_me_handler,
     rests_by_kitchen_handler, location_handler, router as callback_router
@@ -72,6 +74,7 @@ async def start():
 
     # Регистрируем роутеры и хендлеры
     dp.include_router(callback_router)
+    dp.include_router(main_menu_router)  # Добавляем роутер меню
 
     # Старт, смена языка
     dp.message.register(
@@ -84,6 +87,9 @@ async def start():
     )
     dp.callback_query.register(language_callback, F.data.startswith("lang_"))
 
+    # Тестовая команда для отладки меню
+    dp.message.register(test_menu_command, Command(commands='test_menu'))
+    
     # Помощь, отзывы, главное меню
     dp.message.register(hiw_user, Command(commands='help'))
     dp.message.register(hiw_user, F.text.in_(localized_texts['choose_language']))

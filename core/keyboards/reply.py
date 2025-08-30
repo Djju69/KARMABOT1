@@ -123,10 +123,38 @@ def get_reply_keyboard(user: Optional[Dict[str, Any]] = None, screen: str = SCRE
     # Default to main menu
     return get_reply_keyboard(user, SCREEN_MAIN)
 
+def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """
+    Generate main menu reply keyboard.
+    
+    Args:
+        lang: Language code (default: 'ru')
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured reply keyboard
+    """
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.categories", lang)),
+            KeyboardButton(text=get_text("keyboard.nearest", lang))
+        ],
+        [
+            KeyboardButton(text=get_text("keyboard.help", lang)),
+            KeyboardButton(text=get_text("keyboard.choose_language", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(
+        keyboard=keyboard,
+        resize_keyboard=True,
+        one_time_keyboard=False
+    )
+
+
 def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu button with proper localization."""
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=get_text('keyboard.back', lang))]],
+        keyboard=[[KeyboardButton(text=get_text("keyboard.back_to_main", lang))]],
         resize_keyboard=True,
         one_time_keyboard=True
     )
