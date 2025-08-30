@@ -9,6 +9,8 @@ import logging.handlers
 import secrets
 import socket
 import aiohttp
+import re
+import inspect
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Union, Callable, Awaitable
 
@@ -30,21 +32,21 @@ def _pick_token() -> str:
 # Get and validate bot token
 BOT_TOKEN = _pick_token()
 if not BOT_TOKEN or not re.match(r"^\d+:[A-Za-z0-9_-]+$", BOT_TOKEN):
-    print(f"ERROR: Invalid bot token format. Starts with: {BOT_TOKEN[:9]!r}")
-    raise SystemExit(1)
+    print("ERROR: Invalid bot token format. Starts with:", repr(BOT_TOKEN[:9]))
+    raise SystemExit(0)
 
-# Extract bot ID from token (part before ':')
-BOT_ID = int(BOT_TOKEN.split(":", 1)[0]) if ":" in BOT_TOKEN else 0
+BOT_ID = int(BOT_TOKEN.split(":", 1)[0])
 ENV = os.getenv("ENV", "production")
 LOCK_TTL = int(os.getenv("LEADER_LOCK_TTL", "300"))
 INSTANCE_ID = f"{socket.gethostname()}:{os.getpid()}"
 LOCK_KEY = f"{ENV}:bot:{BOT_ID}:polling:leader"
 
-# Log token and lock info (masked for security)
-print(f"🔑 Using bot token (masked): {BOT_TOKEN[:3]}***{BOT_TOKEN[-4:]}")
 print(f"🔑 Environment: {ENV}")
 print(f"🔑 Lock key: {LOCK_KEY}")
 
+# Safe Redis client close helper
+async def redis_close_safe(client):
+    """Safely close Redis client, handling both sync and async versions."""
 async def acquire_leader_lock(redis):
     """Acquire leader lock with proper error handling and logging."""
     print(f"🔄 Acquiring leader lock (key={LOCK_KEY}, instance={INSTANCE_ID}, ttl={LOCK_TTL}s)")
@@ -805,11 +807,9 @@ async def on_shutdown(bot: Bot, redis=None):
     
     # Close Redis connection if exists
     if redis:
-        try:
-            await redis.aclose()
-            logger.info("✅ Redis connection closed")
-        except Exception as e:
-            logger.warning(f"Error closing Redis connection: {e}")
+        logger.info("🔌 Closing Redis connection...")
+        await redis_close_safe(redis)
+        logger.info("✅ Redis connection closed")
     
     # Try to send shutdown notification to admin
     try:
@@ -873,29 +873,35 @@ async def main():
     logger.info("🔑 Environment: %s", env)
     logger.info("🔑 Lock key: %s", LOCK_KEY)
     
-    # Initialize Redis and acquire leader lock
+    # Initialize Redis async client
     redis = None
     try:
-        import redis as redis_lib
+        from redis.asyncio import from_url as redis_from_url, Redis as AsyncRedis
+        
         if redis_url:
-            redis = redis_lib.Redis.from_url(redis_url, decode_responses=True)
+            redis = redis_from_url(
+                redis_url,
+                encoding="utf-8",
+                decode_responses=True,
+            )
+            
             # Test Redis connection
             try:
-                await redis.ping()
-                logger.info("✅ Redis connection successful")
+                pong = await redis.ping()
+                logger.info(f"✅ Redis ping: {pong}")
                 
-                # Acquire leader lock
+                # Acquire leader lock before starting
                 await acquire_leader_lock(redis)
                 
             except Exception as e:
                 logger.error(f"❌ Redis connection failed: {e}")
-                if redis:
-                    await redis.aclose()
+                await redis_close_safe(redis)
                 raise SystemExit(1)
         else:
             logger.warning("⚠️ Redis URL not configured, leader lock disabled")
-    except ImportError:
-        logger.warning("⚠️ Redis not available, leader lock disabled")
+    except ImportError as e:
+        logger.error(f"❌ redis.asyncio is required, but not importable: {e}")
+        raise SystemExit(1)
     
     # Initialize bot with our pre-validated token
     bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
