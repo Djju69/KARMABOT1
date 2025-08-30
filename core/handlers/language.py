@@ -1,11 +1,36 @@
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+import importlib
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, ReplyKeyboardRemove
 from aiogram import Bot, F, Router
 from aiogram.fsm.context import FSMContext
 
 from core.utils.locales import translations
 from core.utils.storage import user_language
-from core.windows.main_menu import get_main_menu
 from core.keyboards.reply import test_restoran
+
+def _resolve_get_main_menu():
+    try:
+        m = importlib.import_module("core.windows.main_menu")
+        candidates = [
+            "get_main_menu",
+            "build_main_menu",
+            "get_main_menu_kb",
+            "get_main_menu_keyboard",
+            "main_menu",
+            "build_menu",
+            "get_menu",
+        ]
+        for name in candidates:
+            fn = getattr(m, name, None)
+            if callable(fn):
+                return fn
+    except ImportError:
+        pass
+    # Fallback to a no-op keyboard remover
+    def _noop(*args, **kwargs):
+        return ReplyKeyboardRemove()
+    return _noop
+
+get_main_menu = _resolve_get_main_menu()
 
 router = Router()
 
