@@ -232,8 +232,15 @@ from aiogram.client.bot import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramUnauthorizedError
 
+import os
+
 # Import core config
-from core.config import BOT_TOKEN, load_settings
+from core.config import load_settings
+
+# Get BOT_TOKEN from environment variables
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is required")
 
 # Load settings
 settings = load_settings()
