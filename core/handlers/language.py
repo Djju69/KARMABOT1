@@ -1,65 +1,130 @@
 # core/handlers/language.py
-
-from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.context import FSMContext
-from aiogram.client.bot import Bot
+from __future__ import annotations
+from typing import Optional
+import re
 import logging
 
+from aiogram import Router, F
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, Message
+from aiogram.exceptions import TelegramBadRequest
+
+# быстрый in-memory кэш языка (на случай отсутствия БД или медленного сервиса)
+try:
+    from core.utils.storage import user_language  # dict: user_id -> 'ru'|'en'|'vi'|'ko'
+except Exception:
+    user_language = {}
+
+# i18n utils
+from core.utils.locales_v2 import get_text
+
+# reply клавиатуры
+from core.keyboards.reply import get_reply_keyboard
+
+# опционально: сервис профиля (если присутствует)
+try:
+    from core.services.profile import ProfileService
+except Exception:
+    ProfileService = None  # заглушка
+
 logger = logging.getLogger(__name__)
+
 language_router = Router(name="language")
 
 SUPPORTED = ("ru", "en", "vi", "ko")
+_CB_RE = re.compile(r"^lang:(?:set:)?(ru|en|vi|ko)$")
 
-def build_language_inline_kb(active: str | None = None) -> InlineKeyboardMarkup:
+def build_language_inline_kb(active: Optional[str] = None) -> InlineKeyboardMarkup:
+    """
+    Клавиатура выбора языка БЕЗ эмодзи, чтобы исключить проблемы UTF-8.
+    callback_data: lang:set:<code>
+    """
     rows = []
-    for code, label in [
-        ("ru", "Русский (RU)"),
-        ("en", "English (EN)"),
-        ("vi", "Tiếng Việt (VI)"),
-        ("ko", "한국어 (KO)"),
-    ]:
-        if active and code.lower() == active.lower():
-            continue
-        rows.append([InlineKeyboardButton(text=label, callback_data=f"lang:set:{code}")])
+    labels = {
+        "ru": "Русский (RU)",
+        "en": "English (EN)",
+        "vi": "Tiếng Việt (VI)",
+        "ko": "한국어 (KO)",
+    }
+    for code in SUPPORTED:
+        title = labels[code]
+        # можно подсветить активный язык галочкой
+        if active and active == code:
+            title = f"✅ {title}"
+        rows.append([InlineKeyboardButton(text=title, callback_data=f"lang:set:{code}")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-def _parse_lang(data: str) -> str | None:
-    if not data or not data.lower().startswith("lang:"):
-        return None
-    code = data.split(":")[-1].lower()
-    return code if code in SUPPORTED else None
+def _parse_lang_from_data(data: str) -> Optional[str]:
+    m = _CB_RE.match(data or "")
+    return m.group(1) if m else None
 
-@language_router.callback_query(F.data.startswith("lang:"))
-async def on_choose_language_cb(callback: CallbackQuery, state: FSMContext, bot: Bot):
+async def _persist_lang(user_id: int, lang: str) -> None:
+    # обновляем быстрый кэш
+    user_language[user_id] = lang
+    # обновляем профиль, если сервис доступен
+    if ProfileService is not None:
+        try:
+            svc = ProfileService()
+            await svc.set_lang(user_id, lang)
+        except Exception as e:
+            logger.warning("ProfileService.set_lang failed: %s", e)
+
+@language_router.callback_query(F.data.regexp(_CB_RE))
+async def on_choose_language_cb(callback: CallbackQuery):
+    user_id = callback.from_user.id
     raw = callback.data or ""
-    code = _parse_lang(raw)
-    if not code:
-        logger.warning("Lang callback ignored (bad data): %r", raw)
-        await callback.answer("Unsupported language", show_alert=True)
+    lang = _parse_lang_from_data(raw)
+
+    if lang not in SUPPORTED:
+        try:
+            await callback.answer("Unsupported language", show_alert=True)
+        except Exception:
+            pass
+        logger.error("lang callback parse failed: data=%r user=%s", raw, user_id)
         return
 
-    uid = callback.from_user.id
+    # сохраняем язык
+    await _persist_lang(user_id, lang)
+
+    # ответ боту, чтобы убрать "часики"
     try:
-        from core.services.profile import ProfileService
-        svc = ProfileService()
-        await svc.set_lang(uid, code)
-        logger.info("Language set to %s for user %s", code, uid)
-    except Exception as e:
-        logger.exception("Failed to save language for user %s: %s", uid, e)
+        await callback.answer(get_text('language_updated', lang))
+    except TelegramBadRequest:
+        pass
 
-    await callback.answer("✅ Язык обновлён")
-
+    # обновляем сообщение с клавиатурой языка (если можно)
     try:
-        from core.keyboards.reply import get_reply_keyboard
-        kb = get_reply_keyboard(screen="main")
-        await callback.message.answer("Главное меню", reply_markup=kb)
-    except Exception as e:
-        logger.exception("Failed to redraw main menu: %s", e)
+        await callback.message.edit_reply_markup(reply_markup=build_language_inline_kb(active=lang))
+    except Exception:
+        # если редактирование не получилось (старое сообщение и т.п.) — игнор
+        pass
 
-# Временный логгер для отладки
-@language_router.callback_query()
-async def _lang_debug_catchall(callback: CallbackQuery):
-    if callback.data and callback.data.startswith("lang:"):
-        logger.warning("LANG DEBUG raw callback_data=%r", callback.data)
-    await callback.answer()  # чтобы не висела «часовая» на кнопке
+    # шлём новое главное меню на выбранном языке
+    try:
+        await callback.message.answer(
+            get_text('back_to_main_menu', lang),
+            reply_markup=get_reply_keyboard(user=None, screen='main')
+        )
+    except Exception as e:
+        logger.error("Failed to send main menu after language set: %s", e)
+
+    logger.info("Language changed to %s for user_id=%s", lang, user_id)
+
+# Легаси обработчик текстом, если где-то остался
+@language_router.message(F.text.lower().in_({"русский (ru)","english (en)","tiếng việt (vi)","한국어 (ko)"}))
+async def on_choose_language_msg(message: Message):
+    txt = (message.text or "").lower().strip()
+    map_txt = {
+        "русский (ru)": "ru",
+        "english (en)": "en",
+        "tiếng việt (vi)": "vi",
+        "한국어 (ko)": "ko",
+    }
+    lang = map_txt.get(txt)
+    if lang not in SUPPORTED:
+        return
+    await _persist_lang(message.from_user.id, lang)
+    await message.answer(
+        get_text('language_updated', lang),
+        reply_markup=get_reply_keyboard(user=None, screen='main')
+    )
+    logger.info("Language changed (text) to %s for user_id=%s", lang, message.from_user.id)
