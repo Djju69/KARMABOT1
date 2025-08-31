@@ -61,31 +61,67 @@ try:
     
     # Import and include other handlers
     try:
-        from core.handlers import (
-            basic, commands, callback, contact, lang, main_menu_router,
-            profile, partner, activity, admin_cabinet, category_handlers
-        )
+        # Import individual routers with error handling
+        routers = []
         
-        # Setup routers
-        routers = [
-            basic.router,
-            commands.router,
-            callback.router,
-            contact.router,
-            lang.router,
-            main_menu_router.router,
-            profile.router,
-            partner.router,
-            activity.router,
-            admin_cabinet.router,
-            category_handlers.router
+        # Helper function to safely import and get router
+        def get_router(module_name):
+            try:
+                module = __import__(f'core.handlers.{module_name}', fromlist=[module_name])
+                # Skip modules that don't have routers
+                if module_name == 'commands':
+                    logger.info("ℹ️  Skipping commands module as it doesn't have a router")
+                    return None
+                    
+                # Try common router attribute names
+                for attr in ['router', 'message_router', 'command_router', 'main_router']:
+                    if hasattr(module, attr):
+                        router = getattr(module, attr)
+                        logger.info(f"✅ Found router {attr} in {module_name}")
+                        return router
+                logger.warning(f"⚠️ No router found in {module_name}")
+                return None
+            except ImportError as e:
+                logger.warning(f"⚠️ Failed to import {module_name}: {e}")
+                return None
+        
+        # List of handler modules to import (without commands)
+        handler_modules = [
+            'basic', 'callback', 'contact', 'lang', 'main_menu_router',
+            'profile', 'partner', 'activity', 'admin_cabinet', 'category_handlers'
         ]
         
-        for router in routers:
+        # Get all available routers
+        for module_name in handler_modules:
+            router = get_router(module_name)
             if router:
-                dp.include_router(router)
+                routers.append(router)
         
-        logger.info("All routers initialized successfully")
+        # Include all found routers
+        for router in routers:
+            try:
+                if router:
+                    dp.include_router(router)
+                    logger.info(f"✅ Successfully included router from {router}")
+            except Exception as e:
+                logger.error(f"❌ Failed to include router {router}: {e}", exc_info=True)
+        
+        # Set up commands directly since commands.py doesn't have a router
+        async def setup_commands():
+            try:
+                from core.handlers.commands import set_commands
+                await set_commands(bot)
+                logger.info("✅ Bot commands set up successfully")
+                return True
+            except Exception as e:
+                logger.error(f"❌ Failed to set up bot commands: {e}", exc_info=True)
+                return False
+                
+        # Run command setup in the event loop
+        import asyncio
+        asyncio.create_task(setup_commands())
+        
+        logger.info(f"✅ All routers initialized. Total routers: {len(routers)}")
         
     except ImportError as e:
         logger.error(f"Failed to import handlers: {e}", exc_info=True)
