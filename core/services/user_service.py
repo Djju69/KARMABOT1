@@ -5,7 +5,7 @@ Including balance management, level calculation, and transaction history.
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from core.database import get_db
+from core.database.db_v2 import db_v2 as db
 from core.models import User, Transaction
 
 
