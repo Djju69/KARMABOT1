@@ -5,10 +5,10 @@
 $ErrorActionPreference = "Stop"
 
 # Colors for output
-$Green = '\033[0;32m'
-$Yellow = '\033[1;33m'
-$Red = '\033[0;31m'
-$NoColor = '\033[0m'
+$Green = "`e[0;32m"
+$Yellow = "`e[1;33m"
+$Red = "`e[0;31m"
+$NoColor = "`e[0m"
 
 Write-Host "`n${Yellow}🚀 Starting KarmaBot deployment to Railway...${NoColor}`n"
 
