@@ -2,9 +2,10 @@
 """
 Main entry point for running both web server and bot concurrently.
 """
+import logging
+from logging.handlers import RotatingFileHandler
 import os
 import asyncio
-import logging
 import signal
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.handlers.RotatingFileHandler(
+        RotatingFileHandler(
             'app.log',
             maxBytes=10*1024*1024,  # 10MB
             backupCount=5
