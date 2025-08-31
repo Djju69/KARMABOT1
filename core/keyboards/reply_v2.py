@@ -394,6 +394,8 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 __all__ = [
     'get_main_menu_reply',
     'get_main_menu_reply_admin',
+    'get_user_cabinet_keyboard',
+    'get_partner_cabinet_keyboard',
     'get_main_menu_reply_with_qr',
     'get_return_to_main_menu',
     'get_categories_keyboard',

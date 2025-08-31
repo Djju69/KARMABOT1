@@ -22,7 +22,7 @@ from aiogram.exceptions import TelegramUnauthorizedError
 from aiogram.client.bot import Bot, DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from core.config import Settings, load_settings
+from core.settings import Settings, get_settings
 
 # --- Leader lock settings ---
 LOCK_TTL = 300
@@ -331,6 +331,7 @@ from core.handlers.moderation import get_moderation_router
 from core.handlers.admin_cabinet import get_admin_cabinet_router
 from core.handlers.profile import get_profile_router
 from core.handlers.activity import get_activity_router
+from core.handlers.cabinet_router import get_router as get_cabinet_router
 
 # Services
 from core.services.profile import profile_service
@@ -719,6 +720,13 @@ async def setup_routers(dp: Dispatcher):
     logger.info("🔎 will include %r id=%s from %s", profile_router, id(profile_router), "get_profile_router()")
     dp.include_router(profile_router)
     logger.info("🔗 include_router: %r id=%s", profile_router, id(profile_router))
+    
+    # 4.5 Cabinet router for personal cabinet
+    logger.info("\n🔗 Creating and including cabinet_router...")
+    cabinet_router = get_cabinet_router()
+    logger.info("🔎 will include %r id=%s from %s", cabinet_router, id(cabinet_router), "get_cabinet_router()")
+    dp.include_router(cabinet_router)
+    logger.info("🔗 include_router: %r id=%s", cabinet_router, id(cabinet_router))
 
     # 4.1 Activity (Loyalty) router
     logger.info("\n🔗 Creating and including activity_router...")
