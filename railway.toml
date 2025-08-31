@@ -2,12 +2,11 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python -m uvicorn web.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "python start.py"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 
 [build.arguments]
-# Install system dependencies
 install_commands = [
     "apt-get update && apt-get install -y --no-install-recommends gcc python3-dev",
     "pip install --upgrade pip setuptools wheel",
