@@ -1,6 +1,17 @@
 import os
 import asyncio
-from fastapi import FastAPI, Request, Response, Query, Form
+import logging
+from fastapi import FastAPI, Request, Response, Query, Form, status, Depends
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
+import logging
+
+# Импорт наших модулей
+from . import health
+from .test_endpoints import router as test_router
+from core.monitoring import setup_monitoring
 from contextlib import asynccontextmanager
 from core.services.cache import init_cache_service, get_cache_service
 
@@ -66,8 +77,7 @@ try:
     )
 except Exception:
     import logging
-    log = logging.getLogger("uvicorn.error")
-    log.warning("ops.session_state not found — using no-op stubs")
+    logger = logging.getLogger(__name__)
 
     def ss_load(*args, **kwargs): 
         return {}
@@ -230,7 +240,49 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
-app = FastAPI(title="KARMABOT1 WebApp API", lifespan=lifespan)
+# Настройка CORS
+origins = [
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "https://your-production-domain.com",
+]
+
+# Инициализация приложения
+app = FastAPI(
+    title="KARMABOT1 WebApp API",
+    description="API for KARMABOT1 Web Application",
+    version=os.getenv("APP_VERSION", "1.0.0"),
+    contact={
+        "name": "Support",
+        "url": "https://t.me/your_support_bot",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
+    lifespan=lifespan,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
+# Настройка CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Инициализация мониторинга
+setup_monitoring()
+
+# Подключение роутеров
+app.include_router(health.router, prefix="/api")
+app.include_router(test_router, prefix="/api")
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 # Initialize cache service on startup
 @app.on_event("startup")

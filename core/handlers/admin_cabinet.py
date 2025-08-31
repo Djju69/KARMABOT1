@@ -16,12 +16,9 @@ from core.services import admins_service, profile_service
 from core.keyboards.inline_v2 import (
     get_admin_cabinet_inline, 
     get_superadmin_inline, 
-    get_superadmin_delete_inline,
-    get_superadmin_keyboard,
-    get_admin_keyboard
+    get_superadmin_delete_inline
 )
 from ..keyboards.reply_v2 import get_main_menu_reply, get_admin_keyboard, get_superadmin_keyboard
-from ..services.admins import admins_service
 from ..database.db_v2 import db_v2
 
 logger = logging.getLogger(__name__)
@@ -197,23 +194,49 @@ async def open_admin_cabinet(message: Message, bot: Bot, state: FSMContext):
     logger = logging.getLogger(__name__)
     
     try:
+        logger.info(f"open_admin_cabinet called by user {message.from_user.id}")
+        logger.info(f"Moderation feature enabled: {settings.features.moderation}")
+        
         if not settings.features.moderation:
+            logger.warning("Moderation feature is disabled")
             await message.answer("🚧 Модуль модерации отключён.")
             return
             
-        if not await admins_service.is_admin(message.from_user.id):
+        is_admin = await admins_service.is_admin(message.from_user.id)
+        logger.info(f"User {message.from_user.id} is admin: {is_admin}")
+        
+        if not is_admin:
+            logger.warning(f"Access denied for user {message.from_user.id}")
             await message.answer("❌ Доступ запрещён.")
             return
             
         lang = await profile_service.get_lang(message.from_user.id)
+        logger.info(f"User language: {lang}")
+        
         # Top-level: use Reply keyboard (superadmin has crown in main menu; here use dedicated keyboard)
-        kb = get_superadmin_keyboard(lang) if (message.from_user.id == settings.bots.admin_id) else get_admin_keyboard(lang)
+        is_superadmin = (int(message.from_user.id) == int(settings.bots.admin_id))
+        logger.info(f"Is superadmin: {is_superadmin}, admin_id: {settings.bots.admin_id}")
+        
+        kb = get_superadmin_keyboard(lang) if is_superadmin else get_admin_keyboard(lang)
+        
+        # Debug: Log the admin_cabinet_title text
+        admin_title = get_text('admin_cabinet_title', lang)
+        logger.info(f"Admin title text: {admin_title}")
+        
+        response_text = f"{admin_title}\n\nВыберите раздел:"
+        logger.info(f"Full response text: {response_text}")
+        
+        logger.info(f"Sending response with keyboard: {kb}")
         await message.answer(
-            f"{get_text('admin_cabinet_title', lang)}\n\nВыберите раздел:",
+            response_text,
             reply_markup=kb,
         )
+        logger.info("Response sent successfully")
+        
     except Exception as e:
         logger.error(f"Error in open_admin_cabinet: {e}", exc_info=True)
+        # Re-raise to see the full traceback in test output
+        raise
         await message.answer("❌ Произошла ошибка при открытии админ-панели. Пожалуйста, попробуйте позже.")
 
 

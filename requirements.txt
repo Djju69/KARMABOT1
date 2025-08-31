@@ -8,6 +8,11 @@ marshmallow==3.21.3
 asyncpg==0.30.0
 python-dotenv==1.0.1
 
+# Мониторинг и логирование
+sentry-sdk[fastapi]==1.40.6
+psutil==5.9.6
+structlog==23.2.0
+
 # Дополнительные зависимости
 python-jose[cryptography]
 passlib[bcrypt]
