@@ -1,0 +1,22 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--cov=core --cov-report=xml --cov-report=term"
+
+[tool.coverage.run]
+source = ["core"]
+omit = [
+    "*/__pycache__/*",
+    "*/migrations/*",
+    "*/tests/*",
+    "*/config/*",
+    "*/models/*"
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_functions = ["test_*"]

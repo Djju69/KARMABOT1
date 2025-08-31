@@ -5,10 +5,10 @@
 $ErrorActionPreference = "Stop"
 
 # Colors for output
-$Green = '\033[0;32m'
-$Yellow = '\033[1;33m'
-$Red = '\033[0;31m'
-$NoColor = '\033[0m'
+$Green = "`e[0;32m"
+$Yellow = "`e[1;33m"
+$Red = "`e[0;31m"
+$NoColor = "`e[0m"
 
 # Configuration
 $RailwayUrl = if ($env:RAILWAY_URL) { $env:RAILWAY_URL } else { "https://your-project.railway.app" }
@@ -21,9 +21,15 @@ function Get-HttpStatus {
     )
     try {
         $response = Invoke-WebRequest -Uri $Url -Method Get -UseBasicParsing -ErrorAction SilentlyContinue
+        $content = $null
+        try {
+            $content = $response.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+        } catch {
+            $content = $response.Content
+        }
         return @{
             StatusCode = [int]$response.StatusCode
-            Content = $response.Content | ConvertFrom-Json -ErrorAction SilentlyContinue
+            Content = $content
         }
     } catch {
         return @{

@@ -34,6 +34,8 @@ class MockSettings:
         self.bots = MagicMock()
         self.bots.admin_id = 12345
         self.debug = False
+        # Add database attribute with a mock URL
+        self.database = type('Object', (), {'url': 'sqlite:///:memory:'})()
 
 # Mock the settings module before it's imported by other modules
 sys.modules['core.settings'] = MagicMock()
@@ -41,6 +43,7 @@ sys.modules['core.settings'].settings = MockSettings()
 
 # Now import the rest of the test dependencies
 from core.settings import settings  # This will use our mock
+from core.services.loyalty import LoyaltyService
 
 # --- Core Fixtures ---
 @pytest.fixture(scope="session", autouse=True)
@@ -74,6 +77,22 @@ def mock_db():
     with patch('core.handlers.admin_cabinet.db_v2') as mock:
         mock.delete_card = AsyncMock(return_value=True)
         yield mock
+
+@pytest.fixture
+def loyalty_service_mock():
+    """Fixture with a mock of the LoyaltyService."""
+    mock = AsyncMock(spec=LoyaltyService)
+    mock.get_balance.return_value = 100
+    mock.get_recent_transactions.return_value = []
+    mock.adjust_balance.return_value = 150  # Default new balance after adjustment
+    return mock
+
+@pytest.fixture
+def mock_cache():
+    """Mock cache service for loyalty tests."""
+    cache = AsyncMock()
+    cache.get.return_value = None  # Default to cache miss
+    return cache
 
 @pytest.fixture
 def mock_admins():

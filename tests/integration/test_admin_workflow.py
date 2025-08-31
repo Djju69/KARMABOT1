@@ -179,7 +179,7 @@ class TestAdminPanelIntegration:
         assert response is not None
         assert "Результаты поиска" in response
     
-    @pytest.mark.async
+    @pytest.mark.asyncio
     async def test_report_generation_workflow(self, admin_application, test_database):
         """Test report generation workflow."""
         from tests.integration.utils import create_text_update, process_update

@@ -4,6 +4,7 @@ import logging
 import platform
 from typing import Optional, Dict, Any
 from datetime import datetime
+from dataclasses import field
 
 # Import configuration
 try:
@@ -20,7 +21,7 @@ except ImportError:
     @dataclass
     class MonitoringSettings:
         enabled: bool = True
-        sentry: SentrySettings = SentrySettings()
+        sentry: SentrySettings = field(default_factory=SentrySettings)
         health_check_interval: int = 300
     
     DEFAULT_MONITORING_SETTINGS = MonitoringSettings()
