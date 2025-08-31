@@ -2,11 +2,12 @@
 Partner FSM handlers for adding cards
 Behind FEATURE_PARTNER_FSM flag for safe deployment
 """
+from typing import Union
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
 import logging
 import re
 
@@ -1467,8 +1468,8 @@ async def partner_cabinet_handler(message: Message):
             reply_markup=get_return_to_main_menu()
         )
 
-@partner_router.message(Text(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"], ignore_case=True))
-@partner_router.callback_query(Text(startswith="partner:stats"))
+@partner_router.message(F.text.in_(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"]))
+@partner_router.callback_query(F.data.startswith("partner:stats"))
 async def partner_statistics_handler(update: Union[Message, CallbackQuery], state: FSMContext = None):
     """
     Show detailed partner statistics with period selection
@@ -1630,7 +1631,7 @@ async def partner_statistics_handler(update: Union[Message, CallbackQuery], stat
         logger.error(f"Failed to open partner cabinet: {e}")
 
 
-@partner_router.callback_query(Text(startswith="partner:export:"))
+@partner_router.callback_query(F.data.startswith("partner:export:"))
 async def export_partner_statistics(callback: CallbackQuery):
     """
     Export partner statistics in the requested format (CSV/Excel)
@@ -1753,6 +1754,8 @@ async def invalid_category_input(message: Message):
 # Register router only if feature is enabled
 def get_partner_router() -> Router:
     """Get partner router if feature is enabled"""
-    if settings.features.partner_fsm:
+    if getattr(settings.features, 'partner_fsm', False):
+        logger.info("✅ Partner FSM is enabled, returning partner router")
         return partner_router
-    return Router()  # Empty router if disabled
+    logger.info("⚠️ Partner FSM is disabled, returning empty router")
+    return Router()  # Return empty router if disabled

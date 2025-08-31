@@ -151,6 +151,15 @@ def resolve_bot_token(settings):
 # Load settings after environment is set up
 try:
     settings = load_settings()
+    # Ensure features exist
+    if not hasattr(settings, "features") or settings.features is None:
+        from core.config import FeatureFlags
+        settings.features = FeatureFlags()
+    
+    # Enable partner features
+    settings.features.partner_fsm = True
+    logger.info("✅ Features: %s", settings.features)
+    
 except Exception as e:
     logging.error("Failed to load settings: %s", str(e))
     raise
@@ -261,7 +270,6 @@ async def set_commands(bot: Bot) -> None:
 
 async def main():
     """Main entry point"""
-    settings = Settings()
     token = resolve_token(settings)
     logger.info("🔑 Environment: %s", settings.environment)
     logger.info("🔑 Using bot token: %s", _mask(token))
@@ -269,16 +277,21 @@ async def main():
     bot = Bot(token=token)
     dp = Dispatcher()
 
-    # Include routers from core.handlers
-    from core.handlers import basic_router, callback_router, main_menu_router
-    from core.handlers.language import router as language_router
-    
     # Include all routers
+    from core.handlers import (
+        basic_router, 
+        callback_router, 
+        main_menu_router, 
+        language_router,
+        partner_router
+    )
+    
+    # Include routers with proper order
     dp.include_router(basic_router)
     dp.include_router(callback_router)
     dp.include_router(main_menu_router)
-    dp.include_router(language_router)  # Add language router for callback handlers
-
+    dp.include_router(language_router)
+    
     # Set up bot commands
     await set_commands(bot)
     logger.info("✅ Bot commands set")
@@ -736,12 +749,13 @@ async def setup_routers(dp: Dispatcher):
     logger.info("🔗 include_router: %r id=%s", activity_router, id(activity_router))
 
     # 5. Feature-flagged routers
+    logger.info("\n🔗 Including partner_router...")
+    partner_router = get_partner_router()
+    logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
+    dp.include_router(partner_router)
+    logger.info("🔗 include_router: %r id=%s", partner_router, id(partner_router))
+    
     if getattr(settings.features, "partner_fsm", False):
-        logger.info("\n🔗 Creating and including partner_router...")
-        partner_router = get_partner_router()
-        logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
-        dp.include_router(partner_router)
-        logger.info("🔗 include_router: %r id=%s", partner_router, id(partner_router))
         logger.info("✅ Partner FSM enabled")
     else:
         logger.info("⚠️ Partner FSM disabled")

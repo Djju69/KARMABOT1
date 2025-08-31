@@ -18,7 +18,12 @@ from ..keyboards.reply_v2 import (
 from ..utils.locales_v2 import get_text, get_all_texts
 
 logger = logging.getLogger(__name__)
-router = Router()
+router = Router(name='cabinet_router')
+
+
+def get_cabinet_router() -> Router:
+    """Get the cabinet router with all handlers."""
+    return router
 
 
 class CabinetStates(StatesGroup):
@@ -163,6 +168,4 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
     pass
 
 
-def get_router():
-    """Get the cabinet router with all handlers."""
-    return router
+# The get_cabinet_router function is now defined at the top of the file
