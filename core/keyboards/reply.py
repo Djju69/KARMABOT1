@@ -263,9 +263,168 @@ def get_language_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🇰🇷 한국어")
             ]
         ],
-        resize_keyboard=True,
-        one_time_keyboard=True
+        resize_keyboard=True
     )
+
+
+def get_user_profile_keyboard(user: dict) -> ReplyKeyboardMarkup:
+    """
+    Generate user profile keyboard with dynamic language support.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured keyboard for user profile
+    """
+    lang = user.get('lang', 'ru')
+    
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.points", lang)),
+            KeyboardButton(text=get_text("keyboard.history", lang)),
+            KeyboardButton(text=get_text("keyboard.spend", lang))
+        ],
+        [
+            KeyboardButton(text=get_text("keyboard.report", lang)),
+            KeyboardButton(text=get_text("keyboard.card", lang)),
+            KeyboardButton(text=get_text("keyboard.settings", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_user_points_keyboard(user: dict) -> ReplyKeyboardMarkup:
+    """
+    Generate keyboard for user points screen.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured keyboard for points screen
+    """
+    lang = user.get('lang', 'ru')
+    
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.spend", lang)),
+            KeyboardButton(text=get_text("keyboard.history", lang)),
+            KeyboardButton(text=get_text("keyboard.back", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_user_settings_keyboard(user: dict) -> ReplyKeyboardMarkup:
+    """
+    Generate keyboard for user settings screen.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured keyboard for settings screen
+    """
+    lang = user.get('lang', 'ru')
+    
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.city", lang)),
+            KeyboardButton(text=get_text("keyboard.language", lang)),
+            KeyboardButton(text=get_text("keyboard.notifications", lang))
+        ],
+        [
+            KeyboardButton(text=get_text("keyboard.policy", lang)),
+            KeyboardButton(text=get_text("keyboard.become_partner", lang)),
+            KeyboardButton(text=get_text("keyboard.back", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_partner_profile_keyboard(user: dict, has_approved_cards: bool = False) -> ReplyKeyboardMarkup:
+    """
+    Generate partner profile keyboard with dynamic language support.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        has_approved_cards: Whether the partner has any approved cards
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured keyboard for partner profile
+    """
+    lang = user.get('lang', 'ru')
+    keyboard = []
+    
+    # Add QR scan button if partner has approved cards
+    if has_approved_cards:
+        keyboard.append([
+            KeyboardButton(text=get_text("keyboard.scan_qr", lang))
+        ])
+    
+    # Add main buttons
+    keyboard.extend([
+        [
+            KeyboardButton(text=get_text("keyboard.my_cards", lang)),
+            KeyboardButton(text=get_text("keyboard.report", lang)),
+            KeyboardButton(text=get_text("keyboard.settings", lang))
+        ],
+        [
+            KeyboardButton(text=get_text("keyboard.statistics", lang)),
+            KeyboardButton(text=get_text("keyboard.support", lang)),
+            KeyboardButton(text=get_text("keyboard.back", lang))
+        ]
+    ])
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_partner_cards_keyboard(user: dict) -> ReplyKeyboardMarkup:
+    """
+    Generate keyboard for partner cards screen.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        
+    Returns:
+        ReplyKeyboardMarkup: Configured keyboard for partner cards screen
+    """
+    lang = user.get('lang', 'ru')
+    
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.add_card", lang)),
+            KeyboardButton(text=get_text("keyboard.back", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+
+def get_confirmation_keyboard(user: dict) -> ReplyKeyboardMarkup:
+    """
+    Generate confirmation/cancel keyboard.
+    
+    Args:
+        user: User dictionary containing at least 'lang' key
+        
+    Returns:
+        ReplyKeyboardMarkup: Confirmation keyboard
+    """
+    lang = user.get('lang', 'ru')
+    
+    keyboard = [
+        [
+            KeyboardButton(text=get_text("keyboard.confirm", lang)),
+            KeyboardButton(text=get_text("keyboard.cancel", lang))
+        ]
+    ]
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 # --- compatibility alias for test_restoran ---
 def _resolve_test_restoran() -> Callable[..., Any]:

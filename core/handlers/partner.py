@@ -1398,7 +1398,208 @@ async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
 async def open_partner_cabinet_cmd(message: Message):
     """Open partner cabinet via /partner command."""
     try:
-        # Ensure partner exists
+        # Check if user is a partner
+        user_id = message.from_user.id
+        partner = await db_v2.get_partner(user_id)
+        
+        if not partner:
+            # If not a partner, show become partner button
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(
+                    text=get_text("keyboard.become_partner", message.from_user.language_code or 'ru'),
+                    callback_data="become_partner"
+                )]
+            ])
+            await message.answer(
+                get_text("partner.not_partner", message.from_user.language_code or 'ru'),
+                reply_markup=keyboard
+            )
+            return
+            
+        # If partner, show partner cabinet
+        await show_partner_cabinet(message, partner)
+        
+    except Exception as e:
+        logger.error(f"Error in open_partner_cabinet_cmd: {e}", exc_info=True)
+        await message.answer(
+            get_text("error.general", message.from_user.language_code or 'ru'),
+            reply_markup=get_return_to_main_menu()
+        )
+
+@partner_router.message(Text(["👤 Кабинет партнера", "👤 Partner Cabinet", "👤 Trang đối tác", "👤 파트너 센터"], ignore_case=True))
+async def partner_cabinet_handler(message: Message):
+    """Handle partner cabinet button press"""
+    try:
+        # Get partner data
+        user_id = message.from_user.id
+        partner = await db_v2.get_partner(user_id)
+        
+        if not partner:
+            await message.answer(
+                get_text("partner.not_partner", message.from_user.language_code or 'ru'),
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+            
+        # Get partner's approved cards count
+        approved_cards = await db_v2.get_partner_cards(user_id, status="approved")
+        has_approved_cards = len(approved_cards) > 0
+        
+        # Get partner profile keyboard
+        keyboard = get_partner_profile_keyboard(
+            {"lang": message.from_user.language_code or 'ru'},
+            has_approved_cards
+        )
+        
+        # Format partner info
+        partner_info = get_text("cabinet.partner_profile", message.from_user.language_code or 'ru').format(
+            approved_cards=len(approved_cards),
+            total_views=sum(card.get('views', 0) for card in approved_cards),
+            total_scans=sum(card.get('scans', 0) for card in approved_cards)
+        )
+        
+        await message.answer(partner_info, reply_markup=keyboard)
+        
+    except Exception as e:
+        logger.error(f"Error in partner_cabinet_handler: {e}", exc_info=True)
+        await message.answer(
+            get_text("error.general", message.from_user.language_code or 'ru'),
+            reply_markup=get_return_to_main_menu()
+        )
+
+@partner_router.message(Text(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"], ignore_case=True))
+@partner_router.callback_query(Text(startswith="partner:stats"))
+async def partner_statistics_handler(update: Union[Message, CallbackQuery], state: FSMContext = None):
+    """
+    Show detailed partner statistics with period selection
+    Handles both command/message and callback query
+    """
+    try:
+        # Get message and user info
+        if isinstance(update, CallbackQuery):
+            message = update.message
+            await update.answer()
+            user_id = update.from_user.id
+            lang = update.from_user.language_code or 'ru'
+        else:
+            message = update
+            user_id = message.from_user.id
+            lang = message.from_user.language_code or 'ru'
+        
+        # Get partner data
+        partner = await db_v2.get_partner(user_id)
+        if not partner:
+            await message.answer(
+                get_text("partner.not_partner", lang),
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+        
+        # Get period from callback or default to 7 days
+        period_days = 7
+        if isinstance(update, CallbackQuery) and update.data.startswith("partner:stats:"):
+            try:
+                period_days = int(update.data.split(":")[2])
+            except (IndexError, ValueError):
+                pass
+        
+        # Get statistics data
+        stats = await db_v2.get_partner_statistics(
+            partner_id=user_id,
+            period_days=period_days
+        )
+        
+        # Format statistics message
+        stats_text = f"📊 *{get_text('partner.stats_header', lang)}*\n\n"
+        
+        # Period selector
+        periods = [
+            (get_text("time.today", lang), 1),
+            (get_text("time.week", lang), 7),
+            (get_text("time.month", lang), 30),
+            (get_text("time.all_time", lang), 0)
+        ]
+        
+        # Period buttons
+        period_buttons = []
+        for period_name, days in periods:
+            if days == period_days:
+                period_buttons.append(InlineKeyboardButton(
+                    text=f"✅ {period_name}",
+                    callback_data=f"partner:stats:{days}"
+                ))
+            else:
+                period_buttons.append(InlineKeyboardButton(
+                    text=period_name,
+                    callback_data=f"partner:stats:{days}"
+                ))
+        
+        # Cards summary
+        stats_text += f"*{get_text('partner.cards_summary', lang)}*\n"
+        stats_text += get_text("partner.stats_cards", lang).format(
+            total=stats['total_cards'],
+            approved=stats['approved_cards'],
+            pending=stats['pending_cards'],
+            rejected=stats['rejected_cards']
+        ) + "\n\n"
+        
+        # Activity summary
+        stats_text += f"*{get_text('partner.activity_summary', lang)}*\n"
+        stats_text += get_text("partner.stats_activity", lang).format(
+            views=stats['total_views'],
+            scans=stats['total_scans'],
+            scan_rate=stats['scan_rate']
+        ) + "\n\n"
+        
+        # Top performing cards
+        if stats.get('top_cards'):
+            stats_text += f"*{get_text('partner.top_cards', lang)}*\n"
+            for i, card in enumerate(stats['top_cards'], 1):
+                stats_text += (
+                    f"{i}. *{escape_markdown(card['title'])}*\n"
+                    f"   👁 {card['views']} {get_text('partner.views', lang)} • "
+                    f"📱 {card['scans']} {get_text('partner.scans', lang)}\n"
+                )
+        
+        # Add period selection keyboard
+        keyboard = [
+            period_buttons[:2],  # First row: Today, Week
+            period_buttons[2:],  # Second row: Month, All time
+            [
+                InlineKeyboardButton(
+                    text=f"📅 {get_text('partner.export_stats', lang)}",
+                    callback_data="partner:export_stats"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=get_text("keyboard.back", lang),
+                    callback_data="partner:cabinet"
+                )
+            ]
+        ]
+        
+        reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+        
+        # Send or update message
+        if isinstance(update, CallbackQuery):
+            await update.message.edit_text(
+                stats_text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        else:
+            await message.answer(
+                stats_text,
+                reply_markup=reply_markup,
+                parse_mode="Markdown"
+            )
+        
+    except Exception as e:
+        logger.error(f"Error in partner_statistics_handler: {e}", exc_info=True)
+        error_text = get_text("error.general", lang if 'lang' in locals() else 'ru')
+        if isinstance(update, CallbackQuery):
+            await update.message.answer(error_text)
         partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
         # Determine if QR should be shown: when partner has at least one card (pending/approved/published)
         show_qr = False
@@ -1427,7 +1628,81 @@ async def open_partner_cabinet_cmd(message: Message):
             await message.answer("🏪 Вы в личном кабинете партнёра", reply_markup=kb)
     except Exception as e:
         logger.error(f"Failed to open partner cabinet: {e}")
-        await message.answer("❌ Не удалось открыть кабинет партнёра. Попробуйте позже.")
+
+
+@partner_router.callback_query(Text(startswith="partner:export:"))
+async def export_partner_statistics(callback: CallbackQuery):
+    """
+    Export partner statistics in the requested format (CSV/Excel)
+    """
+    try:
+        await callback.answer()
+        user_id = callback.from_user.id
+        lang = callback.from_user.language_code or 'ru'
+        
+        # Get period from callback data
+        try:
+            period_days = int(callback.data.split(":")[2])
+        except (IndexError, ValueError):
+            period_days = 7  # Default to 7 days
+        
+        # Get partner data
+        partner = await db_v2.get_partner(user_id)
+        if not partner:
+            await callback.message.answer(
+                get_text("partner.not_partner", lang),
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+        
+        # Get statistics data
+        stats = await db_v2.get_partner_statistics(
+            partner_id=user_id,
+            period_days=period_days
+        )
+        
+        # Create CSV data
+        import io
+        import csv
+        
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        
+        # Write header
+        writer.writerow([
+            get_text('partner.export_header_date', lang),
+            get_text('partner.export_header_views', lang),
+            get_text('partner.export_header_scans', lang),
+            get_text('partner.export_header_conversion', lang)
+        ])
+        
+        # Write data rows
+        for date, day_stats in stats.get('daily_stats', {}).items():
+            writer.writerow([
+                date,
+                day_stats.get('views', 0),
+                day_stats.get('scans', 0),
+                f"{day_stats.get('conversion_rate', 0):.1f}%"
+            ])
+        
+        # Prepare file for sending
+        output.seek(0)
+        file_data = io.BytesIO(output.getvalue().encode('utf-8-sig'))
+        file_data.name = f"statistics_{period_days}days.csv"
+        
+        # Send file
+        await callback.message.answer_document(
+            document=file_data,
+            caption=get_text("partner.export_success", lang).format(days=period_days)
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting partner statistics: {e}", exc_info=True)
+        error_text = get_text("error.export_failed", lang if 'lang' in locals() else 'ru')
+        if isinstance(callback, CallbackQuery):
+            await callback.message.answer(error_text)
+        else:
+            await callback.answer(error_text, show_alert=True)
 
 @partner_router.message(F.text.startswith("🧑‍💼"))
 async def open_partner_cabinet_button(message: Message, state: FSMContext):

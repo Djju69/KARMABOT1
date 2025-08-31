@@ -13,6 +13,33 @@ translations_v2 = {
         'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
         'choose_category': '🗂️ 카테고리',
         'show_nearest': '📍 가까운 매장',
+        
+        # User profile
+        'cabinet.user_profile': '👤 내 정보\n\n💎 포인트: {points}\n🏆 레벨: {level}\n\n아래 메뉴를 사용하여 프로필을 관리하세요',
+        'cabinet.user_points': '💰 내 포인트: {points}\n\n파트너사에서 사용할 수 있습니다',
+        'cabinet.history_header': '📜 거래 내역:',
+        'cabinet.partner_profile': '👤 파트너 프로필\n\n✅ 승인된 카드: {approved_cards}\n👀 총 조회수: {total_views}\n📊 총 스캔 수: {total_scans}',
+        'cabinet.partner_statistics': '📊 통계\n\n📋 총 카드 수: {total_cards}\n✅ 활성화된 카드: {active_cards}\n👀 조회수: {total_views}\n📊 스캔 수: {total_scans}\n📈 전환률: {conversion_rate}%',
+        'partner.no_cards': '아직 승인된 카드가 없습니다.\n카드를 추가하여 시작하세요.',
+        
+        # Keyboard buttons
+        'keyboard.points': '💰 내 포인트',
+        'keyboard.history': '📜 거래 내역',
+        'keyboard.spend': '💳 사용',
+        'keyboard.report': '📊 보고서',
+        'keyboard.card': '🎫 내 카드',
+        'keyboard.settings': '⚙️ 설정',
+        'keyboard.back': '◀️ 뒤로',
+        'keyboard.my_cards': '📋 내 카드',
+        'keyboard.scan_qr': '📱 QR 스캔',
+        'keyboard.statistics': '📈 통계',
+        'keyboard.support': '🆘 지원',
+        'keyboard.confirm': '✅ 확인',
+        'keyboard.cancel': '❌ 취소',
+        'keyboard.enter_amount': '💳 금액 입력',
+        'keyboard.prev_page': '⬅️ 이전',
+        'keyboard.next_page': '다음 ➡️',
+        'keyboard.become_partner': '👨‍💼 파트너가되기',
         'choose_language': '🌐 언어',
         'choose_district': '🌆 지역별',
         
@@ -76,11 +103,132 @@ translations_v2 = {
         'success': '성공!',
         'failed': '실패했습니다.'
     },
+    'vi': {
+        # Existing keys
+        'back_to_main_menu': 'Về menu chính🏘',
+        'choose_category': '🗂️ Danh mục',
+        'show_nearest': '📍 Gần nhất',
+        'choose_language': '🌐 Ngôn ngữ',
+        'choose_district': '🌆 Khu vực',
+        
+        # User profile
+        'cabinet.user_profile': '👤 Hồ sơ của bạn\n\n💎 Điểm: {points}\n🏆 Cấp độ: {level}\n\nSử dụng menu bên dưới để quản lý hồ sơ',
+        'cabinet.user_points': '💰 Điểm của bạn: {points}\n\nBạn có thể sử dụng chúng tại các đối tác của chúng tôi',
+        'cabinet.history_header': '📜 Lịch sử giao dịch:',
+        'cabinet.partner_profile': '👤 Tài khoản đối tác\n\n✅ Thẻ đã duyệt: {approved_cards}\n👀 Lượt xem: {total_views}\n📊 Lượt quét: {total_scans}',
+        'cabinet.partner_statistics': '📊 Thống kê\n\n📋 Tổng thẻ: {total_cards}\n✅ Đang hoạt động: {active_cards}\n👀 Lượt xem: {total_views}\n📊 Lượt quét: {total_scans}\n📈 Tỷ lệ chuyển đổi: {conversion_rate}%',
+        'partner.no_cards': 'Bạn chưa có thẻ nào được duyệt.\nThêm thẻ để bắt đầu.',
+        
+        # Keyboard buttons
+        'keyboard.points': '💰 Điểm của tôi',
+        'keyboard.history': '📜 Lịch sử',
+        'keyboard.spend': '💳 Tiêu điểm',
+        'keyboard.report': '📊 Báo cáo',
+        'keyboard.card': '🎫 Thẻ của tôi',
+        'keyboard.settings': '⚙️ Cài đặt',
+        'keyboard.back': '◀️ Quay lại',
+        'keyboard.my_cards': '📋 Thẻ của tôi',
+        'keyboard.scan_qr': '📱 Quét QR',
+        'keyboard.statistics': '📈 Thống kê',
+        'keyboard.support': '🆘 Hỗ trợ',
+        'keyboard.confirm': '✅ Xác nhận',
+        'keyboard.cancel': '❌ Hủy',
+        'keyboard.enter_amount': '💳 Nhập số tiền',
+        'keyboard.prev_page': '⬅️ Trước',
+        'keyboard.next_page': 'Sau ➡️',
+        'keyboard.become_partner': '👨‍💼 Trở thành đối tác',
+        
+        # Keyboard menu items
+        'keyboard.categories': '🗂️ Danh mục',
+        'keyboard.nearest': '📍 Gần nhất',
+        'keyboard.help': '❓ Trợ giúp',
+        'keyboard.choose_language': '🌐 Đổi ngôn ngữ',
+        'keyboard.back_to_main': '🏠 Về menu chính',
+        
+        # Profile/help
+        'profile': '👤 Hồ sơ',
+        'help': '❓ Trợ giúp',
+        
+        # Common actions
+        'cancel': '❌ Hủy',
+        'skip': '⏭️ Bỏ qua',
+        'back': '🔙 Quay lại',
+        'next': '➡️ Tiếp',
+        'edit': '✏️ Chỉnh sửa',
+        'delete': '🗑️ Xóa',
+        'save': '💾 Lưu',
+        
+        # Common UI
+        'error_occurred': '⚠️ Đã xảy ra lỗi. Vui lòng thử lại sau.',
+        'not_available': '🚧 Tính năng hiện không khả dụng.',
+        'thanks': '🙏 Cảm ơn!',
+        'loading': 'Đang tải...',
+        'saved': 'Đã lưu!',
+        'select_option': 'Chọn một tùy chọn:',
+        'no_results': 'Không có kết quả.',
+        'try_again': 'Thử lại.',
+        'success': 'Thành công!',
+        'failed': 'Thất bại!'
+    },
     'ru': {
         # Existing keys (preserved for compatibility)
         'back_to_main_menu': 'Вернуться в главное меню🏘',
         'choose_category': '🗂️ Категории',
         'show_nearest': '📍 Показать ближайшие',
+        
+        # User profile
+        'cabinet.user_profile': '👤 Ваш профиль\n\n💎 Баллы: {points}\n🏆 Уровень: {level}\n\nИспользуйте меню ниже для управления профилем',
+        'cabinet.user_points': '💰 Ваши баллы: {points}\n\nВы можете потратить их у наших партнеров',
+        'cabinet.history_header': '📜 История операций:',
+        'cabinet.partner_profile': '👤 Кабинет партнера\n\n✅ Одобрено карточек: {approved_cards}\n👀 Всего просмотров: {total_views}\n📊 Всего сканирований: {total_scans}',
+        'cabinet.partner_statistics': '📊 Статистика\n\n📋 Всего карточек: {total_cards}\n✅ Активных: {active_cards}\n👀 Просмотров: {total_views}\n📊 Сканирований: {total_scans}\n📈 Конверсия: {conversion_rate}%',
+        'partner.no_cards': 'У вас пока нет одобренных карточек.\nДобавьте карточку, чтобы начать работу.',
+        
+        # Keyboard buttons
+        'keyboard.points': '💰 Мои баллы',
+        'keyboard.history': '📜 История',
+        'keyboard.spend': '💳 Потратить',
+        'keyboard.report': '📊 Отчет',
+        'keyboard.card': '🎫 Моя карта',
+        'keyboard.settings': '⚙️ Настройки',
+        'keyboard.back': '◀️ Назад',
+        'keyboard.my_cards': '📋 Мои карточки',
+        'keyboard.scan_qr': '📱 Сканировать QR',
+        'keyboard.statistics': '📈 Статистика',
+        'keyboard.support': '🆘 Поддержка',
+        'keyboard.confirm': '✅ Подтвердить',
+        'keyboard.cancel': '❌ Отмена',
+        'keyboard.enter_amount': '💳 Ввести сумму',
+        'keyboard.prev_page': '⬅️ Назад',
+        'keyboard.next_page': 'Вперед ➡️',
+        'keyboard.become_partner': '👨‍💼 Стать партнером',
+        
+        # User profile
+        'cabinet.user_profile': '👤 Ваш профиль\n\n💎 Баллы: {points}\n🏆 Уровень: {level}\n\nИспользуйте меню ниже для управления профилем',
+        'cabinet.user_points': '💰 Ваши баллы: {points}\n\nВы можете потратить их у наших партнеров',
+        'cabinet.history_header': '📜 История операций:',
+        'cabinet.partner_profile': '👤 Кабинет партнера\n\n✅ Одобрено карточек: {approved_cards}\n👀 Всего просмотров: {total_views}\n📊 Всего сканирований: {total_scans}',
+        'cabinet.partner_statistics': '📊 Статистика\n\n📋 Всего карточек: {total_cards}\n✅ Активных: {active_cards}\n👀 Просмотров: {total_views}\n📊 Сканирований: {total_scans}\n📈 Конверсия: {conversion_rate}%',
+        'partner.no_cards': 'У вас пока нет одобренных карточек.\nДобавьте карточку, чтобы начать работу.',
+        
+        # Keyboard buttons
+        'keyboard.points': '💰 Мои баллы',
+        'keyboard.history': '📜 История',
+        'keyboard.spend': '💳 Потратить',
+        'keyboard.report': '📊 Отчет',
+        'keyboard.card': '🎫 Моя карта',
+        'keyboard.settings': '⚙️ Настройки',
+        'keyboard.back': '◀️ Назад',
+        'keyboard.my_cards': '📋 Мои карточки',
+        'keyboard.scan_qr': '📱 Сканировать QR',
+        'keyboard.statistics': '📈 Статистика',
+        'keyboard.support': '🆘 Поддержка',
+        'keyboard.confirm': '✅ Подтвердить',
+        'keyboard.cancel': '❌ Отмена',
+        'keyboard.enter_amount': '💳 Ввести сумму',
+        'keyboard.prev_page': '⬅️ Назад',
+        'keyboard.next_page': 'Вперед ➡️',
+        'keyboard.become_partner': '👨‍💼 Стать партнером',
         'choose_language': '🌐 Язык',
         'choose_district': '🌆 По районам',
         
