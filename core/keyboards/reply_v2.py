@@ -390,6 +390,28 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Legacy alias for backward compatibility"""
     return get_main_menu_reply(lang)
 
+def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
+    """Клавиатура личного кабинета пользователя"""
+    buttons = [
+        [KeyboardButton("🎁 Баллы"), KeyboardButton("📜 История")],
+        [KeyboardButton("💳 Потратить"), KeyboardButton("📊 Отчёт")],
+        [KeyboardButton("⚙️ Настройки"), KeyboardButton("◀️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def get_partner_cabinet_keyboard(lang: str = "ru", has_cards: bool = False) -> ReplyKeyboardMarkup:
+    """Клавиатура кабинета партнера"""
+    buttons = []
+    if has_cards:
+        buttons.append([KeyboardButton("🧾 Сканировать QR")])
+    
+    buttons.extend([
+        [KeyboardButton("🗂 Мои карточки"), KeyboardButton("📊 Отчёт")],
+        [KeyboardButton("📈 Статистика"), KeyboardButton("⚙️ Настройки")],
+        [KeyboardButton("◀️ Назад")]
+    ])
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
 # Export commonly used keyboards
 __all__ = [
     'get_main_menu_reply',
