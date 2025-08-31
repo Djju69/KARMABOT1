@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
 import os
+import sys
 import asyncio
 import logging
 import uvicorn
-from web.main import app
+from pathlib import Path
 
-# Базовая настройка логирования
+# Add project root to path
+project_root = str(Path(__file__).parent.absolute())
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,55 +26,78 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Try to import web app
+try:
+    from web.main import app
+    WEB_IMPORTED = True
+except ImportError as e:
+    logger.warning(f"Failed to import web app: {e}")
+    WEB_IMPORTED = False
+
 async def run_bot():
     """Запуск телеграм бота"""
     try:
-        # ПРЯМОЙ ИМПОРТ БОТА - ОСНОВНОЙ ПУТЬ
-        from bot.bot import bot
+        # Try to import bot from the new structure
+        from bot.bot import start as start_bot
         logger.info("✅ Бот импортирован, запускаем...")
-        await bot.start()
+        await start_bot()
         
     except ImportError as e:
-        logger.error(f"❌ Ошибка импорта бота (основной путь): {e}")
-        
-        # АЛЬТЕРНАТИВНЫЙ ПУТЬ 1
-        try:
-            from bot import bot
-            logger.info("✅ Бот импортирован (альтернативный путь 1)")
-            await bot.start()
-            
-        except ImportError:
-            # АЛЬТЕРНАТИВНЫЙ ПУТЬ 2 - ПРЯМОЙ ДОСТУП
-            try:
-                import sys
-                sys.path.append('/app')
-                from bot.bot import bot
-                logger.info("✅ Бот импортирован (прямой доступ)")
-                await bot.start()
-                
-            except ImportError as e2:
-                logger.error(f"❌ Все попытки импорта провалились: {e2}")
-                raise
+        logger.error(f"❌ Ошибка импорта бота: {e}", exc_info=True)
+        raise
 
 async def run_web_server():
     """Запуск веб-сервера"""
+    if not WEB_IMPORTED:
+        logger.warning("Веб-приложение не импортировано, пропускаем запуск веб-сервера")
+        return
+        
     port = int(os.getenv("PORT", 8080))
-    config = uvicorn.Config(app, host="0.0.0.0", port=port)
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info"
+    )
     server = uvicorn.Server(config)
     logger.info(f"✅ Запускаем веб-сервер на порту {port}...")
     await server.serve()
 
 async def main():
     """Одновременный запуск бота и веб-сервера"""
-    # Создаем задачи для параллельного выполнения
-    bot_task = asyncio.create_task(run_bot())
-    web_task = asyncio.create_task(run_web_server())
+    tasks = []
     
-    # Ожидаем завершения всех задач
-    await asyncio.gather(bot_task, web_task)
+    # Add bot task if BOT_TOKEN is set
+    if os.getenv("BOT_TOKEN"):
+        tasks.append(asyncio.create_task(run_bot()))
+    else:
+        logger.warning("BOT_TOKEN не установлен, пропускаем запуск бота")
+    
+    # Add web server task if web app is available
+    if WEB_IMPORTED:
+        tasks.append(asyncio.create_task(run_web_server()))
+    
+    if not tasks:
+        logger.error("Нет доступных сервисов для запуска")
+        return
+    
+    # Wait for all tasks to complete
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 if __name__ == "__main__":
-    logger.info("🚀 Запускаем и бота, и веб-сервер одновременно!")
+    logger.info("🚀 Запускаем сервисы...")
+    
+    # Print environment info
+    logger.info(f"Python: {sys.version}")
+    logger.info(f"Current directory: {os.getcwd()}")
+    logger.info(f"Files in directory: {os.listdir('.')}")
+    
+    if os.path.exists('bot'):
+        logger.info("Bot directory exists")
+        logger.info(f"Files in bot directory: {os.listdir('bot')}")
+    else:
+        logger.error("Bot directory does not exist!")
+    
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
