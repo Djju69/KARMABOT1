@@ -5,7 +5,7 @@ Handles all business logic related to user profile, balance, and level managemen
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
-from core.database.db_v2 import get_db
+from core.database import get_db
 from core.models import User, Transaction, LoyaltyPoints
 from ..utils.logger import get_logger
 
