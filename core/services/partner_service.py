@@ -5,8 +5,11 @@ Including card management, statistics, and QR code operations.
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session, joinedload
+Feedback submitted
+
+
 from sqlalchemy import func, and_, or_
-from core.database.db_v2 import db_v2 as db
+from core.database import get_db
 from core.models import User, Card, QRScan, Transaction
 
 

@@ -23,6 +23,7 @@ class User(Base):
     # Relationships
     transactions = relationship("Transaction", back_populates="user")
     qr_scans = relationship("QRScan", back_populates="user")
+    loyalty_points = relationship("LoyaltyPoints", back_populates="user", uselist=False)
 
 class Transaction(Base):
     __tablename__ = 'transactions'
