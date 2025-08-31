@@ -6,7 +6,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.filters import Command
+from aiogram.filters import Command, Text
 import logging
 import re
 
@@ -1426,7 +1426,7 @@ async def open_partner_cabinet_cmd(message: Message):
             reply_markup=get_return_to_main_menu()
         )
 
-@partner_router.message(Text(["👤 Кабинет партнера", "👤 Partner Cabinet", "👤 Trang đối tác", "👤 파트너 센터"], ignore_case=True))
+@partner_router.message(F.text.in_(["👤 Кабинет партнера", "👤 Partner Cabinet", "👤 Trang đối tác", "👤 파트너 센тер"]))
 async def partner_cabinet_handler(message: Message):
     """Handle partner cabinet button press"""
     try:
