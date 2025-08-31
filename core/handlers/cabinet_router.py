@@ -6,9 +6,13 @@ from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from typing import Optional, Union
+from typing import Optional, Union, Any, Dict
 import logging
 
+# Create router with a name
+router = Router(name='cabinet_router')
+
+# Import dependencies
 from ..services.user_cabinet_service import user_cabinet_service
 from ..keyboards.reply_v2 import (
     get_user_cabinet_keyboard,
@@ -18,7 +22,6 @@ from ..keyboards.reply_v2 import (
 from ..utils.locales_v2 import get_text, get_all_texts
 
 logger = logging.getLogger(__name__)
-router = Router(name='cabinet_router')
 
 
 def get_cabinet_router() -> Router:
@@ -168,4 +171,16 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
     pass
 
 
-# The get_cabinet_router function is now defined at the top of the file
+# Register all handlers
+router.message.register(user_cabinet_handler, F.text == "👤 Личный кабинет")
+router.message.register(view_balance_handler, F.text == "💰 Баланс")
+router.message.register(view_history_handler, F.text == "📜 История")
+router.message.register(back_to_profile_handler, F.text == "◀️ Назад")
+
+# For backward compatibility
+def get_cabinet_router():
+    """Get the cabinet router instance."""
+    return router
+
+# Export the router
+__all__ = ['router', 'get_cabinet_router']
