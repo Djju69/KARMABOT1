@@ -46,9 +46,12 @@ def get_settings(path: Optional[str] = None):
     """Load settings from environment variables"""
     env = Env()
     
-    # Load from .env file if path is provided
-    if path and os.path.exists(path):
+    # First try to load from environment variables directly
+    # Only fall back to .env file if environment variables are not set
+    if not os.environ.get('BOT_TOKEN') and path and os.path.exists(path):
         env.read_env(path)
+        logger = logging.getLogger(__name__)
+        logger.warning("Using .env file as fallback. It's recommended to use environment variables directly in production.")
     
     # Initialize features with default values
     # The __post_init__ will update from environment variables

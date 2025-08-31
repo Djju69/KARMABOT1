@@ -8,9 +8,14 @@ def _router(module: str, *names: str):
         for n in names:
             if hasattr(m, n):
                 return getattr(m, n)
-        raise ImportError(f"[{__name__}] {module}: none of {names} found")
-    except ImportError as e:
-        print(f"Warning: Failed to import {module}: {e}")
+        print(f"Warning: No router found in {module} (tried: {', '.join(names)})")
+        return None
+    except Exception as e:
+        # Log the full error for debugging
+        import traceback
+        error_msg = f"Error importing {module}: {str(e)}"
+        print(error_msg)
+        print("\n".join(traceback.format_exc().split('\n')[-4:-1]))
         return None
 
 # Export routers with fallback names

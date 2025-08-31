@@ -547,3 +547,14 @@ class DatabaseServiceV2:
 
 # Global database service instance
 db_v2 = DatabaseServiceV2()
+
+def get_db():
+    """
+    Dependency function that yields database sessions.
+    To be used in FastAPI dependencies or similar contexts.
+    """
+    db = db_v2.get_connection()
+    try:
+        yield db
+    finally:
+        db.close()
