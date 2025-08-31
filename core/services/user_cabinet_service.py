@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.models import User, Transaction, LoyaltyPoints
-from ..utils.logger import get_logger
+from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
