@@ -319,17 +319,26 @@ async def main():
 try:
     from core.config import FeatureFlags  # if exists in config.py
 except ImportError:
-    # minimal local stub to prevent crashes
-    from pydantic import BaseModel
-    class FeatureFlags(BaseModel):
-        partner_fsm: bool = False
-        loyalty_points: bool = True
-        referrals: bool = True
-        web_cabinets: bool = True
+    class FeatureFlags:
+        def __init__(self):
+            # Read from environment variables with defaults
+            self.partner_fsm = os.getenv('FEATURE_PARTNER_FSM', 'true').lower() == 'true'
+            self.moderation = os.getenv('FEATURE_MODERATION', 'true').lower() == 'true'
+            self.loyalty_points = os.getenv('FEATURE_LOYALTY', 'true').lower() == 'true'
+            self.referrals = os.getenv('FEATURE_REFERRALS', 'true').lower() == 'true'
+            self.web_cabinets = os.getenv('FEATURE_WEB_CABINETS', 'true').lower() == 'true'
+            self.new_menu = os.getenv('FEATURE_NEW_MENU', 'true').lower() == 'true'
+            self.qr_webapp = os.getenv('FEATURE_QR_WEBAPP', 'true').lower() == 'true'
 
 # Ensure settings.features exists
 if not hasattr(settings, "features") or settings.features is None:
     settings.features = FeatureFlags()  # type: ignore[attr-defined]
+
+# Log feature flags status
+logger.info("🔧 Feature flags:")
+for feature, value in vars(settings.features).items():
+    status = "✅ ENABLED" if value else "❌ DISABLED"
+    logger.info(f"  - {feature}: {status}")
 
 from core.middlewares.locale import LocaleMiddleware
 from core.database.migrations import ensure_database_ready
@@ -729,10 +738,14 @@ async def setup_routers(dp: Dispatcher):
 
     # 4. Profile router (inline cabinet)
     logger.info("\n🔗 Creating and including profile_router...")
+    from core.handlers.profile import get_profile_router
     profile_router = get_profile_router()
-    logger.info("🔎 will include %r id=%s from %s", profile_router, id(profile_router), "get_profile_router()")
-    dp.include_router(profile_router)
-    logger.info("🔗 include_router: %r id=%s", profile_router, id(profile_router))
+    if profile_router:
+        logger.info("🔎 will include %r id=%s from %s", profile_router, id(profile_router), "get_profile_router()")
+        dp.include_router(profile_router)
+        logger.info("✅ Profile router included successfully")
+    else:
+        logger.error("❌ Failed to load profile router")
     
     # 4.5 Cabinet router for personal cabinet
     logger.info("\n🔗 Creating and including cabinet_router...")
@@ -750,10 +763,19 @@ async def setup_routers(dp: Dispatcher):
 
     # 5. Feature-flagged routers
     logger.info("\n🔗 Including partner_router...")
+    from core.handlers.partner import get_partner_router
     partner_router = get_partner_router()
-    logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
-    dp.include_router(partner_router)
-    logger.info("🔗 include_router: %r id=%s", partner_router, id(partner_router))
+    if partner_router:
+        logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
+        dp.include_router(partner_router)
+        logger.info("✅ Partner router included successfully")
+        
+        # Enable partner FSM feature if router is loaded
+        if not hasattr(settings.features, 'partner_fsm'):
+            settings.features.partner_fsm = True
+            logger.info("✅ Enabled partner_fsm feature flag")
+    else:
+        logger.error("❌ Failed to load partner router")
     
     if getattr(settings.features, "partner_fsm", False):
         logger.info("✅ Partner FSM enabled")
@@ -781,6 +803,22 @@ async def setup_routers(dp: Dispatcher):
     logger.info("\n==== ROUTERS DUMP START ====")
     dump_router(dp)
     logger.info("==== ROUTERS DUMP END ====\n")
+
+async def _ensure_single_instance() -> bool:
+    """Ensure only one instance of the bot is running."""
+    import fcntl
+    import os
+    
+    lock_file = "/tmp/karmabot.lock"
+    
+    try:
+        lock = open(lock_file, 'w')
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (IOError, OSError):
+        return False
+    
+    # Note: The lock will be automatically released when the process exits
 
 async def _preflight_polling_conflict(bot_token: str) -> bool:
     """Call Telegram getUpdates once to detect 409 Conflict preflight.
@@ -918,7 +956,16 @@ async def on_shutdown(dp: Dispatcher):
 
 async def main():
     """Main entry point for the bot"""
-    # Centralized logging with stdout + daily rotation (retention 7d by default)
+    # Initialize logging first
+    setup_logging()
+    
+    # Ensure only one instance is running
+    if not await _ensure_single_instance():
+        logger.warning("Another instance is already running. Exiting...")
+        return
+        
+    # Get Redis URL
+    redis_url = _get_redis_url()
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
     
