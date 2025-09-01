@@ -1,35 +1,15 @@
 """
-Модуль обработчиков для партнерского кабинета.
-Включает управление заведениями и статистикой.
+Partner FSM handlers for adding cards
+Behind FEATURE_PARTNER_FSM flag for safe deployment
 """
-from typing import Union, Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from typing import Union
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.filters import Command
 import logging
 import re
-
-from aiogram import Router, F, Bot
-from aiogram.types import (
-    Message, CallbackQuery, InlineKeyboardMarkup, 
-    InlineKeyboardButton, InputMediaPhoto, FSInputFile
-)
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.filters import Command, StateFilter
-
-from core.settings import settings
-from core.keyboards.reply import get_reply_keyboard
-from core.keyboards.inline import get_inline_keyboard
-from core.database import db
-from core.utils.i18n import get_text as _
-
-logger = logging.getLogger(__name__)
-
-# Роутер для обработчиков партнерского кабинета
-partner_router = Router()
-
-# Константы
-MAX_ESTABLISHMENTS = 10  # Максимальное количество заведений у партнера
-ITEMS_PER_PAGE = 5  # Количество элементов на странице
 
 from ..settings import settings
 from ..services.profile import profile_service
@@ -1765,3 +1745,17 @@ async def cancel_anywhere(message: Message, state: FSMContext):
     if cur and cur.startswith(AddCardStates.__name__ + ":"):
         await cancel_add_card(message, state)
 
+# Handle text messages in FSM states
+@partner_router.message(AddCardStates.choose_category)
+async def invalid_category_input(message: Message):
+    """Handle invalid input in category selection"""
+    await message.answer("❌ Пожалуйста, выберите категорию из списка выше.")
+
+# Register router only if feature is enabled
+def get_partner_router() -> Router:
+    """Get partner router if feature is enabled"""
+    if getattr(settings.features, 'partner_fsm', False):
+        logger.info("✅ Partner FSM is enabled, returning partner router")
+        return partner_router
+    logger.info("⚠️ Partner FSM is disabled, returning empty router")
+    return Router()  # Return empty router if disabled

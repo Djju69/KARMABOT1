@@ -38,6 +38,9 @@ from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+# Import middlewares
+from core.middleware import setup_rbac_middleware, setup_2fa_middleware
+
 # Initialize bot with default properties
 try:
     BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -53,6 +56,10 @@ try:
     
     dp = Dispatcher()
     
+    # Setup middlewares
+    setup_rbac_middleware(dp)
+    setup_2fa_middleware(dp)
+    
     # Add test command handler
     @dp.message(Command("start"))
     async def cmd_start(message: types.Message):
@@ -61,6 +68,16 @@ try:
     
     # Import and include other handlers
     try:
+        # Import 2FA handlers
+        from core.handlers.two_factor_handlers import handlers as two_factor_handlers
+        for handler in two_factor_handlers:
+            dp.include_router(handler)
+            
+        # Import admin audit handlers
+        from core.handlers.admin_audit_handlers import handlers as admin_audit_handlers
+        for handler in admin_audit_handlers:
+            dp.include_router(handler)
+            
         # Import individual routers with error handling
         routers = []
         
