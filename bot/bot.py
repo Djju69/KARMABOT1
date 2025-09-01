@@ -105,7 +105,8 @@ try:
         # List of handler modules to import (without commands)
         handler_modules = [
             'basic', 'callback', 'contact', 'lang', 'main_menu_router',
-            'profile', 'partner', 'activity', 'admin_cabinet', 'category_handlers'
+            'profile', 'partner', 'activity', 'admin_cabinet', 'category_handlers',
+            'category_handlers_v2'
         ]
         
         # Get all available routers
