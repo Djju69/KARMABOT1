@@ -41,7 +41,8 @@ jobs:
         # Normalize requirements files to avoid hidden NUL bytes or CRLF
         python - <<'PY'
 from pathlib import Path
-for name in ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt'):
+files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
+for name in files:
     p = Path(name)
     if not p.exists():
         continue
@@ -104,7 +105,8 @@ PY
         # Normalize requirements to strip NUL/CRLF before install
         python - <<'PY'
 from pathlib import Path
-for name in ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt'):
+files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
+for name in files:
     p = Path(name)
     if not p.exists():
         continue
