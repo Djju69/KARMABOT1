@@ -1,110 +1,212 @@
 """
-Настройки приложения KarmaSystem (новая версия).
+Исправленный файл настроек для KARMABOT1
+Поместите этот файл в /app/core/settings_new.py
 """
 import os
-import secrets
-import logging
-from datetime import timedelta
 from typing import Optional, List, Dict, Any
-from dotenv import load_dotenv
-from pydantic import BaseSettings, Field, validator, PostgresDsn, AnyUrl
+from pathlib import Path
 
-# Загружаем переменные окружения из .env файла
-load_dotenv()
+# Исправлено: используем pydantic-settings для BaseSettings
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+    from pydantic import Field, validator, PostgresDsn, AnyUrl
+    PYDANTIC_V2 = True
+except ImportError:
+    # Fallback для старых версий pydantic
+    try:
+        from pydantic import BaseSettings, Field, validator, PostgresDsn, AnyUrl
+        PYDANTIC_V2 = False
+    except ImportError:
+        # Совсем базовая реализация без pydantic
+        BaseSettings = object
+        PYDANTIC_V2 = False
+        
+        def Field(*args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
+        
+        def validator(*args, **kwargs):
+            def decorator(func):
+                return func
+            return decorator
 
-class Settings(BaseSettings):
-    # Основные настройки
-    DEBUG: bool = Field(default=False, env='DEBUG')
-    ENVIRONMENT: str = Field(default='production', env='ENVIRONMENT')
-    LOG_LEVEL: str = Field(default='INFO', env='LOG_LEVEL')
-    
-    # Настройки бота
-    BOT_TOKEN: str = Field(..., env='BOT_TOKEN')
-    ADMIN_ID: int = Field(..., env='ADMIN_ID')
-    
-    # Настройки базы данных
-    DATABASE_URL: str = Field(
-        default='sqlite:///core/database/data.db',
-        env='DATABASE_URL'
-    )
-    
-    # Настройки Redis
-    REDIS_URL: str = Field(
-        default='redis://localhost:6379/0',
-        env='REDIS_URL'
-    )
-    
-    # Настройки JWT
-    SECRET_KEY: str = Field(
-        default=secrets.token_urlsafe(32),
-        env='SECRET_KEY'
-    )
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 часа
-    
-    # Настройки WebApp
-    WEBAPP_HOST: str = Field(default='0.0.0.0', env='WEBAPP_HOST')
-    WEBAPP_PORT: int = Field(default=8000, env='WEBAPP_PORT')
-    WEBAPP_URL: str = Field(default='http://localhost:8000', env='WEBAPP_URL')
-    
-    # Настройки CORS
-    CORS_ORIGINS: List[str] = Field(
-        default=['*'],
-        env='CORS_ORIGINS'
-    )
-    
-    # Feature flags
-    FEATURE_PARTNER_FSM: bool = Field(
-        default=False,
-        env='FEATURE_PARTNER_FSM'
-    )
-    FEATURE_MODERATION: bool = Field(
-        default=False,
-        env='FEATURE_MODERATION'
-    )
-    FEATURE_QR_WEBAPP: bool = Field(
-        default=False,
-        env='FEATURE_QR_WEBAPP'
-    )
-    FEATURE_LISTEN_NOTIFY: bool = Field(
-        default=False,
-        env='FEATURE_LISTEN_NOTIFY'
-    )
-    
-    # Валидация URL базы данных
-    @validator('DATABASE_URL', pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
-        if isinstance(v, str):
-            return v
-        return PostgresDsn.build(
-            scheme='postgresql+asyncpg',
-            user=os.getenv('DB_USER'),
-            password=os.getenv('DB_PASSWORD'),
-            host=os.getenv('DB_HOST', 'localhost'),
-            path=f"/{os.getenv('DB_NAME', 'karmabot')}",
-        )
-    
-    # Валидация CORS origins
-    @validator('CORS_ORIGINS', pre=True)
-    def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
-        if isinstance(v, str) and not v.startswith('['):
-            return [i.strip() for i in v.split(',')]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
-    
-    class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
-        case_sensitive = True
 
-# Инициализируем настройки
-settings = Settings()
+class Settings:
+    """
+    Настройки для KARMABOT1
+    Поддерживает как Pydantic v1, так и v2
+    """
+    
+    def __init__(self):
+        # Основные настройки бота
+        self.BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
+        self.ADMIN_ID: int = int(os.getenv("ADMIN_ID", "0"))
+        
+        # База данных
+        self.DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///core/database/data.db")
+        
+        # Фича-флаги (по умолчанию выключены для безопасности)
+        self.FEATURE_PARTNER_FSM: bool = os.getenv("FEATURE_PARTNER_FSM", "false").lower() == "true"
+        self.FEATURE_MODERATION: bool = os.getenv("FEATURE_MODERATION", "false").lower() == "true"
+        self.FEATURE_NEW_MENU: bool = os.getenv("FEATURE_NEW_MENU", "false").lower() == "true"
+        self.FEATURE_QR_WEBAPP: bool = os.getenv("FEATURE_QR_WEBAPP", "false").lower() == "true"
+        self.FEATURE_LISTEN_NOTIFY: bool = os.getenv("FEATURE_LISTEN_NOTIFY", "false").lower() == "true"
+        
+        # Дополнительные настройки
+        self.LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
+        self.ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+        self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
+        
+        # WebApp настройки
+        self.JWT_SECRET: str = os.getenv("JWT_SECRET", "debug")
+        self.AUTH_WINDOW_SEC: int = int(os.getenv("AUTH_WINDOW_SEC", "300"))
+        self.WEBAPP_QR_URL: str = os.getenv("WEBAPP_QR_URL", "")
+        self.WEBAPP_ALLOWED_ORIGIN: str = os.getenv("WEBAPP_ALLOWED_ORIGIN", "*")
+        self.CSP_ALLOWED_ORIGIN: str = os.getenv("CSP_ALLOWED_ORIGIN", "*")
+        self.FASTAPI_ONLY: bool = os.getenv("FASTAPI_ONLY", "false").lower() == "true"
+        
+        # Redis настройки
+        self.REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        self.REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
+        self.REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
+        self.REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
+        
+        # Webhook настройки
+        self.WEBHOOK_HOST: str = os.getenv("WEBHOOK_HOST", "")
+        self.WEBHOOK_PORT: int = int(os.getenv("WEBHOOK_PORT", "8080"))
+        self.WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
+        self.USE_WEBHOOK: bool = os.getenv("USE_WEBHOOK", "false").lower() == "true"
+        
+        # Проверяем обязательные параметры
+        self._validate_settings()
+    
+    def _validate_settings(self):
+        """Проверяет корректность настроек"""
+        if not self.BOT_TOKEN:
+            raise ValueError("BOT_TOKEN is required")
+        if not self.ADMIN_ID:
+            raise ValueError("ADMIN_ID is required")
+    
+    def get_feature_flags(self) -> Dict[str, bool]:
+        """Возвращает словарь всех фича-флагов"""
+        return {
+            "PARTNER_FSM": self.FEATURE_PARTNER_FSM,
+            "MODERATION": self.FEATURE_MODERATION,
+            "NEW_MENU": self.FEATURE_NEW_MENU,
+            "QR_WEBAPP": self.FEATURE_QR_WEBAPP,
+            "LISTEN_NOTIFY": self.FEATURE_LISTEN_NOTIFY,
+        }
+    
+    def is_development(self) -> bool:
+        """Проверяет, запущен ли проект в режиме разработки"""
+        return self.ENVIRONMENT.lower() in ["development", "dev", "local"]
+    
+    def is_production(self) -> bool:
+        """Проверяет, запущен ли проект в продакшн режиме"""
+        return self.ENVIRONMENT.lower() in ["production", "prod"]
 
-# Настраиваем логирование
+
+# Если доступен Pydantic, создаем улучшенную версию
+if BaseSettings != object and PYDANTIC_V2:
+    class PydanticSettings(BaseSettings):
+        """
+        Настройки с использованием Pydantic v2
+        """
+        model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+        
+        # Основные настройки
+        bot_token: str = Field("", description="Telegram Bot Token")
+        admin_id: int = Field(0, description="Admin Telegram ID")
+        
+        # База данных
+        database_url: str = Field("sqlite:///core/database/data.db", description="Database URL")
+        
+        # Фича-флаги
+        feature_partner_fsm: bool = Field(False, description="Enable Partner FSM")
+        feature_moderation: bool = Field(False, description="Enable Moderation")
+        feature_new_menu: bool = Field(False, description="Enable New Menu")
+        feature_qr_webapp: bool = Field(False, description="Enable QR WebApp")
+        feature_listen_notify: bool = Field(False, description="Enable Listen Notify")
+        
+        # Дополнительные настройки
+        log_level: str = Field("INFO", description="Logging level")
+        environment: str = Field("development", description="Environment")
+        debug: bool = Field(False, description="Debug mode")
+        
+        # WebApp
+        jwt_secret: str = Field("debug", description="JWT Secret")
+        auth_window_sec: int = Field(300, description="Auth window in seconds")
+        webapp_qr_url: str = Field("", description="WebApp QR URL")
+        webapp_allowed_origin: str = Field("*", description="WebApp allowed origin")
+        csp_allowed_origin: str = Field("*", description="CSP allowed origin")
+        fastapi_only: bool = Field(False, description="FastAPI only mode")
+        
+        # Redis
+        redis_url: str = Field("redis://localhost:6379/0", description="Redis URL")
+        redis_host: str = Field("localhost", description="Redis host")
+        redis_port: int = Field(6379, description="Redis port")
+        redis_db: int = Field(0, description="Redis database")
+        
+        # Webhook
+        webhook_host: str = Field("", description="Webhook host")
+        webhook_port: int = Field(8080, description="Webhook port")
+        webhook_path: str = Field("/webhook", description="Webhook path")
+        use_webhook: bool = Field(False, description="Use webhook")
+
+    try:
+        # Пробуем создать Pydantic настройки
+        pydantic_settings = PydanticSettings()
+        settings = Settings()
+        
+        # Копируем значения из Pydantic в обычный класс
+        for field_name, field_value in pydantic_settings.model_dump().items():
+            # Конвертируем snake_case в UPPER_CASE
+            attr_name = field_name.upper()
+            if hasattr(settings, attr_name):
+                setattr(settings, attr_name, field_value)
+                
+    except Exception as e:
+        print(f"Warning: Failed to load Pydantic settings, using fallback: {e}")
+        settings = Settings()
+else:
+    # Используем базовую реализацию
+    settings = Settings()
+
+
+def get_settings():
+    """Функция для получения настроек (для совместимости с разными частями кода)"""
+    return settings
+
+
+def validate_settings():
+    """Проверяет корректность всех настроек"""
+    try:
+        settings._validate_settings()
+        return True
+    except ValueError as e:
+        print(f"Settings validation failed: {e}")
+        return False
+
+
+# Автоматическая валидация при импорте (в development режиме)
+if settings.is_development():
+    validate_settings()
+
+# Настройка логирования
+import logging
+
 logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
 )
+
+# Уменьшаем логи от сторонних библиотек
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('aiogram').setLevel(logging.WARNING)
+logging.getLogger('asyncio').setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 # Логируем загрузку настроек
