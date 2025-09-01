@@ -83,6 +83,19 @@ class Settings:
     
     def _validate_settings(self):
         """Проверяет корректность настроек"""
+        is_test_env = (
+            os.getenv("TESTING") in ("1", "true", "yes") or
+            os.getenv("CI") in ("1", "true", "yes") or
+            self.ENVIRONMENT.lower() in ["development", "dev", "local", "test", "testing"]
+        )
+        if is_test_env:
+            # В тестовой/локальной среде не валим импортом, а подставляем безопасные значения
+            if not self.BOT_TOKEN:
+                self.BOT_TOKEN = "TEST_BOT_TOKEN"
+            if not self.ADMIN_ID:
+                self.ADMIN_ID = 1
+            return
+        # В продакшене требуем обязательные переменные
         if not self.BOT_TOKEN:
             raise ValueError("BOT_TOKEN is required")
         if not self.ADMIN_ID:
