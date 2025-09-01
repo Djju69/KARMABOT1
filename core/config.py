@@ -4,7 +4,8 @@ from __future__ import annotations
 import os
 import sys
 import logging
-from pydantic import BaseModel, Field
+import secrets
+from pydantic import BaseModel, Field, AnyHttpUrl, validator
 
 log = logging.getLogger(__name__)
 
@@ -108,18 +109,89 @@ class Database(BaseModel):
     def dsn(self) -> str | None:
         return self.url or self.async_url
 
+class AuthSettings(BaseModel):
+    """Authentication and JWT settings"""
+    secret_key: str = Field(
+        default_factory=lambda: os.getenv("SECRET_KEY") or secrets.token_urlsafe(32),
+        description="Secret key for JWT token generation"
+    )
+    algorithm: str = Field(
+        default="HS256",
+        description="Algorithm for JWT token encoding/decoding"
+    )
+    access_token_expire_minutes: int = Field(
+        default=60 * 24,  # 24 hours
+        description="Access token expiration time in minutes"
+    )
+    refresh_token_expire_days: int = Field(
+        default=30,
+        description="Refresh token expiration time in days"
+    )
+    email_reset_token_expire_hours: int = Field(
+        default=24,
+        description="Password reset token expiration time in hours"
+    )
+    email_verification_token_expire_hours: int = Field(
+        default=72,
+        description="Email verification token expiration time in hours"
+    )
+    password_reset_url: str | None = Field(
+        default=None,
+        description="Base URL for password reset links"
+    )
+    frontend_url: str | None = Field(
+        default=os.getenv("FRONTEND_URL"),
+        description="Base URL for frontend application"
+    )
+    api_v1_str: str = Field(
+        default="/api/v1",
+        description="API version 1 prefix"
+    )
+    
+    @validator("password_reset_url", pre=True, always=True)
+    def set_default_password_reset_url(cls, v, values):
+        if v is None and values.get("frontend_url"):
+            return f"{values['frontend_url']}/reset-password"
+        return v
+
 class Settings(_BaseSettings):
     bots: Bots = Field(default_factory=Bots)
     environment: str = Field(
         default=os.getenv("ENVIRONMENT")
-             or os.getenv("ENV")
-             or os.getenv("APP_ENV")
-             or os.getenv("RAILWAY_ENVIRONMENT")
-             or os.getenv("RAILWAY_STAGE")
-             or "production"
+                 or os.getenv("ENV")
+                 or os.getenv("APP_ENV")
+                 or os.getenv("RAILWAY_ENVIRONMENT")
+                 or os.getenv("RAILWAY_STAGE")
+                 or "production"
     )
     features: FeatureFlags = Field(default_factory=FeatureFlags)
     database: Database = Field(default_factory=Database)
+    auth: AuthSettings = Field(default_factory=AuthSettings)
+    
+    # Aliases for backward compatibility
+    @property
+    def SECRET_KEY(self) -> str:
+        return self.auth.secret_key
+        
+    @property
+    def JWT_ALGORITHM(self) -> str:
+        return self.auth.algorithm
+        
+    @property
+    def ACCESS_TOKEN_EXPIRE_MINUTES(self) -> int:
+        return self.auth.access_token_expire_minutes
+        
+    @property
+    def REFRESH_TOKEN_EXPIRE_DAYS(self) -> int:
+        return self.auth.refresh_token_expire_days
+        
+    @property
+    def EMAIL_RESET_TOKEN_EXPIRE_HOURS(self) -> int:
+        return self.auth.email_reset_token_expire_hours
+        
+    @property
+    def API_V1_STR(self) -> str:
+        return self.auth.api_v1_str
 
     class Config:
         # если мы реально на BaseSettings, эти поля применятся; если на BaseModel — не помешают

@@ -113,6 +113,7 @@ except Exception:
 # Import routes conditionally based on MINIMAL_WEB flag
 if not MINIMAL_WEB:
     from .routes_auth import router as auth_router
+    from .routes_dashboard import router as dashboard_router, setup_static_files
     from .routes_auth_email import router as auth_email_router
     from web.routes_cabinet import router as cabinet_router
     from web.routes_admin import router as admin_router
@@ -375,9 +376,12 @@ except Exception:
 app.add_middleware(CSPMiddleware)
 app.add_middleware(TokenCookieMiddleware)
 
-# Include routers conditionally based on MINIMAL_WEB flag
+# Include routers conditionally based on MINIMAL_WEB
 if not MINIMAL_WEB:
     app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+    app.include_router(dashboard_router)
+    # Setup static files for dashboard
+    setup_static_files(app)
     app.include_router(auth_email_router, prefix="/api/auth/email", tags=["auth"])
     app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
