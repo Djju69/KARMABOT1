@@ -29,20 +29,13 @@ jobs:
       - name: Install dependencies (minimal)
         run: |
           python -m pip install --upgrade pip
-          # Normalize requirements.txt to avoid hidden NUL bytes or CRLF
-          if [ -f requirements.txt ]; then python - <<'PY'
-from pathlib import Path
-p = Path('requirements.txt')
-data = p.read_bytes()
-normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-if normalized != data:
-    p.write_bytes(normalized)
-    print('Normalized requirements.txt')
-else:
-    print('requirements.txt already normalized')
-PY
-          fi
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # Normalize requirements files (strip NUL and CRLF)
+          for f in requirements*.txt; do
+            [ -f "$f" ] || continue
+            perl -pe 's/\r\n?/\n/g; s/\x00//g' -i -- "$f"
+            echo "Normalized $f"
+          done
+          [ -f requirements.txt ] && pip install -r requirements.txt
 
       # Временный скип тестов, чтобы пайплайн не падал
       - name: Run tests (skipped for now)
