@@ -1,3 +1,111 @@
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from core.keyboards.reply_v2 import get_categories_keyboard
+from core.keyboards.inline_v2 import (
+    get_categories_inline,
+    get_restaurant_filters_inline,
+    get_pagination_row,
+    get_catalog_item_row,
+)
+from core.utils.locales_v2 import get_text
+from core.database.db_v2 import db_v2
+from aiogram.types import InlineKeyboardMarkup
+
+router = Router(name="category_handlers_v2")
+
+
+@router.callback_query(F.data == "show_categories")
+async def cb_show_categories(callback: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", callback.from_user.language_code or "ru")
+    await callback.message.edit_text(
+        get_text("choose_category", lang),
+        reply_markup=get_categories_inline(lang),
+    )
+    await callback.answer()
+
+
+@router.message(F.text)
+async def on_category_text(message: Message, state: FSMContext):
+    lang = (await state.get_data()).get("lang", message.from_user.language_code or "ru")
+    mapping = {
+        get_text("category_restaurants", lang): "restaurants",
+        get_text("category_spa", lang): "spa",
+        get_text("category_transport", lang): "transport",
+        get_text("category_hotels", lang): "hotels",
+        get_text("category_tours", lang): "tours",
+        get_text("category_shops", lang): "shops",
+    }
+    slug = mapping.get((message.text or "").strip())
+    if not slug:
+        return
+    await _render_category_page(message, slug=slug, sub_slug="all", page=1, lang=lang)
+
+
+@router.callback_query(F.data.regexp(r"^pg:(?P<slug>\w+):(?!$)(?P<sub>[\w]+):(?P<page>\d+)$"))
+async def cb_pagination(callback: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", callback.from_user.language_code or "ru")
+    _, slug, sub_slug, page_str = callback.data.split(":", 3)
+    page = max(1, int(page_str))
+    await _render_category_page(callback.message, slug=slug, sub_slug=sub_slug, page=page, lang=lang, edit=True)
+    await callback.answer()
+
+
+@router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
+async def cb_rest_filters(callback: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", callback.from_user.language_code or "ru")
+    sub_slug = callback.data.rsplit(":", 1)[-1]
+    await _render_category_page(callback.message, slug="restaurants", sub_slug=sub_slug, page=1, lang=lang, edit=True)
+    await callback.answer()
+
+
+async def _render_category_page(message_or_cbmsg, *, slug: str, sub_slug: str, page: int, lang: str, edit: bool = False):
+    PAGE_SIZE = 5
+    items = db_v2.get_cards_by_category(slug, status='published', limit=100)
+    total = len(items)
+    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
+    page = max(1, min(page, pages))
+    start = (page - 1) * PAGE_SIZE
+    page_items = items[start:start + PAGE_SIZE]
+
+    header = get_text(f"category_{slug}", lang)
+    try:
+        if edit:
+            await message_or_cbmsg.edit_text(header)
+        else:
+            await message_or_cbmsg.answer(header)
+    except Exception:
+        await message_or_cbmsg.answer(header)
+
+    if slug == "restaurants":
+        try:
+            await message_or_cbmsg.answer(" ", reply_markup=get_restaurant_filters_inline(active=sub_slug, lang=lang))
+        except Exception:
+            pass
+
+    if not page_items:
+        await message_or_cbmsg.answer(get_text("no_places", lang))
+    else:
+        for it in page_items:
+            title = it.get('title') or '(без названия)'
+            addr = it.get('address') or ''
+            line = f"• {title}\n{addr}" if addr else f"• {title}"
+            await message_or_cbmsg.answer(line)
+            # Inline row with info/map
+            try:
+                row = get_catalog_item_row(int(it.get('id')), it.get('google_maps_url'), lang)
+                await message_or_cbmsg.answer(" ", reply_markup=InlineKeyboardMarkup(inline_keyboard=[row]))
+            except Exception:
+                pass
+
+    # Pagination controls
+    try:
+        kb = InlineKeyboardMarkup(inline_keyboard=[get_pagination_row(slug, page, pages, sub_slug=sub_slug)])
+        await message_or_cbmsg.answer(" ", reply_markup=kb)
+    except Exception:
+        pass
+
 """
 Enhanced category handlers with unified card rendering
 Backward compatible with existing functionality
