@@ -101,6 +101,21 @@ PY
     - name: Install deployment dependencies
       run: |
         python -m pip install --upgrade pip
+        # Normalize requirements to strip NUL/CRLF before install
+        python - <<'PY'
+from pathlib import Path
+for name in ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt'):
+    p = Path(name)
+    if not p.exists():
+        continue
+    data = p.read_bytes()
+    normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+    if normalized != data:
+        p.write_bytes(normalized)
+        print(f'Normalized {name}')
+    else:
+        print(f'{name} already normalized')
+PY
         pip install -r requirements.txt
         
     - name: Deploy to production
