@@ -26,6 +26,40 @@ async def cb_show_categories(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data.regexp(r"^act:view:(?P<id>\d+)$"))
+async def cb_card_view(callback: CallbackQuery, state: FSMContext):
+    """Просмотр одной карточки по ID (кнопка ℹ️)."""
+    try:
+        _parts = callback.data.split(":", 2)
+        listing_id = int(_parts[-1])
+    except Exception:
+        await callback.answer()
+        return
+    lang = (await state.get_data()).get("lang", callback.from_user.language_code or "ru")
+    card = db_v2.get_card_by_id(listing_id)
+    if not card:
+        await callback.message.edit_text(get_text("no_places", lang))
+        await callback.answer()
+        return
+    title = (card.get('title') or '(без названия)').strip()
+    addr = (card.get('address') or '').strip()
+    discount = (card.get('discount_text') or '').strip()
+    contact = (card.get('contact') or '').strip()
+    lines = [f"🍽 {title}"]
+    if addr:
+        lines.append(f"📍 {addr}")
+    if contact:
+        lines.append(f"📞 {contact}")
+    if discount:
+        lines.append(f"🎫 {discount}")
+    text = "\n".join(lines)
+    try:
+        row = get_catalog_item_row(listing_id, card.get('google_maps_url'), lang)
+        await callback.message.edit_text(text=text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[row]))
+    except Exception:
+        await callback.message.edit_text(text=text)
+    await callback.answer()
+
 @router.message(F.text)
 async def on_category_text(message: Message, state: FSMContext):
     lang = (await state.get_data()).get("lang", message.from_user.language_code or "ru")
