@@ -1,24 +1,41 @@
+from datetime import datetime
+from io import BytesIO
+
 from aiogram import F, Router, html
-from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
+from aiogram.types import Message, CallbackQuery, BufferedInputFile
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from core.services.loyalty import loyalty_service
 from core.services.referral_service import referral_service
-from core.services.qr_code_service import QRCodeService
-from core.keyboards.profile import get_profile_keyboard, get_back_to_profile_keyboard
+from core.services.qr_code_service import qr_code_service
+from core.keyboards.profile import (
+    get_profile_keyboard,
+    get_back_to_profile_keyboard,
+    get_qr_codes_keyboard
+)
+from core.services.loyalty import loyalty_service
 
 import logging
 
 logger = logging.getLogger(__name__)
-
 router = Router()
+
+class QRCodeStates(StatesGroup):
+    """States for QR code generation flow."""
+    waiting_for_points = State()
+    confirming_qr_creation = State()
 
 @router.message(Command("profile"))
 @router.callback_query(F.data == "profile")
+@router.message(Command("profile"))
 async def show_profile(update: Message | CallbackQuery, state: FSMContext):
     """Показать личный кабинет пользователя"""
     try:
+        # Сбрасываем состояние
+        await state.clear()
+        
         user = update.from_user
         user_id = user.id
         
@@ -57,15 +74,19 @@ async def show_profile(update: Message | CallbackQuery, state: FSMContext):
                 )
                 
         except Exception as e:
-            logger.error(f"Error loading profile data: {e}", exc_info=True)
-            error_text = "❌ Произошла ошибка при загрузке данных профиля. Пожалуйста, попробуйте позже."
+            logger.error(f"Error getting user data: {e}")
+            error_msg = "❌ Произошла ошибка при загрузке данных. Пожалуйста, попробуйте позже."
             if isinstance(update, CallbackQuery):
-                await update.message.answer(error_text)
+                await update.answer(error_msg, show_alert=True)
             else:
-                await update.answer(error_text)
+                await update.answer(error_msg)
                 
     except Exception as e:
-        logger.error(f"Unexpected error in show_profile: {e}", exc_info=True)
+        logger.error(f"Error in show_profile: {e}")
+        if isinstance(update, CallbackQuery):
+            await update.answer("❌ Произошла ошибка. Пожалуйста, попробуйте снова.", show_alert=True)
+        else:
+            await update.answer("❌ Произошла ошибка. Пожалуйста, попробуйте снова.")
 
 @router.callback_query(F.data == "loyalty_history")
 async def show_loyalty_history(callback: CallbackQuery):
