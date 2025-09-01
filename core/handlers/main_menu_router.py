@@ -15,6 +15,7 @@ from .basic import (
     get_location, get_photo, get_start, get_video, hiw_user, main_menu,
     on_language_select, open_cabinet, user_regional_rest
 )
+from .user_profile import show_profile
 
 # Импорт функций из category_handlers_v2
 from .category_handlers_v2 import (
@@ -699,23 +700,9 @@ async def handle_help_command(message: Message, bot: Bot, state: FSMContext) -> 
 
 
 @main_menu_router.message(F.text.in_([t.get('help_button', '') for t in translations.values()]))
-async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Помощь'."""
-    logger.debug(f"User {message.from_user.id} requested help")
-    try:
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        help_text = translations.get(lang, {}).get(
-            'help_text',
-            'Здесь будет справка по использованию бота.'
-        )
-        await message.answer(help_text, parse_mode="HTML")
-    except Exception as e:
-        logger.error(f"Error in help handler: {e}", exc_info=True)
-        await message.answer(
-            "Произошла ошибка при загрузке справки. Пожалуйста, попробуйте позже.",
-            parse_mode="HTML"
-        )
+async def handle_profile_button(message: Message, bot: Bot, state: FSMContext):
+    """Обработчик кнопки профиля пользователя."""
+    await show_profile(message, state)
 
 
 @main_menu_router.message(F.text.in_([t.get('language_button', '') for t in translations.values()]))

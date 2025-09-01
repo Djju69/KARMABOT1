@@ -119,6 +119,7 @@ if not MINIMAL_WEB:
     from web.routes_admin import router as admin_router
     from web.routes_bot import router as bot_hooks_router
     from web.routes_loyalty import router as loyalty_router
+    from .routes_qr import router as qr_router
 from core.services.cache import init_cache_service, get_cache_service
 
 # Helper: HTML no-store (avoid stale cached bundles)
@@ -387,6 +388,7 @@ if not MINIMAL_WEB:
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
     app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
+    app.include_router(qr_router)
 else:
     # Minimal health check endpoint
     @app.get("/health")

@@ -1,0 +1,12 @@
+[build]
+  command = "pip install -r requirements.txt && python -m uvicorn web.main:app --host 0.0.0.0 --port $PORT"
+  publish = "web/static"
+
+[build.environment]
+  PYTHON_VERSION = "3.10"
+  PORT = "8000"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

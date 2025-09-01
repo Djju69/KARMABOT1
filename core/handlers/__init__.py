@@ -27,6 +27,9 @@ partner_router = _router("partner", "partner_router", "router")
 profile_router = _router("profile", "profile_router", "router")
 cabinet_router = _router("cabinet_router", "get_cabinet_router", "router")
 
+# Import profile router
+from .user_profile import router as profile_router
+
 # Collect all available routers
 all_routers = [
     router for router in [
