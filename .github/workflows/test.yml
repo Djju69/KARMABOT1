@@ -40,20 +40,20 @@ jobs:
         python -m pip install --upgrade pip
         # Normalize requirements files to avoid hidden NUL bytes or CRLF
         python - <<'PY'
-from pathlib import Path
-files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
-for name in files:
-    p = Path(name)
-    if not p.exists():
-        continue
-    data = p.read_bytes()
-    normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-    if normalized != data:
-        p.write_bytes(normalized)
-        print(f'Normalized {name}')
-    else:
-        print(f'{name} already normalized')
-PY
+        from pathlib import Path
+        files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
+        for name in files:
+            p = Path(name)
+            if not p.exists():
+                continue
+            data = p.read_bytes()
+            normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+            if normalized != data:
+                p.write_bytes(normalized)
+                print(f'Normalized {name}')
+            else:
+                print(f'{name} already normalized')
+        PY
         pip install -r requirements.txt -r requirements-dev.txt
         
     - name: Run unit tests
@@ -104,20 +104,20 @@ PY
         python -m pip install --upgrade pip
         # Normalize requirements to strip NUL/CRLF before install
         python - <<'PY'
-from pathlib import Path
-files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
-for name in files:
-    p = Path(name)
-    if not p.exists():
-        continue
-    data = p.read_bytes()
-    normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-    if normalized != data:
-        p.write_bytes(normalized)
-        print(f'Normalized {name}')
-    else:
-        print(f'{name} already normalized')
-PY
+        from pathlib import Path
+        files = ('requirements.txt','requirements-dev.txt','requirements-auth.txt','requirements-qr.txt')
+        for name in files:
+            p = Path(name)
+            if not p.exists():
+                continue
+            data = p.read_bytes()
+            normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+            if normalized != data:
+                p.write_bytes(normalized)
+                print(f'Normalized {name}')
+            else:
+                print(f'{name} already normalized')
+        PY
         pip install -r requirements.txt
         
     - name: Deploy to production
