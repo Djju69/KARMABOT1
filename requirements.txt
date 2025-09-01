@@ -33,6 +33,9 @@ pyotp==2.9.0
 qrcode[pil]==7.4.2
 pydantic[email]>=2.0.0
 
+# Конфигурации для pydantic v2
+pydantic-settings>=2.0.0
+
 # Утилиты
 python-dateutil>=2.8.2
 python-slugify>=8.0.1
