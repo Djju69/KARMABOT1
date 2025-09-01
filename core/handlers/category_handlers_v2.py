@@ -88,9 +88,15 @@ async def _render_category_page(message_or_cbmsg, *, slug: str, sub_slug: str, p
         await message_or_cbmsg.answer(get_text("no_places", lang))
     else:
         for it in page_items:
-            title = it.get('title') or '(без названия)'
-            addr = it.get('address') or ''
-            line = f"• {title}\n{addr}" if addr else f"• {title}"
+            title = (it.get('title') or '(без названия)').strip()
+            addr = (it.get('address') or '').strip()
+            discount = (it.get('discount_text') or '').strip()
+            parts = [f"• {title}"]
+            if addr:
+                parts.append(addr)
+            if discount:
+                parts.append(f"🎫 {discount}")
+            line = "\n".join(parts)
             await message_or_cbmsg.answer(line)
             # Inline row with info/map
             try:
