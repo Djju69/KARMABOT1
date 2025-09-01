@@ -9,8 +9,9 @@ import re
 
 from aiogram import Router, F, Bot
 from aiogram.types import (
-    Message, CallbackQuery, InlineKeyboardMarkup, 
-    InlineKeyboardButton, InputMediaPhoto, FSInputFile
+    Message, CallbackQuery, InlineKeyboardMarkup,
+    InlineKeyboardButton, InputMediaPhoto, FSInputFile,
+    ReplyKeyboardMarkup, KeyboardButton
 )
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
