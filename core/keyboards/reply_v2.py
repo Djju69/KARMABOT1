@@ -208,7 +208,7 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
             ],
             [
                 KeyboardButton(text=get_text('category_tours', lang)),
-                KeyboardButton(text=get_text('category_shops_services', lang)),
+                KeyboardButton(text=get_text('category_shops', lang)),
             ],
             [
                 KeyboardButton(text=get_text('back_to_main_menu', lang))
@@ -217,6 +217,26 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_category', lang)
     )
+
+def get_mrk_list_select(page_count: int = 5, *, has_next: bool = False, has_prev: bool = False, lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """MRK-клавиатура для выбора элемента списка [1..N] и навигации.
+    page_count: сколько пунктов на странице (1..5)
+    """
+    count = max(1, min(int(page_count or 1), 5))
+    rows: list[list[KeyboardButton]] = []
+    # Нумерация 1..count, по 5 в ряд
+    num_row: list[KeyboardButton] = []
+    for i in range(1, count + 1):
+        num_row.append(KeyboardButton(text=str(i)))
+    rows.append(num_row)
+    nav_row: list[KeyboardButton] = []
+    if has_prev:
+        nav_row.append(KeyboardButton(text="◀️ Назад"))
+    if has_next:
+        nav_row.append(KeyboardButton(text="Далее ▶️"))
+    if nav_row:
+        rows.append(nav_row)
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
 
 def get_transport_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Клавиатура для подменю 'Транспорт'."""
@@ -429,6 +449,7 @@ __all__ = [
     'get_language_keyboard',
     'get_profile_keyboard',
     'get_profile_keyboard_with_qr',
+    'get_mrk_list_select',
     'get_location_request_keyboard',
     'get_contact_request_keyboard',
     # Legacy aliases
