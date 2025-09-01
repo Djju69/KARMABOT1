@@ -21,6 +21,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements and install
 COPY requirements.txt ./
+RUN python - <<'PY'
+import sys
+from pathlib import Path
+
+p = Path('requirements.txt')
+data = p.read_bytes()
+# Normalize: remove NULs and CR, unify newlines to LF
+normalized = data.replace(b'\x00', b'').replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+if normalized != data:
+    p.write_bytes(normalized)
+    print(f"Normalized requirements.txt. Size: {len(normalized)} bytes", file=sys.stderr)
+else:
+    print("requirements.txt already normalized", file=sys.stderr)
+PY
 RUN python -m pip install --upgrade pip && \
     python -m pip install --no-cache-dir -r requirements.txt
 
