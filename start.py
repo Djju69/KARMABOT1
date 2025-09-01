@@ -67,11 +67,14 @@ async def main():
     """Одновременный запуск бота и веб-сервера"""
     tasks = []
     
-    # Add bot task if BOT_TOKEN is set
-    if os.getenv("BOT_TOKEN"):
+    # Add bot task if BOT_TOKEN is set and polling not disabled
+    if os.getenv("BOT_TOKEN") and os.getenv("DISABLE_POLLING", "0") != "1":
         tasks.append(asyncio.create_task(run_bot()))
     else:
-        logger.warning("BOT_TOKEN не установлен, пропускаем запуск бота")
+        if not os.getenv("BOT_TOKEN"):
+            logger.warning("BOT_TOKEN не установлен, пропускаем запуск бота")
+        elif os.getenv("DISABLE_POLLING", "0") == "1":
+            logger.info("DISABLE_POLLING=1 — поллинг бота отключён")
     
     # Add web server task if web app is available
     if WEB_IMPORTED:
