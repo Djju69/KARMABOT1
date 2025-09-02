@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from fastapi import FastAPI, Request, Response, Query, Form, status, Depends
+from fastapi import FastAPI, Request, Response, Query, Form, status, Depends, Header, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -387,7 +387,7 @@ if not MINIMAL_WEB:
     app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
     # Backward-compatible mounts without /api prefix for tests and legacy links
     app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet-compat"])
-    # Explicit GET aliases for tests
+    # Explicit GET aliases for tests (also duplicated below when MINIMAL_WEB is on)
     from web.routes_cabinet import profile as cab_profile, partner_categories as cab_categories
     app.get("/cabinet/profile")(cab_profile)
     app.get("/cabinet/partner/categories")(cab_categories)
@@ -404,6 +404,14 @@ else:
     @app.get("/healthz")
     async def healthz():
         return {"status": "ok", "minimal": True}
+
+    # Provide explicit GET endpoints for partner cabinet in minimal mode for tests
+    try:
+        from web.routes_cabinet import profile as cab_profile, partner_categories as cab_categories
+        app.get("/cabinet/profile")(cab_profile)
+        app.get("/cabinet/partner/categories")(cab_categories)
+    except Exception:
+        pass
 
 # Prometheus metrics endpoint (server-side metrics)
 @app.get("/metrics")
