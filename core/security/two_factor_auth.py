@@ -9,7 +9,6 @@ from typing import Optional, Tuple
 import base64
 import io
 
-from ..database import role_repository
 from ..security.roles import Role
 
 logger = logging.getLogger(__name__)
@@ -79,6 +78,8 @@ class TwoFactorAuth:
         """
         try:
             # Получаем настройки 2FA пользователя
+            # Lazy import to avoid circular import during module initialization
+            from ..database import role_repository  # noqa: WPS433
             settings = await role_repository.get_2fa_settings(user_id)
             if not settings or not settings['is_enabled'] or not settings['secret_key']:
                 return False
@@ -89,9 +90,11 @@ class TwoFactorAuth:
             
             if is_valid:
                 # Обновляем время последнего успешного использования
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.update_2fa_last_used(user_id)
                 
                 # Логируем успешную аутентификацию
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.log_audit_event(
                     user_id=user_id,
                     action="2FA_VERIFIED",
@@ -101,6 +104,7 @@ class TwoFactorAuth:
                 )
             else:
                 # Логируем неудачную попытку аутентификации
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.log_audit_event(
                     user_id=user_id,
                     action="2FA_VERIFICATION_FAILED",
@@ -115,6 +119,7 @@ class TwoFactorAuth:
             logger.error(f"Error verifying 2FA code: {e}")
             
             # Логируем ошибку
+            from ..database import role_repository  # noqa: WPS433
             await role_repository.log_audit_event(
                 user_id=user_id,
                 action="2FA_VERIFICATION_ERROR",
@@ -136,6 +141,7 @@ class TwoFactorAuth:
             bool: True если требуется 2FA, иначе False
         """
         # Получаем роль пользователя
+        from ..database import role_repository  # noqa: WPS433
         user_role = await role_repository.get_user_role(user_id)
         
         # 2FA требуется только для админов и суперадминов
@@ -152,6 +158,7 @@ class TwoFactorAuth:
             bool: True если 2FA включена, иначе False
         """
         try:
+            from ..database import role_repository  # noqa: WPS433
             settings = await role_repository.get_2fa_settings(user_id)
             return settings['is_enabled'] if settings else False
         except Exception as e:
@@ -171,6 +178,7 @@ class TwoFactorAuth:
         """
         try:
             # Обновляем настройки 2FA
+            from ..database import role_repository  # noqa: WPS433
             result = await role_repository.update_2fa_settings(
                 user_id=user_id,
                 secret_key=secret_key,
@@ -179,9 +187,11 @@ class TwoFactorAuth:
             
             if result:
                 # Обновляем время последнего использования
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.update_2fa_last_used(user_id)
                 
                 # Логируем событие
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.log_audit_event(
                     user_id=user_id,
                     action="2FA_ENABLED",
@@ -196,6 +206,7 @@ class TwoFactorAuth:
             logger.error(f"Error enabling 2FA: {e}")
             
             # Логируем ошибку
+            from ..database import role_repository  # noqa: WPS433
             await role_repository.log_audit_event(
                 user_id=user_id,
                 action="2FA_ENABLE_ERROR",
@@ -218,10 +229,12 @@ class TwoFactorAuth:
         """
         try:
             # Отключаем 2FA, сохраняя секретный ключ (на случай повторного включения)
+            from ..database import role_repository  # noqa: WPS433
             settings = await role_repository.get_2fa_settings(user_id)
             if not settings:
                 return True  # Уже отключено
                 
+            from ..database import role_repository  # noqa: WPS433
             result = await role_repository.update_2fa_settings(
                 user_id=user_id,
                 secret_key=settings['secret_key'],
@@ -230,6 +243,7 @@ class TwoFactorAuth:
             
             if result:
                 # Логируем событие
+                from ..database import role_repository  # noqa: WPS433
                 await role_repository.log_audit_event(
                     user_id=user_id,
                     action="2FA_DISABLED",
@@ -244,6 +258,7 @@ class TwoFactorAuth:
             logger.error(f"Error disabling 2FA: {e}")
             
             # Логируем ошибку
+            from ..database import role_repository  # noqa: WPS433
             await role_repository.log_audit_event(
                 user_id=user_id,
                 action="2FA_DISABLE_ERROR",
