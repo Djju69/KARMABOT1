@@ -407,9 +407,16 @@ else:
 
     # Provide explicit GET endpoints for partner cabinet in minimal mode for tests
     try:
-        from web.routes_cabinet import profile as cab_profile, partner_categories as cab_categories
+        from web.routes_cabinet import (
+            profile as cab_profile,
+            partner_categories as cab_categories,
+            partner_cards_create as cab_cards_create,
+            partner_cards as cab_cards_list,
+        )
         app.get("/cabinet/profile")(cab_profile)
         app.get("/cabinet/partner/categories")(cab_categories)
+        app.post("/cabinet/partner/cards")(cab_cards_create)
+        app.get("/cabinet/partner/cards")(cab_cards_list)
     except Exception:
         pass
 

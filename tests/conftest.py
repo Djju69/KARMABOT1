@@ -39,6 +39,7 @@ class MockSettings:
         self.environment = "development"
         self.webapp_allowed_origin = "*"
         self.csp_allowed_origin = "*"
+        self.default_lang = "ru"
         # Add database attribute with a mock URL
         self.database = type('Object', (), {'url': 'sqlite:///:memory:'})()
 
