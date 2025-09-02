@@ -34,6 +34,11 @@ class MockSettings:
         self.bots = MagicMock()
         self.bots.admin_id = 12345
         self.debug = False
+        # Minimal fields used by webapp_auth and CORS/CSP in tests
+        self.jwt_secret = "debug"  # allow dev signing
+        self.environment = "development"
+        self.webapp_allowed_origin = "*"
+        self.csp_allowed_origin = "*"
         # Add database attribute with a mock URL
         self.database = type('Object', (), {'url': 'sqlite:///:memory:'})()
 

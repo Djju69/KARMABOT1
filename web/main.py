@@ -385,6 +385,8 @@ if not MINIMAL_WEB:
     setup_static_files(app)
     app.include_router(auth_email_router, prefix="/api/auth/email", tags=["auth"])
     app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
+    # Backward-compatible mounts without /api prefix for tests and legacy links
+    app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet-compat"])
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
     app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
