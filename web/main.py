@@ -387,6 +387,16 @@ if not MINIMAL_WEB:
     app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
     # Backward-compatible mounts without /api prefix for tests and legacy links
     app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet-compat"])
+    # Explicit aliases for commonly used endpoints in tests
+    from web.routes_cabinet import router as _cabinet
+    for route in list(_cabinet.routes):  # iterate snapshot
+        try:
+            if getattr(route, "path", "") == "/profile":
+                app.router.add_api_route("/cabinet/profile", route.endpoint, methods=getattr(route, "methods", ["GET"]))
+            if getattr(route, "path", "") == "/partner/categories":
+                app.router.add_api_route("/cabinet/partner/categories", route.endpoint, methods=getattr(route, "methods", ["GET"]))
+        except Exception:
+            pass
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
     app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
