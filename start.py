@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+print("="*60)
+print("🚨 START.PY LOADED - DEPLOYMENT MARKER V4.0")
+print("⏰ TIME:", __import__('datetime').datetime.now())
+print("🎯 RAILWAY WEBHOOK FORCE ENABLED")
+print("="*60)
+
 import os
 import sys
 import asyncio
@@ -6,6 +12,19 @@ import logging
 import uvicorn
 from pathlib import Path
 from datetime import datetime
+
+print("✅ IMPORTS LOADED SUCCESSFULLY")
+
+# FORCE WEBHOOK ENVIRONMENT IMMEDIATELY
+os.environ['RAILWAY_ENVIRONMENT'] = 'production'
+os.environ['DISABLE_POLLING'] = 'true'
+os.environ['RAILWAY_STATIC_URL'] = 'https://web-production-d51c7.up.railway.app/'
+
+print("🔧 FORCED ENVIRONMENT VARIABLES:")
+print(f"  RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT')}")
+print(f"  DISABLE_POLLING: {os.getenv('DISABLE_POLLING')}")
+print(f"  RAILWAY_STATIC_URL: {os.getenv('RAILWAY_STATIC_URL')}")
+print("="*60)
 
 # Add project root to path
 project_root = str(Path(__file__).parent.absolute())
