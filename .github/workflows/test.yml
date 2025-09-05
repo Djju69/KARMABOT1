@@ -38,6 +38,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        # Normalize requirements files (strip NUL bytes and CRLF)
+        for f in requirements*.txt; do
+          [ -f "$f" ] || continue
+          perl -pe 's/\r\n?/\n/g; s/\x00//g' -i -- "$f"
+          echo "Normalized $f"
+        done
         pip install -r requirements.txt -r requirements-dev.txt
         
     - name: Run unit tests
@@ -86,6 +92,12 @@ jobs:
     - name: Install deployment dependencies
       run: |
         python -m pip install --upgrade pip
+        # Normalize requirements to strip NUL/CRLF before install
+        for f in requirements*.txt; do
+          [ -f "$f" ] || continue
+          perl -pe 's/\r\n?/\n/g; s/\x00//g' -i -- "$f"
+          echo "Normalized $f"
+        done
         pip install -r requirements.txt
         
     - name: Deploy to production

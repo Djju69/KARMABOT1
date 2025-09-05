@@ -258,14 +258,51 @@ def _get_redis_url() -> str:
     return os.getenv("REDIS_URL") or ""
 
 async def set_commands(bot: Bot) -> None:
-    """Set bot commands"""
-    from aiogram.types import BotCommand, BotCommandScopeDefault
-    
-    cmds = [
-        BotCommand(command="start", description="Старт / меню"),
-        BotCommand(command="help",  description="Помощь"),
+    """Install bot command menu for all users and admin-only commands.
+    Requirements:
+      - aiogram 3.x
+      - Default scope for all users
+      - Chat scope for admin (ADMIN_ID)
+    """
+    from aiogram.types import (
+        BotCommand,
+        BotCommandScopeDefault,
+        BotCommandScopeChat,
+    )
+
+    # Resolve admin id for admin-only scope
+    try:
+        admin_id = int(os.getenv("ADMIN_ID") or os.getenv("ADMIN_IDS", "").split(',')[0])
+    except Exception:
+        admin_id = None
+
+    # Core commands for all users (English descriptions with emojis)
+    common_commands = [
+        BotCommand(command="start",        description="🚀 Restart"),
+        BotCommand(command="add_partner",  description="🏢 Add partner"),
+        BotCommand(command="webapp",       description="🌐 Open WebApp"),
+        BotCommand(command="city",         description="🏙 Change city"),
+        BotCommand(command="help",         description="❓ Help / FAQ"),
+        BotCommand(command="policy",       description="📜 Privacy policy"),
     ]
-    await bot.set_my_commands(cmds, scope=BotCommandScopeDefault())
+
+    # Install for everyone
+    try:
+        await bot.set_my_commands(common_commands, scope=BotCommandScopeDefault())
+        logger.info("✅ Bot default commands installed for all users")
+    except Exception as e:
+        logger.warning("⚠️ Failed to set default commands: %s", e)
+
+    # Admin-only command: clear_cache
+    if admin_id:
+        admin_commands = common_commands + [
+            BotCommand(command="clear_cache", description="🧹 Clear cache"),
+        ]
+        try:
+            await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=admin_id))
+            logger.info("✅ Bot admin commands installed for chat_id=%s", admin_id)
+        except Exception as e:
+            logger.warning("⚠️ Failed to set admin commands for chat_id=%s: %s", admin_id, e)
 
 async def main():
     """Main entry point"""
@@ -291,7 +328,7 @@ async def main():
     dp.include_router(main_menu_router)
     dp.include_router(language_router)
     
-    # Set up bot commands
+    # Set up bot commands (after bot created, before polling)
     await set_commands(bot)
     logger.info("✅ Bot commands set")
 

@@ -1,7 +1,7 @@
 import os
 import asyncio
 import logging
-from fastapi import FastAPI, Request, Response, Query, Form, status, Depends
+from fastapi import FastAPI, Request, Response, Query, Form, status, Depends, Header, Cookie
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -385,6 +385,12 @@ if not MINIMAL_WEB:
     setup_static_files(app)
     app.include_router(auth_email_router, prefix="/api/auth/email", tags=["auth"])
     app.include_router(cabinet_router, prefix="/api/cabinet", tags=["cabinet"])
+    # Backward-compatible mounts without /api prefix for tests and legacy links
+    app.include_router(cabinet_router, prefix="/cabinet", tags=["cabinet-compat"])
+    # Explicit GET aliases for tests (also duplicated below when MINIMAL_WEB is on)
+    from web.routes_cabinet import profile as cab_profile, partner_categories as cab_categories
+    app.get("/cabinet/profile")(cab_profile)
+    app.get("/cabinet/partner/categories")(cab_categories)
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
     app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
@@ -398,6 +404,21 @@ else:
     @app.get("/healthz")
     async def healthz():
         return {"status": "ok", "minimal": True}
+
+    # Provide explicit GET endpoints for partner cabinet in minimal mode for tests
+    try:
+        from web.routes_cabinet import (
+            profile as cab_profile,
+            partner_categories as cab_categories,
+            partner_cards_create as cab_cards_create,
+            partner_cards as cab_cards_list,
+        )
+        app.get("/cabinet/profile")(cab_profile)
+        app.get("/cabinet/partner/categories")(cab_categories)
+        app.post("/cabinet/partner/cards")(cab_cards_create)
+        app.get("/cabinet/partner/cards")(cab_cards_list)
+    except Exception:
+        pass
 
 # Prometheus metrics endpoint (server-side metrics)
 @app.get("/metrics")

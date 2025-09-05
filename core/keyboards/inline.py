@@ -170,6 +170,52 @@ class InlineKeyboards:
         
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+# --- Back-compat helpers expected by handlers ---
+
+def select_restoran(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Главное меню (инлайн) для рестораинов: категории, по районам, по кухне, язык."""
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="📱 Категории", callback_data="show_categories"),
+            InlineKeyboardButton(text="📍 По районам", callback_data="rests_by_district"),
+        ],
+        [
+            InlineKeyboardButton(text="🍽 По кухням", callback_data="rests_by_kitchen"),
+            InlineKeyboardButton(text="🌐 Язык", callback_data="change_language"),
+        ]
+    ])
+
+
+def regional_restoran(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Инлайн-выбор района (заглушка, заменить на реальные районы)."""
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(text="Center", callback_data="district:center"),
+         InlineKeyboardButton(text="North", callback_data="district:north")],
+        [InlineKeyboardButton(text="South", callback_data="district:south"),
+         InlineKeyboardButton(text="West", callback_data="district:west")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_main")],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# Простая инлайн-клавиатура кухонь
+kitchen_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text="Asia", callback_data="kitchen:asia"),
+     InlineKeyboardButton(text="Europe", callback_data="kitchen:europe")],
+    [InlineKeyboardButton(text="Street", callback_data="kitchen:street"),
+     InlineKeyboardButton(text="Vege", callback_data="kitchen:vege")],
+    [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_main")],
+])
+
+
+# Инлайн-выбор языка (минимум)
+language_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='Русский 🇷🇺', callback_data='lang_ru')],
+    [InlineKeyboardButton(text='English 🇬🇧', callback_data='lang_en')],
+    [InlineKeyboardButton(text='Tiếng Việt 🇻🇳', callback_data='lang_vi')],
+    [InlineKeyboardButton(text='한국어 🇰🇷', callback_data='lang_ko')],
+])
+
 def get_inline_keyboard(action: str, **kwargs) -> Optional[InlineKeyboardMarkup]:
     """
     Фабрика InlineKeyboard согласно канону ТЗ

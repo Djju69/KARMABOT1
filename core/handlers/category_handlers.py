@@ -1,5 +1,5 @@
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
-from aiogram import Bot
+from aiogram import Bot, Router
 from aiogram.fsm.context import FSMContext
 
 from core.keyboards.reply import get_return_to_main_menu
@@ -109,3 +109,6 @@ async def category_selected(message: Message, bot: Bot, state: FSMContext):
 
     keyboard = get_return_to_main_menu(lang)
     await message.answer(main_menu_text, reply_markup=keyboard)
+
+# Экспортируемый роутер для совместимости с автоимпортом
+router = Router(name="category_handlers")

@@ -42,7 +42,8 @@ SENTRY_DSN = "${SENTRY_DSN}"
 # Bot Configuration
 BOT_TOKEN = "${BOT_TOKEN}"
 ADMIN_ID = "${ADMIN_ID}"
-DISABLE_POLLING = "0"
+# Отключаем фонový поллинг из web-приложения, чтобы не было двух getUpdates
+DISABLE_POLLING = "1"
 
 [healthcheck]
 interval = 30
