@@ -84,6 +84,15 @@ async def main():
         logger.error("💥 Failed to stop bot instances")
         sys.exit(1)
 
+    # Also try to set webhook to none to ensure clean state
+    try:
+        bot = Bot(token=bot_token)
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("✅ Webhook deleted with drop_pending_updates=True")
+        await bot.session.close()
+    except Exception as e:
+        logger.warning(f"⚠️ Could not delete webhook: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

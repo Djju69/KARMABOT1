@@ -370,4 +370,4 @@ class ReferralService:
             raise
 
 # Singleton instance
-# referral_service = ReferralService() # This should be instantiated with dependencies where needed
+referral_service = ReferralService()

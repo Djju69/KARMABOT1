@@ -829,6 +829,9 @@ class LoyaltyService:
                 "total_spent": 0,
                 "by_type": {}
             }
+
+# Singleton instance
+loyalty_service = LoyaltyService(get_db())
     
     async def _get_partner_info(self, partner_id: UUID) -> Optional[Dict[str, Any]]:
         """Получение информации о партнере."""

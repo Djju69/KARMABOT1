@@ -19,7 +19,7 @@ from aiogram.filters import Command, StateFilter
 from core.settings import settings
 from core.keyboards.reply import get_reply_keyboard
 from core.database import db
-from core.utils.i18n import get_text as _
+from core.utils.locales_v2 import get_text as _
 
 logger = logging.getLogger(__name__)
 
