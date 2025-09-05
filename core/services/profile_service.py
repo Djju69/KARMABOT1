@@ -205,45 +205,16 @@ class ProfileService:
         offset: int = 0,
         unread_only: bool = False
     ) -> List[Dict[str, Any]]:
-        """
-        Получение уведомлений пользователя.
-        
-        Args:
-            user_id: ID пользователя
-            limit: Количество записей
-            offset: Смещение
-            unread_only: Только непрочитанные
-            
-        Returns:
-            Список уведомлений
-        """
+        """Получение уведомлений пользователя из БД."""
         try:
-            # TODO: Добавить таблицу notifications когда будет готова
-            # Пока возвращаем моковые данные
-            notifications = [
-                {
-                    "id": 1,
-                    "title": "Добро пожаловать!",
-                    "message": "Спасибо за регистрацию в нашей системе лояльности",
-                    "type": "welcome",
-                    "is_read": False,
-                    "created_at": datetime.utcnow().isoformat()
-                },
-                {
-                    "id": 2,
-                    "title": "Новые баллы",
-                    "message": "Вы получили 50 баллов за регистрацию",
-                    "type": "loyalty",
-                    "is_read": True,
-                    "created_at": (datetime.utcnow() - timedelta(hours=1)).isoformat()
-                }
-            ]
-            
-            if unread_only:
-                notifications = [n for n in notifications if not n["is_read"]]
-            
-            return notifications[offset:offset + limit]
-            
+            from core.services.notification_service import notification_service
+            items = notification_service.list_notifications(int(user_id), limit=limit, offset=offset, unread_only=unread_only)
+            for n in items:
+                if hasattr(n.get("created_at"), 'isoformat'):
+                    n["created_at"] = n["created_at"].isoformat()
+                if n.get("read_at") and hasattr(n.get("read_at"), 'isoformat'):
+                    n["read_at"] = n["read_at"].isoformat()
+            return items
         except Exception as e:
             logger.error(f"Error getting user notifications for {user_id}: {e}")
             raise
@@ -253,27 +224,26 @@ class ProfileService:
         user_id: str,
         unread_only: bool = False
     ) -> int:
-        """
-        Получение количества уведомлений пользователя.
-        
-        Args:
-            user_id: ID пользователя
-            unread_only: Только непрочитанные
-            
-        Returns:
-            Количество уведомлений
-        """
+        """Количество уведомлений пользователя из БД."""
         try:
-            notifications = await self.get_user_notifications(user_id, limit=1000)
-            
-            if unread_only:
-                return len([n for n in notifications if not n["is_read"]])
-            
-            return len(notifications)
-            
+            from core.services.notification_service import notification_service
+            return notification_service.count_notifications(int(user_id), unread_only=unread_only)
         except Exception as e:
             logger.error(f"Error getting user notifications count for {user_id}: {e}")
             return 0
+
+    async def mark_notification_read(
+        self,
+        user_id: str,
+        notification_id: int
+    ) -> bool:
+        """Отметить уведомление как прочитанное."""
+        try:
+            from core.services.notification_service import notification_service
+            return notification_service.mark_read(int(user_id), notification_id)
+        except Exception as e:
+            logger.error(f"Error marking notification {notification_id} as read for {user_id}: {e}")
+            return False
     
     async def mark_notification_read(
         self,
