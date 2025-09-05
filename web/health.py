@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from typing import Dict, Any
 import os
 import logging
+from datetime import datetime
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -17,19 +18,19 @@ logger = logging.getLogger(__name__)
 async def health_check() -> JSONResponse:
     """Health check endpoint for monitoring."""
     try:
-        # Add your health check logic here
-        # For example, check database connection, external services, etc.
-        
+        # Простой health check без внешних зависимостей
         status_info = {
             "status": "healthy",
             "version": os.getenv("APP_VERSION", "1.0.0"),
             "environment": os.getenv("ENVIRONMENT", "development"),
+            "timestamp": datetime.now().isoformat(),
             "services": {
-                "database": "connected",  # Add actual check
-                # Add other services as needed
+                "web": "running",
+                "health_check": "ok"
             }
         }
         
+        logger.info("Health check passed")
         return JSONResponse(
             content=status_info,
             status_code=status.HTTP_200_OK

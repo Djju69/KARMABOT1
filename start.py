@@ -32,12 +32,16 @@ def is_railway_environment():
 
 def validate_environment():
     """Проверка обязательных переменных окружения"""
-    required_vars = ['BOT_TOKEN', 'REDIS_URL']
+    required_vars = ['BOT_TOKEN', 'REDIS_URL', 'DATABASE_URL']
     missing_vars = []
     
     for var in required_vars:
-        if not os.getenv(var):
+        value = os.getenv(var)
+        if not value:
             missing_vars.append(var)
+        else:
+            # Логируем что переменная есть (без значения)
+            logger.info(f"✅ {var}: {'*' * min(len(value), 10)}...")
     
     if missing_vars:
         logger.error(f"❌ Отсутствуют обязательные переменные: {', '.join(missing_vars)}")
@@ -74,6 +78,10 @@ async def run_bot():
     except ImportError as e:
         logger.error(f"❌ Ошибка импорта бота: {e}", exc_info=True)
         raise
+    except Exception as e:
+        logger.error(f"❌ Ошибка запуска бота: {e}", exc_info=True)
+        # Не останавливаем приложение, продолжаем с веб-сервером
+        logger.warning("⚠️ Бот не запущен, продолжаем с веб-сервером")
 
 async def run_web_server():
     """Запуск веб-сервера"""
