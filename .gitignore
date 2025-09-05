@@ -4,6 +4,17 @@
 *.pem
 *.key
 *.crt
+*.json.key
+*service-account*.json
+*credentials*.json
+*secret*.json
+mythic-brook-*.json
+*.p12
+
+# --- Databases ---
+*.db
+*.sqlite
+*.sqlite3
 
 # --- Python ---
 __pycache__/

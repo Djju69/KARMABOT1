@@ -1,16 +1,17 @@
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from core.settings import settings
+import os
 import logging
 
 def build_bot() -> Bot:
     """Создание и настройка бота"""
-    if not settings.bots.bot_token:
+    bot_token = os.getenv("BOT_TOKEN")
+    if not bot_token:
         raise ValueError("BOT_TOKEN is required")
     
     bot = Bot(
-        token=settings.bots.bot_token,
+        token=bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
     

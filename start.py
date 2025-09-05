@@ -26,6 +26,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def is_railway_environment():
+    """Проверка запуска на Railway"""
+    return os.getenv('RAILWAY_ENVIRONMENT') is not None
+
+def validate_environment():
+    """Проверка обязательных переменных окружения"""
+    required_vars = ['BOT_TOKEN', 'REDIS_URL']
+    missing_vars = []
+    
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+    
+    if missing_vars:
+        logger.error(f"❌ Отсутствуют обязательные переменные: {', '.join(missing_vars)}")
+        logger.error("Добавьте их в Railway Dashboard -> Variables")
+        sys.exit(1)
+    
+    logger.info("✅ Все переменные окружения настроены")
+    
+    # Настройка для Railway
+    if is_railway_environment():
+        app_url = f"https://{os.getenv('RAILWAY_STATIC_URL', 'your-app.railway.app')}"
+        logger.info(f"🌐 Railway detected, using webhook: {app_url}")
+        os.environ['WEBHOOK_URL'] = app_url
+        os.environ['DISABLE_POLLING'] = 'true'
+    else:
+        logger.info("💻 Local environment, using polling")
+
 # Try to import web app
 try:
     from web.main import app
@@ -65,6 +94,7 @@ async def run_web_server():
 
 async def main():
     """Одновременный запуск бота и веб-сервера"""
+    validate_environment()  # Проверяем переменные окружения
     tasks = []
     
     # Add bot task if BOT_TOKEN is set

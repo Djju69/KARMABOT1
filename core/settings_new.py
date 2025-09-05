@@ -43,8 +43,17 @@ class Settings:
         self.BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
         self.ADMIN_ID: int = int(os.getenv("ADMIN_ID", "0"))
         
-        # База данных
-        self.DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///core/database/data.db")
+        # База данных - автоматическое переключение на PostgreSQL для Railway
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            # Локальная разработка - SQLite
+            database_url = "sqlite:///core/database/data.db"
+        elif database_url.startswith('postgres://'):
+            # Railway PostgreSQL - исправить формат URL
+            database_url = database_url.replace('postgres://', 'postgresql://')
+        
+        self.DATABASE_URL: str = database_url
+        print(f"🗄️ Используется БД: {database_url.split('@')[0] if '@' in database_url else database_url}...")
         
         # Фича-флаги (по умолчанию выключены для безопасности)
         self.FEATURE_PARTNER_FSM: bool = os.getenv("FEATURE_PARTNER_FSM", "false").lower() == "true"
@@ -59,7 +68,7 @@ class Settings:
         self.DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
         
         # WebApp настройки
-        self.JWT_SECRET: str = os.getenv("JWT_SECRET", "debug")
+        self.JWT_SECRET: str = os.getenv("JWT_SECRET", "your_jwt_secret_here_change_in_production")
         self.AUTH_WINDOW_SEC: int = int(os.getenv("AUTH_WINDOW_SEC", "300"))
         self.WEBAPP_QR_URL: str = os.getenv("WEBAPP_QR_URL", "")
         self.WEBAPP_ALLOWED_ORIGIN: str = os.getenv("WEBAPP_ALLOWED_ORIGIN", "*")
@@ -78,8 +87,9 @@ class Settings:
         self.WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
         self.USE_WEBHOOK: bool = os.getenv("USE_WEBHOOK", "false").lower() == "true"
         
-        # Проверяем обязательные параметры
-        self._validate_settings()
+        # Проверяем обязательные параметры только в production
+        if self.ENVIRONMENT == "production":
+            self._validate_settings()
     
     def _validate_settings(self):
         """Проверяет корректность настроек"""
@@ -189,8 +199,8 @@ def validate_settings():
         return False
 
 
-# Автоматическая валидация при импорте (в development режиме)
-if settings.is_development():
+# Автоматическая валидация при импорте только в production
+if settings.ENVIRONMENT == "production":
     validate_settings()
 
 # Настройка логирования

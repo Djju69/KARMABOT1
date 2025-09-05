@@ -42,8 +42,7 @@ redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
 
 # --- END: Leader lock settings ---
 
-# Read and validate bot token
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+# Validate bot token
 if not BOT_TOKEN or ":" not in BOT_TOKEN:
     raise SystemExit("❌ BOT_TOKEN is empty or contains spaces/newlines - fix in Variables")
 
