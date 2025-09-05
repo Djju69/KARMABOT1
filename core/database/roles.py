@@ -5,9 +5,17 @@ from typing import Optional, Dict, List
 from datetime import datetime
 from enum import Enum
 import logging
-from ..security.roles import Role as RoleEnum
 
 logger = logging.getLogger(__name__)
+
+# Local Role enum to avoid circular imports
+class RoleEnum(Enum):
+    """Роли пользователей"""
+    USER = "user"
+    PARTNER = "partner"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
 
 class RoleRepository:
     """Репозиторий для работы с ролями пользователей."""
