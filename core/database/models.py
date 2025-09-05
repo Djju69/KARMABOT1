@@ -16,19 +16,19 @@ class BaseModelMixin:
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 # Модель категорий заведений
-class Category(Base):
+class Category(Base, BaseModelMixin):
     __tablename__ = 'categories'
-    
+
     name = Column(String(100), nullable=False, unique=True, index=True)
     slug = Column(String(100), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
-    
+
     # Отношения
     places = relationship("Place", secondary="place_categories", back_populates="categories")
 
 # Модель заведений (партнеров)
-class Place(Base):
+class Place(Base, BaseModelMixin):
     __tablename__ = 'places'
     
     name = Column(String(200), nullable=False, index=True)
@@ -66,7 +66,7 @@ place_categories = Table(
 )
 
 # Модель для хранения медиа (фото, видео)
-class Media(Base):
+class Media(Base, BaseModelMixin):
     __tablename__ = 'media'
     
     file_id = Column(String(255), nullable=False)  # ID файла в хранилище
@@ -82,7 +82,7 @@ class Media(Base):
     place = relationship("Place", back_populates="media")
 
 # Модель отзывов
-class Review(Base):
+class Review(Base, BaseModelMixin):
     __tablename__ = 'reviews'
     
     rating = Column(Integer, nullable=False)  # 1-5
