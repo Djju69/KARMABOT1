@@ -33,13 +33,19 @@ class TwoFactorAuthMiddleware(BaseMiddleware):
         event: Update,
         data: Dict[str, Any]
     ) -> Any:
-        # Пропускаем служебные обновления
-        if not (event.message or event.callback_query):
+        # Корректная работа с типами событий в aiogram v3
+        message = None
+        user_id = None
+
+        if isinstance(event, Message):
+            message = event
+            user_id = event.from_user.id if event.from_user else None
+        elif isinstance(event, CallbackQuery):
+            message = event.message
+            user_id = event.from_user.id if event.from_user else None
+        else:
+            # Пропускаем события, не относящиеся к пользовательским апдейтам
             return await handler(event, data)
-            
-        # Получаем объект сообщения или callback
-        message = event.message or event.callback_query.message
-        user_id = event.from_user.id
         
         # Получаем состояние пользователя
         state: FSMContext = data.get('state')
@@ -66,14 +72,17 @@ class TwoFactorAuthMiddleware(BaseMiddleware):
             action="2FA_REQUIRED",
             entity_type="user",
             entity_id=user_id,
-            ip_address=event.event.from_user.id if hasattr(event, 'event') else None
+            ip_address=None
         )
         
         # Отправляем сообщение с просьбой пройти 2FA
-        if hasattr(event, 'answer'):
-            await event.answer("🔒 Требуется двухфакторная аутентификация. Пожалуйста, введите код из приложения аутентификатора.")
-        elif hasattr(message, 'answer'):
-            await message.answer("🔒 Требуется двухфакторная аутентификация. Пожалуйста, введите код из приложения аутентификатора.")
+        try:
+            if isinstance(event, CallbackQuery):
+                await event.answer("🔒 Требуется двухфакторная аутентификация", show_alert=True)
+            elif message is not None:
+                await message.answer("🔒 Требуется двухфакторная аутентификация. Пожалуйста, введите код из приложения аутентификатора.")
+        except Exception:
+            pass
         
         return False
     
@@ -108,10 +117,16 @@ class TwoFactorAuthMiddleware(BaseMiddleware):
         return await two_factor_auth.is_2fa_enabled(user_id)
     
     def _is_auth_command(self, event) -> bool:
-        """Проверяет, является ли сообщение командой аутентификации."""
-        if hasattr(event, 'message') and event.message and event.message.text:
-            text = event.message.text.lower()
-            return any(text.startswith(f'/{cmd}') for cmd in self.allowed_commands)
+        """Проверяет, является ли событие командой аутентификации."""
+        try:
+            if isinstance(event, Message):
+                text = (event.text or '').lower()
+                return any(text.startswith(f'/{cmd}') for cmd in self.allowed_commands)
+            if isinstance(event, CallbackQuery):
+                data = (event.data or '').lower()
+                return data.startswith('auth')
+        except Exception:
+            return False
         return False
 
 
