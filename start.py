@@ -29,7 +29,11 @@ logger = logging.getLogger(__name__)
 
 def is_railway_environment():
     """Проверка запуска на Railway"""
-    return os.getenv('RAILWAY_ENVIRONMENT') is not None
+    railway_env = os.getenv('RAILWAY_ENVIRONMENT')
+    railway_url = os.getenv('RAILWAY_STATIC_URL')
+    logger.info(f"🔍 RAILWAY_ENVIRONMENT: '{railway_env}'")
+    logger.info(f"🔍 RAILWAY_STATIC_URL: '{railway_url}'")
+    return railway_env is not None
 
 def validate_environment():
     """Проверка обязательных переменных окружения"""
@@ -57,8 +61,10 @@ def validate_environment():
         logger.info(f"🌐 Railway detected, using webhook: {app_url}")
         os.environ['WEBHOOK_URL'] = app_url
         os.environ['DISABLE_POLLING'] = 'true'
+        logger.info("✅ Webhook mode enabled")
     else:
         logger.info("💻 Local environment, using polling")
+        logger.info("✅ Polling mode enabled")
 
 # Try to import web app with delay to avoid circular imports
 try:
