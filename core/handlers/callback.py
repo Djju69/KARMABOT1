@@ -2,7 +2,8 @@ from aiogram import Bot, types, F, Router
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 
-from core.keyboards.inline import regional_restoran, kitchen_keyboard, language_keyboard
+from core.keyboards.restaurant_keyboards import regional_restoran, kitchen_keyboard
+from core.keyboards.language_keyboard import language_keyboard
 from core.utils.geo import find_restaurants  # Функция поиска ресторанов по координатам
 from core.utils.locales import get_text
 from core.handlers.category_handlers import show_categories  # Показываем категории через хендлер

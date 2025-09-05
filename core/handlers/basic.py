@@ -16,7 +16,8 @@ router = Router(name="basic")
 from core.utils.locales import translations, get_text
 
 # Клавиатуры
-from core.keyboards.inline import select_restoran, regional_restoran, language_keyboard
+from core.keyboards.restaurant_keyboards import select_restoran, regional_restoran, kitchen_keyboard
+from core.keyboards.language_keyboard import language_keyboard
 from core.keyboards.reply import get_main_menu_reply
 from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran
 

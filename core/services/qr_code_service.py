@@ -19,7 +19,7 @@ from sqlalchemy.orm import selectinload
 from core.database import get_db
 from core.logger import get_logger
 from core.models import QRCode, User, LoyaltyTransaction, LoyaltyTransactionType
-from core.exceptions import NotFoundError, ValidationError, BusinessLogicError
+from core.common.exceptions import NotFoundError, ValidationError, BusinessLogicError
 
 logger = get_logger(__name__)
 

@@ -12,7 +12,7 @@ import uuid
 from core.services.qr_code_service import QRCodeService
 from core.models.qr_code import QRCode
 from core.models.user import User
-from core.exceptions import NotFoundError, BusinessLogicError
+from core.common.exceptions import NotFoundError, BusinessLogicError
 
 
 @pytest.fixture

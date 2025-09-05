@@ -23,7 +23,7 @@ from core.database import get_db, execute_in_transaction
 from core.services.loyalty_service import LoyaltyService # Changed import
 from core.logger import get_logger
 from sqlalchemy.orm import aliased
-from core.exceptions import NotFoundError, ValidationError
+from core.common.exceptions import NotFoundError, ValidationError
 
 logger = get_logger(__name__)
 

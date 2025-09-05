@@ -22,7 +22,7 @@ from core.models.loyalty_models import (
 )
 from core.database import get_db, execute_in_transaction
 from core.logger import get_logger
-from core.exceptions import NotFoundError, ValidationError
+from core.common.exceptions import NotFoundError, ValidationError
 
 logger = get_logger(__name__)
 
