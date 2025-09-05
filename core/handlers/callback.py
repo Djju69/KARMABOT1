@@ -6,7 +6,7 @@ from core.keyboards.restaurant_keyboards import regional_restoran, kitchen_keybo
 from core.keyboards.language_keyboard import language_keyboard
 from core.utils.geo import find_restaurants  # Функция поиска ресторанов по координатам
 from core.utils.locales import get_text
-from core.handlers.category_handlers import show_categories  # Показываем категории через хендлер
+from core.handlers.category_handlers_v2 import show_categories_v2  # Показываем категории через хендлер
 
 router = Router()
 
@@ -70,7 +70,7 @@ async def rests_by_kitchen_handler(callback: CallbackQuery, bot: Bot):
 @router.callback_query(F.data == "show_categories")
 async def show_categories_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):
     lang = (await state.get_data()).get("lang", callback.from_user.language_code or "en")
-    await show_categories(callback.message, bot, state)
+    await show_categories_v2(callback.message, bot, lang)
     await callback.answer()
 
 # --- Смена языка ---
