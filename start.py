@@ -72,6 +72,21 @@ except ImportError as e:
 async def run_bot():
     """Запуск телеграм бота"""
     try:
+        # Clear webhook before starting bot to avoid conflicts
+        logger.info("🧹 Clearing webhook to avoid conflicts...")
+        try:
+            from aiogram import Bot
+            bot_token = os.getenv('BOT_TOKEN')
+            if bot_token:
+                bot = Bot(token=bot_token)
+                await bot.delete_webhook(drop_pending_updates=True)
+                await bot.session.close()
+                logger.info("✅ Webhook cleared successfully")
+            else:
+                logger.warning("⚠️ BOT_TOKEN not found, skipping webhook cleanup")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to clear webhook: {e}")
+
         # Try to import bot from the new structure
         from bot.bot import start as start_bot
         logger.info("✅ Бот импортирован, запускаем...")
