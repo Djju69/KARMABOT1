@@ -71,34 +71,58 @@ except ImportError as e:
 
 async def run_bot():
     """Запуск телеграм бота"""
+    logger.info("🤖 === BOT STARTUP BEGIN ===")
+    logger.info("🤖 Starting bot initialization...")
     try:
         # Clear webhook before starting bot to avoid conflicts
         logger.info("🧹 Clearing webhook to avoid conflicts...")
-        try:
-            from aiogram import Bot
-            bot_token = os.getenv('BOT_TOKEN')
-            if bot_token:
-                bot = Bot(token=bot_token)
-                await bot.delete_webhook(drop_pending_updates=True)
-                await bot.session.close()
-                logger.info("✅ Webhook cleared successfully")
-            else:
-                logger.warning("⚠️ BOT_TOKEN not found, skipping webhook cleanup")
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to clear webhook: {e}")
+        bot_token = os.getenv('BOT_TOKEN')
+        logger.info(f"🔍 BOT_TOKEN present: {bool(bot_token)}")
+
+        if bot_token:
+            logger.info(f"🔑 Bot token length: {len(bot_token)}")
+            # Try curl method first (more reliable)
+            try:
+                import subprocess
+                logger.info("🌐 Trying curl method for webhook cleanup...")
+                result = subprocess.run([
+                    'curl', '-s', '-X', 'POST',
+                    f'https://api.telegram.org/bot{bot_token}/deleteWebhook?drop_pending_updates=true'
+                ], capture_output=True, text=True, timeout=10)
+
+                if result.returncode == 0 and '"ok":true' in result.stdout:
+                    logger.info("✅ Webhook cleared successfully via curl")
+                else:
+                    logger.warning(f"⚠️ Curl method failed: {result.stdout}")
+                    # Fallback to aiogram method
+                    logger.info("🤖 Trying aiogram method...")
+                    from aiogram import Bot
+                    bot = Bot(token=bot_token)
+                    await bot.delete_webhook(drop_pending_updates=True)
+                    await bot.session.close()
+                    logger.info("✅ Webhook cleared successfully via aiogram")
+            except Exception as e:
+                logger.error(f"❌ Failed to clear webhook: {e}")
+                logger.error("💡 Webhook cleanup failed, bot may have conflicts")
+        else:
+            logger.error("❌ BOT_TOKEN not found in environment variables!")
+            logger.error("💡 Please set BOT_TOKEN in Railway Dashboard -> Variables")
 
         # Try to import bot from the new structure
+        logger.info("📦 Importing bot module...")
         from bot.bot import start as start_bot
-        logger.info("✅ Бот импортирован, запускаем...")
+        logger.info("✅ Bot module imported successfully")
+
+        logger.info("🚀 Starting bot...")
         await start_bot()
-        
+
     except ImportError as e:
-        logger.error(f"❌ Ошибка импорта бота: {e}", exc_info=True)
+        logger.error(f"❌ Bot import error: {e}", exc_info=True)
         raise
     except Exception as e:
-        logger.error(f"❌ Ошибка запуска бота: {e}", exc_info=True)
+        logger.error(f"❌ Bot startup error: {e}", exc_info=True)
         # Не останавливаем приложение, продолжаем с веб-сервером
-        logger.warning("⚠️ Бот не запущен, продолжаем с веб-сервером")
+        logger.warning("⚠️ Bot failed to start, continuing with web server")
 
 async def run_web_server():
     """Запуск веб-сервера"""
@@ -119,11 +143,14 @@ async def run_web_server():
 
 async def main():
     """Одновременный запуск бота и веб-сервера"""
+    logger.info("🚀 Starting main application...")
     validate_environment()  # Проверяем переменные окружения
+    logger.info("✅ Environment validation passed")
     tasks = []
     
     # Add bot task if BOT_TOKEN is set
     if os.getenv("BOT_TOKEN"):
+        logger.info("🤖 BOT_TOKEN found, adding bot task...")
         tasks.append(asyncio.create_task(run_bot()))
     else:
         logger.warning("BOT_TOKEN не установлен, пропускаем запуск бота")
