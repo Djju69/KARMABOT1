@@ -23,7 +23,6 @@ from core.models.loyalty_models import (
 from core.database import get_db, execute_in_transaction
 from core.logger import get_logger
 from core.common.exceptions import NotFoundError, ValidationError
-from core.services.referral_service import referral_service
 
 logger = get_logger(__name__)
 
@@ -296,7 +295,8 @@ class LoyaltyService:
                         # Конвертируем UUID в int для совместимости
                         user_id_int = int(str(user_id).replace('-', '')[:10])
                         
-                        # Обрабатываем реферальные бонусы
+                        # Обрабатываем реферальные бонусы (lazy import to avoid circular dependency)
+                        from core.services.referral_service import referral_service
                         referral_result = await referral_service.process_multilevel_referral_bonus(
                             transaction_id=row['id'],
                             user_id=user_id_int,

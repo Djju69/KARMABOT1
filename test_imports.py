@@ -1,68 +1,56 @@
 #!/usr/bin/env python3
 """
-Тест импортов для проверки работоспособности бота
+Test script to verify that imports work correctly after fixing circular imports
 """
 import sys
 import os
+from pathlib import Path
+
+# Add project root to path
+project_root = str(Path(__file__).parent.absolute())
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 def test_imports():
-    """Тестируем критические импорты"""
-    print("🔍 Тестируем критические импорты...")
-    
+    """Test that all critical imports work without circular import errors"""
+    print("🔍 Testing imports...")
+
     try:
-        # Добавляем путь к проекту
-        sys.path.append(os.getcwd())
-        
-        # Тест 1: Конфигурация
-        print("1. Тестируем конфигурацию...")
-        from core.config import settings
-        print("   ✅ core.config.settings - OK")
-        
-        # Тест 2: База данных
-        print("2. Тестируем базу данных...")
-        from core.database import get_db
-        print("   ✅ core.database.get_db - OK")
-        
-        # Тест 3: Модели
-        print("3. Тестируем модели...")
-        from core.models.user import User
-        from core.models.user_settings import UserSettings
-        print("   ✅ core.models - OK")
-        
-        # Тест 4: Сервисы
-        print("4. Тестируем сервисы...")
-        from core.services.profile_service import ProfileService
+        # Test loyalty service import
+        print("📦 Testing loyalty_service import...")
         from core.services.loyalty_service import LoyaltyService
+        print("✅ loyalty_service imported successfully")
+
+        # Test referral service import
+        print("📦 Testing referral_service import...")
         from core.services.referral_service import ReferralService
-        print("   ✅ core.services - OK")
-        
-        # Тест 5: Обработчики
-        print("5. Тестируем обработчики...")
-        from core.handlers.basic import router
-        from core.handlers.callback import router as callback_router
-        print("   ✅ core.handlers - OK")
-        
-        # Тест 6: Клавиатуры
-        print("6. Тестируем клавиатуры...")
-        from core.keyboards.restaurant_keyboards import select_restoran
-        from core.keyboards.language_keyboard import language_keyboard
-        print("   ✅ core.keyboards - OK")
-        
-        # Тест 7: Исключения
-        print("7. Тестируем исключения...")
-        from core.common.exceptions import NotFoundError, ValidationError
-        print("   ✅ core.common.exceptions - OK")
-        
-        print("\n🎉 ВСЕ ИМПОРТЫ РАБОТАЮТ!")
+        print("✅ referral_service imported successfully")
+
+        # Test partner handler import
+        print("📦 Testing partner handler import...")
+        from core.handlers.partner import partner_router
+        print("✅ partner handler imported successfully")
+
+        # Test bot import
+        print("📦 Testing bot import...")
+        from bot.bot import start as start_bot
+        print("✅ bot imported successfully")
+
+        print("🎉 All critical imports successful!")
         return True
-        
+
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        return False
     except Exception as e:
-        print(f"\n❌ ОШИБКА ИМПОРТА: {e}")
-        print(f"❌ Тип ошибки: {type(e).__name__}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Unexpected error: {e}")
         return False
 
 if __name__ == "__main__":
     success = test_imports()
-    sys.exit(0 if success else 1)
+    if success:
+        print("\n✅ Import test passed - circular import issue resolved!")
+        sys.exit(0)
+    else:
+        print("\n❌ Import test failed - issues remain")
+        sys.exit(1)

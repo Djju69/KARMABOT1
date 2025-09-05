@@ -20,7 +20,6 @@ from core.models.loyalty_models import (
     LoyaltyTransactionType
 )
 from core.database import get_db, execute_in_transaction
-from core.services.loyalty_service import LoyaltyService # Changed import
 from core.services.multilevel_referral_service import multilevel_referral_service
 from core.logger import get_logger
 from sqlalchemy.orm import aliased
@@ -143,7 +142,8 @@ class ReferralService:
         """Process new user signup with referral"""
         try:
             async with get_db() as db:
-                # Инициализируем сервис лояльности внутри транзакции
+                # Инициализируем сервис лояльности внутри транзакции (lazy import to avoid circular dependency)
+                from core.services.loyalty_service import LoyaltyService
                 loyalty_service = LoyaltyService(db)
                 await loyalty_service.initialize() # Важно для загрузки правил
 
