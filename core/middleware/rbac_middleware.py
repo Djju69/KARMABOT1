@@ -67,7 +67,7 @@ class RBACMiddleware(BaseMiddleware):
             )
 
             # Проверяем доступ к команде (если это текстовая команда)
-            if isinstance(event, Message) and event.is_command():
+            if isinstance(event, Message) and hasattr(event, 'text') and event.text and event.text.startswith('/'):
                 command = (event.text or '').split()[0].lower()
                 if not await self._check_command_access(command, user_role):
                     if message_obj:
