@@ -111,6 +111,24 @@ async def webapp_catalog(request: Request):
         )
 
 
+@router.get("/partner", response_class=HTMLResponse)
+async def webapp_partner_dashboard(request: Request):
+    """
+    Partner dashboard page
+    """
+    try:
+        return templates.TemplateResponse("partner-dashboard.html", {
+            "request": request,
+            "title": "Партнерский кабинет - KARMABOT1"
+        })
+    except Exception as e:
+        logger.error(f"Error rendering partner dashboard page: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error loading partner dashboard page"
+        )
+
+
 @router.get("/settings", response_class=HTMLResponse)
 async def webapp_settings(request: Request):
     """

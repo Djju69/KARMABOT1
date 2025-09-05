@@ -7,6 +7,7 @@ import logging
 
 # Import routers
 from web.routes_webapp import router as webapp_router
+from web.routes_partner import router as partner_router
 from web.routes_user import router as user_router
 from web.routes_qr import router as qr_router
 from web.routes_dashboard import router as dashboard_router
@@ -32,6 +33,7 @@ app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 # Include routers
 app.include_router(webapp_router)
+app.include_router(partner_router)
 app.include_router(user_router, prefix="/api")
 app.include_router(qr_router, prefix="/api")
 app.include_router(dashboard_router, prefix="/api")
