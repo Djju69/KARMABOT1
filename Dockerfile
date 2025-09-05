@@ -30,5 +30,5 @@ COPY . .
 # Expose port (Railway will set PORT env)
 EXPOSE 8080
 
-# Run uvicorn with sh -c to properly handle environment variables
-CMD ["sh", "-c", "uvicorn web.main:app --host 0.0.0.0 --port ${PORT}"]
+# Run start.py which handles both bot and web server
+CMD ["python", "start.py"]
