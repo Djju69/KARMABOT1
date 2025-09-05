@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - KarmaBot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+    <style>
+        .admin-sidebar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .admin-sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+        .admin-sidebar .nav-link:hover,
+        .admin-sidebar .nav-link.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        .admin-sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        .metric-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .metric-card.warning {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        .metric-card.info {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        .admin-header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 15px 0;
+            margin-bottom: 30px;
+        }
+        .status-badge {
+            font-size: 0.8em;
+            padding: 4px 8px;
+        }
+        .action-btn {
+            margin: 2px;
+            min-width: 80px;
+        }
+        .table-responsive {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .admin-content {
+            background: #f8f9fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Admin Sidebar -->
+            <nav class="col-md-3 col-lg-2 admin-sidebar sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <img src="/static/images/logo.png" alt="KarmaBot" class="logo-small mb-2">
+                        <h6 class="text-white">Админ-панель</h6>
+                        <small class="text-white-50">KarmaBot v2.0</small>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#dashboard" data-section="dashboard">
+                                <i class="fas fa-tachometer-alt"></i> Дашборд
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#users" data-section="users">
+                                <i class="fas fa-users"></i> Пользователи
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#partners" data-section="partners">
+                                <i class="fas fa-store"></i> Партнеры
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#moderation" data-section="moderation">
+                                <i class="fas fa-shield-alt"></i> Модерация
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#analytics" data-section="analytics">
+                                <i class="fas fa-chart-line"></i> Аналитика
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#transactions" data-section="transactions">
+                                <i class="fas fa-exchange-alt"></i> Транзакции
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#settings" data-section="settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#audit" data-section="audit">
+                                <i class="fas fa-clipboard-list"></i> Аудит
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <hr class="text-white-50">
+                    <div class="text-center">
+                        <a href="/" class="btn btn-outline-light btn-sm">
+                            <i class="fas fa-home"></i> Главная
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 admin-content">
+                <!-- Header -->
+                <div class="admin-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1 class="h3 mb-0">Админ-панель</h1>
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success me-2">
+                                <i class="fas fa-circle"></i> Система работает
+                            </span>
+                            <button class="btn btn-outline-primary btn-sm" onclick="refreshData()">
+                                <i class="fas fa-sync-alt"></i> Обновить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="content-section">
+                    <!-- Key Metrics -->
+                    <div class="row mb-4">
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="metric-card">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-white-50 text-uppercase small">Всего пользователей</div>
+                                        <div class="h4 mb-0" id="total-users">0</div>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-users fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="metric-card success">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-white-50 text-uppercase small">Активные партнеры</div>
+                                        <div class="h4 mb-0" id="active-partners">0</div>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-store fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="metric-card warning">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-white-50 text-uppercase small">На модерации</div>
+                                        <div class="h4 mb-0" id="pending-moderation">0</div>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-clock fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="metric-card info">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-white-50 text-uppercase small">Транзакции сегодня</div>
+                                        <div class="h4 mb-0" id="today-transactions">0</div>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-exchange-alt fa-2x text-white-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Активность пользователей (7 дней)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="userActivityChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Статус карточек</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="cardsStatusChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Последние действия</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recent-activity-list">
+                                        <div class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Загрузка...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Системные уведомления</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="system-notifications">
+                                        <div class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Загрузка...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Section -->
+                <div id="users-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Управление пользователями</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="showAddUserModal()">
+                                <i class="fas fa-plus"></i> Добавить пользователя
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportUsers()">
+                                <i class="fas fa-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <select class="form-select" id="user-role-filter">
+                                <option value="">Все роли</option>
+                                <option value="user">Пользователь</option>
+                                <option value="partner">Партнер</option>
+                                <option value="moderator">Модератор</option>
+                                <option value="admin">Администратор</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="user-status-filter">
+                                <option value="">Все статусы</option>
+                                <option value="active">Активные</option>
+                                <option value="inactive">Неактивные</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="user-search-input" placeholder="Поиск по имени, email, telegram...">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100" onclick="filterUsers()">
+                                <i class="fas fa-search"></i> Поиск
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Имя</th>
+                                    <th>Email</th>
+                                    <th>Telegram</th>
+                                    <th>Роль</th>
+                                    <th>Статус</th>
+                                    <th>Регистрация</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table-body">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Загрузка пользователей...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Users pagination" class="mt-4">
+                        <ul class="pagination justify-content-center" id="users-pagination">
+                        </ul>
+                    </nav>
+                </div>
+
+                <!-- Partners Section -->
+                <div id="partners-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Управление партнерами</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="approveAllPending()">
+                                <i class="fas fa-check"></i> Одобрить все
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportPartners()">
+                                <i class="fas fa-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Partners Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Название</th>
+                                    <th>Контакты</th>
+                                    <th>Карточек</th>
+                                    <th>Статус</th>
+                                    <th>Регистрация</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="partners-table-body">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Загрузка партнеров...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Moderation Section -->
+                <div id="moderation-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Модерация контента</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="approveAllCards()">
+                                <i class="fas fa-check"></i> Одобрить все
+                            </button>
+                            <button class="btn btn-danger" onclick="rejectAllCards()">
+                                <i class="fas fa-times"></i> Отклонить все
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Moderation Queue -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Карточка</th>
+                                    <th>Партнер</th>
+                                    <th>Категория</th>
+                                    <th>Статус</th>
+                                    <th>Дата подачи</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="moderation-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Загрузка очереди модерации...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Section -->
+                <div id="analytics-section" class="content-section" style="display: none;">
+                    <h2>Аналитика и отчеты</h2>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <select class="form-select" id="analytics-period">
+                                <option value="7">7 дней</option>
+                                <option value="30" selected>30 дней</option>
+                                <option value="90">90 дней</option>
+                                <option value="365">1 год</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-primary" onclick="generateReport()">
+                                <i class="fas fa-chart-bar"></i> Сгенерировать отчет
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-outline-secondary" onclick="exportAnalytics()">
+                                <i class="fas fa-download"></i> Экспорт данных
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Analytics Charts -->
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card shadow mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Регистрации пользователей</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="registrationsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="card shadow mb-4">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Транзакции по типам</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="transactionsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions Section -->
+                <div id="transactions-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Управление транзакциями</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-primary" onclick="showAddTransactionModal()">
+                                <i class="fas fa-plus"></i> Добавить транзакцию
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportTransactions()">
+                                <i class="fas fa-download"></i> Экспорт
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Transactions Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Пользователь</th>
+                                    <th>Тип</th>
+                                    <th>Сумма</th>
+                                    <th>Описание</th>
+                                    <th>Дата</th>
+                                    <th>Статус</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-table-body">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Загрузка транзакций...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings-section" class="content-section" style="display: none;">
+                    <h2>Настройки системы</h2>
+                    
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Общие настройки</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="system-settings-form">
+                                        <div class="mb-3">
+                                            <label for="system-name" class="form-label">Название системы</label>
+                                            <input type="text" class="form-control" id="system-name" value="KarmaBot">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="system-description" class="form-label">Описание системы</label>
+                                            <textarea class="form-control" id="system-description" rows="3">Система лояльности и скидок</textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="default-language" class="form-label">Язык по умолчанию</label>
+                                            <select class="form-select" id="default-language">
+                                                <option value="ru" selected>Русский</option>
+                                                <option value="en">English</option>
+                                                <option value="vi">Tiếng Việt</option>
+                                                <option value="ko">한국어</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Сохранить настройки
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card shadow">
+                                <div class="card-header">
+                                    <h6 class="m-0 font-weight-bold text-primary">Быстрые действия</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-warning" onclick="clearCache()">
+                                            <i class="fas fa-trash"></i> Очистить кэш
+                                        </button>
+                                        <button class="btn btn-info" onclick="backupDatabase()">
+                                            <i class="fas fa-database"></i> Резервная копия БД
+                                        </button>
+                                        <button class="btn btn-success" onclick="restartServices()">
+                                            <i class="fas fa-redo"></i> Перезапустить сервисы
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audit Section -->
+                <div id="audit-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Журнал аудита</h2>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-secondary" onclick="exportAuditLog()">
+                                <i class="fas fa-download"></i> Экспорт лога
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="clearAuditLog()">
+                                <i class="fas fa-trash"></i> Очистить лог
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Audit Log Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Время</th>
+                                    <th>Пользователь</th>
+                                    <th>Действие</th>
+                                    <th>Объект</th>
+                                    <th>IP адрес</th>
+                                    <th>Результат</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-table-body">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin"></i> Загрузка журнала аудита...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить пользователя</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-user-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="user-name" class="form-label">Имя *</label>
+                                    <input type="text" class="form-control" id="user-name" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="user-email" class="form-label">Email *</label>
+                                    <input type="email" class="form-control" id="user-email" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="user-telegram" class="form-label">Telegram ID</label>
+                                    <input type="number" class="form-control" id="user-telegram">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="user-role" class="form-label">Роль *</label>
+                                    <select class="form-select" id="user-role" required>
+                                        <option value="user">Пользователь</option>
+                                        <option value="partner">Партнер</option>
+                                        <option value="moderator">Модератор</option>
+                                        <option value="admin">Администратор</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="user-password" class="form-label">Пароль *</label>
+                            <input type="password" class="form-control" id="user-password" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitUser()">
+                        <i class="fas fa-save"></i> Создать пользователя
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script src="/static/js/admin-dashboard.js"></script>
+</body>
+</html>

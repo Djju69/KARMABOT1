@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+Git push script using subprocess
+"""
 import subprocess
 import sys
 import os
@@ -30,18 +33,14 @@ def main():
         print("❌ Not in a git repository!")
         return False
     
-    # Check status first
-    print("\n📊 Checking current status...")
-    run_git_command(['status'])
-    
     # Add all changes
     print("\n📁 Adding all changes...")
     if not run_git_command(['add', '.']):
         print("❌ Failed to add changes")
         return False
     
-    # Check status after add
-    print("\n📊 Checking status after add...")
+    # Check status
+    print("\n📊 Checking status...")
     run_git_command(['status'])
     
     # Commit
@@ -62,27 +61,11 @@ def main():
         print("❌ Failed to commit")
         return False
     
-    # Check remote
-    print("\n🌐 Checking remote repository...")
-    run_git_command(['remote', '-v'])
-    
-    # Push to main
-    print("\n🚀 Pushing to origin main...")
+    # Push
+    print("\n🚀 Pushing to remote...")
     if not run_git_command(['push', 'origin', 'main']):
-        print("❌ Failed to push to origin main")
-        # Try force push as fallback
-        print("\n🔄 Trying force push...")
-        if not run_git_command(['push', '-f', 'origin', 'main']):
-            print("❌ Failed to force push")
-            return False
-    
-    # Check final status
-    print("\n📊 Final status check...")
-    run_git_command(['status'])
-    
-    # Show recent commits
-    print("\n📝 Recent commits:")
-    run_git_command(['log', '--oneline', '-5'])
+        print("❌ Failed to push")
+        return False
     
     print("\n✅ Successfully pushed all changes!")
     return True

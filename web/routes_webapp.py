@@ -129,6 +129,24 @@ async def webapp_partner_dashboard(request: Request):
         )
 
 
+@router.get("/admin", response_class=HTMLResponse)
+async def webapp_admin_dashboard(request: Request):
+    """
+    Admin dashboard page
+    """
+    try:
+        return templates.TemplateResponse("admin-dashboard.html", {
+            "request": request,
+            "title": "Админ-панель - KARMABOT1"
+        })
+    except Exception as e:
+        logger.error(f"Error rendering admin dashboard page: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error loading admin dashboard page"
+        )
+
+
 @router.get("/settings", response_class=HTMLResponse)
 async def webapp_settings(request: Request):
     """
