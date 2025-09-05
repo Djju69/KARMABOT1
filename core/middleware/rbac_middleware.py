@@ -26,38 +26,61 @@ class RBACMiddleware(BaseMiddleware):
         event: Update,
         data: Dict[str, Any]
     ) -> Any:
-        # Пропускаем служебные обновления
-        if not (event.message or event.callback_query):
+        """Проверка прав доступа пользователя для сообщений и колбэков.
+
+        В aiogram v3 в middleware приходит конкретный объект события (Message, CallbackQuery и т.д.),
+        поэтому нельзя обращаться к event.message. Нужно проверять тип события.
+        """
+
+        try:
+            message_obj: Message | None = None
+            user_id: int | None = None
+
+            if isinstance(event, Message):
+                message_obj = event
+                user_id = event.from_user.id if event.from_user else None
+            elif isinstance(event, CallbackQuery):
+                message_obj = event.message
+                user_id = event.from_user.id if event.from_user else None
+            else:
+                # Пропускаем события, для которых RBAC не применим
+                return await handler(event, data)
+
+            if not user_id:
+                # Нет пользователя — пропускаем без проверки
+                return await handler(event, data)
+
+            # Получаем состояние пользователя (если нужно далее)
+            state: FSMContext = data.get('state')  # noqa: F841 (оставлено на будущее использование)
+
+            # Получаем роль пользователя
+            user_role = await get_user_role(user_id)
+
+            # Сохраняем роль в data для использования в хендлерах
+            data['user_role'] = user_role
+
+            # Логируем попытку доступа
+            role_name = getattr(user_role, 'name', str(user_role))
+            logger.info(
+                "User %s (role: %s) is trying to access handler: %s",
+                user_id, role_name, getattr(handler, '__name__', str(handler))
+            )
+
+            # Проверяем доступ к команде (если это текстовая команда)
+            if isinstance(event, Message) and event.is_command():
+                command = (event.text or '').split()[0].lower()
+                if not await self._check_command_access(command, user_role):
+                    if message_obj:
+                        await message_obj.answer("У вас нет прав на выполнение этой команды.")
+                    return
+
+            # Продолжаем выполнение цепочки middleware и хендлеров
             return await handler(event, data)
-            
-        # Получаем объект сообщения или callback
-        message = event.message or event.callback_query.message
-        user_id = event.from_user.id
-        
-        # Получаем состояние пользователя
-        state: FSMContext = data.get('state')
-        
-        # Получаем роль пользователя
-        user_role = await get_user_role(user_id)
-        
-        # Сохраняем роль в data для использования в хендлерах
-        data['user_role'] = user_role
-        
-        # Логируем попытку доступа
-        logger.info(
-            "User %s (role: %s) is trying to access handler: %s",
-            user_id, user_role.name, handler.__name__
-        )
-        
-        # Проверяем доступ к команде (если это команда)
-        if event.message and event.message.is_command():
-            command = event.message.text.split()[0].lower()
-            if not await self._check_command_access(command, user_role):
-                await message.answer("У вас нет прав на выполнение этой команды.")
-                return
-        
-        # Продолжаем выполнение цепочки middleware и хендлеров
-        return await handler(event, data)
+
+        except Exception as e:
+            logger.error(f"RBAC Middleware error: {e}", exc_info=True)
+            # Не блокируем обработку при ошибке middleware
+            return await handler(event, data)
     
     async def _check_command_access(self, command: str, user_role) -> bool:
         """Проверяет, есть ли у роли доступ к команде."""
