@@ -4,6 +4,27 @@
 [![Coverage](https://codecov.io/gh/Djju69/KARMABOT1/branch/main/graph/badge.svg)](https://codecov.io/gh/Djju69/KARMABOT1)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![Status](https://img.shields.io/badge/Status-85%25%20Ready-green.svg)](https://github.com/Djju69/KARMABOT1)
+
+## 📊 Текущий статус проекта
+
+**Готовность к продакшену: 85%** (обновлено 2025-12-19)
+
+### ✅ Завершено:
+- 🏗️ Базовая архитектура (95%)
+- 🗄️ База данных и миграции (90%)
+- 🔧 Основные сервисы (85%)
+- 🌐 WebApp интерфейс (85%)
+- 📊 Мониторинг и метрики (90%)
+- 🧹 Очистка кода от устаревших файлов (80%)
+
+### 🔄 В процессе:
+- 👥 Многоуровневая реферальная система
+- 📱 QR WebApp функциональность
+- 🔍 Система модерации контента
+- ⚙️ Админ-панель управления
+
+**Подробный отчет:** [AUDIT_RESULTS_2025_12_19.md](AUDIT_RESULTS_2025_12_19.md)
 
 ## 🚀 Быстрый старт
 

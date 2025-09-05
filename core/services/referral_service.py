@@ -21,6 +21,7 @@ from core.models.loyalty_models import (
 )
 from core.database import get_db, execute_in_transaction
 from core.services.loyalty_service import LoyaltyService # Changed import
+from core.services.multilevel_referral_service import multilevel_referral_service
 from core.logger import get_logger
 from sqlalchemy.orm import aliased
 from core.common.exceptions import NotFoundError, ValidationError
@@ -289,6 +290,44 @@ class ReferralService:
 
         except SQLAlchemyError as e:
             logger.error(f"Error getting referral tree for user {user_id}: {e}")
+            raise
+    
+    async def process_multilevel_referral_bonus(
+        self, 
+        transaction_id: int,
+        user_id: int,
+        amount: float
+    ) -> Dict[str, Any]:
+        """
+        Обработка бонусов через многоуровневую систему
+        
+        Args:
+            transaction_id: ID транзакции
+            user_id: ID пользователя
+            amount: Сумма транзакции
+            
+        Returns:
+            Результат обработки бонусов
+        """
+        try:
+            from decimal import Decimal
+            
+            # Конвертируем в Decimal для точности
+            decimal_amount = Decimal(str(amount))
+            
+            # Обрабатываем через многоуровневую систему
+            result = await multilevel_referral_service.process_referral_bonus(
+                transaction_id=transaction_id,
+                user_id=user_id,
+                amount=decimal_amount
+            )
+            
+            logger.info(f"Обработаны многоуровневые бонусы для транзакции {transaction_id}: {result}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Ошибка обработки многоуровневых бонусов: {e}")
             raise
     
     async def get_referral_earnings(self, user_id: UUID, days: int = 30) -> List[Dict[str, Any]]:

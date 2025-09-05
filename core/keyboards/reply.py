@@ -39,6 +39,7 @@ def get_reply_keyboard(user: Optional[Dict[str, Any]] = None, screen: str = SCRE
     if screen == SCREEN_MAIN:
         kb = [
             row("keyboard.categories", "keyboard.profile", "keyboard.by_districts", "keyboard.help"),
+            row("keyboard.referral_program", "keyboard.my_referral_link"),
         ]
         
         # Dynamic QR scan button for partners with cards

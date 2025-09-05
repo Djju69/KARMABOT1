@@ -23,6 +23,7 @@ from core.models.loyalty_models import (
 from core.database import get_db, execute_in_transaction
 from core.logger import get_logger
 from core.common.exceptions import NotFoundError, ValidationError
+from core.services.referral_service import referral_service
 
 logger = get_logger(__name__)
 
@@ -287,6 +288,26 @@ class LoyaltyService:
                 
                 # Получаем обновленный баланс
                 balance = await self.get_balance(user_id)
+                
+                # Обрабатываем многоуровневые реферальные бонусы для покупок
+                if (transaction_type == LoyaltyTransactionType.PURCHASE and 
+                    activity_type == ActivityType.PURCHASE):
+                    try:
+                        # Конвертируем UUID в int для совместимости
+                        user_id_int = int(str(user_id).replace('-', '')[:10])
+                        
+                        # Обрабатываем реферальные бонусы
+                        referral_result = await referral_service.process_multilevel_referral_bonus(
+                            transaction_id=row['id'],
+                            user_id=user_id_int,
+                            amount=points  # Используем points как сумму покупки
+                        )
+                        
+                        logger.info(f"Обработаны реферальные бонусы для транзакции {row['id']}: {referral_result}")
+                        
+                    except Exception as e:
+                        logger.error(f"Ошибка обработки реферальных бонусов: {e}")
+                        # Не прерываем основную транзакцию из-за ошибки рефералов
                 
                 # Создаем объект транзакции для возврата
                 transaction = LoyaltyTransaction(

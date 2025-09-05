@@ -42,21 +42,44 @@ class ProfileService:
         """
         try:
             async with get_db() as db:
-                # Получаем базовую информацию о пользователе
-                # TODO: Добавить запрос к таблице users когда она будет готова
-                profile = {
-                    "user_id": user_id,
-                    "username": f"user_{user_id}",
-                    "first_name": "Пользователь",
-                    "last_name": "",
-                    "email": None,
-                    "phone": None,
-                    "avatar_url": None,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "last_activity": datetime.utcnow().isoformat(),
-                    "is_active": True,
-                    "is_verified": False
-                }
+                # Получаем базовую информацию о пользователе из таблицы users
+                from core.models.user import User
+                from sqlalchemy import select
+                
+                result = await db.execute(
+                    select(User).where(User.tg_user_id == user_id)
+                )
+                user = result.scalar_one_or_none()
+                
+                if user:
+                    profile = {
+                        "user_id": user_id,
+                        "username": user.username or f"user_{user_id}",
+                        "first_name": user.first_name or "Пользователь",
+                        "last_name": user.last_name or "",
+                        "email": None,  # Пока нет поля email в модели
+                        "phone": None,  # Пока нет поля phone в модели
+                        "avatar_url": None,  # Пока нет поля avatar в модели
+                        "created_at": user.created_at.isoformat() if user.created_at else datetime.utcnow().isoformat(),
+                        "last_activity": user.updated_at.isoformat() if user.updated_at else datetime.utcnow().isoformat(),
+                        "is_active": not user.is_banned,
+                        "is_verified": False  # Пока нет поля verified в модели
+                    }
+                else:
+                    # Если пользователь не найден, создаем базовый профиль
+                    profile = {
+                        "user_id": user_id,
+                        "username": f"user_{user_id}",
+                        "first_name": "Пользователь",
+                        "last_name": "",
+                        "email": None,
+                        "phone": None,
+                        "avatar_url": None,
+                        "created_at": datetime.utcnow().isoformat(),
+                        "last_activity": datetime.utcnow().isoformat(),
+                        "is_active": True,
+                        "is_verified": False
+                    }
                 
                 # Получаем статистику лояльности
                 loyalty_stats = await self._get_loyalty_stats(user_id, db)
@@ -139,26 +162,54 @@ class ProfileService:
             Настройки пользователя
         """
         try:
-            # TODO: Добавить таблицу user_settings когда будет готова
-            # Пока возвращаем дефолтные настройки
-            return {
-                "language": "ru",
-                "notifications": {
-                    "email": True,
-                    "push": True,
-                    "sms": False
-                },
-                "privacy": {
-                    "show_profile": True,
-                    "show_activities": False,
-                    "allow_messages": True
-                },
-                "preferences": {
-                    "theme": "light",
-                    "timezone": "UTC+7",
-                    "currency": "VND"
-                }
-            }
+            async with get_db() as db:
+                from core.models.user_settings import UserSettings
+                from sqlalchemy import select
+                
+                result = await db.execute(
+                    select(UserSettings).where(UserSettings.user_id == user_id)
+                )
+                settings = result.scalar_one_or_none()
+                
+                if settings:
+                    return {
+                        "language": settings.language,
+                        "notifications": {
+                            "email": settings.email_notifications,
+                            "push": settings.push_notifications,
+                            "sms": False  # Пока не реализовано
+                        },
+                        "privacy": {
+                            "show_profile": settings.privacy_level != "private",
+                            "show_activities": settings.privacy_level == "public",
+                            "allow_messages": True
+                        },
+                        "preferences": {
+                            "theme": settings.theme,
+                            "timezone": settings.timezone,
+                            "currency": settings.currency
+                        }
+                    }
+                else:
+                    # Возвращаем дефолтные настройки если пользователь не найден
+                    return {
+                        "language": "ru",
+                        "notifications": {
+                            "email": True,
+                            "push": True,
+                            "sms": False
+                        },
+                        "privacy": {
+                            "show_profile": True,
+                            "show_activities": False,
+                            "allow_messages": True
+                        },
+                        "preferences": {
+                            "theme": "light",
+                            "timezone": "UTC+7",
+                            "currency": "VND"
+                        }
+                    }
             
         except Exception as e:
             logger.error(f"Error getting user settings for {user_id}: {e}")
@@ -180,19 +231,56 @@ class ProfileService:
             Обновленные настройки
         """
         try:
-            # TODO: Добавить сохранение в БД когда таблица будет готова
-            # Пока просто возвращаем обновленные настройки
-            current_settings = await self.get_user_settings(user_id)
-            
-            # Обновляем настройки
-            for key, value in settings.items():
-                if key in current_settings:
-                    if isinstance(current_settings[key], dict) and isinstance(value, dict):
-                        current_settings[key].update(value)
-                    else:
-                        current_settings[key] = value
-            
-            return current_settings
+            async with get_db() as db:
+                from core.models.user_settings import UserSettings
+                from sqlalchemy import select
+                
+                result = await db.execute(
+                    select(UserSettings).where(UserSettings.user_id == user_id)
+                )
+                user_settings = result.scalar_one_or_none()
+                
+                if user_settings:
+                    # Обновляем существующие настройки
+                    if "language" in settings:
+                        user_settings.language = settings["language"]
+                    if "notifications" in settings:
+                        notifications = settings["notifications"]
+                        user_settings.email_notifications = notifications.get("email", user_settings.email_notifications)
+                        user_settings.push_notifications = notifications.get("push", user_settings.push_notifications)
+                    if "privacy" in settings:
+                        privacy = settings["privacy"]
+                        if privacy.get("show_profile") and not privacy.get("show_activities"):
+                            user_settings.privacy_level = "standard"
+                        elif privacy.get("show_activities"):
+                            user_settings.privacy_level = "public"
+                        else:
+                            user_settings.privacy_level = "private"
+                    if "preferences" in settings:
+                        preferences = settings["preferences"]
+                        user_settings.theme = preferences.get("theme", user_settings.theme)
+                        user_settings.timezone = preferences.get("timezone", user_settings.timezone)
+                        user_settings.currency = preferences.get("currency", user_settings.currency)
+                    
+                    user_settings.updated_at = datetime.utcnow()
+                    await db.commit()
+                else:
+                    # Создаем новые настройки
+                    new_settings = UserSettings(
+                        user_id=user_id,
+                        language=settings.get("language", "ru"),
+                        email_notifications=settings.get("notifications", {}).get("email", True),
+                        push_notifications=settings.get("notifications", {}).get("push", True),
+                        privacy_level="standard",
+                        theme=settings.get("preferences", {}).get("theme", "light"),
+                        timezone=settings.get("preferences", {}).get("timezone", "UTC+7"),
+                        currency=settings.get("preferences", {}).get("currency", "VND")
+                    )
+                    db.add(new_settings)
+                    await db.commit()
+                
+                # Возвращаем обновленные настройки
+                return await self.get_user_settings(user_id)
             
         except Exception as e:
             logger.error(f"Error updating user settings for {user_id}: {e}")
@@ -261,9 +349,19 @@ class ProfileService:
             True если успешно, False если не найдено
         """
         try:
-            # TODO: Добавить обновление в БД когда таблица будет готова
-            # Пока просто возвращаем True
-            return True
+            async with get_db() as db:
+                from core.models.notification import Notification
+                from sqlalchemy import select, update
+                
+                # Обновляем статус уведомления на "прочитано"
+                await db.execute(
+                    update(Notification)
+                    .where(Notification.user_id == user_id)
+                    .where(Notification.id == notification_id)
+                    .values(is_read=True, read_at=datetime.utcnow())
+                )
+                await db.commit()
+                return True
             
         except Exception as e:
             logger.error(f"Error marking notification as read for {user_id}: {e}")
@@ -285,21 +383,25 @@ class ProfileService:
             Созданный профиль
         """
         try:
-            # TODO: Добавить создание в БД когда таблица будет готова
-            profile = {
-                "user_id": user_id,
-                "username": profile_data.get("username", f"user_{user_id}"),
-                "first_name": profile_data.get("first_name", ""),
-                "last_name": profile_data.get("last_name", ""),
-                "email": profile_data.get("email"),
-                "phone": profile_data.get("phone"),
-                "avatar_url": profile_data.get("avatar_url"),
-                "created_at": datetime.utcnow().isoformat(),
-                "is_active": True,
-                "is_verified": False
-            }
-            
-            return profile
+            async with get_db() as db:
+                from core.models.user import User
+                
+                # Создаем нового пользователя в БД
+                new_user = User(
+                    tg_user_id=user_id,
+                    username=profile_data.get("username"),
+                    first_name=profile_data.get("first_name", ""),
+                    last_name=profile_data.get("last_name", ""),
+                    language_code=profile_data.get("language", "ru"),
+                    is_admin=False,
+                    is_banned=False
+                )
+                
+                db.add(new_user)
+                await db.commit()
+                
+                # Возвращаем созданный профиль
+                return await self.get_user_profile(user_id)
             
         except Exception as e:
             logger.error(f"Error creating user profile for {user_id}: {e}")
@@ -321,17 +423,32 @@ class ProfileService:
             Обновленный профиль
         """
         try:
-            # TODO: Добавить обновление в БД когда таблица будет готова
-            current_profile = await self.get_user_profile(user_id)
-            
-            # Обновляем поля
-            for key, value in profile_data.items():
-                if key in current_profile and value is not None:
-                    current_profile[key] = value
-            
-            current_profile["updated_at"] = datetime.utcnow().isoformat()
-            
-            return current_profile
+            async with get_db() as db:
+                from core.models.user import User
+                from sqlalchemy import select, update
+                
+                # Обновляем данные пользователя в БД
+                update_data = {}
+                if "username" in profile_data:
+                    update_data["username"] = profile_data["username"]
+                if "first_name" in profile_data:
+                    update_data["first_name"] = profile_data["first_name"]
+                if "last_name" in profile_data:
+                    update_data["last_name"] = profile_data["last_name"]
+                if "language" in profile_data:
+                    update_data["language_code"] = profile_data["language"]
+                
+                if update_data:
+                    update_data["updated_at"] = datetime.utcnow()
+                    await db.execute(
+                        update(User)
+                        .where(User.tg_user_id == user_id)
+                        .values(**update_data)
+                    )
+                    await db.commit()
+                
+                # Возвращаем обновленный профиль
+                return await self.get_user_profile(user_id)
             
         except Exception as e:
             logger.error(f"Error updating user profile for {user_id}: {e}")
