@@ -391,6 +391,22 @@ if not MINIMAL_WEB:
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
     app.include_router(qr_router)
     app.include_router(qr_webapp_router)
+    
+    # Enhanced admin panel routes
+    try:
+        from web.routes_admin_enhanced import router as admin_enhanced_router
+        app.include_router(admin_enhanced_router)
+        logger.info("Enhanced admin panel routes loaded")
+    except ImportError as e:
+        logger.warning(f"Enhanced admin panel routes not available: {e}")
+    
+    # Enhanced partner routes
+    try:
+        from web.routes_partner_enhanced import router as partner_enhanced_router
+        app.include_router(partner_enhanced_router)
+        logger.info("Enhanced partner routes loaded")
+    except ImportError as e:
+        logger.warning(f"Enhanced partner routes not available: {e}")
 else:
     # Minimal health check endpoint
     @app.get("/health")

@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏪 Партнерский кабинет - KARMABOT1</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #34d399;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .dashboard-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: #fff;
+        }
+        
+        .action-btn.primary {
+            background: #34d399;
+            color: #000;
+        }
+        
+        .action-btn.primary:hover {
+            background: #10b981;
+            transform: translateY(-2px);
+        }
+        
+        .action-btn.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .cards-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .card-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .card-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .card-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+        }
+        
+        .card-status.pending {
+            background: #fbbf24;
+        }
+        
+        .card-status.rejected {
+            background: #ef4444;
+        }
+        
+        .card-content {
+            flex: 1;
+        }
+        
+        .card-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .card-meta {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 15px;
+        }
+        
+        .verification-status {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .verification-status.pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        
+        .verification-status.approved {
+            background: rgba(52, 211, 153, 0.2);
+            color: #34d399;
+        }
+        
+        .verification-status.rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #34d399;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .alert.success {
+            background: rgba(52, 211, 153, 0.2);
+            border: 1px solid rgba(52, 211, 153, 0.3);
+            color: #34d399;
+        }
+        
+        .alert.warning {
+            background: rgba(251, 191, 36, 0.2);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fbbf24;
+        }
+        
+        .alert.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom-color: #34d399;
+            color: #34d399;
+        }
+        
+        .tab:hover {
+            color: #34d399;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 Партнерский кабинет</h1>
+        <p>Управление вашим бизнесом</p>
+    </div>
+    
+    <div class="container">
+        <!-- Verification Status -->
+        <div id="verificationStatus" class="alert warning">
+            <div class="loading"></div>
+            <span>Проверка статуса верификации...</span>
+        </div>
+        
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCards">-</div>
+                <div class="stat-label">Всего карточек</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="approvedCards">-</div>
+                <div class="stat-label">Одобрено</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingCards">-</div>
+                <div class="stat-label">На модерации</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalViews">-</div>
+                <div class="stat-label">Просмотров</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalScans">-</div>
+                <div class="stat-label">Сканирований QR</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="revenue">-</div>
+                <div class="stat-label">Выручка</div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Sections -->
+        <div class="dashboard-sections">
+            <!-- Quick Actions -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    ⚡ Быстрые действия
+                </div>
+                <div class="quick-actions">
+                    <button class="action-btn primary" onclick="partner.addCard()">
+                        ➕ Добавить карточку
+                    </button>
+                    <button class="action-btn secondary" onclick="partner.viewCards()">
+                        📋 Мои карточки
+                    </button>
+                    <button class="action-btn secondary" onclick="partner.generateQR()">
+                        📱 Создать QR
+                    </button>
+                    <button class="action-btn secondary" onclick="partner.viewAnalytics()">
+                        📊 Аналитика
+                    </button>
+                    <button class="action-btn secondary" onclick="partner.viewSettings()">
+                        ⚙️ Настройки
+                    </button>
+                    <button class="action-btn secondary" onclick="partner.contactSupport()">
+                        💬 Поддержка
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Cards Management -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    📋 Управление карточками
+                </div>
+                <div class="tabs">
+                    <button class="tab active" data-tab="all">Все</button>
+                    <button class="tab" data-tab="approved">Одобрено</button>
+                    <button class="tab" data-tab="pending">На модерации</button>
+                    <button class="tab" data-tab="rejected">Отклонено</button>
+                </div>
+                <div class="tab-content active" id="all-tab">
+                    <div class="cards-list" id="cardsList">
+                        <div class="loading"></div>
+                        <p style="text-align: center; margin-top: 10px;">Загрузка карточек...</p>
+                    </div>
+                </div>
+                <div class="tab-content" id="approved-tab">
+                    <div class="cards-list" id="approvedCardsList">
+                        <!-- Approved cards will be loaded here -->
+                    </div>
+                </div>
+                <div class="tab-content" id="pending-tab">
+                    <div class="cards-list" id="pendingCardsList">
+                        <!-- Pending cards will be loaded here -->
+                    </div>
+                </div>
+                <div class="tab-content" id="rejected-tab">
+                    <div class="cards-list" id="rejectedCardsList">
+                        <!-- Rejected cards will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analytics -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    📊 Аналитика
+                </div>
+                <div class="tabs">
+                    <button class="tab active" data-tab="views">Просмотры</button>
+                    <button class="tab" data-tab="scans">QR сканы</button>
+                    <button class="tab" data-tab="revenue">Выручка</button>
+                </div>
+                <div class="tab-content active" id="views-tab">
+                    <div class="chart-container">
+                        <canvas id="viewsChart"></canvas>
+                    </div>
+                </div>
+                <div class="tab-content" id="scans-tab">
+                    <div class="chart-container">
+                        <canvas id="scansChart"></canvas>
+                    </div>
+                </div>
+                <div class="tab-content" id="revenue-tab">
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    🔄 Последняя активность
+                </div>
+                <div class="cards-list" id="recentActivity">
+                    <div class="loading"></div>
+                    <p style="text-align: center; margin-top: 10px;">Загрузка активности...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class PartnerDashboard {
+            constructor() {
+                this.charts = {};
+                this.currentTab = 'all';
+                this.init();
+            }
+            
+            async init() {
+                // Initialize Telegram WebApp
+                this.initTelegramWebApp();
+                
+                // Load initial data
+                await this.loadDashboardData();
+                await this.loadCards();
+                await this.loadRecentActivity();
+                
+                // Setup charts
+                this.setupCharts();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Start auto-refresh
+                this.startAutoRefresh();
+            }
+            
+            initTelegramWebApp() {
+                try {
+                    if (window.Telegram && Telegram.WebApp) {
+                        Telegram.WebApp.ready();
+                        Telegram.WebApp.expand();
+                    }
+                } catch (e) {
+                    console.warn('Telegram WebApp not available:', e);
+                }
+            }
+            
+            async loadDashboardData() {
+                try {
+                    const response = await fetch('/api/partner/dashboard');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateStats(data);
+                        this.updateVerificationStatus(data.verification_status);
+                    }
+                } catch (e) {
+                    console.error('Failed to load dashboard data:', e);
+                    this.showError('Ошибка загрузки данных дашборда');
+                }
+            }
+            
+            async loadCards() {
+                try {
+                    const response = await fetch('/api/partner/cards');
+                    if (response.ok) {
+                        const cards = await response.json();
+                        this.updateCardsList(cards);
+                    }
+                } catch (e) {
+                    console.error('Failed to load cards:', e);
+                }
+            }
+            
+            async loadRecentActivity() {
+                try {
+                    const response = await fetch('/api/partner/activity');
+                    if (response.ok) {
+                        const activities = await response.json();
+                        this.updateRecentActivity(activities);
+                    }
+                } catch (e) {
+                    console.error('Failed to load recent activity:', e);
+                }
+            }
+            
+            updateStats(data) {
+                document.getElementById('totalCards').textContent = data.total_cards || 0;
+                document.getElementById('approvedCards').textContent = data.approved_cards || 0;
+                document.getElementById('pendingCards').textContent = data.pending_cards || 0;
+                document.getElementById('totalViews').textContent = data.total_views || 0;
+                document.getElementById('totalScans').textContent = data.total_scans || 0;
+                document.getElementById('revenue').textContent = this.formatCurrency(data.revenue || 0);
+            }
+            
+            updateVerificationStatus(status) {
+                const statusElement = document.getElementById('verificationStatus');
+                
+                if (status === 'approved') {
+                    statusElement.className = 'alert success';
+                    statusElement.innerHTML = '✅ Ваш аккаунт верифицирован';
+                } else if (status === 'pending') {
+                    statusElement.className = 'alert warning';
+                    statusElement.innerHTML = '⏳ Ваш аккаунт на верификации';
+                } else if (status === 'rejected') {
+                    statusElement.className = 'alert error';
+                    statusElement.innerHTML = '❌ Верификация отклонена';
+                } else {
+                    statusElement.className = 'alert warning';
+                    statusElement.innerHTML = '⚠️ Требуется верификация аккаунта';
+                }
+            }
+            
+            updateCardsList(cards) {
+                const container = document.getElementById('cardsList');
+                
+                if (!cards || cards.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Нет карточек</p>';
+                    return;
+                }
+                
+                container.innerHTML = cards.map(card => `
+                    <div class="card-item">
+                        <div class="card-status ${card.status}"></div>
+                        <div class="card-content">
+                            <div class="card-title">${card.title}</div>
+                            <div class="card-meta">${card.category} • ${this.formatDate(card.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            updateRecentActivity(activities) {
+                const container = document.getElementById('recentActivity');
+                
+                if (!activities || activities.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Нет активности</p>';
+                    return;
+                }
+                
+                container.innerHTML = activities.map(activity => `
+                    <div class="card-item">
+                        <div class="card-content">
+                            <div class="card-title">${activity.title}</div>
+                            <div class="card-meta">${this.formatTime(activity.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            setupCharts() {
+                // Views chart
+                const viewsCtx = document.getElementById('viewsChart').getContext('2d');
+                this.charts.views = new Chart(viewsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                        datasets: [{
+                            label: 'Просмотры',
+                            data: [12, 19, 3, 5, 2, 3, 8],
+                            borderColor: '#34d399',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Scans chart
+                const scansCtx = document.getElementById('scansChart').getContext('2d');
+                this.charts.scans = new Chart(scansCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                        datasets: [{
+                            label: 'QR сканы',
+                            data: [5, 8, 2, 3, 1, 2, 4],
+                            backgroundColor: 'rgba(52, 211, 153, 0.8)',
+                            borderColor: '#34d399',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Revenue chart
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                this.charts.revenue = new Chart(revenueCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['QR сканы', 'Прямые продажи', 'Комиссия'],
+                        datasets: [{
+                            data: [60, 30, 10],
+                            backgroundColor: [
+                                '#34d399',
+                                '#10b981',
+                                '#059669'
+                            ],
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            setupEventListeners() {
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const tabName = e.target.dataset.tab;
+                        this.switchTab(tabName);
+                    });
+                });
+            }
+            
+            switchTab(tabName) {
+                // Update tab buttons
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                this.currentTab = tabName;
+            }
+            
+            startAutoRefresh() {
+                // Refresh data every 30 seconds
+                setInterval(() => {
+                    this.loadDashboardData();
+                    this.loadCards();
+                    this.loadRecentActivity();
+                }, 30000);
+            }
+            
+            // Action methods
+            addCard() {
+                window.open('/api/partner/add-card', '_blank');
+            }
+            
+            viewCards() {
+                window.open('/api/partner/cards', '_blank');
+            }
+            
+            generateQR() {
+                window.open('/api/partner/generate-qr', '_blank');
+            }
+            
+            viewAnalytics() {
+                window.open('/api/partner/analytics', '_blank');
+            }
+            
+            viewSettings() {
+                window.open('/api/partner/settings', '_blank');
+            }
+            
+            contactSupport() {
+                window.open('/api/partner/support', '_blank');
+            }
+            
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB',
+                    minimumFractionDigits: 0
+                }).format(amount);
+            }
+            
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ru-RU');
+            }
+            
+            formatTime(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 60000) return 'только что';
+                if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+                return date.toLocaleDateString('ru-RU');
+            }
+            
+            showError(message) {
+                const alert = document.createElement('div');
+                alert.className = 'alert error';
+                alert.textContent = message;
+                document.querySelector('.container').insertBefore(alert, document.querySelector('.stats-grid'));
+                
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        let partner;
+        document.addEventListener('DOMContentLoaded', () => {
+            partner = new PartnerDashboard();
+        });
+    </script>
+</body>
+</html>
