@@ -1,5 +1,6 @@
 from .db_v2 import DatabaseServiceV2, get_db
 from .roles import RoleRepository
+from .models import Base
 from contextlib import contextmanager
 
 
@@ -8,11 +9,12 @@ db_v2 = DatabaseServiceV2()
 role_repository = RoleRepository(db_v2)
 
 __all__ = [
-    'DatabaseServiceV2', 
-    'db_v2', 
+    'DatabaseServiceV2',
+    'db_v2',
     'get_db',
     'RoleRepository',
     'role_repository',
+    'Base',
     'execute_in_transaction'
 ]
 
