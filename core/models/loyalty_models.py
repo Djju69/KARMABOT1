@@ -101,3 +101,15 @@ class Referral(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserActivityLog(BaseModel):
+    """Лог активности пользователя."""
+    id: UUID = Field(default_factory=uuid4)
+    user_id: UUID
+    activity_type: ActivityType
+    points_awarded: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    class Config:
+        from_attributes = True
