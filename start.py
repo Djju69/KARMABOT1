@@ -149,11 +149,15 @@ async def main():
     tasks = []
     
     # Add bot task if BOT_TOKEN is set
-    if os.getenv("BOT_TOKEN"):
+    bot_token = os.getenv("BOT_TOKEN")
+    logger.info(f"🔍 Checking BOT_TOKEN in main(): present={bool(bot_token)}")
+    if bot_token:
         logger.info("🤖 BOT_TOKEN found, adding bot task...")
+        logger.info(f"🔑 BOT_TOKEN length: {len(bot_token)}")
         tasks.append(asyncio.create_task(run_bot()))
     else:
-        logger.warning("BOT_TOKEN не установлен, пропускаем запуск бота")
+        logger.error("❌ BOT_TOKEN not found in environment!")
+        logger.error("💡 Please check Railway Variables for BOT_TOKEN")
     
     # Add web server task if web app is available
     if WEB_IMPORTED:
