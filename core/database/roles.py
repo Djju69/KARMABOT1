@@ -26,17 +26,30 @@ class RoleRepository:
     async def get_user_role(self, user_id: int) -> Optional[RoleEnum]:
         """Получить роль пользователя по его ID."""
         try:
-            query = """
-                SELECT role FROM user_roles 
-                WHERE user_id = $1
-            """
-            result = await self.db.fetchval(query, user_id)
-            
-            if not result and user_id == self.db.admin_id:
+            # For DatabaseServiceV2 (SQLite), use synchronous method
+            if hasattr(self.db, 'get_connection'):
+                # This is DatabaseServiceV2 - use synchronous SQLite
+                conn = self.db.get_connection()
+                cursor = conn.execute(
+                    "SELECT role FROM user_roles WHERE user_id = ?",
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                result = result[0] if result else None
+                conn.close()
+            else:
+                # This is async database service (PostgreSQL)
+                query = """
+                    SELECT role FROM user_roles
+                    WHERE user_id = $1
+                """
+                result = await self.db.fetchval(query, user_id)
+
+            if not result and user_id == getattr(self.db, 'admin_id', None):
                 return RoleEnum.SUPER_ADMIN
-                
+
             return RoleEnum[result] if result else RoleEnum.USER
-            
+
         except Exception as e:
             logger.error(f"Error getting user role: {e}")
             return RoleEnum.USER
@@ -44,18 +57,31 @@ class RoleRepository:
     async def set_user_role(self, user_id: int, role: RoleEnum) -> bool:
         """Установить роль пользователя."""
         try:
-            query = """
-                INSERT INTO user_roles (user_id, role, updated_at)
-                VALUES ($1, $2, NOW())
-                ON CONFLICT (user_id) 
-                DO UPDATE SET 
-                    role = EXCLUDED.role,
-                    updated_at = NOW()
-                RETURNING id
-            """
-            await self.db.execute(query, user_id, role.name)
-            return True
-            
+            # For DatabaseServiceV2 (SQLite), use synchronous method
+            if hasattr(self.db, 'get_connection'):
+                # This is DatabaseServiceV2 - use synchronous SQLite
+                conn = self.db.get_connection()
+                conn.execute("""
+                    INSERT OR REPLACE INTO user_roles (user_id, role, updated_at)
+                    VALUES (?, ?, datetime('now'))
+                """, (user_id, role.name))
+                conn.commit()
+                conn.close()
+                return True
+            else:
+                # This is async database service (PostgreSQL)
+                query = """
+                    INSERT INTO user_roles (user_id, role, updated_at)
+                    VALUES ($1, $2, NOW())
+                    ON CONFLICT (user_id)
+                    DO UPDATE SET
+                        role = EXCLUDED.role,
+                        updated_at = NOW()
+                    RETURNING id
+                """
+                await self.db.execute(query, user_id, role.name)
+                return True
+
         except Exception as e:
             logger.error(f"Error setting user role: {e}")
             return False
@@ -63,13 +89,27 @@ class RoleRepository:
     async def get_users_by_role(self, role: RoleEnum) -> List[int]:
         """Получить список ID пользователей с указанной ролью."""
         try:
-            query = """
-                SELECT user_id FROM user_roles 
-                WHERE role = $1
-            """
-            result = await self.db.fetch(query, role.name)
-            return [row['user_id'] for row in result]
-            
+            # For DatabaseServiceV2 (SQLite), use synchronous method
+            if hasattr(self.db, 'get_connection'):
+                # This is DatabaseServiceV2 - use synchronous SQLite
+                conn = self.db.get_connection()
+                cursor = conn.execute(
+                    "SELECT user_id FROM user_roles WHERE role = ?",
+                    (role.name,)
+                )
+                result = cursor.fetchall()
+                user_ids = [row['user_id'] for row in result]
+                conn.close()
+                return user_ids
+            else:
+                # This is async database service (PostgreSQL)
+                query = """
+                    SELECT user_id FROM user_roles
+                    WHERE role = $1
+                """
+                result = await self.db.fetch(query, role.name)
+                return [row['user_id'] for row in result]
+
         except Exception as e:
             logger.error(f"Error getting users by role: {e}")
             return []

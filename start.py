@@ -33,6 +33,14 @@ def is_railway_environment():
     railway_url = os.getenv('RAILWAY_STATIC_URL')
     logger.info(f"🔍 RAILWAY_ENVIRONMENT: '{railway_env}'")
     logger.info(f"🔍 RAILWAY_STATIC_URL: '{railway_url}'")
+
+    # FORCE WEBHOOK MODE FOR RAILWAY
+    if railway_env or os.getenv('RAILWAY_PROJECT_ID'):
+        logger.info("🚀 FORCE ENABLING WEBHOOK MODE FOR RAILWAY")
+        os.environ['RAILWAY_ENVIRONMENT'] = 'production'
+        os.environ['DISABLE_POLLING'] = 'true'
+        return True
+
     return railway_env is not None
 
 def validate_environment():
