@@ -1,166 +1,276 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-QR Code API endpoints for generating and validating QR codes.
+QR Code routes for KARMABOT1 WebApp
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse, Response
-from typing import Optional, Dict, Any
-import segno
-import json
-from datetime import datetime, timedelta, timezone
-import io
-import base64
-from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
 
-router = APIRouter(prefix="/api/qr", tags=["qr"])
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from typing import Dict, Any, List, Optional
+from datetime import datetime, timedelta
+import uuid
 
-# In-memory storage for demo (replace with database in production)
-qr_codes_db: Dict[str, Dict[str, Any]] = {}
+from core.services.qr_code_service import QRCodeService
+from core.database import get_db
+from core.security import get_current_user, get_current_claims
+from core.logger import get_logger
 
-class QRCodeRequest(BaseModel):
-    """Request model for generating a new QR code"""
-    partner_id: UUID
-    discount_percent: int = Field(..., ge=1, le=100, description="Discount percentage (1-100)")
-    expires_in_hours: Optional[int] = Field(24, ge=1, le=168, description="Expiration time in hours (1-168, default 24)")
-    max_uses: Optional[int] = Field(1, ge=1, description="Maximum number of uses (default 1)")
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")
+logger = get_logger(__name__)
 
-class QRCodeResponse(BaseModel):
-    """Response model for QR code generation"""
-    qr_id: str
-    qr_data_url: str
-    expires_at: datetime
-    remaining_uses: int
+router = APIRouter(prefix="/qr", tags=["qr-codes"])
 
-@router.post("/generate", response_model=QRCodeResponse)
-async def generate_qr_code(request: QRCodeRequest):
+
+@router.get("/codes")
+async def get_user_qr_codes(
+    limit: int = 10,
+    include_used: bool = False,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+) -> List[Dict[str, Any]]:
     """
-    Generate a new QR code for discounts.
+    Get user's QR codes
     
-    The QR code contains a unique ID that can be validated later.
-    """
-    # Generate a unique ID for this QR code
-    qr_id = f"qr_{uuid4().hex[:12]}"
-    
-    # Calculate expiration time
-    expires_at = datetime.now(timezone.utc) + timedelta(hours=request.expires_in_hours)
-    
-    # Create QR code data
-    qr_data = {
-        "qr_id": qr_id,
-        "partner_id": str(request.partner_id),
-        "discount_percent": request.discount_percent,
-        "expires_at": expires_at.isoformat(),
-        "max_uses": request.max_uses,
-        "metadata": request.metadata
-    }
-    
-    # Store in database (in-memory for demo)
-    qr_codes_db[qr_id] = {
-        **qr_data,
-        "remaining_uses": request.max_uses,
-        "is_active": True
-    }
-    
-    # Generate QR code image
-    qr = segno.make(json.dumps(qr_data), error='h')
-    
-    # Convert to data URL
-    buffer = io.BytesIO()
-    qr.save(buffer, kind="png", scale=5)
-    qr_data_url = f"data:image/png;base64,{base64.b64encode(buffer.getvalue()).decode()}"
-    
-    return {
-        "qr_id": qr_id,
-        "qr_data_url": qr_data_url,
-        "expires_at": expires_at,
-        "remaining_uses": request.max_uses
-    }
-
-class QRCodeValidationRequest(BaseModel):
-    """Request model for validating a QR code"""
-    qr_data: str
-
-@router.post("/validate")
-async def validate_qr_code(request: QRCodeValidationRequest):
-    """
-    Validate a scanned QR code and apply discount if valid.
+    Args:
+        limit: Maximum number of codes to return
+        include_used: Whether to include used codes
+        
+    Returns:
+        List of user's QR codes
     """
     try:
+        qr_service = QRCodeService(db)
+        user_id = current_user["user_id"]
+        
+        qr_codes = await qr_service.get_user_qr_codes(
+            user_id=user_id,
+            limit=limit,
+            include_used=include_used
+        )
+        
+        return qr_codes
+        
+    except Exception as e:
+        logger.error(f"Error getting user QR codes: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get QR codes"
+        )
+
+
+@router.post("/codes/generate")
+async def generate_qr_code(
+    request: Dict[str, Any],
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Generate a new QR code for discount redemption
+    
+    Request body:
+        discount_type: str - Type of discount (loyalty_points, percentage, fixed_amount)
+        discount_value: int - Value of the discount
+        expires_in_hours: int - Hours until QR code expires (default: 24)
+        description: str - Description of the discount
+        
+    Returns:
+        QR code data with image
+    """
+    try:
+        qr_service = QRCodeService(db)
+        user_id = current_user["user_id"]
+        
+        # Extract parameters from request
+        discount_type = request.get("discount_type", "loyalty_points")
+        discount_value = request.get("discount_value", 100)
+        expires_in_hours = request.get("expires_in_hours", 24)
+        description = request.get("description", "Скидка за баллы лояльности")
+        
+        # Validate parameters
+        if discount_value <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Discount value must be positive"
+            )
+        
+        if expires_in_hours <= 0 or expires_in_hours > 168:  # Max 7 days
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Expiration must be between 1 and 168 hours"
+            )
+        
+        # Generate QR code
+        qr_code = await qr_service.generate_qr_code(
+            user_id=user_id,
+            discount_type=discount_type,
+            discount_value=discount_value,
+            expires_in_hours=expires_in_hours,
+            description=description
+        )
+        
+        return qr_code
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error generating QR code: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate QR code"
+        )
+
+
+@router.get("/codes/{qr_id}/validate")
+async def validate_qr_code(
+    qr_id: str,
+    db = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Validate a QR code (public endpoint for partners)
+    
+    Args:
+        qr_id: QR code ID to validate
+        
+    Returns:
+        Validation result and discount information
+    """
+    try:
+        qr_service = QRCodeService(db)
+        
+        validation_result = await qr_service.validate_qr_code(qr_id)
+        
+        return validation_result
+        
+    except Exception as e:
+        logger.error(f"Error validating QR code: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to validate QR code"
+        )
+
+
+@router.post("/codes/{qr_id}/redeem")
+async def redeem_qr_code(
+    qr_id: str,
+    request: Dict[str, Any],
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Redeem a QR code for discount (partner endpoint)
+    
+    Args:
+        qr_id: QR code ID to redeem
+        request: Contains partner information
+        
+    Returns:
+        Redemption result
+    """
+    try:
+        qr_service = QRCodeService(db)
+        
+        # Extract partner information
+        partner_id = request.get("partner_id")
+        partner_name = request.get("partner_name", "Unknown Partner")
+        
+        if not partner_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Partner ID is required"
+            )
+        
+        # Redeem QR code
+        redemption_result = await qr_service.redeem_qr_code(
+            qr_id=qr_id,
+            partner_id=partner_id,
+            partner_name=partner_name
+        )
+        
+        return redemption_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error redeeming QR code: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to redeem QR code"
+        )
+
+
+@router.get("/stats")
+async def get_qr_code_stats(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get QR code statistics for current user
+    
+    Returns:
+        QR code statistics
+    """
+    try:
+        qr_service = QRCodeService(db)
+        user_id = current_user["user_id"]
+        
+        stats = await qr_service.get_qr_code_stats(user_id)
+        
+        return stats
+        
+    except Exception as e:
+        logger.error(f"Error getting QR code stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get QR code statistics"
+        )
+
+
+@router.get("/scan")
+async def scan_qr_code(
+    qr_data: str,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Scan and process QR code data
+    
+    Args:
+        qr_data: QR code data string
+        
+    Returns:
+        QR code information and validation result
+    """
+    try:
+        import json
+        
         # Parse QR code data
         try:
-            qr_data = json.loads(request.qr_data)
-            qr_id = qr_data.get("qr_id")
-        except (json.JSONDecodeError, AttributeError):
+            qr_info = json.loads(qr_data)
+            qr_id = qr_info.get("qr_id")
+        except json.JSONDecodeError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid QR code format"
             )
         
-        # Check if QR code exists and is active
-        qr_info = qr_codes_db.get(qr_id)
-        if not qr_info or not qr_info.get("is_active", True):
+        if not qr_id:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="QR code not found or inactive"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="QR code ID not found"
             )
         
-        # Check expiration
-        expires_at = datetime.fromisoformat(qr_info["expires_at"])
-        if datetime.now(timezone.utc) > expires_at:
-            qr_info["is_active"] = False  # Mark as expired
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="QR code has expired"
-            )
+        # Validate QR code
+        qr_service = QRCodeService(db)
+        validation_result = await qr_service.validate_qr_code(qr_id)
         
-        # Check remaining uses
-        if qr_info["remaining_uses"] <= 0:
-            qr_info["is_active"] = False  # Mark as used up
-            raise HTTPException(
-                status_code=status.HTTP_410_GONE,
-                detail="QR code has been used up"
-            )
-        
-        # Decrement remaining uses
-        qr_info["remaining_uses"] -= 1
-        if qr_info["remaining_uses"] <= 0:
-            qr_info["is_active"] = False
-        
-        # Return success response with discount info
         return {
-            "valid": True,
-            "discount_percent": qr_info["discount_percent"],
-            "partner_id": qr_info["partner_id"],
-            "remaining_uses": qr_info["remaining_uses"],
-            "metadata": qr_info.get("metadata", {})
+            "qr_data": qr_info,
+            "validation": validation_result
         }
         
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error scanning QR code: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error validating QR code: {str(e)}"
+            detail="Failed to scan QR code"
         )
-
-@router.get("/{qr_id}/status")
-async def get_qr_status(qr_id: str):
-    """
-    Get the status of a QR code by ID
-    """
-    qr_info = qr_codes_db.get(qr_id)
-    if not qr_info:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="QR code not found"
-        )
-    
-    return {
-        "qr_id": qr_id,
-        "is_active": qr_info.get("is_active", False),
-        "remaining_uses": qr_info.get("remaining_uses", 0),
-        "expires_at": qr_info.get("expires_at"),
-        "discount_percent": qr_info.get("discount_percent"),
-        "partner_id": qr_info.get("partner_id")
-    }

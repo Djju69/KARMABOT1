@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рефералы - KARMABOT1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heart text-danger"></i> KARMABOT1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/catalog">
+                            <i class="fas fa-store"></i> Каталог
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/qr-codes">
+                            <i class="fas fa-qrcode"></i> QR-коды
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/referrals">
+                            <i class="fas fa-users"></i> Рефералы
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <span id="userName">Пользователь</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="fas fa-user-circle"></i> Профиль
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1><i class="fas fa-users text-primary"></i> Реферальная программа</h1>
+                <p class="lead">Приглашайте друзей и получайте бонусы за каждого реферала</p>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Ваша статистика</h5>
+                        <div class="row" id="referralStatsContainer">
+                            <!-- Stats will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Link -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Ваша реферальная ссылка</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" id="referralLink" readonly>
+                            <button class="btn btn-outline-primary" onclick="app.copyReferralLink()">
+                                <i class="fas fa-copy"></i> Копировать
+                            </button>
+                            <button class="btn btn-outline-success" onclick="app.shareReferralLink()">
+                                <i class="fas fa-share"></i> Поделиться
+                            </button>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-gift fa-2x text-success mb-2"></i>
+                                        <h6>Бонус за регистрацию</h6>
+                                        <p class="text-muted">Вы получите 100 баллов за каждого друга</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <i class="fas fa-coins fa-2x text-warning mb-2"></i>
+                                        <h6>Бонус другу</h6>
+                                        <p class="text-muted">Ваш друг получит 50 баллов при регистрации</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Tree -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Ваше реферальное дерево</h5>
+                    </div>
+                    <div class="card-body" id="referralTreeContainer">
+                        <!-- Referral tree will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Referral Earnings -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Доходы от рефералов</h5>
+                    </div>
+                    <div class="card-body" id="referralEarningsContainer">
+                        <!-- Referral earnings will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>KARMABOT1</h5>
+                    <p>Система лояльности и скидок для вашего города</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 KARMABOT1. Все права защищены.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Referral specific functionality
+        class ReferralManager extends KarmaBotApp {
+            constructor() {
+                super();
+                this.referralLink = null;
+            }
+
+            async loadReferralData() {
+                try {
+                    const response = await this.apiCall('/user/referrals');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayReferralData(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading referral data:', error);
+                    this.showError('Ошибка загрузки данных рефералов');
+                }
+            }
+
+            displayReferralData(data) {
+                this.referralLink = data.referral_link;
+                document.getElementById('referralLink').value = data.referral_link;
+                
+                // Display stats
+                this.displayReferralStats(data);
+                
+                // Display referral tree
+                this.displayReferralTree(data);
+                
+                // Display earnings
+                this.displayReferralEarnings(data);
+            }
+
+            displayReferralStats(data) {
+                const container = document.getElementById('referralStatsContainer');
+                container.innerHTML = `
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-primary">${data.total_referrals || 0}</div>
+                            <div class="text-muted">Всего рефералов</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-success">${data.active_referrals || 0}</div>
+                            <div class="text-muted">Активных</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-warning">${data.total_earned || 0}</div>
+                            <div class="text-muted">Заработано</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-info">${data.monthly_referrals || 0}</div>
+                            <div class="text-muted">За месяц</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            displayReferralTree(data) {
+                const container = document.getElementById('referralTreeContainer');
+                if (!data.referral_tree || data.referral_tree.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">У вас пока нет рефералов</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="referral-tree">
+                        ${this.buildReferralTreeHTML(data.referral_tree)}
+                    </div>
+                `;
+            }
+
+            buildReferralTreeHTML(tree, level = 0) {
+                if (!tree || tree.length === 0) return '';
+
+                return tree.map(referral => `
+                    <div class="referral-item" style="margin-left: ${level * 20}px;">
+                        <div class="d-flex align-items-center mb-2 p-2 bg-light rounded">
+                            <div class="me-3">
+                                <i class="fas fa-user-circle fa-2x text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">${referral.name || 'Пользователь'}</h6>
+                                <p class="mb-0 text-muted">
+                                    Зарегистрирован: ${this.formatDate(referral.created_at)}
+                                </p>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-success">+${referral.earned || 0} баллов</span>
+                            </div>
+                        </div>
+                        ${this.buildReferralTreeHTML(referral.children, level + 1)}
+                    </div>
+                `).join('');
+            }
+
+            displayReferralEarnings(data) {
+                const container = document.getElementById('referralEarningsContainer');
+                if (!data.earnings || data.earnings.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">Нет доходов от рефералов</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Реферал</th>
+                                    <th>Уровень</th>
+                                    <th>Сумма</th>
+                                    <th>Источник</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.earnings.map(earning => `
+                                    <tr>
+                                        <td>${this.formatDate(earning.created_at)}</td>
+                                        <td>${earning.referee_name || 'Пользователь'}</td>
+                                        <td>
+                                            <span class="badge bg-${earning.level === 1 ? 'primary' : earning.level === 2 ? 'success' : 'info'}">
+                                                Уровень ${earning.level}
+                                            </span>
+                                        </td>
+                                        <td class="text-success">+${earning.amount} баллов</td>
+                                        <td>${earning.source || 'Регистрация'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
+
+            async copyReferralLink() {
+                if (this.referralLink) {
+                    await this.copyToClipboard(this.referralLink);
+                    this.showSuccess('Реферальная ссылка скопирована!');
+                }
+            }
+
+            shareReferralLink() {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Присоединяйтесь к KARMABOT1!',
+                        text: 'Получите бонусы за регистрацию по моей ссылке',
+                        url: this.referralLink
+                    });
+                } else {
+                    this.copyReferralLink();
+                }
+            }
+
+            init() {
+                super.init();
+                this.loadReferralData();
+            }
+        }
+
+        // Initialize the referral manager
+        const referralManager = new ReferralManager();
+        window.app = referralManager;
+    </script>
+</body>
+</html>

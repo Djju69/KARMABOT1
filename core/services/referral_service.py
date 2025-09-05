@@ -142,7 +142,10 @@ class ReferralService:
         """Process new user signup with referral"""
         try:
             async with get_db() as db:
-                loyalty_service = LoyaltyService(db) # Use dependency injection
+                # Инициализируем сервис лояльности внутри транзакции
+                loyalty_service = LoyaltyService(db)
+                await loyalty_service.initialize() # Важно для загрузки правил
+
                 # Проверяем, что пользователь не приглашал сам себя
                 if referrer_id == referee_id:
                     raise ValidationError("Нельзя пригласить самого себя")
@@ -184,7 +187,7 @@ class ReferralService:
                 await db.flush()  # Получаем ID
 
                 # Бонус приглашающему
-                referrer_transaction = await loyalty_service.add_points(
+                referrer_transaction = await loyalty_service.add_points( # Исправлен вызов на add_points
                     user_id=referrer_id,
                     points=self.referrer_bonus,
                     transaction_type=LoyaltyTransactionType.REFERRAL_BONUS,
@@ -193,7 +196,7 @@ class ReferralService:
                 )
 
                 # Бонус приглашенному
-                referee_transaction = await loyalty_service.add_points(
+                referee_transaction = await loyalty_service.add_points( # Исправлен вызов на add_points
                     user_id=referee_id,
                     points=self.referee_bonus,
                     transaction_type=LoyaltyTransactionType.REFERRAL_BONUS,

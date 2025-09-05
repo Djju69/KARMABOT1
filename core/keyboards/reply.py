@@ -192,16 +192,32 @@ def get_main_menu_reply(lang: str = 'ru') -> ReplyKeyboardMarkup:
             logger.error(f"[MENU] Failed to create first row: {str(e)}", exc_info=True)
             return emergency_keyboard
             
-        # Row 2: Help and Language
+        # Row 2: Profile and QR Codes
         try:
+            profile = safe_get_text("keyboard.profile", lang)
+            qr_codes = "🎫 QR-коды"  # Hardcoded for now
+            
             row2 = [
+                KeyboardButton(text=profile),
+                KeyboardButton(text=qr_codes)
+            ]
+            keyboard.append(row2)
+            logger.debug("[MENU] Added second row")
+            
+        except Exception as e:
+            logger.error(f"[MENU] Failed to create first row: {str(e)}", exc_info=True)
+            return emergency_keyboard
+            
+        # Row 3: Help and Language
+        try:
+            row3 = [
                 KeyboardButton(text=safe_get_text("keyboard.help", lang)),
                 KeyboardButton(text=safe_get_text("keyboard.choose_language", lang))
             ]
-            keyboard.append(row2)
+            keyboard.append(row3)
         except Exception as e:
-            logger.error(f"Failed to create second row: {str(e)}")
-            # If we can't create the second row, at least return the first one
+            logger.error(f"Failed to create third row: {str(e)}")
+            # If we can't create the third row, at least return the first two
             if not keyboard:
                 raise
                 

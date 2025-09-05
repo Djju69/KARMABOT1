@@ -24,6 +24,7 @@ class User(Base):
     transactions = relationship("Transaction", back_populates="user")
     qr_scans = relationship("QRScan", back_populates="user")
     loyalty_points = relationship("LoyaltyPoints", back_populates="user", uselist=False)
+    qr_codes = relationship("QRCode", back_populates="user")
 
 class Transaction(Base):
     __tablename__ = 'transactions'

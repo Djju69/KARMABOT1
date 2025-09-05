@@ -35,3 +35,9 @@ async def show_profile(message: Message, state: FSMContext):
     )
     
     await message.answer(profile_text)
+
+@router.message(F.text == "🎫 QR-коды")
+async def show_qr_codes_menu(message: Message, state: FSMContext):
+    """Показ меню QR-кодов"""
+    from core.handlers.qr_code_handlers import show_qr_codes_menu as qr_menu
+    await qr_menu(message, state)

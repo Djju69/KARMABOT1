@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль - KARMABOT1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heart text-danger"></i> KARMABOT1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/catalog">
+                            <i class="fas fa-store"></i> Каталог
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/qr-codes">
+                            <i class="fas fa-qrcode"></i> QR-коды
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/referrals">
+                            <i class="fas fa-users"></i> Рефералы
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle active" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <span id="userName">Пользователь</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item active" href="/profile">
+                                <i class="fas fa-user-circle"></i> Профиль
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Profile Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="profile-header rounded">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-md-3 text-center">
+                                <img src="https://via.placeholder.com/120x120/007bff/ffffff?text=U" 
+                                     class="profile-avatar" alt="Profile Avatar" id="profileAvatar">
+                            </div>
+                            <div class="col-md-9">
+                                <h2 id="profileName">Загрузка...</h2>
+                                <p class="lead mb-0" id="profileStatus">Пользователь</p>
+                                <div class="profile-stats" id="profileStats">
+                                    <!-- Stats will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="row">
+            <div class="col-12">
+                <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" 
+                                data-bs-target="#overview" type="button" role="tab">
+                            <i class="fas fa-chart-line"></i> Обзор
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="loyalty-tab" data-bs-toggle="tab" 
+                                data-bs-target="#loyalty" type="button" role="tab">
+                            <i class="fas fa-coins"></i> Лояльность
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="referrals-tab" data-bs-toggle="tab" 
+                                data-bs-target="#referrals" type="button" role="tab">
+                            <i class="fas fa-users"></i> Рефералы
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="activity-tab" data-bs-toggle="tab" 
+                                data-bs-target="#activity" type="button" role="tab">
+                            <i class="fas fa-history"></i> Активность
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="profileTabContent">
+                    <!-- Overview Tab -->
+                    <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Общая статистика</h5>
+                                    </div>
+                                    <div class="card-body" id="overviewStats">
+                                        <!-- Overview stats will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Быстрые действия</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="d-grid gap-2">
+                                            <a href="/qr-codes/create" class="btn btn-primary">
+                                                <i class="fas fa-qrcode"></i> Создать QR-код
+                                            </a>
+                                            <a href="/referrals" class="btn btn-success">
+                                                <i class="fas fa-share-alt"></i> Поделиться реферальной ссылкой
+                                            </a>
+                                            <a href="/catalog" class="btn btn-info">
+                                                <i class="fas fa-store"></i> Найти заведения
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loyalty Tab -->
+                    <div class="tab-pane fade" id="loyalty" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-md-4">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-coins fa-3x text-warning mb-3"></i>
+                                        <h3 class="text-warning" id="loyaltyBalance">0</h3>
+                                        <p class="text-muted">Текущий баланс</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-arrow-up fa-3x text-success mb-3"></i>
+                                        <h3 class="text-success" id="loyaltyEarned">0</h3>
+                                        <p class="text-muted">Заработано всего</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <i class="fas fa-arrow-down fa-3x text-danger mb-3"></i>
+                                        <h3 class="text-danger" id="loyaltySpent">0</h3>
+                                        <p class="text-muted">Потрачено всего</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">История транзакций</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div id="loyaltyTransactions">
+                                            <!-- Transactions will be loaded here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Referrals Tab -->
+                    <div class="tab-pane fade" id="referrals" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Реферальная программа</h5>
+                                    </div>
+                                    <div class="card-body" id="referralsContent">
+                                        <!-- Referrals content will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Activity Tab -->
+                    <div class="tab-pane fade" id="activity" role="tabpanel">
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">История активности</h5>
+                                    </div>
+                                    <div class="card-body" id="activityContent">
+                                        <!-- Activity content will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>KARMABOT1</h5>
+                    <p>Система лояльности и скидок для вашего города</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 KARMABOT1. Все права защищены.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Profile specific functionality
+        class ProfileManager extends KarmaBotApp {
+            constructor() {
+                super();
+                this.setupTabListeners();
+            }
+
+            setupTabListeners() {
+                // Tab change listeners
+                document.getElementById('loyalty-tab').addEventListener('click', () => {
+                    this.loadLoyaltyData();
+                });
+
+                document.getElementById('referrals-tab').addEventListener('click', () => {
+                    this.loadReferralsData();
+                });
+
+                document.getElementById('activity-tab').addEventListener('click', () => {
+                    this.loadActivityData();
+                });
+            }
+
+            async loadProfileData() {
+                try {
+                    const response = await this.apiCall('/user/profile');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayProfileData(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading profile data:', error);
+                    this.showError('Ошибка загрузки профиля');
+                }
+            }
+
+            displayProfileData(data) {
+                // Update profile header
+                document.getElementById('profileName').textContent = 
+                    `${data.first_name || 'Пользователь'} ${data.last_name || ''}`.trim();
+                
+                document.getElementById('profileStatus').textContent = 
+                    data.is_partner ? 'Партнер' : 'Пользователь';
+
+                // Update profile stats
+                const statsContainer = document.getElementById('profileStats');
+                statsContainer.innerHTML = `
+                    <div class="profile-stat">
+                        <span class="value">${data.loyalty_balance || 0}</span>
+                        <span class="label">Баллы</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="value">${data.referrals_count || 0}</span>
+                        <span class="label">Рефералы</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="value">${data.qr_codes_count || 0}</span>
+                        <span class="label">QR-коды</span>
+                    </div>
+                `;
+
+                // Update overview stats
+                this.displayOverviewStats(data);
+            }
+
+            displayOverviewStats(data) {
+                const container = document.getElementById('overviewStats');
+                container.innerHTML = `
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center mb-3">
+                                <div class="h4 text-primary">${data.loyalty_balance || 0}</div>
+                                <div class="text-muted">Баллы лояльности</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center mb-3">
+                                <div class="h4 text-success">${data.referrals_count || 0}</div>
+                                <div class="text-muted">Рефералы</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center mb-3">
+                                <div class="h4 text-info">${data.qr_codes_count || 0}</div>
+                                <div class="text-muted">QR-коды</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center mb-3">
+                                <div class="h4 text-warning">${data.total_earned || 0}</div>
+                                <div class="text-muted">Заработано</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async loadLoyaltyData() {
+                try {
+                    const response = await this.apiCall('/user/loyalty/balance');
+                    if (response.ok) {
+                        const data = await response.json();
+                        document.getElementById('loyaltyBalance').textContent = data.balance || 0;
+                    }
+
+                    const transactionsResponse = await this.apiCall('/user/loyalty/transactions');
+                    if (transactionsResponse.ok) {
+                        const transactions = await transactionsResponse.json();
+                        this.displayLoyaltyTransactions(transactions);
+                    }
+                } catch (error) {
+                    console.error('Error loading loyalty data:', error);
+                }
+            }
+
+            displayLoyaltyTransactions(transactions) {
+                const container = document.getElementById('loyaltyTransactions');
+                if (!transactions || transactions.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">Нет транзакций</p>';
+                    return;
+                }
+
+                container.innerHTML = transactions.map(transaction => `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <h6 class="mb-1">${transaction.description}</h6>
+                            <small class="text-muted">${this.formatDate(transaction.created_at)}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-${transaction.amount > 0 ? 'success' : 'danger'}">
+                                ${transaction.amount > 0 ? '+' : ''}${transaction.amount}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async loadReferralsData() {
+                try {
+                    const response = await this.apiCall('/user/referrals');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayReferralsData(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading referrals data:', error);
+                }
+            }
+
+            displayReferralsData(data) {
+                const container = document.getElementById('referralsContent');
+                container.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-link fa-3x text-primary mb-3"></i>
+                                    <h5>Ваша реферальная ссылка</h5>
+                                    <div class="input-group mb-3">
+                                        <input type="text" class="form-control" value="${data.referral_link}" readonly>
+                                        <button class="btn btn-outline-primary" onclick="app.copyToClipboard('${data.referral_link}')">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-line fa-3x text-success mb-3"></i>
+                                    <h5>Статистика рефералов</h5>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <div class="h4 text-primary">${data.total_referrals}</div>
+                                            <div class="text-muted">Всего рефералов</div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="h4 text-success">${data.total_earned}</div>
+                                            <div class="text-muted">Заработано</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async loadActivityData() {
+                try {
+                    const response = await this.apiCall('/user/activity');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayActivityData(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading activity data:', error);
+                }
+            }
+
+            displayActivityData(activities) {
+                const container = document.getElementById('activityContent');
+                if (!activities || activities.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">Нет активности</p>';
+                    return;
+                }
+
+                container.innerHTML = activities.map(activity => `
+                    <div class="d-flex align-items-center mb-3 p-3 bg-light rounded">
+                        <div class="me-3">
+                            <i class="fas fa-${this.getActivityIcon(activity.type)} fa-2x text-${this.getActivityColor(activity.type)}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${activity.title}</h6>
+                            <p class="mb-0 text-muted">${activity.description}</p>
+                        </div>
+                        <div class="text-muted">
+                            <small>${this.formatDate(activity.created_at)}</small>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            init() {
+                super.init();
+                this.loadProfileData();
+            }
+        }
+
+        // Initialize the profile manager
+        const profileManager = new ProfileManager();
+        window.app = profileManager;
+    </script>
+</body>
+</html>
