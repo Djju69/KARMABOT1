@@ -79,12 +79,12 @@ def build_dispatcher() -> Dispatcher:
         except ImportError as e:
             logging.warning(f"Profile router not found: {e}")
         
-        try:
-            from core.handlers.partner import get_partner_router
-            dp.include_router(get_partner_router())
-            logging.info("Partner router registered")
-        except ImportError as e:
-            logging.warning(f"Partner router not found: {e}")
+            try:
+        from core.handlers.partner import partner_router
+        dp.include_router(partner_router)
+        logging.info("Partner router registered")
+    except ImportError as e:
+        logging.warning(f"Partner router not found: {e}")
     
     try:
         from core.handlers.activity import get_activity_router
@@ -94,7 +94,7 @@ def build_dispatcher() -> Dispatcher:
         logging.warning(f"Activity router not found: {e}")
     
     try:
-        from core.handlers.category_handlers import get_category_router
+        from core.handlers.category_handlers_v2 import get_category_router
         dp.include_router(get_category_router())
         logging.info("Category router registered")
     except ImportError as e:
