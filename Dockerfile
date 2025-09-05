@@ -30,5 +30,5 @@ COPY . .
 # Expose port (Railway will set PORT env)
 EXPOSE 8080
 
-# Run minimal health server first to test
-CMD ["python", "web/minimal_health.py"]
+# Run start.py which handles both bot and web server
+CMD ["python", "start.py"]

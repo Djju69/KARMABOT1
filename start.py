@@ -59,8 +59,10 @@ def validate_environment():
     else:
         logger.info("💻 Local environment, using polling")
 
-# Try to import web app
+# Try to import web app with delay to avoid circular imports
 try:
+    import time
+    time.sleep(1)  # Даем время для завершения инициализации
     from web.main import app
     WEB_IMPORTED = True
 except ImportError as e:
