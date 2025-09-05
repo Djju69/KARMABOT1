@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Партнерский кабинет - KarmaBot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <img src="/static/images/logo.png" alt="KarmaBot" class="logo-small">
+                        <h6 class="text-muted">Партнерский кабинет</h6>
+                    </div>
+                    
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#dashboard" data-section="dashboard">
+                                <i class="fas fa-tachometer-alt"></i> Дашборд
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#cards" data-section="cards">
+                                <i class="fas fa-credit-card"></i> Мои карточки
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#statistics" data-section="statistics">
+                                <i class="fas fa-chart-bar"></i> Статистика
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#qr-codes" data-section="qr-codes">
+                                <i class="fas fa-qrcode"></i> QR-коды
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#settings" data-section="settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a>
+                        </li>
+                    </ul>
+                    
+                    <hr>
+                    <div class="text-center">
+                        <a href="/" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-home"></i> Главная
+                        </a>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Партнерский кабинет</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
+                                <i class="fas fa-sync-alt"></i> Обновить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="content-section">
+                    <div class="row mb-4">
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-primary shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                                Всего карточек
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-cards">0</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-credit-card fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-success shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                                Активные карточки
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="active-cards">0</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-info shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                                Всего просмотров
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-views">0</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-eye fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-xl-3 col-md-6 mb-4">
+                            <div class="card border-left-warning shadow h-100 py-2">
+                                <div class="card-body">
+                                    <div class="row no-gutters align-items-center">
+                                        <div class="col mr-2">
+                                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                                Всего сканирований
+                                            </div>
+                                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="total-scans">0</div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-qrcode fa-2x text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Популярные карточки</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="popular-cards-list">
+                                        <div class="text-center text-muted">
+                                            <i class="fas fa-spinner fa-spin"></i> Загрузка...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Быстрые действия</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-primary" onclick="showSection('cards')">
+                                            <i class="fas fa-plus"></i> Добавить карточку
+                                        </button>
+                                        <button class="btn btn-success" onclick="showSection('qr-codes')">
+                                            <i class="fas fa-qrcode"></i> Создать QR-код
+                                        </button>
+                                        <button class="btn btn-info" onclick="showSection('statistics')">
+                                            <i class="fas fa-chart-bar"></i> Посмотреть статистику
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Section -->
+                <div id="cards-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Мои карточки</h2>
+                        <button class="btn btn-primary" onclick="showAddCardModal()">
+                            <i class="fas fa-plus"></i> Добавить карточку
+                        </button>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <select class="form-select" id="status-filter">
+                                <option value="">Все статусы</option>
+                                <option value="pending">На модерации</option>
+                                <option value="approved">Одобрено</option>
+                                <option value="published">Опубликовано</option>
+                                <option value="archived">Архив</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="category-filter">
+                                <option value="">Все категории</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="search-input" placeholder="Поиск по названию...">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100" onclick="filterCards()">
+                                <i class="fas fa-search"></i> Поиск
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cards List -->
+                    <div id="cards-list">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> Загрузка карточек...
+                        </div>
+                    </div>
+
+                    <!-- Pagination -->
+                    <nav aria-label="Cards pagination" class="mt-4">
+                        <ul class="pagination justify-content-center" id="cards-pagination">
+                        </ul>
+                    </nav>
+                </div>
+
+                <!-- Statistics Section -->
+                <div id="statistics-section" class="content-section" style="display: none;">
+                    <h2>Статистика</h2>
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Конверсия</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <div class="h3 text-primary" id="conversion-rate">0%</div>
+                                        <p class="text-muted">Просмотры → Сканирования</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card shadow mb-4">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Активность за 30 дней</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center">
+                                        <div class="h3 text-success" id="recent-scans">0</div>
+                                        <p class="text-muted">Сканирований за месяц</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QR Codes Section -->
+                <div id="qr-codes-section" class="content-section" style="display: none;">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>QR-коды</h2>
+                        <button class="btn btn-primary" onclick="showCreateQRModal()">
+                            <i class="fas fa-plus"></i> Создать QR-код
+                        </button>
+                    </div>
+
+                    <div id="qr-codes-list">
+                        <div class="text-center text-muted">
+                            <i class="fas fa-spinner fa-spin"></i> Загрузка QR-кодов...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings-section" class="content-section" style="display: none;">
+                    <h2>Настройки</h2>
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <div class="card shadow">
+                                <div class="card-header py-3">
+                                    <h6 class="m-0 font-weight-bold text-primary">Профиль партнера</h6>
+                                </div>
+                                <div class="card-body">
+                                    <form id="partner-settings-form">
+                                        <div class="mb-3">
+                                            <label for="partner-name" class="form-label">Название компании</label>
+                                            <input type="text" class="form-control" id="partner-name" placeholder="Введите название компании">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="partner-phone" class="form-label">Телефон</label>
+                                            <input type="tel" class="form-control" id="partner-phone" placeholder="+7 (999) 123-45-67">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="partner-email" class="form-label">Email</label>
+                                            <input type="email" class="form-control" id="partner-email" placeholder="partner@example.com">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Сохранить изменения
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Add Card Modal -->
+    <div class="modal fade" id="addCardModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить карточку</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-card-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="card-category" class="form-label">Категория *</label>
+                                    <select class="form-select" id="card-category" required>
+                                        <option value="">Выберите категорию</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="card-subcategory" class="form-label">Подкатегория</label>
+                                    <select class="form-select" id="card-subcategory">
+                                        <option value="">Выберите подкатегорию</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="card-city" class="form-label">Город</label>
+                                    <select class="form-select" id="card-city">
+                                        <option value="">Выберите город</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="card-area" class="form-label">Район</label>
+                                    <select class="form-select" id="card-area">
+                                        <option value="">Выберите район</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-title" class="form-label">Название *</label>
+                            <input type="text" class="form-control" id="card-title" required maxlength="120">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="card-description" rows="3" maxlength="2000"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-contact" class="form-label">Контакты</label>
+                            <input type="text" class="form-control" id="card-contact" maxlength="200">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-address" class="form-label">Адрес</label>
+                            <input type="text" class="form-control" id="card-address" maxlength="300">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-discount" class="form-label">Скидка/Предложение</label>
+                            <input type="text" class="form-control" id="card-discount" maxlength="200">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="card-maps" class="form-label">Ссылка на Google Maps</label>
+                            <input type="url" class="form-control" id="card-maps" maxlength="500">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitCard()">
+                        <i class="fas fa-save"></i> Создать карточку
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create QR Modal -->
+    <div class="modal fade" id="createQRModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Создать QR-код</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-qr-form">
+                        <div class="mb-3">
+                            <label for="qr-card" class="form-label">Карточка *</label>
+                            <select class="form-select" id="qr-card" required>
+                                <option value="">Выберите карточку</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="qr-value" class="form-label">Номинал (баллы) *</label>
+                            <input type="number" class="form-control" id="qr-value" required min="1" max="10000">
+                        </div>
+                        <div class="mb-3">
+                            <label for="qr-expires" class="form-label">Срок действия (дни)</label>
+                            <input type="number" class="form-control" id="qr-expires" min="1" max="365" value="30">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitQR()">
+                        <i class="fas fa-qrcode"></i> Создать QR-код
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/partner-dashboard.js"></script>
+</body>
+</html>
