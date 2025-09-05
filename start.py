@@ -5,6 +5,7 @@ import asyncio
 import logging
 import uvicorn
 from pathlib import Path
+from datetime import datetime
 
 # Add project root to path
 project_root = str(Path(__file__).parent.absolute())
@@ -144,6 +145,7 @@ async def run_web_server():
 async def main():
     """Одновременный запуск бота и веб-сервера"""
     logger.info("🚀 Starting main application...")
+    print("🚨 DEBUG: Code updated at", datetime.now())  # Debug print
     validate_environment()  # Проверяем переменные окружения
     logger.info("✅ Environment validation passed")
     tasks = []
