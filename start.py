@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 print("="*60)
-print("🚨 START.PY LOADED - DEPLOYMENT MARKER V4.0")
+print("🚨 START.PY LOADED - DEPLOYMENT MARKER V5.0")
 print("⏰ TIME:", __import__('datetime').datetime.now())
-print("🎯 RAILWAY WEBHOOK FORCE ENABLED")
+print("🎯 RAILWAY WEBHOOK FORCE ENABLED - ALWAYS")
+print("✅ POLLING DISABLED - WEBHOOK ONLY")
 print("="*60)
 
 import os
@@ -53,14 +54,12 @@ def is_railway_environment():
     logger.info(f"🔍 RAILWAY_ENVIRONMENT: '{railway_env}'")
     logger.info(f"🔍 RAILWAY_STATIC_URL: '{railway_url}'")
 
-    # FORCE WEBHOOK MODE FOR RAILWAY
-    if railway_env or os.getenv('RAILWAY_PROJECT_ID'):
-        logger.info("🚀 FORCE ENABLING WEBHOOK MODE FOR RAILWAY")
-        os.environ['RAILWAY_ENVIRONMENT'] = 'production'
-        os.environ['DISABLE_POLLING'] = 'true'
-        return True
-
-    return railway_env is not None
+    # FORCE WEBHOOK MODE FOR RAILWAY - ALWAYS RETURN TRUE
+    logger.info("🚀 FORCE ENABLING WEBHOOK MODE FOR RAILWAY (ALWAYS)")
+    os.environ['RAILWAY_ENVIRONMENT'] = 'production'
+    os.environ['DISABLE_POLLING'] = 'true'
+    os.environ['RAILWAY_STATIC_URL'] = 'https://web-production-d51c7.up.railway.app/'
+    return True
 
 def validate_environment():
     """Проверка обязательных переменных окружения"""
@@ -147,8 +146,15 @@ async def run_bot():
         from bot.bot import start as start_bot
         logger.info("✅ Bot module imported successfully")
 
-        logger.info("🚀 Starting bot...")
-        await start_bot()
+        # ПРОВЕРКА РЕЖИМА - НЕ ЗАПУСКАТЬ POLLING В RAILWAY!
+        if os.getenv('RAILWAY_ENVIRONMENT'):
+            logger.info("🌐 RAILWAY MODE: Skipping polling, using webhook only")
+            logger.info("✅ Bot initialized for webhook mode")
+            # В Railway режиме просто завершаемся - webhook обрабатывается веб-сервером
+            return
+        else:
+            logger.info("💻 LOCAL MODE: Starting polling...")
+            await start_bot()
 
     except ImportError as e:
         logger.error(f"❌ Bot import error: {e}", exc_info=True)
@@ -181,29 +187,31 @@ async def main():
     print("🚨 DEBUG: Code updated at", datetime.now())  # Debug print
     validate_environment()  # Проверяем переменные окружения
     logger.info("✅ Environment validation passed")
-    tasks = []
-    
-    # Add bot task if BOT_TOKEN is set
-    bot_token = os.getenv("BOT_TOKEN")
-    logger.info(f"🔍 Checking BOT_TOKEN in main(): present={bool(bot_token)}")
-    if bot_token:
-        logger.info("🤖 BOT_TOKEN found, adding bot task...")
-        logger.info(f"🔑 BOT_TOKEN length: {len(bot_token)}")
-        tasks.append(asyncio.create_task(run_bot()))
+
+    # ПРОВЕРКА РЕЖИМА ЗАПУСКА
+    is_railway = is_railway_environment()
+    logger.info(f"🎯 Deployment mode: {'RAILWAY (webhook)' if is_railway else 'LOCAL (polling)'}")
+
+    # В Railway режиме - ТОЛЬКО webhook сервер
+    if is_railway:
+        logger.info("🌐 RAILWAY MODE: Starting webhook server only")
+        if WEB_IMPORTED:
+            await run_web_server()
+        else:
+            logger.error("❌ Web app not imported in Railway mode!")
+            return
+
+    # В локальном режиме - ТОЛЬКО polling
     else:
-        logger.error("❌ BOT_TOKEN not found in environment!")
-        logger.error("💡 Please check Railway Variables for BOT_TOKEN")
-    
-    # Add web server task if web app is available
-    if WEB_IMPORTED:
-        tasks.append(asyncio.create_task(run_web_server()))
-    
-    if not tasks:
-        logger.error("Нет доступных сервисов для запуска")
-        return
-    
-    # Wait for all tasks to complete
-    await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("💻 LOCAL MODE: Starting polling only")
+        bot_token = os.getenv("BOT_TOKEN")
+        if bot_token:
+            logger.info("🤖 BOT_TOKEN found, starting polling...")
+            await run_bot()
+        else:
+            logger.error("❌ BOT_TOKEN not found for local polling!")
+            logger.error("💡 Set BOT_TOKEN environment variable")
+            return
 
 if __name__ == "__main__":
     logger.info("🚀 Запускаем сервисы...")
