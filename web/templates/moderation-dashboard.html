@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Модерация - KARMABOT1</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+        
+        .moderation-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .card-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .card-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .card-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .status-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+        
+        .status-published {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .status-rejected {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .card-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        .card-description {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: #22c55e;
+            color: #000;
+        }
+        
+        .btn-primary:hover {
+            background: #16a34a;
+            transform: translateY(-1px);
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+        
+        .btn-warning {
+            background: #f59e0b;
+            color: #000;
+        }
+        
+        .btn-warning:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .priority-badge {
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .priority-high {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .priority-normal {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+        }
+        
+        .priority-low {
+            background: rgba(107, 114, 128, 0.2);
+            color: #6b7280;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #60a5fa;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background: #60a5fa;
+            border-color: #60a5fa;
+        }
+        
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            opacity: 0.6;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .page-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .page-btn.active {
+            background: #60a5fa;
+            border-color: #60a5fa;
+        }
+        
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Модерация</h1>
+        <p>Управление карточками и контентом</p>
+    </div>
+    
+    <div class="container">
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="pendingCount">-</div>
+                <div class="stat-label">Ожидают</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="publishedCount">-</div>
+                <div class="stat-label">Опубликованы</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="rejectedCount">-</div>
+                <div class="stat-label">Отклонены</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="approvalRate">-</div>
+                <div class="stat-label">% Одобрения</div>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">Все</button>
+            <button class="filter-btn" data-filter="pending">Ожидают</button>
+            <button class="filter-btn" data-filter="published">Опубликованы</button>
+            <button class="filter-btn" data-filter="rejected">Отклонены</button>
+            <button class="filter-btn" data-filter="featured">Рекомендуемые</button>
+        </div>
+        
+        <!-- Cards List -->
+        <div class="moderation-section">
+            <div class="section-title">
+                📋 Карточки для модерации
+            </div>
+            
+            <div id="cardsList">
+                <div class="loading"></div>
+                <p style="text-align: center; margin-top: 10px;">Загрузка...</p>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination hidden" id="pagination">
+                <button class="page-btn" id="prevPage">◀</button>
+                <span class="page-btn" id="currentPage">1</span>
+                <button class="page-btn" id="nextPage">▶</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ModerationDashboard {
+            constructor() {
+                this.currentFilter = 'all';
+                this.currentPage = 1;
+                this.cardsPerPage = 10;
+                this.cards = [];
+                this.stats = {};
+                
+                this.init();
+            }
+            
+            async init() {
+                // Initialize Telegram WebApp
+                this.initTelegramWebApp();
+                
+                // Load initial data
+                await this.loadStats();
+                await this.loadCards();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+            }
+            
+            initTelegramWebApp() {
+                try {
+                    if (window.Telegram && Telegram.WebApp) {
+                        Telegram.WebApp.ready();
+                        Telegram.WebApp.expand();
+                    }
+                } catch (e) {
+                    console.warn('Telegram WebApp not available:', e);
+                }
+            }
+            
+            async loadStats() {
+                try {
+                    const response = await fetch('/api/moderation/stats');
+                    if (response.ok) {
+                        this.stats = await response.json();
+                        this.updateStatsDisplay();
+                    }
+                } catch (e) {
+                    console.error('Failed to load stats:', e);
+                }
+            }
+            
+            async loadCards() {
+                try {
+                    const response = await fetch(`/api/moderation/cards?page=${this.currentPage}&limit=${this.cardsPerPage}&filter=${this.currentFilter}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.cards = data.cards || [];
+                        this.updateCardsDisplay();
+                        this.updatePagination(data.total || 0);
+                    }
+                } catch (e) {
+                    console.error('Failed to load cards:', e);
+                    this.showError('Ошибка загрузки карточек');
+                }
+            }
+            
+            updateStatsDisplay() {
+                document.getElementById('pendingCount').textContent = this.stats.pending_cards || 0;
+                document.getElementById('publishedCount').textContent = this.stats.published_cards || 0;
+                document.getElementById('rejectedCount').textContent = this.stats.rejected_cards || 0;
+                document.getElementById('approvalRate').textContent = 
+                    this.stats.approval_rate ? (this.stats.approval_rate * 100).toFixed(1) + '%' : '0%';
+            }
+            
+            updateCardsDisplay() {
+                const container = document.getElementById('cardsList');
+                
+                if (this.cards.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p>Нет карточек для отображения</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = this.cards.map(card => this.renderCard(card)).join('');
+            }
+            
+            renderCard(card) {
+                const priorityClass = this.getPriorityClass(card.priority_level);
+                const statusClass = `status-${card.status}`;
+                
+                return `
+                    <div class="card-item" data-card-id="${card.id}">
+                        <div class="card-header">
+                            <div class="card-title">${card.title}</div>
+                            <div class="card-status ${statusClass}">${this.getStatusText(card.status)}</div>
+                        </div>
+                        
+                        <div class="card-meta">
+                            <span>ID: #${card.id}</span>
+                            <span>Партнер: ${card.partner_id}</span>
+                            <span class="priority-badge ${priorityClass}">Приоритет: ${card.priority_level}</span>
+                        </div>
+                        
+                        <div class="card-description">
+                            ${card.description ? card.description.substring(0, 150) + '...' : 'Описание отсутствует'}
+                        </div>
+                        
+                        <div class="card-actions">
+                            ${this.renderCardActions(card)}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            renderCardActions(card) {
+                const actions = [];
+                
+                if (card.status === 'pending') {
+                    actions.push(`<button class="btn btn-primary" onclick="moderation.approveCard(${card.id})">✅ Одобрить</button>`);
+                    actions.push(`<button class="btn btn-danger" onclick="moderation.rejectCard(${card.id})">❌ Отклонить</button>`);
+                    actions.push(`<button class="btn btn-warning" onclick="moderation.featureCard(${card.id})">⭐ Рекомендуемое</button>`);
+                }
+                
+                if (card.status === 'published') {
+                    actions.push(`<button class="btn btn-warning" onclick="moderation.featureCard(${card.id})">⭐ Рекомендуемое</button>`);
+                    actions.push(`<button class="btn btn-secondary" onclick="moderation.archiveCard(${card.id})">🗂️ Архив</button>`);
+                }
+                
+                actions.push(`<button class="btn btn-secondary" onclick="moderation.viewCardDetails(${card.id})">👁️ Подробнее</button>`);
+                
+                return actions.join('');
+            }
+            
+            getPriorityClass(priority) {
+                if (priority >= 50) return 'priority-high';
+                if (priority >= 10) return 'priority-normal';
+                return 'priority-low';
+            }
+            
+            getStatusText(status) {
+                const statusMap = {
+                    'pending': 'Ожидает',
+                    'published': 'Опубликована',
+                    'rejected': 'Отклонена',
+                    'archived': 'Архив'
+                };
+                return statusMap[status] || status;
+            }
+            
+            updatePagination(total) {
+                const pagination = document.getElementById('pagination');
+                const totalPages = Math.ceil(total / this.cardsPerPage);
+                
+                if (totalPages <= 1) {
+                    pagination.classList.add('hidden');
+                    return;
+                }
+                
+                pagination.classList.remove('hidden');
+                document.getElementById('currentPage').textContent = this.currentPage;
+                document.getElementById('prevPage').disabled = this.currentPage <= 1;
+                document.getElementById('nextPage').disabled = this.currentPage >= totalPages;
+            }
+            
+            setupEventListeners() {
+                // Filter buttons
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentFilter = e.target.dataset.filter;
+                        this.currentPage = 1;
+                        this.loadCards();
+                    });
+                });
+                
+                // Pagination
+                document.getElementById('prevPage').addEventListener('click', () => {
+                    if (this.currentPage > 1) {
+                        this.currentPage--;
+                        this.loadCards();
+                    }
+                });
+                
+                document.getElementById('nextPage').addEventListener('click', () => {
+                    this.currentPage++;
+                    this.loadCards();
+                });
+            }
+            
+            async approveCard(cardId) {
+                try {
+                    const response = await fetch(`/api/moderation/approve/${cardId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        this.showSuccess('Карточка одобрена');
+                        this.loadStats();
+                        this.loadCards();
+                    } else {
+                        this.showError('Ошибка одобрения карточки');
+                    }
+                } catch (e) {
+                    this.showError('Ошибка сети');
+                }
+            }
+            
+            async rejectCard(cardId) {
+                const reason = prompt('Причина отклонения:');
+                if (!reason) return;
+                
+                try {
+                    const response = await fetch(`/api/moderation/reject/${cardId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason })
+                    });
+                    
+                    if (response.ok) {
+                        this.showSuccess('Карточка отклонена');
+                        this.loadStats();
+                        this.loadCards();
+                    } else {
+                        this.showError('Ошибка отклонения карточки');
+                    }
+                } catch (e) {
+                    this.showError('Ошибка сети');
+                }
+            }
+            
+            async featureCard(cardId) {
+                try {
+                    const response = await fetch(`/api/moderation/feature/${cardId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        this.showSuccess('Карточка отмечена как рекомендуемая');
+                        this.loadCards();
+                    } else {
+                        this.showError('Ошибка обновления карточки');
+                    }
+                } catch (e) {
+                    this.showError('Ошибка сети');
+                }
+            }
+            
+            async archiveCard(cardId) {
+                try {
+                    const response = await fetch(`/api/moderation/archive/${cardId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (response.ok) {
+                        this.showSuccess('Карточка перемещена в архив');
+                        this.loadStats();
+                        this.loadCards();
+                    } else {
+                        this.showError('Ошибка архивирования карточки');
+                    }
+                } catch (e) {
+                    this.showError('Ошибка сети');
+                }
+            }
+            
+            viewCardDetails(cardId) {
+                // This would open a detailed view
+                alert(`Просмотр деталей карточки #${cardId}`);
+            }
+            
+            showSuccess(message) {
+                // Simple success notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; z-index: 1000;
+                    background: #22c55e; color: white; padding: 12px 20px;
+                    border-radius: 8px; font-weight: 600;
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 3000);
+            }
+            
+            showError(message) {
+                // Simple error notification
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed; top: 20px; right: 20px; z-index: 1000;
+                    background: #ef4444; color: white; padding: 12px 20px;
+                    border-radius: 8px; font-weight: 600;
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 3000);
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        let moderation;
+        document.addEventListener('DOMContentLoaded', () => {
+            moderation = new ModerationDashboard();
+        });
+    </script>
+</body>
+</html>
