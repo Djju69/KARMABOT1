@@ -11,6 +11,7 @@ import logging
 # Импорт наших модулей
 from . import health
 from .test_endpoints import router as test_router
+from .routes_qr_webapp import router as qr_webapp_router
 from core.monitoring import setup_monitoring
 from contextlib import asynccontextmanager
 from core.services.cache import init_cache_service, get_cache_service
@@ -389,6 +390,7 @@ if not MINIMAL_WEB:
     app.include_router(bot_hooks_router, prefix="/api/bot", tags=["bot"])
     app.include_router(loyalty_router, prefix="/api/loyalty", tags=["loyalty"])
     app.include_router(qr_router)
+    app.include_router(qr_webapp_router)
 else:
     # Minimal health check endpoint
     @app.get("/health")

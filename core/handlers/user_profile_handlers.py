@@ -310,12 +310,18 @@ async def scan_qr_code(callback: CallbackQuery, state: FSMContext):
         user_id = callback.from_user.id
         lang = (await state.get_data()).get("lang", "ru")
         
+        # Получаем профиль для показа уровня и преимуществ
+        profile = await user_profile_service.get_user_profile(user_id)
+        
         text = get_text(lang, "qr_scan_instruction") or "📱 Сканирование QR-кода"
-        text += f"\n\n📋 Инструкция:"
-        text += f"\n1. Найдите QR-код в заведении"
-        text += f"\n2. Нажмите кнопку 'Сканировать'"
-        text += f"\n3. Наведите камеру на QR-код"
-        text += f"\n4. Получите скидку и очки!"
+        text += f"\n\n👤 Ваш уровень: {profile['level'].title()}"
+        text += f"\n🎫 Ваша скидка: {profile['level_benefits']['discount']*100:.0f}%"
+        text += f"\n⭐ Множитель очков: {profile['level_benefits']['points_multiplier']}x"
+        
+        text += f"\n\n📋 Как использовать:"
+        text += f"\n1. Нажмите 'Открыть WebApp'"
+        text += f"\n2. Наведите камеру на QR-код"
+        text += f"\n3. Получите скидку и очки!"
         
         text += f"\n\n⚠️ Внимание:"
         text += f"\n• QR-код должен быть от партнера KARMABOT1"
@@ -325,8 +331,14 @@ async def scan_qr_code(callback: CallbackQuery, state: FSMContext):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=get_text(lang, "start_qr_scan") or "📱 Начать сканирование",
-                    callback_data="start_qr_scan"
+                    text=get_text(lang, "open_webapp") or "🌐 Открыть WebApp",
+                    web_app={"url": f"https://your-domain.com/api/qr/scanner"}
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=get_text(lang, "generate_qr") or "🎫 Создать QR",
+                    callback_data="generate_qr_code"
                 )
             ],
             [
@@ -343,3 +355,124 @@ async def scan_qr_code(callback: CallbackQuery, state: FSMContext):
     except Exception as e:
         logger.error(f"Ошибка показа инструкции QR: {e}")
         await callback.answer("❌ Ошибка загрузки инструкции")
+
+@router.callback_query(F.data == "generate_qr_code")
+async def generate_qr_code(callback: CallbackQuery, state: FSMContext):
+    """Генерация QR-кода для пользователя"""
+    try:
+        user_id = callback.from_user.id
+        lang = (await state.get_data()).get("lang", "ru")
+        
+        # Получаем профиль
+        profile = await user_profile_service.get_user_profile(user_id)
+        
+        text = get_text(lang, "generate_qr_title") or "🎫 Создание QR-кода"
+        text += f"\n\n👤 Ваш уровень: {profile['level'].title()}"
+        text += f"\n🎁 Преимущества уровня:"
+        text += f"\n• Скидка: {profile['level_benefits']['discount']*100:.0f}%"
+        text += f"\n• Множитель очков: {profile['level_benefits']['points_multiplier']}x"
+        
+        text += f"\n\n💡 Выберите тип скидки:"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="💎 100 очков лояльности",
+                    callback_data="qr_type_loyalty_points_100"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💎 200 очков лояльности",
+                    callback_data="qr_type_loyalty_points_200"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💰 5% скидка",
+                    callback_data="qr_type_percentage_5"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="💰 10% скидка",
+                    callback_data="qr_type_percentage_10"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=get_text(lang, "back_to_qr_codes") or "◀️ К QR-кодам",
+                    callback_data="profile_qr_codes"
+                )
+            ]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard)
+        await callback.answer()
+        
+    except Exception as e:
+        logger.error(f"Ошибка генерации QR-кода: {e}")
+        await callback.answer("❌ Ошибка создания QR-кода")
+
+@router.callback_query(F.data.startswith("qr_type_"))
+async def process_qr_type_selection(callback: CallbackQuery, state: FSMContext):
+    """Обработка выбора типа QR-кода"""
+    try:
+        user_id = callback.from_user.id
+        lang = (await state.get_data()).get("lang", "ru")
+        
+        # Парсим тип и значение из callback_data
+        data_parts = callback.data.split("_")
+        discount_type = data_parts[2] + "_" + data_parts[3]  # loyalty_points или percentage
+        discount_value = int(data_parts[4])
+        
+        # Получаем профиль для применения множителя уровня
+        profile = await user_profile_service.get_user_profile(user_id)
+        level_multiplier = profile['level_benefits']['points_multiplier']
+        final_value = int(discount_value * level_multiplier)
+        
+        # Создаем QR-код через WebApp API
+        from core.services.qr_code_service import QRCodeService
+        from core.database import get_db
+        
+        async with get_db() as db:
+            qr_service = QRCodeService(db)
+            
+            qr_result = await qr_service.generate_qr_code(
+                user_id=user_id,
+                discount_type=discount_type,
+                discount_value=final_value,
+                expires_in_hours=24,
+                description=f"Скидка {final_value} {'очков' if discount_type == 'loyalty_points' else '%'}"
+            )
+        
+        # Логируем активность
+        await user_profile_service.log_user_activity(
+            user_id=user_id,
+            activity_type="qr_generate",
+            points_earned=5,
+            activity_data={"qr_id": qr_result["qr_id"], "discount_type": discount_type}
+        )
+        
+        text = get_text(lang, "qr_generated_success") or "✅ QR-код создан успешно!"
+        text += f"\n\n🎫 Тип: {discount_type.replace('_', ' ').title()}"
+        text += f"\n💰 Значение: {final_value}"
+        text += f"\n⭐ С учетом уровня: {level_multiplier}x"
+        text += f"\n⏰ Действителен: 24 часа"
+        text += f"\n\n📱 ID QR-кода: `{qr_result['qr_id']}`"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=get_text(lang, "back_to_qr_codes") or "◀️ К QR-кодам",
+                    callback_data="profile_qr_codes"
+                )
+            ]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+        await callback.answer()
+        
+    except Exception as e:
+        logger.error(f"Ошибка обработки выбора QR-типа: {e}")
+        await callback.answer("❌ Ошибка создания QR-кода")
