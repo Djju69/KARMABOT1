@@ -205,24 +205,70 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
         
         logger.info(f"Received location: {latitude}, {longitude}")
         
-        # TODO: Implement actual geospatial search
-        # For now, show all published cards as "nearby"
-        nearby_cards = []
+        # Импортируем утилиты геопоиска
+        from ..utils.geo import find_places_in_radius, format_distance
+        
+        # Получаем все опубликованные карточки с координатами
+        all_cards = []
         categories = db_v2.get_categories(active_only=True)
         
-        for category in categories[:3]:  # Limit to first 3 categories
-            cards = db_v2.get_cards_by_category(category.slug, status='published', limit=2)
-            nearby_cards.extend(cards)
+        for category in categories:
+            cards = db_v2.get_cards_by_category(category.slug, status='published', limit=50)
+            # Добавляем информацию о категории к каждой карточке
+            for card in cards:
+                if isinstance(card, dict):
+                    card['category_slug'] = category.slug
+                    card['category_name'] = category.name
+                else:
+                    # Если card - это объект, конвертируем в dict
+                    card_dict = dict(card) if hasattr(card, '__dict__') else card
+                    card_dict['category_slug'] = category.slug
+                    card_dict['category_name'] = category.name
+                    card = card_dict
+                all_cards.append(card)
+        
+        # Ищем ближайшие заведения в радиусе 5 км
+        nearby_cards = find_places_in_radius(
+            latitude=latitude,
+            longitude=longitude,
+            places=all_cards,
+            radius_km=5.0,
+            limit=10
+        )
         
         if nearby_cards:
-            response = "📍 **Ближайшие заведения:**\n\n"
-            response += card_service.render_cards_list(nearby_cards, lang, max_cards=5)
-            response += "\n\n💡 *Функция точного поиска по геолокации будет доступна скоро*"
+            response = f"📍 **Ближайшие заведения** (в радиусе 5 км):\n\n"
+            
+            # Группируем по категориям для лучшего отображения
+            by_category = {}
+            for card in nearby_cards:
+                category = card.get('category_name', 'Другое')
+                if category not in by_category:
+                    by_category[category] = []
+                by_category[category].append(card)
+            
+            # Отображаем результаты по категориям
+            for category_name, cards in by_category.items():
+                response += f"**{category_name}:**\n"
+                for card in cards:
+                    distance_str = format_distance(card['distance_km'])
+                    name = card.get('name', 'Без названия')
+                    address = card.get('address', 'Адрес не указан')
+                    response += f"• {name} - {distance_str}\n"
+                    if address:
+                        response += f"  📍 {address}\n"
+                response += "\n"
+            
+            # Добавляем информацию о точности поиска
+            response += f"✅ Найдено {len(nearby_cards)} заведений поблизости\n"
+            response += "💡 Покажите QR-код для получения скидки!"
+            
         else:
             response = "📭 **Поблизости пока нет заведений**\n\n"
+            response += "В радиусе 5 км не найдено ни одного заведения.\n"
             response += "Попробуйте выбрать категорию из главного меню или добавьте свое заведение!"
         
-        await log_event("nearest_results_shown", user=message.from_user, count=len(nearby_cards))
+        await log_event("nearest_results_shown", user=message.from_user, count=len(nearby_cards), radius_km=5.0)
         await message.answer(response)
         
         # Return to main menu

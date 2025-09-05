@@ -13,6 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from core.database import Database, get_db
 from core.security.deps import require_admin, get_current_user
 from core.security.roles import Role, get_user_role
+from core.logger import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -287,3 +290,369 @@ async def get_quick_actions(
         available_actions = [a for a in available_actions if a["id"] != "add_partner"]
     
     return available_actions
+
+# ===== БОЕВЫЕ ЭНДПОИНТЫ =====
+
+@router.get("/top-places")
+async def get_top_places(
+    request: Request,
+    limit: int = 10,
+    period: str = "month",  # day, week, month, year
+    admin_claims: Dict[str, Any] = Depends(require_admin),
+    db: Database = Depends(get_db)
+):
+    """
+    Получение топа заведений по популярности и активности.
+    
+    Args:
+        limit: Количество заведений в топе
+        period: Период для анализа (day, week, month, year)
+        
+    Returns:
+        Список топ заведений с метриками
+    """
+    try:
+        # Определяем период для фильтрации
+        now = datetime.utcnow()
+        if period == "day":
+            since = now - timedelta(days=1)
+        elif period == "week":
+            since = now - timedelta(weeks=1)
+        elif period == "month":
+            since = now - timedelta(days=30)
+        elif period == "year":
+            since = now - timedelta(days=365)
+        else:
+            since = now - timedelta(days=30)
+        
+        # Запрос к БД для получения топа заведений
+        query = """
+            SELECT 
+                p.id,
+                p.name,
+                p.address,
+                p.rating,
+                p.reviews_count,
+                p.is_active,
+                p.is_verified,
+                COUNT(DISTINCT r.id) as total_reviews,
+                COUNT(DISTINCT CASE WHEN r.created_at >= %s THEN r.id END) as recent_reviews,
+                AVG(r.rating) as avg_rating,
+                COUNT(DISTINCT pc.id) as checkins_count
+            FROM places p
+            LEFT JOIN reviews r ON p.id = r.place_id
+            LEFT JOIN place_checkins pc ON p.id = pc.place_id AND pc.created_at >= %s
+            WHERE p.is_active = true
+            GROUP BY p.id, p.name, p.address, p.rating, p.reviews_count, p.is_active, p.is_verified
+            ORDER BY 
+                (COUNT(DISTINCT CASE WHEN r.created_at >= %s THEN r.id END) * 2 + 
+                 COUNT(DISTINCT pc.id) + 
+                 p.rating * 0.5) DESC
+            LIMIT %s
+        """
+        
+        result = await db.fetch_all(
+            query, 
+            [since, since, since, limit]
+        )
+        
+        top_places = []
+        for row in result:
+            top_places.append({
+                "id": row["id"],
+                "name": row["name"],
+                "address": row["address"],
+                "rating": float(row["avg_rating"]) if row["avg_rating"] else float(row["rating"]),
+                "reviews_count": row["total_reviews"],
+                "recent_reviews": row["recent_reviews"],
+                "checkins_count": row["checkins_count"],
+                "is_verified": row["is_verified"],
+                "popularity_score": (
+                    (row["recent_reviews"] or 0) * 2 + 
+                    (row["checkins_count"] or 0) + 
+                    (row["rating"] or 0) * 0.5
+                )
+            })
+        
+        return {
+            "status": "success",
+            "data": {
+                "top_places": top_places,
+                "period": period,
+                "total_count": len(top_places),
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting top places: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при получении топа заведений"
+        )
+
+@router.get("/referrals-stats")
+async def get_referrals_stats(
+    request: Request,
+    period: str = "month",  # day, week, month, year
+    admin_claims: Dict[str, Any] = Depends(require_admin),
+    db: Database = Depends(get_db)
+):
+    """
+    Получение статистики реферальной программы.
+    
+    Args:
+        period: Период для анализа (day, week, month, year)
+        
+    Returns:
+        Статистика рефералов и доходов
+    """
+    try:
+        # Определяем период для фильтрации
+        now = datetime.utcnow()
+        if period == "day":
+            since = now - timedelta(days=1)
+        elif period == "week":
+            since = now - timedelta(weeks=1)
+        elif period == "month":
+            since = now - timedelta(days=30)
+        elif period == "year":
+            since = now - timedelta(days=365)
+        else:
+            since = now - timedelta(days=30)
+        
+        # Общая статистика рефералов
+        total_referrals_query = """
+            SELECT 
+                COUNT(*) as total_referrals,
+                COUNT(DISTINCT referrer_id) as active_referrers,
+                COUNT(CASE WHEN created_at >= %s THEN 1 END) as recent_referrals
+            FROM referrals
+        """
+        
+        total_stats = await db.fetch_one(total_referrals_query, [since])
+        
+        # Топ рефереров
+        top_referrers_query = """
+            SELECT 
+                r.referrer_id,
+                u.username,
+                u.first_name,
+                COUNT(*) as referrals_count,
+                SUM(lt.points) as total_earnings
+            FROM referrals r
+            LEFT JOIN users u ON r.referrer_id = u.id
+            LEFT JOIN loyalty_transactions lt ON lt.user_id = r.referrer_id 
+                AND lt.transaction_type = 'referral_bonus'
+                AND lt.reference_id = r.id
+            WHERE r.created_at >= %s
+            GROUP BY r.referrer_id, u.username, u.first_name
+            ORDER BY referrals_count DESC
+            LIMIT 10
+        """
+        
+        top_referrers = await db.fetch_all(top_referrers_query, [since])
+        
+        # Статистика по дням для графика
+        daily_stats_query = """
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as referrals_count,
+                COUNT(DISTINCT referrer_id) as unique_referrers
+            FROM referrals
+            WHERE created_at >= %s
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """
+        
+        daily_stats = await db.fetch_all(daily_stats_query, [since])
+        
+        # Общие доходы от рефералов
+        total_earnings_query = """
+            SELECT 
+                COALESCE(SUM(lt.points), 0) as total_earnings,
+                COUNT(DISTINCT lt.user_id) as users_with_earnings
+            FROM loyalty_transactions lt
+            WHERE lt.transaction_type = 'referral_bonus'
+                AND lt.created_at >= %s
+        """
+        
+        earnings_stats = await db.fetch_one(total_earnings_query, [since])
+        
+        return {
+            "status": "success",
+            "data": {
+                "period": period,
+                "total_referrals": total_stats["total_referrals"],
+                "active_referrers": total_stats["active_referrers"],
+                "recent_referrals": total_stats["recent_referrals"],
+                "total_earnings": earnings_stats["total_earnings"],
+                "users_with_earnings": earnings_stats["users_with_earnings"],
+                "top_referrers": [
+                    {
+                        "user_id": row["referrer_id"],
+                        "username": row["username"],
+                        "first_name": row["first_name"],
+                        "referrals_count": row["referrals_count"],
+                        "total_earnings": row["total_earnings"] or 0
+                    }
+                    for row in top_referrers
+                ],
+                "daily_stats": [
+                    {
+                        "date": row["date"].isoformat(),
+                        "referrals_count": row["referrals_count"],
+                        "unique_referrers": row["unique_referrers"]
+                    }
+                    for row in daily_stats
+                ],
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting referrals stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при получении статистики рефералов"
+        )
+
+@router.get("/user-activity")
+async def get_user_activity(
+    request: Request,
+    period: str = "week",  # day, week, month, year
+    limit: int = 50,
+    admin_claims: Dict[str, Any] = Depends(require_admin),
+    db: Database = Depends(get_db)
+):
+    """
+    Получение активности пользователей за период.
+    
+    Args:
+        period: Период для анализа (day, week, month, year)
+        limit: Количество записей для возврата
+        
+    Returns:
+        Статистика активности пользователей
+    """
+    try:
+        # Определяем период для фильтрации
+        now = datetime.utcnow()
+        if period == "day":
+            since = now - timedelta(days=1)
+        elif period == "week":
+            since = now - timedelta(weeks=1)
+        elif period == "month":
+            since = now - timedelta(days=30)
+        elif period == "year":
+            since = now - timedelta(days=365)
+        else:
+            since = now - timedelta(weeks=1)
+        
+        # Общая статистика активности
+        activity_stats_query = """
+            SELECT 
+                COUNT(DISTINCT user_id) as active_users,
+                COUNT(*) as total_activities,
+                COUNT(DISTINCT DATE(created_at)) as active_days
+            FROM user_activity_logs
+            WHERE created_at >= %s
+        """
+        
+        activity_stats = await db.fetch_one(activity_stats_query, [since])
+        
+        # Топ активных пользователей
+        top_users_query = """
+            SELECT 
+                ual.user_id,
+                u.username,
+                u.first_name,
+                u.last_name,
+                COUNT(*) as activities_count,
+                MAX(ual.created_at) as last_activity,
+                SUM(ual.points_awarded) as total_points
+            FROM user_activity_logs ual
+            LEFT JOIN users u ON ual.user_id = u.id
+            WHERE ual.created_at >= %s
+            GROUP BY ual.user_id, u.username, u.first_name, u.last_name
+            ORDER BY activities_count DESC
+            LIMIT %s
+        """
+        
+        top_users = await db.fetch_all(top_users_query, [since, limit])
+        
+        # Статистика по типам активности
+        activity_types_query = """
+            SELECT 
+                activity_type,
+                COUNT(*) as count,
+                COUNT(DISTINCT user_id) as unique_users,
+                AVG(points_awarded) as avg_points
+            FROM user_activity_logs
+            WHERE created_at >= %s
+            GROUP BY activity_type
+            ORDER BY count DESC
+        """
+        
+        activity_types = await db.fetch_all(activity_types_query, [since])
+        
+        # Активность по дням
+        daily_activity_query = """
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as activities_count,
+                COUNT(DISTINCT user_id) as unique_users
+            FROM user_activity_logs
+            WHERE created_at >= %s
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        """
+        
+        daily_activity = await db.fetch_all(daily_activity_query, [since])
+        
+        return {
+            "status": "success",
+            "data": {
+                "period": period,
+                "active_users": activity_stats["active_users"],
+                "total_activities": activity_stats["total_activities"],
+                "active_days": activity_stats["active_days"],
+                "top_users": [
+                    {
+                        "user_id": row["user_id"],
+                        "username": row["username"],
+                        "first_name": row["first_name"],
+                        "last_name": row["last_name"],
+                        "activities_count": row["activities_count"],
+                        "last_activity": row["last_activity"].isoformat() if row["last_activity"] else None,
+                        "total_points": row["total_points"] or 0
+                    }
+                    for row in top_users
+                ],
+                "activity_types": [
+                    {
+                        "type": row["activity_type"],
+                        "count": row["count"],
+                        "unique_users": row["unique_users"],
+                        "avg_points": float(row["avg_points"]) if row["avg_points"] else 0
+                    }
+                    for row in activity_types
+                ],
+                "daily_activity": [
+                    {
+                        "date": row["date"].isoformat(),
+                        "activities_count": row["activities_count"],
+                        "unique_users": row["unique_users"]
+                    }
+                    for row in daily_activity
+                ],
+                "generated_at": datetime.utcnow().isoformat()
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting user activity: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при получении статистики активности пользователей"
+        )

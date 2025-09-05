@@ -1,0 +1,180 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "KARMABOT1 - Referral System",
+    "tags": ["karmabot1", "referrals"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Referrals Created",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(referrals_created_total[5m])",
+            "legendFormat": "Referrals Created"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Referral Bonuses Awarded",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(referral_bonuses_awarded_total[5m])",
+            "legendFormat": "Bonuses Awarded"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Total Referrals",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "referrals_total",
+            "legendFormat": "Total Referrals"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Active Referrers",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "referrals_active_referrers",
+            "legendFormat": "Active Referrers"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Total Bonuses Paid",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "referral_bonuses_total_paid",
+            "legendFormat": "Total Bonuses"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Referral Conversion Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(referrals_created_total[1h]) / rate(users_registered_total[1h]) * 100",
+            "legendFormat": "Conversion Rate %"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "red",
+                  "value": null
+                },
+                {
+                  "color": "yellow",
+                  "value": 10
+                },
+                {
+                  "color": "green",
+                  "value": 20
+                }
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        }
+      },
+      {
+        "id": 7,
+        "title": "Top Referrers",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, referrals_by_user_total)",
+            "legendFormat": "{{user_id}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+}

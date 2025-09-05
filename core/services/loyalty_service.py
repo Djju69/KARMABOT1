@@ -365,15 +365,16 @@ class LoyaltyService:
                 result = await self.db.execute(
                     """
                     INSERT INTO loyalty_transactions 
-                        (user_id, points, transaction_type, description)
+                        (user_id, points, transaction_type, description) 
                     VALUES 
-                        (:user_id, -:points, 'spend', :description)
+                        (:user_id, -:points, :transaction_type, :description)
                     RETURNING id, created_at
                     """,
                     {
                         "user_id": user_id,
                         "points": points,
-                        "description": description
+                        "description": description,
+                        "transaction_type": LoyaltyTransactionType.SPEND.value
                     }
                 )
                 
@@ -937,12 +938,86 @@ class LoyaltyService:
         referral_code: str
     ) -> bool:
         """Обработка реферального приглашения."""
-        # TODO: Проверить, что пользователь не приглашал сам себя
-        # TODO: Проверить, что реферальный код существует и активен
-        # TODO: Создать запись о реферале
-        # TODO: Начислить бонусы приглашающему и приглашенному, если нужно
-        
-        return True
+        try:
+            # Проверяем, что пользователь не приглашал сам себя
+            if referrer_id == referee_id:
+                raise ValidationError("Нельзя пригласить самого себя")
+            
+            # Проверяем, что реферальный код существует и активен
+            async with self.db.begin():
+                link_query = await self.db.execute(
+                    select(ReferralLink)
+                    .where(and_(
+                        ReferralLink.referral_code == referral_code,
+                        ReferralLink.is_active == True
+                    ))
+                )
+                referral_link = link_query.scalar_one_or_none()
+                
+                if not referral_link:
+                    raise ValidationError("Недействительный реферальный код")
+                
+                if referral_link.user_id != referrer_id:
+                    raise ValidationError("Реферальный код принадлежит другому пользователю")
+                
+                # Проверяем, что реферал еще не зарегистрирован
+                existing_query = await self.db.execute(
+                    select(Referral.id)
+                    .where(Referral.referee_id == referee_id)
+                )
+                if existing_query.scalar_one_or_none():
+                    raise ValidationError("Пользователь уже зарегистрирован по реферальной ссылке")
+                
+                # Создаем запись о реферале
+                referral = Referral(
+                    referrer_id=referrer_id,
+                    referee_id=referee_id,
+                    referral_code=referral_code,
+                    referrer_bonus_awarded=False,
+                    referee_bonus_awarded=False
+                )
+                
+                self.db.add(referral)
+                await self.db.flush()  # Получаем ID
+                
+                # Начисляем бонусы приглашающему и приглашенному
+                referrer_bonus = 100  # Бонус приглашающему
+                referee_bonus = 50    # Бонус приглашенному
+                
+                # Бонус приглашающему
+                await self.award_points(
+                    user_id=referrer_id,
+                    points=referrer_bonus,
+                    transaction_type=LoyaltyTransactionType.REFERRAL_BONUS,
+                    description=f"Бонус за приглашение пользователя {referee_id}",
+                    reference_id=referral.id
+                )
+                
+                # Бонус приглашенному
+                await self.award_points(
+                    user_id=referee_id,
+                    points=referee_bonus,
+                    transaction_type=LoyaltyTransactionType.REFERRAL_BONUS,
+                    description=f"Бонус за регистрацию по реферальной ссылке",
+                    reference_id=referral.id
+                )
+                
+                # Обновляем статус начисления бонусов
+                referral.referrer_bonus_awarded = True
+                referral.referee_bonus_awarded = True
+                referral.bonus_awarded_at = datetime.utcnow()
+                
+                await self.db.commit()
+                
+                logger.info(f"Processed referral: {referrer_id} -> {referee_id} (code: {referral_code})")
+                return True
+                
+        except SQLAlchemyError as e:
+            logger.error(f"Error processing referral: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error processing referral: {e}")
+            raise
     
     async def process_referral_signup(self, user_id: UUID, referral_code: str) -> Dict[str, Any]:
         """
