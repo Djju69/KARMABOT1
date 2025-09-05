@@ -6,17 +6,13 @@ echo Checking status...
 git status
 
 echo Committing changes...
-git commit -m "feat: Complete admin panel implementation
+git commit -m "chore: fix legacy imports and remove outdated files
 
-- Add comprehensive admin dashboard UI
-- Implement admin API endpoints  
-- Add user/partner/card management
-- Add moderation system
-- Add analytics and reporting
-- Add system settings
-- Add audit logging
-- Add unit tests for admin panel
-- Update progress documentation"
+- Created modern exception module core/common/exceptions.py
+- Created restaurant keyboards module core/keyboards/restaurant_keyboards.py  
+- Updated all imports in handlers and services to use new modules
+- Removed legacy files: core/keyboards/inline.py and core/exceptions.py
+- Updated legacy_report.json to reflect completed cleanup"
 
 echo Pushing to remote...
 git push origin main

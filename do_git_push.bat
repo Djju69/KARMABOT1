@@ -11,7 +11,7 @@ git add .
 
 echo.
 echo 3. Committing changes...
-git commit -m "feat: Added new services and endpoints - Referral system, User profiles, Geo search, Admin endpoints, Monitoring"
+git commit -m "chore: fix legacy imports and remove outdated files - Created modern exception module, restaurant keyboards, updated imports, removed legacy files"
 
 echo.
 echo 4. Pushing to remote...

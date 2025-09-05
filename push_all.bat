@@ -11,7 +11,7 @@ git add .
 
 echo.
 echo 3. Committing changes...
-git commit -m "feat: Complete WebApp interface and QR codes system - Full-featured WebApp with responsive design - User profile page with tabs - Catalog page with search and filters - QR codes management page - Referrals page with tree view - Bootstrap 5 responsive design - Interactive JavaScript with AJAX - Static files (CSS, JS, images) - QR code service with generation, validation, redemption - Database migrations for QR codes - Unit and integration tests - Progress updated to 100%"
+git commit -m "chore: fix legacy imports and remove outdated files - Created modern exception module core/common/exceptions.py - Created restaurant keyboards module core/keyboards/restaurant_keyboards.py - Updated all imports in handlers and services to use new modules - Removed legacy files: core/keyboards/inline.py and core/exceptions.py - Updated legacy_report.json to reflect completed cleanup"
 
 echo.
 echo 4. Pushing to GitHub...

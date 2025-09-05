@@ -8,16 +8,13 @@ Write-Host "`n2. Adding all files..." -ForegroundColor Yellow
 git add .
 
 Write-Host "`n3. Committing changes..." -ForegroundColor Yellow
-git commit -m "feat: Добавлены новые сервисы и эндпоинты
+git commit -m "chore: fix legacy imports and remove outdated files
 
-- Реферальная система (referral_service.py)
-- Профили пользователей (profile_service.py) 
-- Геопоиск с Haversine формулой
-- 3 боевых админ эндпоинта
-- Пользовательские API эндпоинты
-- Мониторинг (Prometheus + Grafana)
-- Unit и integration тесты
-- Миграции БД"
+- Created modern exception module core/common/exceptions.py
+- Created restaurant keyboards module core/keyboards/restaurant_keyboards.py  
+- Updated all imports in handlers and services to use new modules
+- Removed legacy files: core/keyboards/inline.py and core/exceptions.py
+- Updated legacy_report.json to reflect completed cleanup"
 
 Write-Host "`n4. Pushing to remote..." -ForegroundColor Yellow
 git push origin main
