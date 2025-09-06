@@ -92,7 +92,7 @@ try:
     from web.main import app as web_app
     APP = web_app
     WEB_IMPORTED = True
-except ImportError as e:
+except Exception as e:
     logger.warning(f"Failed to import web app: {e}")
     WEB_IMPORTED = False
     # Fallback to minimal health app to satisfy Railway healthcheck
