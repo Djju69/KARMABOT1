@@ -10,12 +10,12 @@ from pathlib import Path
 translations_v2 = {
     'ko': {
         # v4.2.4 minimal labels
-        'menu.categories': '카테고리',
-        'menu.invite_friends': '친구 초대',
-        'menu.favorites': '즐겨찾기',
-        'menu.become_partner': '파트너 되기',
-        'menu.help': '도움말',
-        'menu.profile': '프로필',
+        'menu.categories': '🗂️ 카테고리',
+        'menu.invite_friends': '👥 친구 초대',
+        'menu.favorites': '⭐ 즐겨찾기',
+        'menu.become_partner': '👨‍💼 파트너 되기',
+        'menu.help': '❓ 도움말',
+        'menu.profile': '👤 프로필',
         'invite.my_link': '내 링크',
         'invite.invited': '초대한 사용자',
         'invite.earnings': '수익',
@@ -115,12 +115,12 @@ translations_v2 = {
     },
     'vi': {
         # v4.2.4 minimal labels
-        'menu.categories': 'Danh mục',
-        'menu.invite_friends': 'Mời bạn bè',
-        'menu.favorites': 'Yêu thích',
-        'menu.become_partner': 'Trở thành đối tác',
-        'menu.help': 'Hỗ trợ',
-        'menu.profile': 'Hồ sơ',
+        'menu.categories': '🗂️ Danh mục',
+        'menu.invite_friends': '👥 Mời bạn bè',
+        'menu.favorites': '⭐ Yêu thích',
+        'menu.become_partner': '👨‍💼 Trở thành đối tác',
+        'menu.help': '❓ Hỗ trợ',
+        'menu.profile': '👤 Hồ sơ',
         'invite.my_link': 'Liên kết của tôi',
         'invite.invited': 'Đã mời',
         'invite.earnings': 'Thu nhập',
@@ -192,10 +192,10 @@ translations_v2 = {
     },
     'ru': {
         # v4.2.4 menu keys
-        'menu.categories': 'Категории',
-        'menu.invite_friends': 'Пригласить друзей',
-        'menu.favorites': 'Избранные',
-        'menu.become_partner': 'Стать парнером',
+        'menu.categories': '🗂️ Категории',
+        'menu.invite_friends': '👥 Пригласить друзей',
+        'menu.favorites': '⭐ Избранные',
+        'menu.become_partner': '👨‍💼 Стать парнером',
         'menu.help': '❓ Помощь',
         'menu.profile': '👤 Личный кабинет',
         # v4.2.4 invite submenu
@@ -222,15 +222,15 @@ translations_v2 = {
     },
     'en': {
         # v4.2.4 minimal labels
-        'menu.categories': 'Categories',
-        'menu.invite_friends': 'Invite friends',
-        'menu.favorites': 'Favorites',
-        'menu.become_partner': 'Become a partner',
-        'menu.help': 'Help',
-        'menu.profile': 'Profile',
-        'invite.my_link': 'My link',
-        'invite.invited': 'Invited',
-        'invite.earnings': 'Earnings',
+        'menu.categories': '🗂️ Categories',
+        'menu.invite_friends': '👥 Invite friends',
+        'menu.favorites': '⭐ Favorites',
+        'menu.become_partner': '👨‍💼 Become a partner',
+        'menu.help': '❓ Help',
+        'menu.profile': '👤 Profile',
+        'invite.my_link': '🔗 My link',
+        'invite.invited': '📋 Invited',
+        'invite.earnings': '💵 Earnings',
     }
 }
 
