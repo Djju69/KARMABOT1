@@ -38,6 +38,7 @@ from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramConflictError, TelegramBadRequest
+from aiogram.fsm.context import FSMContext
 
 # Import middlewares
 from core.middleware import setup_rbac_middleware, setup_2fa_middleware
@@ -72,9 +73,15 @@ try:
     
     # Add test command handler
     @dp.message(Command("start"))
-    async def cmd_start(message: types.Message):
+    async def cmd_start(message: types.Message, state: FSMContext):
         logger.info(f"Received /start from user {message.from_user.id}")
-        await message.answer("🚀 Бот запущен и работает!")
+        try:
+            # Delegate to main start flow to show reply menu
+            from core.handlers.basic import get_start
+            await get_start(message, bot, state)
+        except Exception as e:
+            logger.warning(f"Fallback start handler due to error: {e}")
+            await message.answer("🚀 Бот запущен и работает!")
     
     # Import and include other handlers
     try:
