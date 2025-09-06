@@ -83,7 +83,8 @@ def validate_environment():
     
     # Настройка для Railway
     if is_railway_environment():
-        app_url = f"https://{os.getenv('RAILWAY_STATIC_URL', 'your-app.railway.app')}"
+        raw_url = os.getenv('RAILWAY_STATIC_URL', 'your-app.railway.app')
+        app_url = raw_url if raw_url.startswith(('http://', 'https://')) else f"https://{raw_url}"
         logger.info(f"🌐 Railway detected, using webhook: {app_url}")
         os.environ['WEBHOOK_URL'] = app_url
         os.environ['DISABLE_POLLING'] = 'true'
@@ -93,14 +94,23 @@ def validate_environment():
         logger.info("✅ Polling mode enabled")
 
 # Try to import web app with delay to avoid circular imports
+APP = None
 try:
     import time
     time.sleep(1)  # Даем время для завершения инициализации
-    from web.main import app
+    from web.main import app as web_app
+    APP = web_app
     WEB_IMPORTED = True
 except ImportError as e:
     logger.warning(f"Failed to import web app: {e}")
     WEB_IMPORTED = False
+    # Fallback to minimal health app to satisfy Railway healthcheck
+    try:
+        from health_app import app as health_app
+        APP = health_app
+        logger.info("Using fallback health_app for healthcheck")
+    except Exception as ee:
+        logger.warning(f"Fallback health_app unavailable: {ee}")
 
 async def run_bot():
     """Запуск телеграм бота"""
@@ -160,13 +170,13 @@ async def run_bot():
 
 async def run_web_server():
     """Запуск веб-сервера"""
-    if not WEB_IMPORTED:
-        logger.warning("Веб-приложение не импортировано, пропускаем запуск веб-сервера")
+    if APP is None:
+        logger.warning("Нет доступного ASGI-приложения для веб-сервера (web/health). Пропуск запуска")
         return
         
     port = int(os.getenv("PORT", 8080))
     config = uvicorn.Config(
-        app,
+        APP,
         host="0.0.0.0",
         port=port,
         log_level="info"
@@ -186,18 +196,20 @@ async def main():
     is_railway = is_railway_environment()
     logger.info(f"🎯 Deployment mode: {'RAILWAY (webhook)' if is_railway else 'LOCAL (polling)'}")
 
-    # В Railway режиме - временно используем polling (пока нет веб-сервера)
+    # В Railway режиме - поднимаем минимальный веб-сервер для healthcheck И бота (polling)
     if is_railway:
         logger.warning("🌐 RAILWAY MODE: Web app not available, using polling temporarily")
         logger.info("⚠️ Temporary: Starting polling on Railway (webhook server not ready)")
         bot_token = os.getenv("BOT_TOKEN")
-        if bot_token:
-            logger.info("🤖 BOT_TOKEN found, starting polling on Railway...")
-            await run_bot()
-        else:
+        if not bot_token:
             logger.error("❌ BOT_TOKEN not found for Railway polling!")
             logger.error("💡 Please check Railway Variables for BOT_TOKEN")
             return
+
+        # Запускаем веб-сервер (web.main или health_app) и бота параллельно
+        web_task = asyncio.create_task(run_web_server())
+        bot_task = asyncio.create_task(run_bot())
+        await asyncio.gather(web_task, bot_task)
 
     # В локальном режиме - ТОЛЬКО polling
     else:

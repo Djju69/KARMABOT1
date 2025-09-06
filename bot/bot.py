@@ -91,7 +91,20 @@ try:
                     return None
                     
                 # Try common router attribute names
-                for attr in ['router', 'message_router', 'command_router', 'main_router']:
+                dynamic_names = [
+                    'router',
+                    'message_router',
+                    'command_router',
+                    'main_router',
+                    f'{module_name}_router',   # e.g. language_router, profile_router
+                    'profile_router',
+                    'partner_router',
+                    'activity_router',
+                    'language_router',
+                    'main_menu_router',
+                    'category_router',
+                ]
+                for attr in dynamic_names:
                     if hasattr(module, attr):
                         router = getattr(module, attr)
                         logger.info(f"✅ Found router {attr} in {module_name}")
@@ -102,10 +115,18 @@ try:
                 logger.warning(f"⚠️ Failed to import {module_name}: {e}")
                 return None
         
-        # List of handler modules to import (without commands)
+        # Список модулей обработчиков (без commands)
+        # Обновлено: используем актуальные имена и v2-версии где нужно
         handler_modules = [
-            'basic', 'callback', 'contact', 'lang', 'main_menu_router',
-            'profile', 'partner', 'activity', 'admin_cabinet', 'category_handlers'
+            'basic',
+            'callback',
+            'language',            # было 'lang'
+            'main_menu_router',
+            'profile',
+            'partner',
+            'activity',
+            'admin_cabinet',
+            'category_handlers_v2' # было 'category_handlers'
         ]
         
         # Get all available routers
