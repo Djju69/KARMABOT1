@@ -89,6 +89,8 @@ async def handle_main_menu_text(message: Message, bot: Bot, state: FSMContext) -
     t.get('choose_category', '') for t in translations.values()
 ] + [
     t.get('menu.categories', '') for t in translations.values()
+] + [
+    'КАТЕГОРИИ', 'Категории', 'CATEGORIES', 'Categories'
 ]))
 async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки выбора категории."""
