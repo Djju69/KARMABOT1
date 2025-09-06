@@ -515,7 +515,10 @@ class DatabaseMigrator:
                 cur = conn.execute("PRAGMA table_info(categories)")
                 cols = {row[1] for row in cur.fetchall()}
                 if 'created_at' not in cols:
-                    conn.execute("ALTER TABLE categories ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
+                    # В SQLite запрещён неконстантный DEFAULT при ALTER TABLE.
+                    # Добавляем без DEFAULT, затем заполняем существующие строки.
+                    conn.execute("ALTER TABLE categories ADD COLUMN created_at TEXT")
+                    conn.execute("UPDATE categories SET created_at = COALESCE(created_at, datetime('now'))")
                 conn.execute(
                     "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
                     (version, desc),
