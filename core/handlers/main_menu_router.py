@@ -212,7 +212,11 @@ async def handle_show_nearest(message: Message, bot: Bot, state: FSMContext) -> 
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_restaurants', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_restaurants', '') for t in translations.values()
+] + [
+    '🍽 restaurants', '🍽 Restaurants'
+]))
 async def handle_restaurants(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Рестораны'."""
     logger.debug(f"User {message.from_user.id} selected Restaurants category")
@@ -235,7 +239,11 @@ async def handle_restaurants(message: Message, bot: Bot, state: FSMContext) -> N
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_spa', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_spa', '') for t in translations.values()
+] + [
+    '🧖‍♀ spa', '🧖‍♀ Spa'
+]))
 async def handle_spa(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'SPA и Уход'."""
     logger.debug(f"User {message.from_user.id} selected SPA category")
@@ -258,7 +266,11 @@ async def handle_spa(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_hotels', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_hotels', '') for t in translations.values()
+] + [
+    '🏨 hotels', '🏨 Hotels'
+]))
 async def handle_hotels(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Отели'."""
     logger.debug(f"User {message.from_user.id} selected Hotels category")
@@ -281,7 +293,11 @@ async def handle_hotels(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_transport', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_transport', '') for t in translations.values()
+] + [
+    '🚗 transport', '🚗 Transport'
+]))
 async def handle_transport(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Транспорт'."""
     logger.debug(f"User {message.from_user.id} selected Transport category")
@@ -304,7 +320,11 @@ async def handle_transport(message: Message, bot: Bot, state: FSMContext) -> Non
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_tours', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_tours', '') for t in translations.values()
+] + [
+    '🚶‍♂ tours', '🚶‍♂ Tours'
+]))
 async def handle_tours(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Экскурсии'."""
     logger.debug(f"User {message.from_user.id} selected Tours category")
@@ -327,7 +347,11 @@ async def handle_tours(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('category_shops_services', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('category_shops_services', '') for t in translations.values()
+] + [
+    '🛍 shops', '🛍 Shops'
+]))
 async def handle_shops(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Магазины и услуги'."""
     logger.debug(f"User {message.from_user.id} selected Shops category")
