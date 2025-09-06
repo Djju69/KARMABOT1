@@ -18,7 +18,7 @@ from core.utils.locales import translations, get_text
 # Клавиатуры
 from core.keyboards.restaurant_keyboards import select_restoran, regional_restoran, kitchen_keyboard
 from core.keyboards.language_keyboard import language_keyboard
-from core.keyboards.reply import get_main_menu_reply
+from core.keyboards.reply import get_main_menu_reply, get_reply_keyboard
 from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran
 
 # Тексты
@@ -65,9 +65,14 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
             'lang': 'ru'
         })
         
-        # Debug: Force enable menu
-        logger.info("[DEBUG] Forcing menu generation...")
-        keyboard = get_main_menu_reply(current_lang)
+        # Build spec-compliant main menu (reply keyboard v4.1)
+        logger.info("[DEBUG] Building spec-compliant menu (reply v4.1)...")
+        user_ctx = {
+            "role": "user",
+            "lang": current_lang,
+            "has_partner_cards": False,
+        }
+        keyboard = get_reply_keyboard(user_ctx)
         
         if not keyboard:
             logger.error("[ERROR] Failed to generate menu: keyboard is None")
