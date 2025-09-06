@@ -12,6 +12,7 @@ translations_v2 = {
         # v4.2.4 minimal labels
         'menu.categories': '카테고리',
         'menu.invite_friends': '친구 초대',
+        'menu.favorites': '즐겨찾기',
         'menu.become_partner': '파트너 되기',
         'menu.help': '도움말',
         'menu.profile': '프로필',
@@ -27,7 +28,7 @@ translations_v2 = {
         'cabinet.user_profile': '👤 내 정보\n\n💎 포인트: {points}\n🏆 레벨: {level}\n\n아래 메뉴를 사용하여 프로필을 관리하세요',
         'cabinet.user_points': '💰 내 포인트: {points}\n\n파트너사에서 사용할 수 있습니다',
         'cabinet.history_header': '📜 거래 내역:',
-        'cabinet.partner_profile': '👤 파트너 프로필\n\n✅ 승인된 카드: {approved_cards}\n👀 총 조회수: {total_views}\n📊 총 스캔 수: {total_scans}',
+        'cabinet.partner_profile': '👤 파트너 프로필\n\n✅ 승인된 카드: {approved_cards}\n👀 총 조회수: {total_views}\n📊 총 스캔 수: {total_sc캉}',
         'cabinet.partner_statistics': '📊 통계\n\n📋 총 카드 수: {total_cards}\n✅ 활성화된 카드: {active_cards}\n👀 조회수: {total_views}\n📊 스캔 수: {total_scans}\n📈 전환률: {conversion_rate}%',
         'partner.no_cards': '아직 승인된 카드가 없습니다.\n카드를 추가하여 시작하세요.',
         
@@ -116,6 +117,7 @@ translations_v2 = {
         # v4.2.4 minimal labels
         'menu.categories': 'Danh mục',
         'menu.invite_friends': 'Mời bạn bè',
+        'menu.favorites': 'Yêu thích',
         'menu.become_partner': 'Trở thành đối tác',
         'menu.help': 'Hỗ trợ',
         'menu.profile': 'Hồ sơ',
@@ -188,109 +190,47 @@ translations_v2 = {
         'success': 'Thành công!',
         'failed': 'Thất bại!'
     },
+    'ru': {
+        # v4.2.4 menu keys
+        'menu.categories': 'Категории',
+        'menu.invite_friends': 'Пригласить друзей',
+        'menu.favorites': 'Избранные',
+        'menu.become_partner': 'Стать парнером',
+        'menu.help': '❓ Помощь',
+        'menu.profile': '👤 Личный кабинет',
+        # v4.2.4 invite submenu
+        'invite.my_link': '🔗 Моя ссылка',
+        'invite.invited': '📋 Приглашённые',
+        'invite.earnings': '💵 Доходы',
+        'invite.copied': 'Ссылка скопирована',
+        'invite.empty': 'У вас пока нет приглашённых',
+        # v4.2.4 commands
+        'commands.start': 'Перезапуск',
+        'commands.add_partner': 'Добавить парнер',
+        'commands.webapp': 'Открыть WebApp',
+        'commands.city': 'Сменить город',
+        'commands.help': 'Помощь/FAQ',
+        'commands.policy': 'Политика конфиденциальности',
+        'commands.clear_cache': 'Очистить кэш (только админ)',
+        # v4.2.4 categories labels
+        'categories.restaurants': '🍽 restaurants',
+        'categories.spa': '🧖‍♀ spa',
+        'categories.transport': '🚗 transport',
+        'categories.hotels': '🏨 hotels',
+        'categories.tours': '🚶‍♂ tours',
+        'categories.shops': '🛍 shops',
+    },
     'en': {
         # v4.2.4 minimal labels
         'menu.categories': 'Categories',
-        'menu.invite_friends': 'Invite Friends',
-        'menu.become_partner': 'Become Partner',
+        'menu.invite_friends': 'Invite friends',
+        'menu.favorites': 'Favorites',
+        'menu.become_partner': 'Become a partner',
         'menu.help': 'Help',
         'menu.profile': 'Profile',
-        'invite.my_link': 'My Link',
-        'invite.invited': 'Invited Users',
+        'invite.my_link': 'My link',
+        'invite.invited': 'Invited',
         'invite.earnings': 'Earnings',
-        # Existing keys
-        'back_to_main_menu': 'Back to Main Menu🏘',
-        'choose_category': '🗂️ Choose Category',
-        'show_nearest': '📍 Show Nearest',
-        
-        # User profile
-        'cabinet.user_profile': '👤 Your Profile\n\n💎 Points: {points}\n🏆 Level: {level}\n\nUse the menu below to manage your profile',
-        'cabinet.user_points': '💰 Your Points: {points}\n\nYou can use them at our partners',
-        'cabinet.history_header': '📜 Transaction History:',
-        'cabinet.partner_profile': '👤 Partner Profile\n\n✅ Approved Cards: {approved_cards}\n👀 Total Views: {total_views}\n📊 Total Scans: {total_scans}',
-        'cabinet.partner_statistics': '📊 Statistics\n\n📋 Total Cards: {total_cards}\n✅ Active Cards: {active_cards}\n👀 Views: {total_views}\n📊 Scans: {total_scans}\n📈 Conversion Rate: {conversion_rate}%',
-        'partner.no_cards': 'You have no approved cards yet.\nAdd a card to get started.',
-        
-        # Keyboard buttons
-        'keyboard.points': '💰 My Points',
-        'keyboard.history': '📜 History',
-        'keyboard.spend': '💳 Spend',
-        'keyboard.report': '📊 Report',
-        'keyboard.card': '🎫 My Card',
-        'keyboard.settings': '⚙️ Settings',
-        'keyboard.back': '◀️ Back',
-        'keyboard.my_cards': '📋 My Cards',
-        'keyboard.scan_qr': '📱 Scan QR',
-        'keyboard.statistics': '📈 Statistics',
-        'keyboard.support': '🆘 Support',
-        'keyboard.confirm': '✅ Confirm',
-        'keyboard.cancel': '❌ Cancel',
-        'keyboard.enter_amount': '💳 Enter Amount',
-        'keyboard.prev_page': '⬅️ Previous',
-        'keyboard.next_page': 'Next ➡️',
-        'keyboard.become_partner': '👨‍💼 Become Partner',
-        'choose_language': '🌐 Language',
-        'choose_district': '🌆 District',
-        
-        # Keyboard menu items
-        'keyboard.categories': '🗂️ Categories',
-        'keyboard.nearest': '📍 Nearest',
-        'keyboard.help': '❓ Help',
-        'keyboard.choose_language': '🌐 Change Language',
-        'keyboard.back_to_main': '🏠 Main Menu',
-        
-        # Profile/help
-        'profile': '👤 Profile',
-        'help': '❓ Help',
-        
-        # Partner FSM texts
-        'add_card': '➕ Add Card',
-        'my_cards': '📋 My Cards',
-        'card_status_draft': '📝 Draft',
-        'card_status_pending': '⏳ Pending Review',
-        'card_status_approved': '✅ Approved',
-        'card_status_published': '🎉 Published',
-        'card_status_rejected': '❌ Rejected',
-        'card_status_archived': '🗂️ Archived',
-        
-        # Moderation texts
-        'moderation_title': '🔍 Moderation',
-        'approve_card': '✅ Approve',
-        'reject_card': '❌ Reject',
-        'feature_card': '⭐ Feature',
-        'archive_card': '🗂️ Archive',
-        
-        # Common actions
-        'cancel': '❌ Cancel',
-        'skip': '⏭️ Skip',
-        'back': '🔙 Back',
-        
-        # Help text
-        'help_text': '''Hello! Thank you for using KarmaBot.\n\nAvailable commands:\n/start - Start bot\n/help - Help\n/menu - Main menu\n/language - Change language\n\nIf you need help, please contact @support_bot.''',
-        
-        # Profile texts
-        'profile_main': '👤 **Profile**',
-        'profile_stats': '📊 Statistics',
-        'profile_settings': '⚙️ Settings',
-        'profile_help': '❓ Help',
-        
-        # Policy
-        'policy_text': '''Please agree to the privacy policy.\n\nContinuing implies agreement to the privacy policy.''',
-        'policy_accept': '✅ Agree',
-        'policy_view': '📄 Privacy Policy',
-        'policy_url': '/policy',
-        
-        # Common UI
-        'error_occurred': '⚠️ An error occurred. Please try again later.',
-        'not_available': '🚧 This feature is currently unavailable.',
-        'thanks': '🙏 Thank you!',
-        'loading': 'Loading...',
-        'saved': 'Saved!',
-        'select_option': 'Select an option:',
-        'no_results': 'No results.',
-        'try_again': 'Try again.',
-        'success': 'Success!',
-        'failed': 'Failed!'
     }
 }
 

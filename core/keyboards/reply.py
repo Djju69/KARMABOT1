@@ -49,7 +49,7 @@ def get_reply_keyboard(user: Optional[Dict[str, Any]] = None, screen: str = SCRE
             KeyboardButton(text=label("menu.invite_friends", "keyboard.referral_program")),
         ]
         row2 = [
-            KeyboardButton(text=label("menu.become_partner", "keyboard.become_partner")),
+            KeyboardButton(text=label("menu.favorites", "favorites.title")),
             KeyboardButton(text=label("menu.help", "keyboard.help")),
         ]
         row3 = [
