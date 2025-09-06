@@ -37,7 +37,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramConflictError
+from aiogram.exceptions import TelegramConflictError, TelegramBadRequest
 
 # Import middlewares
 from core.middleware import setup_rbac_middleware, setup_2fa_middleware
@@ -168,13 +168,29 @@ try:
     
     # This will be called from start.py
     async def start():
-        """Start the bot with conflict auto-recovery"""
+        """Start the bot with conflict/logged-out auto-recovery"""
         import asyncio
-        max_retries = 5
+        max_retries = 10
         attempt = 0
         while True:
             logger.info("🚀 Starting bot with polling...")
             try:
+                # Preflight: ensure bot is not in 'Logged out' state
+                try:
+                    await bot.get_me()
+                except TelegramBadRequest as pre:
+                    if "Logged out" in str(pre):
+                        attempt += 1
+                        wait_s = min(60 + attempt * 10, 180)
+                        logger.warning(f"Bot is 'Logged out' (preflight). Retry in {wait_s}s (attempt {attempt}/{max_retries})")
+                        await asyncio.sleep(wait_s)
+                        if attempt >= max_retries:
+                            logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
+                            raise
+                        continue
+                    else:
+                        raise
+
                 await dp.start_polling(bot, skip_updates=True)
                 return
             except TelegramConflictError as e:
@@ -195,6 +211,17 @@ try:
                 logger.info("⏳ Waiting 3s before retry...")
                 await asyncio.sleep(3)
                 continue
+            except TelegramBadRequest as e:
+                if "Logged out" in str(e):
+                    attempt += 1
+                    wait_s = min(60 + attempt * 10, 180)
+                    logger.warning(f"Bot is 'Logged out'. Retry in {wait_s}s (attempt {attempt}/{max_retries})")
+                    if attempt >= max_retries:
+                        logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
+                        raise
+                    await asyncio.sleep(wait_s)
+                    continue
+                raise
             except Exception as e:
                 logger.critical(f"Bot polling failed: {e}", exc_info=True)
                 raise
