@@ -146,15 +146,9 @@ async def run_bot():
         from bot.bot import start as start_bot
         logger.info("✅ Bot module imported successfully")
 
-        # ПРОВЕРКА РЕЖИМА - НЕ ЗАПУСКАТЬ POLLING В RAILWAY!
-        if os.getenv('RAILWAY_ENVIRONMENT'):
-            logger.info("🌐 RAILWAY MODE: Skipping polling, using webhook only")
-            logger.info("✅ Bot initialized for webhook mode")
-            # В Railway режиме просто завершаемся - webhook обрабатывается веб-сервером
-            return
-        else:
-            logger.info("💻 LOCAL MODE: Starting polling...")
-            await start_bot()
+        # Всегда запускаем polling (режим определяется в main())
+        logger.info("🚀 Starting bot polling...")
+        await start_bot()
 
     except ImportError as e:
         logger.error(f"❌ Bot import error: {e}", exc_info=True)
@@ -192,13 +186,17 @@ async def main():
     is_railway = is_railway_environment()
     logger.info(f"🎯 Deployment mode: {'RAILWAY (webhook)' if is_railway else 'LOCAL (polling)'}")
 
-    # В Railway режиме - ТОЛЬКО webhook сервер
+    # В Railway режиме - временно используем polling (пока нет веб-сервера)
     if is_railway:
-        logger.info("🌐 RAILWAY MODE: Starting webhook server only")
-        if WEB_IMPORTED:
-            await run_web_server()
+        logger.warning("🌐 RAILWAY MODE: Web app not available, using polling temporarily")
+        logger.info("⚠️ Temporary: Starting polling on Railway (webhook server not ready)")
+        bot_token = os.getenv("BOT_TOKEN")
+        if bot_token:
+            logger.info("🤖 BOT_TOKEN found, starting polling on Railway...")
+            await run_bot()
         else:
-            logger.error("❌ Web app not imported in Railway mode!")
+            logger.error("❌ BOT_TOKEN not found for Railway polling!")
+            logger.error("💡 Please check Railway Variables for BOT_TOKEN")
             return
 
     # В локальном режиме - ТОЛЬКО polling
