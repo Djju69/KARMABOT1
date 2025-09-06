@@ -144,6 +144,27 @@ async def run_bot():
                     await bot.delete_webhook(drop_pending_updates=True)
                     await bot.session.close()
                     logger.info("✅ Webhook cleared successfully via aiogram")
+
+                # Extra safety: terminate other polling sessions on Telegram side
+                try:
+                    logger.info("🛑 Trying Telegram logOut to close other getUpdates sessions...")
+                    logout = subprocess.run([
+                        'curl', '-s', '-X', 'POST',
+                        f'https://api.telegram.org/bot{bot_token}/logOut'
+                    ], capture_output=True, text=True, timeout=10)
+                    logger.info(f"logOut response: {logout.stdout or logout.stderr}")
+                except Exception as e:
+                    logger.warning(f"logOut call failed: {e}")
+
+                try:
+                    logger.info("🧹 Trying Telegram close to finalize cleanup...")
+                    close = subprocess.run([
+                        'curl', '-s', '-X', 'POST',
+                        f'https://api.telegram.org/bot{bot_token}/close'
+                    ], capture_output=True, text=True, timeout=10)
+                    logger.info(f"close response: {close.stdout or close.stderr}")
+                except Exception as e:
+                    logger.warning(f"close call failed: {e}")
             except Exception as e:
                 logger.error(f"❌ Failed to clear webhook: {e}")
                 logger.error("💡 Webhook cleanup failed, bot may have conflicts")
@@ -208,6 +229,7 @@ async def main():
 
         # Запускаем веб-сервер (web.main или health_app) и бота параллельно
         web_task = asyncio.create_task(run_web_server())
+        await asyncio.sleep(0.5)
         bot_task = asyncio.create_task(run_bot())
         await asyncio.gather(web_task, bot_task)
 
