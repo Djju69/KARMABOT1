@@ -4,6 +4,7 @@ QR WebApp API endpoints for enhanced user experience
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from typing import Dict, Any, List, Optional
+from pydantic import BaseModel
 import logging
 from datetime import datetime, timedelta
 
@@ -20,15 +21,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/qr", tags=["QR WebApp"])
 
-class QRScanRequest:
+class QRScanRequest(BaseModel):
     """Request model for QR code scanning"""
     qr_data: str
 
-class QRRedeemRequest:
+class QRRedeemRequest(BaseModel):
     """Request model for QR code redemption"""
     qr_id: str
 
-class QRGenerateRequest:
+class QRGenerateRequest(BaseModel):
     """Request model for QR code generation"""
     discount_type: str = "loyalty_points"
     discount_value: int = 100
@@ -48,7 +49,7 @@ async def qr_scanner_page():
             detail="QR scanner page not found"
         )
 
-@router.post("/scan")
+@router.post("/scan", response_model=Dict[str, Any])
 async def scan_qr_code(
     request: QRScanRequest,
     current_user: dict = Depends(get_current_user),
@@ -148,7 +149,7 @@ async def scan_qr_code(
             detail="Failed to scan QR code"
         )
 
-@router.post("/redeem")
+@router.post("/redeem", response_model=Dict[str, Any])
 async def redeem_qr_code(
     request: QRRedeemRequest,
     current_user: dict = Depends(get_current_user),
@@ -261,7 +262,7 @@ async def redeem_qr_code(
             detail="Failed to redeem QR code"
         )
 
-@router.post("/generate")
+@router.post("/generate", response_model=Dict[str, Any])
 async def generate_qr_code(
     request: QRGenerateRequest,
     current_user: dict = Depends(get_current_user),
