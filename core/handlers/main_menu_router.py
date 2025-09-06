@@ -620,10 +620,7 @@ async def handle_shops_submenu_typed(message: Message, bot: Bot, state: FSMConte
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
-async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик кнопки выбора языка."""
-    await on_language_select(message, bot, state)
+ 
 
 
 # --- Navigation Handlers ---
@@ -727,138 +724,34 @@ async def handle_back_to_main_menu(callback_query: CallbackQuery, bot: Bot, stat
 
 
 # --- Command Handlers ---
-@main_menu_router.message(CommandStart())
-async def handle_start_command(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик команды /start."""
-    await get_start(message, bot, state)
+ 
 
 
-@main_menu_router.message(Command("help"))
-@main_menu_router.message(F.text.in_([t.get('help_button', '') for t in translations.values()]))
-async def handle_help_command(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик команды /help и кнопки помощи."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    help_text = translations.get(lang, {}).get(
-        'help_text',
-        'Здесь будет справка по использованию бота.'
-    )
-    await message.answer(help_text, parse_mode="HTML")
+ 
 
 
-@main_menu_router.message(F.text.in_([t.get('help_button', '') for t in translations.values()]))
-async def handle_profile_button(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик кнопки профиля пользователя."""
-    await show_profile(message, state)
+ 
 
 
-@main_menu_router.message(F.text.in_([t.get('language_button', '') for t in translations.values()]))
-async def handle_choose_language(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки выбора языка."""
-    logger.debug(f"User {message.from_user.id} wants to change language")
-    await on_language_select(message, bot, state)
+ 
 
 
-@main_menu_router.message(F.text.in_([t.get('nearest_places', '') for t in translations.values()]))
-async def handle_nearest_places(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Ближайшие заведения'."""
-    logger.debug(f"User {message.from_user.id} requested nearest places")
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-        
-    try:
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        city_id = await profile_service.get_city_id(message.from_user.id)
-        await show_nearest_v2(message, bot, lang, city_id)
-    except Exception as e:
-        logger.error(f"Error showing nearest places: {e}", exc_info=True)
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        error_text = translations.get(lang, {}).get(
-            'nearest_places_error',
-            'Не удалось загрузить ближайшие заведения. Пожалуйста, попробуйте позже.'
-        )
-        await message.answer(error_text, parse_mode="HTML")
+ 
 
 
-@main_menu_router.message(F.text.in_([t.get('back_to_categories', '') for t in translations.values()]))
-async def handle_back_to_categories(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Назад к категориям'."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    await show_categories_v2(message, bot, lang)
+ 
 
 
-@main_menu_router.message(F.text.in_([t.get('transport_submenu', '') for t in translations.values()]))
-async def handle_transport_submenu(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик подменю транспорта."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_transport_submenu(message, bot, lang, city_id)
+ 
 
 
-@main_menu_router.message(F.text.in_(
-    [t.get(k, '') for t in translations.values() for k in ['tours_group', 'tours_private']]
-))
-async def handle_tours_submenu(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик подменю экскурсий."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_tours_submenu(message, bot, lang, city_id)
+ 
 
 
-@main_menu_router.message(F.text.in_(
-    [t.get(k, '') for t in translations.values() for k in ['spa_salon', 'spa_massage', 'spa_sauna']]
-))
-async def handle_spa_submenu(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик подменю SPA."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_spa_submenu(message, bot, lang, city_id)
+ 
 
 
-@main_menu_router.message(F.text.in_(
-    [t.get(k, '') for t in translations.values() for k in ['hotels_hotels', 'hotels_apartments']]
-))
-async def handle_hotels_submenu(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик подменю отелей."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_hotels_submenu(message, bot, lang, city_id)
+ 
 
 
-@main_menu_router.message(F.text.in_(
-    [t.get(k, '') for t in translations.values() for k in ['shops_shops', 'shops_services']]
-))
-async def handle_shops_submenu(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик подменю магазинов и услуг."""
-    if not await ensure_policy_accepted(message, bot, state):
-        return
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    city_id = await profile_service.get_city_id(message.from_user.id)
-    await on_shops_submenu(message, bot, lang, city_id)
-
-
-@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
-async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext):
-    """Обработчик кнопки 'Назад в главное меню'."""
-    await get_start(message, bot, state)
+ 
