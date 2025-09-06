@@ -16,12 +16,8 @@ from datetime import datetime
 
 print("✅ IMPORTS LOADED SUCCESSFULLY")
 
-# FORCE WEBHOOK ENVIRONMENT IMMEDIATELY
-os.environ['RAILWAY_ENVIRONMENT'] = 'production'
-os.environ['DISABLE_POLLING'] = 'true'
-os.environ['RAILWAY_STATIC_URL'] = 'https://web-production-d51c7.up.railway.app/'
-
-print("🔧 FORCED ENVIRONMENT VARIABLES:")
+# ENV теперь читаем только из окружения (без форса)
+print("🔧 ENV DETECTED:")
 print(f"  RAILWAY_ENVIRONMENT: {os.getenv('RAILWAY_ENVIRONMENT')}")
 print(f"  DISABLE_POLLING: {os.getenv('DISABLE_POLLING')}")
 print(f"  RAILWAY_STATIC_URL: {os.getenv('RAILWAY_STATIC_URL')}")
@@ -54,12 +50,7 @@ def is_railway_environment():
     logger.info(f"🔍 RAILWAY_ENVIRONMENT: '{railway_env}'")
     logger.info(f"🔍 RAILWAY_STATIC_URL: '{railway_url}'")
 
-    # FORCE WEBHOOK MODE FOR RAILWAY - ALWAYS RETURN TRUE
-    logger.info("🚀 FORCE ENABLING WEBHOOK MODE FOR RAILWAY (ALWAYS)")
-    os.environ['RAILWAY_ENVIRONMENT'] = 'production'
-    os.environ['DISABLE_POLLING'] = 'true'
-    os.environ['RAILWAY_STATIC_URL'] = 'https://web-production-d51c7.up.railway.app/'
-    return True
+    return bool(railway_env)
 
 def validate_environment():
     """Проверка обязательных переменных окружения"""
@@ -83,15 +74,15 @@ def validate_environment():
     
     # Настройка для Railway
     if is_railway_environment():
-        raw_url = os.getenv('RAILWAY_STATIC_URL', 'your-app.railway.app')
-        app_url = raw_url if raw_url.startswith(('http://', 'https://')) else f"https://{raw_url}"
-        logger.info(f"🌐 Railway detected, using webhook: {app_url}")
-        os.environ['WEBHOOK_URL'] = app_url
-        os.environ['DISABLE_POLLING'] = 'true'
-        logger.info("✅ Webhook mode enabled")
+        raw_url = os.getenv('RAILWAY_STATIC_URL')
+        if raw_url:
+            app_url = raw_url if raw_url.startswith(('http://', 'https://')) else f"https://{raw_url}"
+            logger.info(f"🌐 Railway detected, webhook URL: {app_url}")
+            os.environ['WEBHOOK_URL'] = app_url
+        else:
+            logger.warning("RAILWAY_STATIC_URL is not set; webhook URL cannot be constructed")
     else:
-        logger.info("💻 Local environment, using polling")
-        logger.info("✅ Polling mode enabled")
+        logger.info("💻 Local environment: polling mode")
 
 # Try to import web app with delay to avoid circular imports
 APP = None

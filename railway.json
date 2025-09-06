@@ -25,7 +25,7 @@
     "PYTHONDONTWRITEBYTECODE": "1",
     "ENVIRONMENT": "production",
     "LOG_LEVEL": "INFO",
-    "PORT": "8000"
+    "PORT": "8080"
   },
   "plugins": [
     {
