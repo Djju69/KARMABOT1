@@ -17,10 +17,10 @@ async def set_commands(bot: Bot) -> None:
     Args:
         bot: The bot instance
     """
-    # v4.2.4 commands (exact list)
+    # v4.2.5 commands (exact list, no extras)
     base = [
         ("start", "commands.start"),
-        ("add", "commands.add_partner"),  # /add partner — Telegram ограничивает пробелы: оставим /add
+        ("add", "commands.add_partner"),  # /add partner — Telegram не поддерживает пробелы
         ("webapp", "commands.webapp"),
         ("city", "commands.city"),
         ("help", "commands.help"),
@@ -32,8 +32,9 @@ async def set_commands(bot: Bot) -> None:
         return [BotCommand(command=cmd, description=get_text(text_key, locale) or cmd) for cmd, text_key in base]
 
     try:
-        # Register default (RU)
-        await bot.set_my_commands(build("ru"), scope=BotCommandScopeDefault())
+        # Register per-locale command sets; replaces existing lists for these locales
+        for lc in ("ru", "en", "vi", "ko"):
+            await bot.set_my_commands(build(lc), scope=BotCommandScopeDefault(), language_code=lc)
     except Exception as e:
         print(f"Error setting bot commands: {e}")
         raise
@@ -50,17 +51,20 @@ def register_commands(router):
     from aiogram.types import Message
     
     @router.message(CommandStart())
-    @router.message(Command("help"))
     async def cmd_start(message: Message, bot: Bot, state: FSMContext):
-        """Обработчик команд /start и /help"""
+        """/start — перезапуск и показ главного меню"""
         from .basic import get_start
-        
         try:
             await get_start(message, bot, state)
         except Exception as e:
             logger = logging.getLogger(__name__)
             logger.error(f"Error in cmd_start: {e}", exc_info=True)
             await message.reply("Произошла ошибка при обработке команды. Пожалуйста, попробуйте позже.")
+
+    @router.message(Command("help"))
+    async def cmd_help(message: Message):
+        """/help — Помощь/FAQ (заглушка)"""
+        await message.answer("❓ Помощь: раздел FAQ скоро будет обновлён.")
     
     @router.message(Command("webapp"))
     async def cmd_webapp(message: Message):
@@ -72,7 +76,16 @@ def register_commands(router):
 
     @router.message(Command("policy"))
     async def cmd_policy(message: Message):
-        await message.answer("📄 Политика: /policy")
+        await message.answer("📄 Политика конфиденциальности: ссылка будет добавлена позже.")
+
+    @router.message(Command("add"))
+    async def cmd_add(message: Message, state: FSMContext):
+        """/add partner — Telegram без пробелов, используем /add для запуска мастера"""
+        try:
+            from .partner import start_add_card
+            await start_add_card(message, state)
+        except Exception:
+            await message.answer("➕ Добавление партнёрской карточки скоро будет доступно.")
 
     @router.message(Command("clear_cache"))
     async def cmd_clear_cache(message: Message):
