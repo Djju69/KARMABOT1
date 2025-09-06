@@ -37,6 +37,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
+from aiogram.exceptions import TelegramConflictError
 
 # Import middlewares
 from core.middleware import setup_rbac_middleware, setup_2fa_middleware
@@ -167,13 +168,36 @@ try:
     
     # This will be called from start.py
     async def start():
-        """Start the bot"""
-        logger.info("🚀 Starting bot with polling...")
-        try:
-            await dp.start_polling(bot, skip_updates=True)
-        except Exception as e:
-            logger.critical(f"Bot polling failed: {e}", exc_info=True)
-            raise
+        """Start the bot with conflict auto-recovery"""
+        import asyncio
+        max_retries = 5
+        attempt = 0
+        while True:
+            logger.info("🚀 Starting bot with polling...")
+            try:
+                await dp.start_polling(bot, skip_updates=True)
+                return
+            except TelegramConflictError as e:
+                attempt += 1
+                logger.error(
+                    f"TelegramConflictError on polling (attempt {attempt}/{max_retries}): {e}",
+                    exc_info=False,
+                )
+                # Try to cleanup conflicts and retry
+                try:
+                    logger.info("🧹 deleteWebhook(drop_pending_updates=True)")
+                    await bot.delete_webhook(drop_pending_updates=True)
+                except Exception as ce:
+                    logger.warning(f"delete_webhook failed: {ce}")
+                if attempt >= max_retries:
+                    logger.critical("Exceeded max retries due to conflicts. Aborting.")
+                    raise
+                logger.info("⏳ Waiting 3s before retry...")
+                await asyncio.sleep(3)
+                continue
+            except Exception as e:
+                logger.critical(f"Bot polling failed: {e}", exc_info=True)
+                raise
     
     # For direct execution
     if __name__ == "__main__":

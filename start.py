@@ -228,8 +228,9 @@ async def main():
             return
 
         # Запускаем веб-сервер (web.main или health_app) и бота параллельно
+        # ВАЖНО: сначала поднимем веб, затем с задержкой бота, чтобы избежать гонок
         web_task = asyncio.create_task(run_web_server())
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(2)
         bot_task = asyncio.create_task(run_bot())
         await asyncio.gather(web_task, bot_task)
 
