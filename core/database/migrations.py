@@ -481,6 +481,8 @@ class DatabaseMigrator:
         
         self.init_migration_table()
         self.migrate_001_expand_legacy_tables()
+        # Ensure legacy categories.created_at exists for compatibility
+        self.migrate_001_1_add_categories_created_at()
         self.migrate_002_expand_new_schema()
         self.migrate_003_seed_default_data()
         # Add optional fields to cards_v2 (subcategory_id, city_id, area_id)
@@ -497,6 +499,39 @@ class DatabaseMigrator:
         self.migrate_008_card_photos()
         
         logger.info("All migrations completed successfully")
+
+    def migrate_001_1_add_categories_created_at(self):
+        """
+        EXPAND Phase: Ensure 'created_at' exists in legacy categories table
+        """
+        version = "001.1"
+        desc = "EXPAND: Add created_at column to categories if missing"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+        def _apply(conn: sqlite3.Connection):
+            # SQLite path: add column if missing
+            try:
+                cur = conn.execute("PRAGMA table_info(categories)")
+                cols = {row[1] for row in cur.fetchall()}
+                if 'created_at' not in cols:
+                    conn.execute("ALTER TABLE categories ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                    (version, desc),
+                )
+            except Exception as e:
+                logger.error(f"Failed to apply {version}: {e}")
+                raise
+        if self._is_memory:
+            conn = self.get_connection()
+            _apply(conn)
+            conn.commit()
+            logger.info(f"Applied migration {version}: {desc}")
+        else:
+            with self.get_connection() as conn:
+                _apply(conn)
+                logger.info(f"Applied migration {version}: {desc}")
 
     def migrate_005_5_add_name_ko_column(self):
         """

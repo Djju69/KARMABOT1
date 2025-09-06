@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 print("="*60)
-print("🚨 START.PY LOADED - DEPLOYMENT MARKER V5.0")
+print("🚨 START.PY — simplified startup logs")
 print("⏰ TIME:", __import__('datetime').datetime.now())
-print("🎯 RAILWAY WEBHOOK FORCE ENABLED - ALWAYS")
-print("✅ POLLING DISABLED - WEBHOOK ONLY")
 print("="*60)
 
 import os
@@ -187,12 +185,10 @@ async def main():
 
     # ПРОВЕРКА РЕЖИМА ЗАПУСКА
     is_railway = is_railway_environment()
-    logger.info(f"🎯 Deployment mode: {'RAILWAY (webhook)' if is_railway else 'LOCAL (polling)'}")
+    logger.info(f"🎯 Deployment mode: {'RAILWAY' if is_railway else 'LOCAL'}")
 
-    # В Railway режиме - поднимаем минимальный веб-сервер для healthcheck И бота (polling)
+    # Railway: health server + polling (single mode, no contradictions in logs)
     if is_railway:
-        logger.warning("🌐 RAILWAY MODE: Web app not available, using polling temporarily")
-        logger.info("⚠️ Temporary: Starting polling on Railway (webhook server not ready)")
         bot_token = os.getenv("BOT_TOKEN")
         if not bot_token:
             logger.error("❌ BOT_TOKEN not found for Railway polling!")
@@ -206,7 +202,7 @@ async def main():
         bot_task = asyncio.create_task(run_bot())
         await asyncio.gather(web_task, bot_task)
 
-    # В локальном режиме - ТОЛЬКО polling
+    # Local: polling only
     else:
         logger.info("💻 LOCAL MODE: Starting polling only")
         bot_token = os.getenv("BOT_TOKEN")

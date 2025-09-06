@@ -9,6 +9,7 @@ from aiogram.fsm.storage.base import BaseStorage
 import logging
 
 from core.security.roles import get_user_role, Permission
+from core.services.cache import cache_service
 from core.database import role_repository
 
 logger = logging.getLogger(__name__)
@@ -53,16 +54,26 @@ class RBACMiddleware(BaseMiddleware):
             # Получаем состояние пользователя (если нужно далее)
             state: FSMContext = data.get('state')  # noqa: F841 (оставлено на будущее использование)
 
-            # Получаем роль пользователя
-            user_role = await get_user_role(user_id)
+            # Получаем роль пользователя с простым кэшированием на короткое время
+            cache_key = f"rbac:role:{user_id}"
+            cached = await cache_service.get(cache_key)
+            if cached:
+                user_role = cached
+            else:
+                user_role = await get_user_role(user_id)
+                # Кэшируем на 60 секунд, чтобы снизить нагрузку и лог-спам
+                try:
+                    await cache_service.set(cache_key, user_role, ex=60)
+                except Exception:
+                    pass
 
             # Сохраняем роль в data для использования в хендлерах
             data['user_role'] = user_role
 
             # Логируем попытку доступа
             role_name = getattr(user_role, 'name', str(user_role))
-            logger.info(
-                "User %s (role: %s) is trying to access handler: %s",
+            logger.debug(
+                "[RBAC] user=%s role=%s handler=%s",
                 user_id, role_name, getattr(handler, '__name__', str(handler))
             )
 
