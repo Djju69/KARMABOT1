@@ -85,7 +85,11 @@ async def handle_main_menu_text(message: Message, bot: Bot, state: FSMContext) -
     logger.debug(f"User {message.from_user.id} requested main menu via text command")
     await get_start(message, bot, state)
 
-@main_menu_router.message(F.text.in_([t.get('choose_category', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('choose_category', '') for t in translations.values()
+] + [
+    t.get('menu.categories', '') for t in translations.values()
+]))
 async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки выбора категории."""
     logger.debug(f"User {message.from_user.id} chose category selection")
@@ -106,7 +110,11 @@ async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) 
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('profile', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('profile', '') for t in translations.values()
+] + [
+    t.get('menu.profile', '') for t in translations.values()
+]))
 async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки профиля пользователя."""
     logger.debug(f"User {message.from_user.id} opened profile")
@@ -128,8 +136,20 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
     await open_cabinet(message, bot, state)
 
 
-@main_menu_router.message(F.text.in_([t.get('help', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('help', '') for t in translations.values()
+] + [
+    t.get('menu.help', '') for t in translations.values()
+]))
 async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
+# Favorites (v4.2.5) — placeholder list
+@main_menu_router.message(F.text.in_([t.get('menu.favorites', '') for t in translations.values()]))
+async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Показывает список избранных (заглушка до реализации хранилища)."""
+    logger.debug(f"User {message.from_user.id} opened favorites")
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    await message.answer("⭐ Избранные: скоро. Здесь будут ваши сохранённые карточки.")
     """Обработчик кнопки 'Помощь'."""
     logger.debug(f"User {message.from_user.id} requested help")
     if not await ensure_policy_accepted(message, bot, state):
