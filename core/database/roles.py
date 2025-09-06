@@ -113,6 +113,33 @@ class RoleRepository:
         except Exception as e:
             logger.error(f"Error getting users by role: {e}")
             return []
+
+
+# --- SQLite safety helpers (runtime) ---
+def ensure_sqlite_user_roles_table(db_service) -> None:
+    """
+    Ensure minimal user_roles table exists in SQLite runtime.
+    No-op for async Postgres adapters (no get_connection attribute).
+    """
+    try:
+        if not hasattr(db_service, "get_connection"):
+            return  # Not SQLite service
+        conn = db_service.get_connection()
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_roles (
+                    user_id INTEGER PRIMARY KEY,
+                    role TEXT NOT NULL DEFAULT 'USER',
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"ensure_sqlite_user_roles_table failed: {e}")
     
     async def log_audit_event(
         self,

@@ -58,6 +58,15 @@ try:
     dp = Dispatcher()
     
     # Setup middlewares
+    # Ensure SQLite user_roles exists to avoid 'no such table' during RBAC
+    try:
+        from core.database import db_v2
+        from core.database.roles import ensure_sqlite_user_roles_table
+        ensure_sqlite_user_roles_table(db_v2)
+        logger.info("✅ Ensured user_roles table exists (SQLite)")
+    except Exception as e:
+        logger.warning(f"Could not ensure user_roles table: {e}")
+
     setup_rbac_middleware(dp)
     setup_2fa_middleware(dp)
     
@@ -172,6 +181,17 @@ try:
         import asyncio
         max_retries = 10
         attempt = 0
+        # Assign SUPER_ADMIN role to configured admin in SQLite runtime (best-effort)
+        try:
+            from core.settings import settings as _settings
+            admin_id = getattr(_settings.bots, 'admin_id', None)
+            if isinstance(admin_id, int) and admin_id > 0:
+                from core.database import role_repository
+                from core.database.roles import RoleEnum
+                await role_repository.set_user_role(int(admin_id), RoleEnum.SUPER_ADMIN)
+                logger.info("✅ Ensured SUPER_ADMIN role for admin_id=%s", admin_id)
+        except Exception as _e:
+            logger.warning("Could not assign SUPER_ADMIN role at startup: %s", _e)
         while True:
             logger.info("🚀 Starting bot with polling...")
             try:
