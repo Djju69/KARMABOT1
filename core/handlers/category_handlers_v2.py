@@ -32,7 +32,7 @@ from ..settings import settings
 logger = logging.getLogger(__name__)
 
 # Router for category handlers
-category_router = Router()
+category_router = Router(name="category_router")
 
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
     """Показывает Reply-клавиатуру с 5 категориями согласно ТЗ."""

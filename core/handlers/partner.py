@@ -25,7 +25,7 @@ from core.utils.locales_v2 import get_text as _
 logger = logging.getLogger(__name__)
 
 # Роутер для обработчиков партнерского кабинета
-partner_router = Router()
+partner_router = Router(name="partner_router")
 
 # Константы
 MAX_ESTABLISHMENTS = 10  # Максимальное количество заведений у партнера
@@ -119,8 +119,8 @@ class AddCardStates(StatesGroup):
     preview_card = State()
     confirm_submit = State()
 
-# Router for partner handlers
-partner_router = Router()
+# Router for partner handlers (already created above)
+# partner_router declared once; keep single instance
 
 def get_inline_skip_keyboard() -> InlineKeyboardMarkup:
     """Inline keyboard with a single Skip button."""

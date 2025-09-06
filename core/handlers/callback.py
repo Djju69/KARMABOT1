@@ -8,7 +8,7 @@ from core.utils.geo import find_restaurants  # Функция поиска ре�
 from core.utils.locales import get_text
 from core.handlers.category_handlers_v2 import show_categories_v2  # Показываем категории через хендлер
 
-router = Router()
+router = Router(name="callback_router")
 
 # --- Рестораны рядом с пользователем ---
 @router.callback_query(F.data == "rest_near_me")

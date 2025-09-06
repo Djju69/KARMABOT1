@@ -27,7 +27,7 @@ from ..keyboards.reply_v2 import (
 from ..keyboards.inline_v2 import get_add_card_choice_inline
 from ..settings import settings
 
-profile_router = Router()
+profile_router = Router(name="profile_router")
 logger = logging.getLogger(__name__)
 
 

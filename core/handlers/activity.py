@@ -24,7 +24,7 @@ from ..keyboards.reply_v2 import get_location_request_keyboard
 from .basic import ensure_policy_accepted
 
 logger = logging.getLogger(__name__)
-activity_router = Router()
+activity_router = Router(name="activity_router")
 
 
 # --- Helpers ---
