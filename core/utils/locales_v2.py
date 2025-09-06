@@ -9,6 +9,15 @@ from pathlib import Path
 # Extended translations (backward compatible)
 translations_v2 = {
     'ko': {
+        # v4.2.4 minimal labels
+        'menu.categories': '카테고리',
+        'menu.invite_friends': '친구 초대',
+        'menu.become_partner': '파트너 되기',
+        'menu.help': '도움말',
+        'menu.profile': '프로필',
+        'invite.my_link': '내 링크',
+        'invite.invited': '초대한 사용자',
+        'invite.earnings': '수익',
         # Existing keys
         'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
         'choose_category': '🗂️ 카테고리',
@@ -104,6 +113,15 @@ translations_v2 = {
         'failed': '실패했습니다.'
     },
     'vi': {
+        # v4.2.4 minimal labels
+        'menu.categories': 'Danh mục',
+        'menu.invite_friends': 'Mời bạn bè',
+        'menu.become_partner': 'Trở thành đối tác',
+        'menu.help': 'Hỗ trợ',
+        'menu.profile': 'Hồ sơ',
+        'invite.my_link': 'Liên kết của tôi',
+        'invite.invited': 'Đã mời',
+        'invite.earnings': 'Thu nhập',
         # Existing keys
         'back_to_main_menu': 'Về menu chính🏘',
         'choose_category': '🗂️ Danh mục',
@@ -170,259 +188,109 @@ translations_v2 = {
         'success': 'Thành công!',
         'failed': 'Thất bại!'
     },
-    'ru': {
-        # Existing keys (preserved for compatibility)
-        'back_to_main_menu': 'Вернуться в главное меню🏘',
-        'choose_category': '🗂️ Категории',
-        'show_nearest': '📍 Показать ближайшие',
+    'en': {
+        # v4.2.4 minimal labels
+        'menu.categories': 'Categories',
+        'menu.invite_friends': 'Invite Friends',
+        'menu.become_partner': 'Become Partner',
+        'menu.help': 'Help',
+        'menu.profile': 'Profile',
+        'invite.my_link': 'My Link',
+        'invite.invited': 'Invited Users',
+        'invite.earnings': 'Earnings',
+        # Existing keys
+        'back_to_main_menu': 'Back to Main Menu🏘',
+        'choose_category': '🗂️ Choose Category',
+        'show_nearest': '📍 Show Nearest',
         
         # User profile
-        'cabinet.user_profile': '👤 Ваш профиль\n\n💎 Баллы: {points}\n🏆 Уровень: {level}\n\nИспользуйте меню ниже для управления профилем',
-        'cabinet.user_points': '💰 Ваши баллы: {points}\n\nВы можете потратить их у наших партнеров',
-        'cabinet.history_header': '📜 История операций:',
-        'cabinet.partner_profile': '👤 Кабинет партнера\n\n✅ Одобрено карточек: {approved_cards}\n👀 Всего просмотров: {total_views}\n📊 Всего сканирований: {total_scans}',
-        'cabinet.partner_statistics': '📊 Статистика\n\n📋 Всего карточек: {total_cards}\n✅ Активных: {active_cards}\n👀 Просмотров: {total_views}\n📊 Сканирований: {total_scans}\n📈 Конверсия: {conversion_rate}%',
-        'partner.no_cards': 'У вас пока нет одобренных карточек.\nДобавьте карточку, чтобы начать работу.',
+        'cabinet.user_profile': '👤 Your Profile\n\n💎 Points: {points}\n🏆 Level: {level}\n\nUse the menu below to manage your profile',
+        'cabinet.user_points': '💰 Your Points: {points}\n\nYou can use them at our partners',
+        'cabinet.history_header': '📜 Transaction History:',
+        'cabinet.partner_profile': '👤 Partner Profile\n\n✅ Approved Cards: {approved_cards}\n👀 Total Views: {total_views}\n📊 Total Scans: {total_scans}',
+        'cabinet.partner_statistics': '📊 Statistics\n\n📋 Total Cards: {total_cards}\n✅ Active Cards: {active_cards}\n👀 Views: {total_views}\n📊 Scans: {total_scans}\n📈 Conversion Rate: {conversion_rate}%',
+        'partner.no_cards': 'You have no approved cards yet.\nAdd a card to get started.',
         
         # Keyboard buttons
-        'keyboard.points': '💰 Мои баллы',
-        'keyboard.history': '📜 История',
-        'keyboard.spend': '💳 Потратить',
-        'keyboard.report': '📊 Отчет',
-        'keyboard.card': '🎫 Моя карта',
-        'keyboard.settings': '⚙️ Настройки',
-        'keyboard.back': '◀️ Назад',
-        'keyboard.my_cards': '📋 Мои карточки',
-        'keyboard.scan_qr': '📱 Сканировать QR',
-        'keyboard.statistics': '📈 Статистика',
-        'keyboard.support': '🆘 Поддержка',
-        'keyboard.confirm': '✅ Подтвердить',
-        'keyboard.cancel': '❌ Отмена',
-        'keyboard.enter_amount': '💳 Ввести сумму',
-        'keyboard.prev_page': '⬅️ Назад',
-        'keyboard.next_page': 'Вперед ➡️',
-        'keyboard.become_partner': '👨‍💼 Стать партнером',
-        
-        # User profile
-        'cabinet.user_profile': '👤 Ваш профиль\n\n💎 Баллы: {points}\n🏆 Уровень: {level}\n\nИспользуйте меню ниже для управления профилем',
-        'cabinet.user_points': '💰 Ваши баллы: {points}\n\nВы можете потратить их у наших партнеров',
-        'cabinet.history_header': '📜 История операций:',
-        'cabinet.partner_profile': '👤 Кабинет партнера\n\n✅ Одобрено карточек: {approved_cards}\n👀 Всего просмотров: {total_views}\n📊 Всего сканирований: {total_scans}',
-        'cabinet.partner_statistics': '📊 Статистика\n\n📋 Всего карточек: {total_cards}\n✅ Активных: {active_cards}\n👀 Просмотров: {total_views}\n📊 Сканирований: {total_scans}\n📈 Конверсия: {conversion_rate}%',
-        'partner.no_cards': 'У вас пока нет одобренных карточек.\nДобавьте карточку, чтобы начать работу.',
-        
-        # Keyboard buttons
-        'keyboard.points': '💰 Мои баллы',
-        'keyboard.history': '📜 История',
-        'keyboard.spend': '💳 Потратить',
-        'keyboard.report': '📊 Отчет',
-        'keyboard.card': '🎫 Моя карта',
-        'keyboard.settings': '⚙️ Настройки',
-        'keyboard.back': '◀️ Назад',
-        'keyboard.my_cards': '📋 Мои карточки',
-        'keyboard.scan_qr': '📱 Сканировать QR',
-        'keyboard.statistics': '📈 Статистика',
-        'keyboard.support': '🆘 Поддержка',
-        'keyboard.confirm': '✅ Подтвердить',
-        'keyboard.cancel': '❌ Отмена',
-        'keyboard.enter_amount': '💳 Ввести сумму',
-        'keyboard.prev_page': '⬅️ Назад',
-        'keyboard.next_page': 'Вперед ➡️',
-        'keyboard.become_partner': '👨‍💼 Стать партнером',
-        'choose_language': '🌐 Язык',
-        'choose_district': '🌆 По районам',
+        'keyboard.points': '💰 My Points',
+        'keyboard.history': '📜 History',
+        'keyboard.spend': '💳 Spend',
+        'keyboard.report': '📊 Report',
+        'keyboard.card': '🎫 My Card',
+        'keyboard.settings': '⚙️ Settings',
+        'keyboard.back': '◀️ Back',
+        'keyboard.my_cards': '📋 My Cards',
+        'keyboard.scan_qr': '📱 Scan QR',
+        'keyboard.statistics': '📈 Statistics',
+        'keyboard.support': '🆘 Support',
+        'keyboard.confirm': '✅ Confirm',
+        'keyboard.cancel': '❌ Cancel',
+        'keyboard.enter_amount': '💳 Enter Amount',
+        'keyboard.prev_page': '⬅️ Previous',
+        'keyboard.next_page': 'Next ➡️',
+        'keyboard.become_partner': '👨‍💼 Become Partner',
+        'choose_language': '🌐 Language',
+        'choose_district': '🌆 District',
         
         # Keyboard menu items
-        'keyboard.categories': '🗂️ Категории',
-        'keyboard.nearest': '📍 Ближайшие',
-        'keyboard.help': '❓ Помощь',
-        'keyboard.choose_language': '🌐 Сменить язык',
-        'keyboard.back_to_main': '🏠 В главное меню',
+        'keyboard.categories': '🗂️ Categories',
+        'keyboard.nearest': '📍 Nearest',
+        'keyboard.help': '❓ Help',
+        'keyboard.choose_language': '🌐 Change Language',
+        'keyboard.back_to_main': '🏠 Main Menu',
         
-        # NEW: P1 additions (profile/help)
-        'profile': '👤 Личный кабинет',
-        'help': '❓ Помощь',
+        # Profile/help
+        'profile': '👤 Profile',
+        'help': '❓ Help',
         
-        # NEW: Partner FSM texts
-        'add_card': '➕ Добавить карточку',
-        'my_cards': '📋 Мои карточки',
-        'card_status_draft': '📝 Черновик',
-        'card_status_pending': '⏳ На модерации',
-        'card_status_approved': '✅ Одобрено',
-        'card_status_published': '🎉 Опубликовано',
-        'card_status_rejected': '❌ Отклонено',
-        'card_status_archived': '🗂️ Архив',
+        # Partner FSM texts
+        'add_card': '➕ Add Card',
+        'my_cards': '📋 My Cards',
+        'card_status_draft': '📝 Draft',
+        'card_status_pending': '⏳ Pending Review',
+        'card_status_approved': '✅ Approved',
+        'card_status_published': '🎉 Published',
+        'card_status_rejected': '❌ Rejected',
+        'card_status_archived': '🗂️ Archived',
         
-        # NEW: Moderation texts
-        'moderation_title': '🔍 Модерация',
-        'approve_card': '✅ Одобрить',
-        'reject_card': '❌ Отклонить',
-        'feature_card': '⭐ Рекомендуемое',
-        'archive_card': '🗂️ Архив',
+        # Moderation texts
+        'moderation_title': '🔍 Moderation',
+        'approve_card': '✅ Approve',
+        'reject_card': '❌ Reject',
+        'feature_card': '⭐ Feature',
+        'archive_card': '🗂️ Archive',
         
-        # NEW: Common actions
-        'cancel': '❌ Отменить',
-        'skip': '⏭️ Пропустить',
-        'back': '🔙 Назад',
-        'next': '➡️ Далее',
-        'edit': '✏️ Редактировать',
-        'delete': '🗑️ Удалить',
-        'save': '💾 Сохранить',
+        # Common actions
+        'cancel': '❌ Cancel',
+        'skip': '⏭️ Skip',
+        'back': '🔙 Back',
         
-        # NEW: Card renderer texts
-        'contact_info': '📞 Контакты',
-        'address_info': '📍 Адрес',
-        'discount_info': '🎫 Скидка',
-        'show_on_map': '🗺️ Показать на карте',
-        'create_qr': '📱 Создать QR-код',
-        'call_business': '📞 Связаться',
-        'book_service': '📅 Записаться',
+        # Help text
+        'help_text': '''Hello! Thank you for using KarmaBot.\n\nAvailable commands:\n/start - Start bot\n/help - Help\n/menu - Main menu\n/language - Change language\n\nIf you need help, please contact @support_bot.''',
         
-        # NEW: Help texts
-        'help_main': '''❓ **Справка по боту**
-
-🗂️ **Категории** - просмотр заведений по типам
-👤 **Личный кабинет** - управление карточками
-📍 **Показать ближайшие** - поиск рядом с вами
-🌆 **По районам** - выбор по местоположению
-🌐 **Язык** - смена языка интерфейса
-
-**Для партнеров:**
-/add_card - добавить новую карточку
-/my_cards - просмотр ваших карточек
-
-**Поддержка:** @support_bot''',
+        # Profile texts
+        'profile_main': '👤 **Profile**',
+        'profile_stats': '📊 Statistics',
+        'profile_settings': '⚙️ Settings',
+        'profile_help': '❓ Help',
         
-        # NEW: Profile texts
-        'profile_main': '👤 **Личный кабинет**',
-        'profile_stats': '📊 Статистика',
-        'profile_settings': '⚙️ Настройки',
-        'cards_count': 'Карточек',
-        'views_count': 'Просмотров',
-        'qr_scans': 'QR сканирований',
-
-        # NEW: Category Menu (v2)
-        'category_restaurants': '🍽 Рестораны',
-        'category_spa': '🧖‍♀️ SPA',
-        'category_transport': '🚗 Транспорт',
-        'category_hotels': '🏨 Отели',
-        'category_tours': '🚶‍♂️ Экскурсии',
-        # NEW: Shops & Services main category and submenu
-        'category_shops_services': '🛍️ Магазины и услуги',
-        'shops_choose': 'Выберите раздел магазинов и услуг:',
-        'shops_shops': '🛍 Магазины',
-        'shops_services': '🧩 Услуги',
-        'transport_bikes': '🛵 Байки',
-        'transport_cars': '🚘 Машины',
-        'transport_bicycles': '🚲 Велосипед',
-        'tours_group': '👥 Групповые',
-        'tours_private': '🧑‍🤝‍🧑 Индивидуальные',
-        'back_to_categories': '◀️ Назад',
-        'catalog_found': 'Найдено',
-        'catalog_page': 'Стр.',
-        'catalog_empty_sub': '📭 В этой подкатегории пока нет заведений.',
-        'transport_choose': 'Выберите вид транспорта:',
-        'tours_choose': 'Выберите тип экскурсии:',
-        # NEW: SPA and Hotels submenus
-        'spa_choose': 'Выберите раздел SPA:',
-        'spa_salon': '💆 Спа-салоны',
-        'spa_massage': '🤲 Массаж',
-        'spa_sauna': '🧖 Бани/сауны',
-        'hotels_choose': 'Выберите тип размещения:',
-        'hotels_hotels': '🏨 Отели',
-        'hotels_apartments': '🏘 Апартаменты',
-
-        # NEW: Restaurant filters
-        'restaurants_choose_cuisine': 'Выберите тип кухни:',
-        'filter_asia': 'Азиатская',
-        'filter_europe': 'Европейская',
-        'filter_street': 'Стритфуд',
-        'filter_vege': 'Вегетарианская',
-        'filter_all': 'Показать все',
-
-        # NEW: Welcome flow
-        'welcome_message': '''{user_name} 👋 Добро пожаловать в Karma System!
-
-✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:
-🍽️ Рестораны и кафе
-🧖‍♀️ SPA и массаж
-🏍️ Аренда байков
-🏨 Отели
-🚶‍♂️ Экскурсии
-
-А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀
-
-Начни экономить прямо сейчас — выбирай категорию и получай свои скидки!
-
-Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
-        'policy_accept': '✅ Согласен',
-        'policy_view': '📄 Политика конфиденциальности',
-        'policy_url': '/policy',  # Внутренняя страница политики на нашем веб-сервисе
-
-        # NEW: Common UI texts required by handlers
-        'main_menu_title': '🏘 Главное меню\n\n✨ Выберите категорию ниже и начните экономить уже сейчас!',
-        'language_updated': '✅ Язык обновлён',
-        'policy_accepted': '✅ Политика принята',
-        'choose_city': '🌆 Выберите город:',
-        'city_selected': '✅ Город выбран',
-        'city_updated': '✅ Город обновлён',
-        'unhandled_message': '🤖 Я вас не понял. Пожалуйста, используйте меню команд.',
-
-        # NEW: WebApp security / errors
-        'webapp_auth_invalid': '❌ Неверная авторизация WebApp. Повторите вход из Telegram.',
-        'webapp_auth_expired': '⌛ Сессия истекла. Откройте WebApp заново из бота.',
-        'webapp_origin_denied': '🚫 Источник запроса не разрешён.',
-
-        # NEW: Reply Menu
-        'menu_scan_qr': '🧾 Сканировать QR',
-        'scan_qr_unavailable': 'Сканирование недоступно. Доступно только партнёрам с активными карточками.',
-        'webapp_open': '🔗 Открыть WebApp',
-
-        # NEW: Partner cabinet navigation
-        'btn_more': '⋮ Ещё',
-        'btn_goto_page': '➡️ К странице…',
-        'btn_search_listing': '🔎 Поиск',
-        'btn_add_offer': '➕ Добавить предложение',
-        'btn_metrics_category': '📈 Показатели по категории',
-        'search_placeholder': 'Введите название или часть адреса…',
-        'search_no_results': 'Ничего не найдено по вашему запросу.',
-
-        # NEW: Reports
-        'report_building': '⏳ Формируем отчёт… Это может занять некоторое время.',
-        'report_rate_limited': '⏱ Лимит запросов отчётов исчерпан. Повторите позже.',
-
-        # NEW: Inline profile buttons (per spec)
-        'btn.points': '🎁 Баллы',
-        'btn.spend': '💳 Потратить',
-        'btn.history': '📜 История операций',
-        'btn.report': '📊 Получить отчёт',
-        'btn.card.bind': '🪪 Зарегистрировать карту',
-        'btn.notify.on': '🔔 Уведомления (вкл)',
-        'btn.notify.off': '🔔 Уведомления (выкл)',
-        'btn.lang': '🌐 Язык',
-        'btn.partner.become': '🧑‍💼 Стать партнёром',
-
-        # NEW: Wallet/card messages
-        'wallet.spend.min_threshold': 'Минимальная сумма списания: %{min} pts',
-        'wallet.spend.insufficient': 'Недостаточно баллов. Доступно: %{points} pts',
-        'card.bind.prompt': 'Введите номер карты (12 цифр).',
-        'card.bind.invalid': 'Неверный формат номера карты.',
-        'card.bind.occupied': 'Карта уже привязана к другому аккаунту.',
-        'card.bind.blocked': 'Карта заблокирована. Обратитесь в поддержку.',
-        # NEW: Bind options
-        'card.bind.options': 'Выберите способ привязки: сканировать QR, отправить фото QR-кода или ввести номер вручную.',
-        'card.bind.send_photo': '📷 Отправить фото QR-кода',
-        'card.bind.enter_manually': '⌨️ Ввести номер вручную',
-        'card.bind.open_scanner': '🧾 Сканировать QR (в разработке)'
-        ,
-        # NEW: Admin cabinet
-        'admin_menu_queue': '🗃 Очередь модерации',
-        'admin_menu_search': '🔎 Поиск',
-        'admin_menu_reports': '📊 Отчёты',
-        'admin_cabinet_title': '🛠 Кабинет администратора',
-        'admin_hint_queue': 'Используйте команду /moderate для запуска модерации или кнопки ниже.',
-        'admin_hint_search': 'Поиск по карточкам появится в следующем релизе.',
-        'admin_hint_reports': 'Отчёты и метрики появятся в следующем релизе.'
+        # Policy
+        'policy_text': '''Please agree to the privacy policy.\n\nContinuing implies agreement to the privacy policy.''',
+        'policy_accept': '✅ Agree',
+        'policy_view': '📄 Privacy Policy',
+        'policy_url': '/policy',
+        
+        # Common UI
+        'error_occurred': '⚠️ An error occurred. Please try again later.',
+        'not_available': '🚧 This feature is currently unavailable.',
+        'thanks': '🙏 Thank you!',
+        'loading': 'Loading...',
+        'saved': 'Saved!',
+        'select_option': 'Select an option:',
+        'no_results': 'No results.',
+        'try_again': 'Try again.',
+        'success': 'Success!',
+        'failed': 'Failed!'
     }
 }
 

@@ -5,6 +5,9 @@ import logging
 from aiogram import Bot, Router
 from aiogram.filters import Command, CommandStart
 from aiogram.types import BotCommand, BotCommandScopeDefault, Message
+from core.utils.locales_v2 import get_text
+from core.security.roles import Role
+from core.security.roles import get_user_role
 from aiogram.fsm.context import FSMContext
 
 async def set_commands(bot: Bot) -> None:
@@ -14,15 +17,23 @@ async def set_commands(bot: Bot) -> None:
     Args:
         bot: The bot instance
     """
-    commands = [
-        BotCommand(command="start", description="Главное меню"),
-        BotCommand(command="help", description="Помощь"),
-        BotCommand(command="profile", description="Мой профиль"),
-        BotCommand(command="menu", description="Открыть меню"),
+    # v4.2.4 commands (exact list)
+    base = [
+        ("start", "commands.start"),
+        ("add", "commands.add_partner"),  # /add partner — Telegram ограничивает пробелы: оставим /add
+        ("webapp", "commands.webapp"),
+        ("city", "commands.city"),
+        ("help", "commands.help"),
+        ("policy", "commands.policy"),
+        ("clear_cache", "commands.clear_cache"),
     ]
-    
+
+    def build(locale: str):
+        return [BotCommand(command=cmd, description=get_text(text_key, locale) or cmd) for cmd, text_key in base]
+
     try:
-        await bot.set_my_commands(commands, scope=BotCommandScopeDefault())
+        # Register default (RU)
+        await bot.set_my_commands(build("ru"), scope=BotCommandScopeDefault())
     except Exception as e:
         print(f"Error setting bot commands: {e}")
         raise
@@ -51,16 +62,26 @@ def register_commands(router):
             logger.error(f"Error in cmd_start: {e}", exc_info=True)
             await message.reply("Произошла ошибка при обработке команды. Пожалуйста, попробуйте позже.")
     
-    @router.message(Command("profile"))
-    async def cmd_profile(message: Message, bot: Bot, state: FSMContext):
-        """Обработчик команды /profile"""
-        from .basic import open_cabinet
-        
-        try:
-            await open_cabinet(message, bot, state)
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error in cmd_profile: {e}", exc_info=True)
-            await message.reply("Произошла ошибка при открытии профиля. Пожалуйста, попробуйте позже.")
+    @router.message(Command("webapp"))
+    async def cmd_webapp(message: Message):
+        await message.answer("🔗 WebApp скоро будет доступен")
+
+    @router.message(Command("city"))
+    async def cmd_city(message: Message):
+        await message.answer("🌆 Смена города скоро будет доступна")
+
+    @router.message(Command("policy"))
+    async def cmd_policy(message: Message):
+        await message.answer("📄 Политика: /policy")
+
+    @router.message(Command("clear_cache"))
+    async def cmd_clear_cache(message: Message):
+        # RBAC: only ADMIN/SUPER_ADMIN
+        role = await get_user_role(message.from_user.id)
+        if role.name.lower() not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав")
+            return
+        # TODO: hook cache service clearing if present
+        await message.answer("🧹 Кэш очищен")
     
     return router

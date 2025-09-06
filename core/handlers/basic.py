@@ -67,12 +67,8 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
         
         # Build spec-compliant main menu (reply keyboard v4.1)
         logger.info("[DEBUG] Building spec-compliant menu (reply v4.1)...")
-        user_ctx = {
-            "role": "user",
-            "lang": current_lang,
-            "has_partner_cards": False,
-        }
-        keyboard = get_reply_keyboard(user_ctx)
+        user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
+        keyboard = get_reply_keyboard(user_ctx, screen="main")
         
         if not keyboard:
             logger.error("[ERROR] Failed to generate menu: keyboard is None")

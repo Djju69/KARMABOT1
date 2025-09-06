@@ -35,25 +35,27 @@ def get_reply_keyboard(user: Optional[Dict[str, Any]] = None, screen: str = SCRE
         """Create a row of buttons from i18n keys."""
         return [KeyboardButton(text=get_text(key, lang)) for key in keys]
     
-    # Main menu screen
+    # Main menu screen (v4.2.4 – exactly 5 buttons, 3 rows)
     if screen == SCREEN_MAIN:
-        kb = [
-            row("keyboard.categories", "keyboard.profile", "keyboard.by_districts", "keyboard.help"),
-            row("keyboard.referral_program", "keyboard.my_referral_link"),
+        def label(primary_key: str, fallback_key: str) -> str:
+            try:
+                text = get_text(primary_key, lang)
+                return text if text and not text.startswith("[") else get_text(fallback_key, lang)
+            except Exception:
+                return get_text(fallback_key, lang)
+
+        row1 = [
+            KeyboardButton(text=label("menu.categories", "keyboard.categories")),
+            KeyboardButton(text=label("menu.invite_friends", "keyboard.referral_program")),
         ]
-        
-        # Dynamic QR scan button for partners with cards
-        if is_partner and user.get("has_partner_cards", False):
-            kb.append(row("keyboard.scan_qr"))
-            
-        # Language selector row (emoji flags with language codes)
-        kb.append([
-            KeyboardButton(text="🇷🇺 RU"),
-            KeyboardButton(text="🇬🇧 EN"),
-            KeyboardButton(text="🇻🇳 VI"),
-            KeyboardButton(text="🇰🇷 KO")
-        ])
-        
+        row2 = [
+            KeyboardButton(text=label("menu.become_partner", "keyboard.become_partner")),
+            KeyboardButton(text=label("menu.help", "keyboard.help")),
+        ]
+        row3 = [
+            KeyboardButton(text=label("menu.profile", "keyboard.profile")),
+        ]
+        kb = [row1, row2, row3]
         return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     
     # Profile screen

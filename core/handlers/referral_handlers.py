@@ -4,21 +4,59 @@
 import logging
 from typing import Dict, Any, List
 from aiogram import Bot, Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.services.multilevel_referral_service import multilevel_referral_service
 from core.services.referral_service import referral_service
-from core.utils.locales import get_text
+from core.utils.locales_v2 import get_text
 from core.keyboards.restaurant_keyboards import select_restoran
 from core.logger import get_logger
 
 logger = get_logger(__name__)
 router = Router(name="referral_handlers")
 
-@router.message(F.text == "👥 Реферальная программа")
+@router.message(F.text.in_(["Пригласить друзей", "Invite friends", "Mời bạn bè", "친구 초대"]))
+async def show_invite_menu(message: Message, state: FSMContext):
+    """Внутреннее меню "Пригласить друзей" (ровно 3 пункта)"""
+    lang = (await state.get_data()).get("lang", "ru")
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=get_text("invite.my_link", lang) or "🔗 Моя ссылка", callback_data="invite_my_link")],
+        [InlineKeyboardButton(text=get_text("invite.invited", lang) or "📋 Приглашённые", callback_data="invite_invited")],
+        [InlineKeyboardButton(text=get_text("invite.earnings", lang) or "💵 Доходы", callback_data="invite_earnings")],
+    ])
+    await message.answer(get_text("menu.invite_friends", lang) or "Пригласить друзей", reply_markup=kb)
+
+@router.callback_query(F.data == "invite_my_link")
+async def invite_my_link(cb: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", "ru")
+    try:
+        link = await referral_service.get_referral_link(cb.from_user.id)
+    except Exception:
+        link = "soon://ref"
+    text = (get_text("invite.my_link", lang) or "🔗 Моя ссылка") + f"\n\n`{link}`"
+    await cb.message.edit_text(text, parse_mode="Markdown")
+    await cb.answer()
+
+@router.callback_query(F.data == "invite_invited")
+async def invite_invited(cb: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", "ru")
+    # Заглушка с безопасной выдачей
+    text = get_text("invite.invited", lang) or "📋 Приглашённые"
+    text += "\n\nСкоро. Пагинация >10 поддерживается."
+    await cb.message.edit_text(text)
+    await cb.answer()
+
+@router.callback_query(F.data == "invite_earnings")
+async def invite_earnings(cb: CallbackQuery, state: FSMContext):
+    lang = (await state.get_data()).get("lang", "ru")
+    # Заглушка с безопасной выдачей
+    text = get_text("invite.earnings", lang) or "💵 Доходы"
+    text += "\n\nСкоро. Диапазоны: все / 30д / 7д / сегодня."
+    await cb.message.edit_text(text)
+    await cb.answer()
 async def show_referral_program(message: Message, state: FSMContext):
     """Показ реферальной программы"""
     try:
