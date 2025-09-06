@@ -114,33 +114,6 @@ class RoleRepository:
             logger.error(f"Error getting users by role: {e}")
             return []
 
-
-# --- SQLite safety helpers (runtime) ---
-def ensure_sqlite_user_roles_table(db_service) -> None:
-    """
-    Ensure minimal user_roles table exists in SQLite runtime.
-    No-op for async Postgres adapters (no get_connection attribute).
-    """
-    try:
-        if not hasattr(db_service, "get_connection"):
-            return  # Not SQLite service
-        conn = db_service.get_connection()
-        try:
-            conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS user_roles (
-                    user_id INTEGER PRIMARY KEY,
-                    role TEXT NOT NULL DEFAULT 'USER',
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-                """
-            )
-            conn.commit()
-        finally:
-            conn.close()
-    except Exception as e:
-        logger.error(f"ensure_sqlite_user_roles_table failed: {e}")
-    
     async def log_audit_event(
         self,
         user_id: Optional[int],
@@ -155,22 +128,20 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
     ) -> bool:
         """
         Записать событие в аудит-лог.
-        
-        Args:
-            user_id: ID пользователя, выполнившего действие
-            action: Тип действия (например, 'USER_LOGIN', 'ROLE_UPDATED')
-            entity_type: Тип сущности, к которой относится действие (например, 'user', 'role')
-            entity_id: ID сущности, к которой относится действие
-            old_values: Старые значения (для обновлений)
-            new_values: Новые значения (для обновлений)
-            ip_address: IP-адрес, с которого выполнено действие
-            user_agent: User-Agent пользователя
-            metadata: Дополнительные метаданные в формате словаря
-            
-        Returns:
-            bool: True если запись успешно сохранена, иначе False
+
+        Для SQLite (DatabaseServiceV2) — безопасная заглушка (только лог),
+        чтобы не падать без таблицы audit_log.
         """
         try:
+            # SQLite: просто логируем и выходим успешно
+            if hasattr(self.db, 'get_connection'):
+                logger.info(
+                    "AUDIT(STUB): user_id=%s action=%s entity=%s#%s meta=%s",
+                    user_id, action, entity_type, entity_id, metadata,
+                )
+                return True
+
+            # Async PG: пишем в таблицу audit_log
             query = """
                 INSERT INTO audit_log (
                     user_id, action, entity_type, entity_id,
@@ -190,22 +161,30 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
                 metadata
             )
             return True
-            
         except Exception as e:
             logger.error(f"Error logging audit event: {e}")
             return False
-            
+
     async def get_2fa_settings(self, user_id: int) -> Optional[dict]:
         """
         Получить настройки 2FA пользователя.
-        
-        Args:
-            user_id: ID пользователя
-            
-        Returns:
-            dict: Настройки 2FA или None, если не найдены
+
+        Для SQLite — возвращаем выключенную 2FA (без падений).
         """
         try:
+            if hasattr(self.db, 'get_connection'):
+                # Безопасная заглушка для локальной/SQLite среды
+                return {
+                    'id': None,
+                    'user_id': user_id,
+                    'secret_key': None,
+                    'is_enabled': False,
+                    'created_at': None,
+                    'updated_at': None,
+                    'last_used_at': None,
+                }
+
+            # Async PG: читаем реальные настройки
             query = """
                 SELECT id, user_id, secret_key, is_enabled, 
                        created_at, updated_at, last_used_at
@@ -216,25 +195,26 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
         except Exception as e:
             logger.error(f"Error getting 2FA settings: {e}")
             return None
-            
+
     async def update_2fa_settings(
-        self, 
-        user_id: int, 
-        secret_key: str, 
+        self,
+        user_id: int,
+        secret_key: Optional[str],
         is_enabled: bool = True
     ) -> bool:
         """
         Обновить настройки 2FA пользователя.
-        
-        Args:
-            user_id: ID пользователя
-            secret_key: Секретный ключ
-            is_enabled: Включена ли 2FA
-            
-        Returns:
-            bool: True если успешно, иначе False
+
+        Для SQLite — без операций с БД, успешная заглушка.
         """
         try:
+            if hasattr(self.db, 'get_connection'):
+                logger.info(
+                    "2FA(STUB): would update settings for user_id=%s enabled=%s",
+                    user_id, is_enabled,
+                )
+                return True
+
             query = """
                 INSERT INTO two_factor_auth (user_id, secret_key, is_enabled)
                 VALUES ($1, $2, $3)
@@ -250,18 +230,18 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
         except Exception as e:
             logger.error(f"Error updating 2FA settings: {e}")
             return False
-            
+
     async def update_2fa_last_used(self, user_id: int) -> bool:
         """
         Обновить время последнего успешного использования 2FA.
-        
-        Args:
-            user_id: ID пользователя
-            
-        Returns:
-            bool: True если успешно, иначе False
+
+        Для SQLite — без операций с БД, успешная заглушка.
         """
         try:
+            if hasattr(self.db, 'get_connection'):
+                logger.info("2FA(STUB): would update last_used for user_id=%s", user_id)
+                return True
+
             query = """
                 UPDATE two_factor_auth
                 SET last_used_at = NOW()
@@ -273,7 +253,7 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
         except Exception as e:
             logger.error(f"Error updating 2FA last used time: {e}")
             return False
-            
+
     async def get_audit_logs(
         self,
         user_id: Optional[int] = None,
@@ -287,21 +267,13 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
     ) -> list:
         """
         Получить записи из аудит-лога с фильтрами.
-        
-        Args:
-            user_id: ID пользователя
-            action: Тип действия
-            entity_type: Тип сущности
-            entity_id: ID сущности
-            start_date: Начальная дата для фильтрации
-            end_date: Конечная дата для фильтрации
-            limit: Максимальное количество записей
-            offset: Смещение для пагинации
-            
-        Returns:
-            list: Список записей аудит-лога
+
+        Для SQLite — возвращаем пустой список, чтобы не падать.
         """
         try:
+            if hasattr(self.db, 'get_connection'):
+                return []
+
             query = """
                 SELECT al.*, u.username, u.first_name, u.last_name
                 FROM audit_log al
@@ -353,7 +325,33 @@ def ensure_sqlite_user_roles_table(db_service) -> None:
             params.append(offset)
             
             return await self.db.fetch(query, *params)
-            
         except Exception as e:
             logger.error(f"Error getting audit logs: {e}")
             return []
+
+
+# --- SQLite safety helpers (runtime) ---
+def ensure_sqlite_user_roles_table(db_service) -> None:
+    """
+    Ensure minimal user_roles table exists in SQLite runtime.
+    No-op for async Postgres adapters (no get_connection attribute).
+    """
+    try:
+        if not hasattr(db_service, "get_connection"):
+            return  # Not SQLite service
+        conn = db_service.get_connection()
+        try:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS user_roles (
+                    user_id INTEGER PRIMARY KEY,
+                    role TEXT NOT NULL DEFAULT 'USER',
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.error(f"ensure_sqlite_user_roles_table failed: {e}")
