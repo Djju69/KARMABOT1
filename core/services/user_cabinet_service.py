@@ -3,8 +3,9 @@ Service layer for user cabinet functionality.
 Handles all business logic related to user profile, balance, and level management.
 """
 from typing import Optional, Dict, Any
-import sqlite3
-from pathlib import Path
+import os
+import asyncpg
+import asyncio
 
 from core.utils.logger import get_logger
 
@@ -15,13 +16,11 @@ class UserCabinetService:
     
     def __init__(self):
         """Initialize with database connection."""
-        self.db_path = Path(__file__).parent.parent / "database" / "data.db"
+        self.database_url = os.getenv("DATABASE_URL", "")
     
-    def get_connection(self) -> sqlite3.Connection:
+    async def get_connection(self) -> asyncpg.Connection:
         """Get database connection."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return await asyncpg.connect(self.database_url)
     
     async def get_user_balance(self, user_id: int) -> int:
         """
@@ -34,13 +33,15 @@ class UserCabinetService:
             int: Current balance in points
         """
         try:
-            with self.get_connection() as conn:
-                cursor = conn.execute(
-                    "SELECT karma_points FROM users WHERE telegram_id = ?",
-                    (user_id,)
+            conn = await self.get_connection()
+            try:
+                result = await conn.fetchrow(
+                    "SELECT karma_points FROM users WHERE telegram_id = $1",
+                    user_id
                 )
-                result = cursor.fetchone()
                 return result['karma_points'] if result else 0
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error getting balance for user {user_id}: {str(e)}")
             return 0
@@ -73,12 +74,12 @@ class UserCabinetService:
             dict: User profile data
         """
         try:
-            with self.get_connection() as conn:
-                cursor = conn.execute(
-                    "SELECT * FROM users WHERE telegram_id = ?",
-                    (user_id,)
+            conn = await self.get_connection()
+            try:
+                user = await conn.fetchrow(
+                    "SELECT * FROM users WHERE telegram_id = $1",
+                    user_id
                 )
-                user = cursor.fetchone()
                 if not user:
                     return {}
                 
@@ -92,6 +93,8 @@ class UserCabinetService:
                     "registration_date": user_dict.get('created_at', 'Неизвестно'),
                     "language": user_dict.get('language_code', 'ru')
                 }
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error getting profile for user {user_id}: {str(e)}")
             return {}
@@ -114,34 +117,32 @@ class UserCabinetService:
             dict: Transaction history with pagination info
         """
         try:
-            with self.get_connection() as conn:
+            conn = await self.get_connection()
+            try:
                 # Check if user exists
-                cursor = conn.execute(
-                    "SELECT id FROM users WHERE telegram_id = ?",
-                    (user_id,)
+                user = await conn.fetchrow(
+                    "SELECT id FROM users WHERE telegram_id = $1",
+                    user_id
                 )
-                user = cursor.fetchone()
                 if not user:
                     return {"transactions": [], "total": 0, "limit": limit, "offset": offset}
                 
                 # Get total count for pagination
-                cursor = conn.execute(
-                    "SELECT COUNT(*) FROM karma_transactions WHERE user_id = ?",
-                    (user['id'],)
+                total = await conn.fetchval(
+                    "SELECT COUNT(*) FROM karma_transactions WHERE user_id = $1",
+                    user['id']
                 )
-                total = cursor.fetchone()[0]
                 
                 # Get paginated transactions
-                cursor = conn.execute(
+                transactions = await conn.fetch(
                     """
                     SELECT * FROM karma_transactions 
-                    WHERE user_id = ? 
+                    WHERE user_id = $1 
                     ORDER BY created_at DESC 
-                    LIMIT ? OFFSET ?
+                    LIMIT $2 OFFSET $3
                     """,
-                    (user['id'], limit, offset)
+                    user['id'], limit, offset
                 )
-                transactions = cursor.fetchall()
                 
                 return {
                     "transactions": [
@@ -156,6 +157,8 @@ class UserCabinetService:
                     "limit": limit,
                     "offset": offset
                 }
+            finally:
+                await conn.close()
             
         except Exception as e:
             logger.error(f"Error getting transaction history for user {user_id}: {str(e)}")
