@@ -22,6 +22,12 @@ translations_v2 = {
         # Existing keys
         'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
         'back_to_categories': '⬅️ 카테고리로',
+        
+        # Admin menu buttons
+        'admin_menu_queue': '📋 검토 대기열',
+        'admin_menu_search': '🔍 검색',
+        'admin_menu_reports': '📊 보고서',
+        
         'choose_category': '🗂️ 카테고리',
         'show_nearest': '📍 가까운 매장',
         
@@ -205,6 +211,12 @@ translations_v2 = {
         # Existing keys
         'back_to_main_menu': 'Về menu chính🏘',
         'back_to_categories': '⬅️ Về danh mục',
+        
+        # Admin menu buttons
+        'admin_menu_queue': '📋 Hàng đợi kiểm duyệt',
+        'admin_menu_search': '🔍 Tìm kiếm',
+        'admin_menu_reports': '📊 Báo cáo',
+        
         'choose_category': '🗂️ Danh mục',
         'show_nearest': '📍 Gần nhất',
         'choose_language': '🌐 Ngôn ngữ',
@@ -482,6 +494,11 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'back_to_main': '🏠 Главное меню',
         'back_to_main_menu': '◀️ Назад',
         'back_to_categories': '⬅️ К категориям',
+        
+        # Admin menu buttons
+        'admin_menu_queue': '📋 Очередь модерации',
+        'admin_menu_search': '🔍 Поиск',
+        'admin_menu_reports': '📊 Отчёты',
     },
     'en': {
         # v4.2.4 minimal labels
@@ -584,6 +601,11 @@ For questions about personal data processing, contact the bot administrator.
         # Navigation
         'back_to_main_menu': '◀️ Back',
         'back_to_categories': '⬅️ To categories',
+        
+        # Admin menu buttons
+        'admin_menu_queue': '📋 Moderation queue',
+        'admin_menu_search': '🔍 Search',
+        'admin_menu_reports': '📊 Reports',
         
         # Menu keys
         'menu.invite_friends': '👥 Invite friends',
