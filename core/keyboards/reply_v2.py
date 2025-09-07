@@ -420,11 +420,32 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     return get_main_menu_reply(lang)
 
 def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
-    """Клавиатура личного кабинета пользователя"""
+    """Клавиатура личного кабинета пользователя с системой кармы"""
     buttons = [
-        [KeyboardButton("🎁 Баллы"), KeyboardButton("📜 История")],
-        [KeyboardButton("💳 Потратить"), KeyboardButton("📊 Отчёт")],
+        [KeyboardButton("📊 Карма"), KeyboardButton("📜 История")],
+        [KeyboardButton("🔗 Привязать карту"), KeyboardButton("📋 Мои карты")],
+        [KeyboardButton("🏅 Достижения"), KeyboardButton("📥 Уведомления")],
         [KeyboardButton("⚙️ Настройки"), KeyboardButton("◀️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
+    """Клавиатура админа"""
+    buttons = [
+        [KeyboardButton("🔍 Поиск пользователей"), KeyboardButton("📊 Статистика")],
+        [KeyboardButton("🚫 Забанить"), KeyboardButton("✅ Разбанить")],
+        [KeyboardButton("🔗 Заблокировать карту"), KeyboardButton("📋 Очередь модерации")],
+        [KeyboardButton("◀️ Назад")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
+
+def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
+    """Клавиатура супер-админа"""
+    buttons = [
+        [KeyboardButton("🧾 Выпустить карты"), KeyboardButton("🗂️ Управление картами")],
+        [KeyboardButton("👥 Управление пользователями"), KeyboardButton("🤝 Управление партнёрами")],
+        [KeyboardButton("🔍 Поиск"), KeyboardButton("📊 Отчёты")],
+        [KeyboardButton("🗑️ Удалить карту/контакт"), KeyboardButton("◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

@@ -35,6 +35,62 @@ from core.windows.Wrongtype import (
 )
 
 
+async def handle_card_binding_start(message: Message, bot: Bot, state: FSMContext):
+    """Handle start command with card binding parameters."""
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Extract card ID from startapp parameters
+        import re
+        match = re.search(r'cid=([A-Za-z0-9_-]+)', message.text)
+        if not match:
+            await message.answer(
+                "❌ Неверная ссылка для привязки карты.\n\n"
+                "Обратитесь в поддержку для получения правильной ссылки.",
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+        
+        card_id = match.group(1)
+        user_id = message.from_user.id
+        
+        # Import plastic cards service
+        from core.services.plastic_cards_service import plastic_cards_service
+        
+        # Try to bind the card
+        result = await plastic_cards_service.bind_card_to_user(
+            telegram_id=user_id,
+            card_id=card_id,
+            card_id_printable=card_id
+        )
+        
+        if result['success']:
+            await message.answer(
+                f"✅ {result['message']}\n\n"
+                "Теперь вы можете использовать эту карту для получения скидок!\n\n"
+                "Переходите в личный кабинет для управления картами.",
+                reply_markup=get_return_to_main_menu(),
+                parse_mode='HTML'
+            )
+        else:
+            await message.answer(
+                f"❌ {result['message']}\n\n"
+                "Если проблема повторяется, обратитесь в поддержку.",
+                reply_markup=get_return_to_main_menu(),
+                parse_mode='HTML'
+            )
+        
+        # Set language to Russian for new users
+        await state.update_data(lang='ru')
+        
+    except Exception as e:
+        logger.error(f"Error in handle_card_binding_start: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Произошла ошибка при привязке карты. Попробуйте позже.",
+            reply_markup=get_return_to_main_menu()
+        )
+
+
 async def main_menu(message: Message, bot: Bot, state: FSMContext):
     user_data = await state.get_data()
     lang = user_data.get("lang", "ru")
@@ -51,6 +107,11 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
     logger.info(f"[START] Starting get_start for user {message.from_user.id}")
     
     try:
+        # Check for startapp parameters (for plastic cards binding)
+        if message.text and 'startapp=bind' in message.text:
+            await handle_card_binding_start(message, bot, state)
+            return
+        
         # Debug: Log feature flags
         logger.info(f"[DEBUG] Feature flags: new_menu={settings.features.new_menu}")
         
