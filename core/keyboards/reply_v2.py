@@ -160,7 +160,7 @@ def get_spa_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('spa_sauna', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang))
+                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
@@ -175,7 +175,7 @@ def get_hotels_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('hotels_apartments', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang))
+                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
@@ -228,7 +228,7 @@ def get_transport_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('transport_bicycles', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang))
+                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
@@ -243,7 +243,7 @@ def get_tours_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('tours_private', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang))
+                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
@@ -258,7 +258,7 @@ def get_shops_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('shops_services', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang))
+                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
