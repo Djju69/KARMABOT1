@@ -85,6 +85,14 @@ try:
     
     # Import and include other handlers
     try:
+        # Register command handlers (e.g., /clear_cache)
+        try:
+            from core.handlers.commands import register_commands
+            register_commands(dp)
+            logger.info("✅ Command handlers registered")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to register command handlers: {e}")
+
         # Import 2FA handlers
         from core.handlers.two_factor_handlers import handlers as two_factor_handlers
         for handler in two_factor_handlers:

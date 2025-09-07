@@ -85,3 +85,15 @@ async def change_language_callback(callback: CallbackQuery):
 async def main_menu_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):
     # Здесь можно обработать что-то общее, сейчас просто ответ без действий
     await callback.answer()
+
+
+# --- Catch-all: лог и быстрый ответ на любые callback_query ---
+@router.callback_query()
+async def handle_any_callback(callback: CallbackQuery):
+    """Диагностический обработчик всех callback_query, чтобы убедиться, что события доходят."""
+    try:
+        import logging
+        logging.getLogger(__name__).info("[CB] Received callback_query: %s from user %s", callback.data, callback.from_user.id)
+    except Exception:
+        pass
+    await callback.answer("✅ Получен callback")

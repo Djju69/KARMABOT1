@@ -207,6 +207,30 @@ async def handle_invite_earnings(message: Message, bot: Bot, state: FSMContext) 
     await message.answer("💵 Доходы по рефералам: скоро.")
 
 
+# --- Policy consent callbacks ---
+@main_menu_router.callback_query(F.data == "accept_policy")
+async def on_accept_policy(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+    try:
+        await state.update_data(policy_accepted=True)
+        await callback.answer("✅ Принято")
+        try:
+            await callback.message.edit_text("✅ Политика принята. Продолжайте пользоваться ботом.")
+        except Exception:
+            pass
+    except Exception as e:
+        logger.error(f"Error in accept_policy: {e}", exc_info=True)
+        await callback.answer("⚠️ Ошибка", show_alert=True)
+
+
+@main_menu_router.callback_query(F.data == "decline_policy")
+async def on_decline_policy(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
+    await callback.answer("❌ Отклонено", show_alert=False)
+    try:
+        await callback.message.edit_text("❌ Вы отклонили политику. Некоторые функции будут недоступны.")
+    except Exception:
+        pass
+
+
 @main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
 async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
     """Обработчик кнопки выбора языка."""
