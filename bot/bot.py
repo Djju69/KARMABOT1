@@ -27,6 +27,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global bot and dispatcher instances
+bot = None
+dp = None
+
 # Log Python and path info
 logger.info(f"Python: {sys.version}")
 logger.info(f"Current directory: {os.getcwd()}")
@@ -51,6 +55,8 @@ try:
         
     logger.info(f"Initializing bot with token: {BOT_TOKEN[:10]}...{BOT_TOKEN[-5:] if BOT_TOKEN else 'MISSING'}")
     
+    # Create global bot and dispatcher instances
+    global bot, dp
     bot = Bot(
         token=BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
