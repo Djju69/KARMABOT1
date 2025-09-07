@@ -280,13 +280,24 @@ app.add_middleware(
 # Инициализация мониторинга
 setup_monitoring()
 
+# Import bot and dispatcher at module level
+try:
+    from bot.bot import bot, dp
+    BOT_AVAILABLE = True
+    logging.info("✅ Bot and dispatcher imported successfully")
+except Exception as e:
+    BOT_AVAILABLE = False
+    logging.error(f"❌ Failed to import bot and dispatcher: {e}")
+
 # Webhook endpoint for Telegram bot
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     """Handle Telegram webhook updates"""
     try:
-        # Get bot and dispatcher from the global scope
-        from bot.bot import bot, dp
+        if not BOT_AVAILABLE:
+            logging.error("Bot not available for webhook processing")
+            return {"ok": False, "error": "Bot not available"}
+            
         update_data = await request.json()
         
         # Process the update
@@ -302,8 +313,10 @@ async def webhook_handler(request: Request):
 async def root_webhook_handler(request: Request):
     """Handle Telegram webhook updates on root path"""
     try:
-        # Get bot and dispatcher from the global scope
-        from bot.bot import bot, dp
+        if not BOT_AVAILABLE:
+            logging.error("Bot not available for webhook processing")
+            return {"ok": False, "error": "Bot not available"}
+            
         update_data = await request.json()
         
         # Process the update
