@@ -296,6 +296,22 @@ async def webhook_handler(request: Request):
         logging.error(f"Webhook error: {e}")
         return {"ok": False, "error": str(e)}
 
+# Fallback webhook endpoint for root path (compatibility)
+@app.post("/")
+async def root_webhook_handler(request: Request):
+    """Handle Telegram webhook updates on root path"""
+    try:
+        from bot.bot import dp, bot
+        update_data = await request.json()
+        
+        # Process the update
+        await dp.feed_update(bot, update_data)
+        
+        return {"ok": True}
+    except Exception as e:
+        logging.error(f"Root webhook error: {e}")
+        return {"ok": False, "error": str(e)}
+
 # Подключение роутеров
 app.include_router(health.router, prefix="/api")
 app.include_router(test_router, prefix="/api")

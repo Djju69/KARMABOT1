@@ -75,8 +75,9 @@ def validate_environment():
         raw_url = os.getenv('RAILWAY_STATIC_URL')
         if raw_url:
             app_url = raw_url if raw_url.startswith(('http://', 'https://')) else f"https://{raw_url}"
-            logger.info(f"🌐 Railway detected, webhook URL: {app_url}")
-            os.environ['WEBHOOK_URL'] = app_url
+            webhook_url = f"{app_url}/webhook"
+            logger.info(f"🌐 Railway detected, webhook URL: {webhook_url}")
+            os.environ['WEBHOOK_URL'] = webhook_url
         else:
             logger.warning("RAILWAY_STATIC_URL is not set; webhook URL cannot be constructed")
     else:
