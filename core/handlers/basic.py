@@ -386,26 +386,30 @@ async def on_language_select(callback_query: CallbackQuery, bot: Bot, state: FSM
 
 async def open_cabinet(message: Message, bot: Bot, state: FSMContext):
     """Открывает личный кабинет пользователя"""
-    user_data = await state.get_data()
-    lang = user_data.get('lang', 'ru')
-    
-    # Базовая информация о пользователе
-    user_info = (
-        f"👤 <b>Личный кабинет</b>\n\n"
-        f"🆔 ID: {message.from_user.id}\n"
-        f"👤 Имя: {message.from_user.full_name}\n"
-        f"🌐 Язык: {lang.upper()}\n"
-    )
-    
-    # Здесь можно добавить дополнительную логику, например, баланс, статистику и т.д.
-    
-    await message.answer(
-        text=user_info,
-        parse_mode='HTML'
-    )
-    
-    # Возвращаем пользователя в главное меню
-    await main_menu(message, bot, state)
+    try:
+        # Импортируем обработчик кабинета
+        from core.handlers.cabinet_router import user_cabinet_handler
+        await user_cabinet_handler(message, state)
+    except Exception as e:
+        logger.error(f"Error in open_cabinet: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Fallback - базовая информация
+        user_info = (
+            f"👤 <b>Личный кабинет</b>\n\n"
+            f"🆔 ID: {message.from_user.id}\n"
+            f"👤 Имя: {message.from_user.full_name}\n"
+            f"🌐 Язык: {lang.upper()}\n"
+        )
+        
+        await message.answer(
+            text=user_info,
+            parse_mode='HTML'
+        )
+        
+        # Возвращаем пользователя в главное меню
+        await main_menu(message, bot, state)
 
 
 async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext) -> bool:

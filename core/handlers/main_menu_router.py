@@ -124,8 +124,9 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
         return
         
     try:
-        # Use inline cabinet (render_profile via basic.open_cabinet) instead of legacy reply flow
-        await handle_profile(message, bot, state)
+        # Используем обработчик кабинета напрямую
+        from core.handlers.cabinet_router import user_cabinet_handler
+        await user_cabinet_handler(message, state)
     except Exception as e:
         logger.error(f"Error in profile handling: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -135,7 +136,6 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
             'Не удалось загрузить профиль. Пожалуйста, попробуйте позже.'
         )
         await message.answer(error_text, parse_mode="HTML")
-    await open_cabinet(message, bot, state)
 
 
 @main_menu_router.message(F.text.in_([

@@ -16,7 +16,7 @@ from core.telegram_settings import TelegramSettings
 class Features:
     """Feature flags configuration"""
     new_menu: bool = field(default=True)  # Включено по умолчанию
-    partner_fsm: bool = field(default=False)
+    partner_fsm: bool = field(default=True)
     moderation: bool = field(default=False)
     qr_webapp: bool = field(default=False)
     listen_notify: bool = field(default=False)
