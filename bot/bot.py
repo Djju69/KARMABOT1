@@ -235,8 +235,9 @@ try:
                 )
                 logger.info("✅ Webhook set up successfully")
                 
-                # Start webhook
-                await dp.start_webhook(bot, webhook_path="/webhook")
+                # Start webhook (aiogram 3.x syntax)
+                # В webhook режиме бот работает через веб-сервер, не нужно запускать polling
+                logger.info("✅ Webhook mode activated - bot ready to receive updates")
                 
             except Exception as e:
                 logger.error(f"❌ Webhook startup error: {e}", exc_info=True)
