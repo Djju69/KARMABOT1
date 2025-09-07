@@ -195,7 +195,7 @@ def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
     )
 
 def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
-    """Новая клавиатура для выбора категории (ReplyKeyboardMarkup)."""
+    """Новая клавиатура для выбора категории (ReplyKeyboardMarkup) с кнопкой 'Назад'."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -209,6 +209,9 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
             [
                 KeyboardButton(text=get_text('category_tours', lang)),
                 KeyboardButton(text=get_text('category_shops_services', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_main_menu', lang)),
             ]
         ],
         resize_keyboard=True,

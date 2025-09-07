@@ -88,10 +88,27 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
         
         logger.info(f"[DEBUG] Sending menu to user {message.from_user.id}")
         
-        # Send welcome message with menu
+        # Send welcome message with user name and menu
+        user_name = message.from_user.first_name or "Пользователь"
+        welcome_text = f"""{user_name} 👋 Добро пожаловать в Karma System! 
+
+✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:  
+🍽️ Рестораны и кафе  
+🧖‍♀️ SPA и массаж  
+🏍️ Аренда байков  
+🏨 Отели  
+🚶‍♂️ Экскурсии
+🛍️ Магазины и услуги  
+
+А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀  
+
+Начни экономить прямо сейчас — выбирай категорию и получай свои скидки! 
+
+Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных."""
+
         await bot.send_message(
             chat_id=message.chat.id,
-            text="👋 Добро пожаловать! Выберите действие:",
+            text=welcome_text,
             reply_markup=keyboard,
             parse_mode='HTML'
         )

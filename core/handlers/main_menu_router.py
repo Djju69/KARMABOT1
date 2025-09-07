@@ -601,7 +601,7 @@ async def handle_tours_submenu_typed(message: Message, bot: Bot, state: FSMConte
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
         # Внутренний обработчик сам определяет sub_slug по тексту кнопки
-        await on_tours_submenu(message, bot, lang, city_id)
+        await on_tours_submenu(message, bot, lang, city_id, state)
     except Exception as e:
         logger.error(f"Error in {tour_type} tours: {e}", exc_info=True)
         user_data = await state.get_data()
