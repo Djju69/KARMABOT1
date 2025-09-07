@@ -13,7 +13,7 @@ from aiogram.fsm.context import FSMContext
 
 from ..database.db_v2 import db_v2
 from ..utils.locales_v2 import get_text, translations
-from ..services.profile import profile_service
+from ..services.user_cabinet_service import UserCabinetService
 from ..services.cache import cache_service
 from ..services.loyalty import loyalty_service
 from ..services.cards import card_service
@@ -50,27 +50,56 @@ def _texts(key: str) -> list[str]:
 
 async def render_profile(message: Message):
     user_id = message.from_user.id
-    lang = await profile_service.get_lang(user_id)
-    notify_on = await _is_notify_on(user_id)
-    text = get_text('profile_main', lang)
+    lang = "ru"  # Default language
+    
     try:
-        logger.info("profile.render user_id=%s lang=%s notify_on=%s", user_id, lang, notify_on)
-    except Exception:
-        pass
-    # Личный кабинет пользователя — БЕЗ QR WebApp кнопки
-    kb = get_profile_keyboard(lang)
-    await message.answer(text, reply_markup=kb)
+        # Get user profile from user cabinet service
+        user_cabinet_service = UserCabinetService()
+        profile = await user_cabinet_service.get_user_profile(user_id)
+        
+        if not profile:
+            await message.answer(
+                "❌ Произошла ошибка при загрузке профиля. Пожалуйста, попробуйте позже.",
+                reply_markup=get_profile_keyboard(lang)
+            )
+            return
+        
+        # Format profile text
+        text = f"👤 <b>Личный кабинет</b>\n\n"
+        text += f"👋 Привет, {profile.get('full_name', 'Пользователь')}!\n\n"
+        text += f"📊 <b>Карма:</b> {profile.get('balance', 0)} очков\n"
+        text += f"🏅 <b>Уровень:</b> {profile.get('level', 'Member')}\n"
+        text += f"📅 <b>Регистрация:</b> {profile.get('registration_date', 'Неизвестно')}\n"
+        text += f"🌐 <b>Язык:</b> {profile.get('language', 'ru')}\n"
+        
+        logger.info("profile.render user_id=%s profile=%s", user_id, profile)
+        
+        # Личный кабинет пользователя — БЕЗ QR WebApp кнопки
+        kb = get_profile_keyboard(lang)
+        await message.answer(text, reply_markup=kb, parse_mode='HTML')
+        
+    except Exception as e:
+        logger.error(f"Error rendering profile for user {user_id}: {str(e)}")
+        await message.answer(
+            "❌ Произошла ошибка при загрузке профиля. Пожалуйста, попробуйте позже.",
+            reply_markup=get_profile_keyboard(lang)
+        )
 
+
+@profile_router.message(F.text == "👤 Личный кабинет")
+async def on_profile(message: Message):
+    """Обработчик личного кабинета"""
+    await render_profile(message)
 
 @profile_router.message(F.text.in_(_texts('profile_settings')))
 async def on_profile_settings(message: Message):
-    lang = await profile_service.get_lang(message.from_user.id)
+    lang = "ru"  # Default language
     await message.answer(get_text('profile_settings', lang), reply_markup=get_profile_settings_keyboard(lang))
 
 
 @profile_router.message(F.text.in_(_texts('profile_stats')))
 async def on_profile_stats(message: Message):
-    lang = await profile_service.get_lang(message.from_user.id)
+    lang = "ru"  # Default language
     # Placeholder: combined Stats + Report
     await message.answer(get_text('profile_stats', lang) + "\n\n" + get_text('report_building', lang), reply_markup=get_profile_keyboard(lang))
 
