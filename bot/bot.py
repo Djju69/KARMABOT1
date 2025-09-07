@@ -262,39 +262,39 @@ try:
                             raise
 
                     await dp.start_polling(bot, skip_updates=True)
-                return
-            except TelegramConflictError as e:
-                attempt += 1
-                logger.error(
-                    f"TelegramConflictError on polling (attempt {attempt}/{max_retries}): {e}",
-                    exc_info=False,
-                )
-                # Try to cleanup conflicts and retry
-                try:
-                    logger.info("🧹 deleteWebhook(drop_pending_updates=True)")
-                    await bot.delete_webhook(drop_pending_updates=True)
-                except Exception as ce:
-                    logger.warning(f"delete_webhook failed: {ce}")
-                if attempt >= max_retries:
-                    logger.critical("Exceeded max retries due to conflicts. Aborting.")
-                    raise
-                logger.info("⏳ Waiting 3s before retry...")
-                await asyncio.sleep(3)
-                continue
-            except TelegramBadRequest as e:
-                if "Logged out" in str(e):
+                    return
+                except TelegramConflictError as e:
                     attempt += 1
-                    wait_s = min(60 + attempt * 10, 180)
-                    logger.warning(f"Bot is 'Logged out'. Retry in {wait_s}s (attempt {attempt}/{max_retries})")
+                    logger.error(
+                        f"TelegramConflictError on polling (attempt {attempt}/{max_retries}): {e}",
+                        exc_info=False,
+                    )
+                    # Try to cleanup conflicts and retry
+                    try:
+                        logger.info("🧹 deleteWebhook(drop_pending_updates=True)")
+                        await bot.delete_webhook(drop_pending_updates=True)
+                    except Exception as ce:
+                        logger.warning(f"delete_webhook failed: {ce}")
                     if attempt >= max_retries:
-                        logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
+                        logger.critical("Exceeded max retries due to conflicts. Aborting.")
                         raise
-                    await asyncio.sleep(wait_s)
+                    logger.info("⏳ Waiting 3s before retry...")
+                    await asyncio.sleep(3)
                     continue
-                raise
-            except Exception as e:
-                logger.critical(f"Bot polling failed: {e}", exc_info=True)
-                raise
+                except TelegramBadRequest as e:
+                    if "Logged out" in str(e):
+                        attempt += 1
+                        wait_s = min(60 + attempt * 10, 180)
+                        logger.warning(f"Bot is 'Logged out'. Retry in {wait_s}s (attempt {attempt}/{max_retries})")
+                        if attempt >= max_retries:
+                            logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
+                            raise
+                        await asyncio.sleep(wait_s)
+                        continue
+                    raise
+                except Exception as e:
+                    logger.critical(f"Bot polling failed: {e}", exc_info=True)
+                    raise
     
     # For direct execution
     if __name__ == "__main__":
