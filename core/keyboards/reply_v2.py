@@ -194,6 +194,13 @@ def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+def get_return_to_categories(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Return to categories keyboard"""
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back_to_categories', lang))]],
+        resize_keyboard=True
+    )
+
 def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Новая клавиатура для выбора категории (ReplyKeyboardMarkup) с кнопкой 'Назад'."""
     return ReplyKeyboardMarkup(
@@ -442,6 +449,7 @@ __all__ = [
     'get_partner_cabinet_keyboard',
     'get_main_menu_reply_with_qr',
     'get_return_to_main_menu',
+    'get_return_to_categories',
     'get_categories_keyboard',
     'get_transport_reply_keyboard',
     'get_tours_reply_keyboard',

@@ -20,6 +20,7 @@ from core.keyboards.restaurant_keyboards import select_restoran, regional_restor
 from core.keyboards.language_keyboard import language_keyboard
 from core.keyboards.reply import get_main_menu_reply, get_reply_keyboard
 from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran
+from core.keyboards.reply_v2 import get_return_to_categories
 
 # Тексты
 from core.windows.feedback import feedback_text
@@ -270,7 +271,7 @@ async def hiw_user(message: Message, bot: Bot, state: FSMContext):
     user_data = await state.get_data()
     lang = user_data.get("lang", "ru")
     text = hiw_text(lang)
-    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode="HTML", reply_markup=get_return_to_main_menu(lang))
+    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode="HTML", reply_markup=get_return_to_categories(lang))
 
 
 async def feedback_user(message: Message, bot: Bot, state: FSMContext):
