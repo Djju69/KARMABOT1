@@ -66,6 +66,7 @@ translations_v2 = {
         
         # Restaurant filters
         'restaurants_choose_cuisine': '🍽️ 요리 종류를 선택하세요:',
+        'restaurants_show_all': '📋 전체 보기',
         'filter_asia': '🌶️ 아시아',
         'filter_europe': '🍝 유럽',
         'filter_street': '🌭 길거리 음식',
@@ -332,6 +333,15 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'shops_services': '🔧 Dịch vụ',
         'shops_choose': '🛍️ Chọn loại cửa hàng:',
         
+        # Restaurant filters
+        'restaurants_choose_cuisine': '🍽️ Chọn loại ẩm thực:',
+        'restaurants_show_all': '📋 Xem tất cả',
+        'filter_asia': '🌶️ Châu Á',
+        'filter_europe': '🍝 Châu Âu',
+        'filter_street': '🌭 Đồ ăn đường phố',
+        'filter_vege': '🥗 Chay',
+        'filter_all': '🔍 Tất cả',
+        
         # Errors
         'menu_error': 'Không thể quay lại menu chính. Vui lòng thử lại sau.'
     },
@@ -367,6 +377,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         
         # Restaurant filters
         'restaurants_choose_cuisine': '🍽️ Выберите тип кухни:',
+        'restaurants_show_all': '📋 Показать все',
         'filter_asia': '🌶️ Азиатская',
         'filter_europe': '🍝 Европейская',
         'filter_street': '🌭 Уличная еда',
@@ -486,6 +497,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         
         # Restaurant filters
         'restaurants_choose_cuisine': '🍽️ Choose cuisine type:',
+        'restaurants_show_all': '📋 Show all',
         'filter_asia': '🌶️ Asian',
         'filter_europe': '🍝 European',
         'filter_street': '🌭 Street food',

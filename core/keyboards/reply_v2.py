@@ -264,6 +264,28 @@ def get_shops_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
+def get_restaurants_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
+    """Клавиатура для подменю 'Рестораны' с фильтрами кухни."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [
+                KeyboardButton(text=get_text('filter_asia', lang)),
+                KeyboardButton(text=get_text('filter_europe', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('filter_street', lang)),
+                KeyboardButton(text=get_text('filter_vege', lang)),
+            ],
+            [
+                KeyboardButton(text=get_text('restaurants_show_all', lang))
+            ],
+            [
+                KeyboardButton(text=get_text('back_to_categories', lang))
+            ]
+        ],
+        resize_keyboard=True
+    )
+
 def get_language_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Language selection keyboard"""
     return ReplyKeyboardMarkup(
@@ -426,6 +448,7 @@ __all__ = [
     'get_spa_reply_keyboard',
     'get_hotels_reply_keyboard',
     'get_shops_reply_keyboard',
+    'get_restaurants_reply_keyboard',
     'get_language_keyboard',
     'get_profile_keyboard',
     'get_profile_keyboard_with_qr',

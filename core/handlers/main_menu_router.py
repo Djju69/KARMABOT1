@@ -458,6 +458,132 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         await message.answer(error_text, parse_mode="HTML")
 
 
+# Обработчики фильтров ресторанов
+@main_menu_router.message(F.text.in_([
+    t.get('filter_asia', '') for t in translations.values()
+    if t.get('filter_asia')
+]))
+async def handle_restaurants_asia(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик фильтра 'Азиатская кухня' для ресторанов."""
+    logger.debug(f"User {message.from_user.id} selected Asian cuisine filter")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        await show_catalog_page(bot, message.chat.id, lang, 'restaurants', 'asia', page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"Error in Asian cuisine filter: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'menu_error',
+            'Не удалось загрузить рестораны. Пожалуйста, попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([
+    t.get('filter_europe', '') for t in translations.values()
+    if t.get('filter_europe')
+]))
+async def handle_restaurants_europe(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик фильтра 'Европейская кухня' для ресторанов."""
+    logger.debug(f"User {message.from_user.id} selected European cuisine filter")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        await show_catalog_page(bot, message.chat.id, lang, 'restaurants', 'europe', page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"Error in European cuisine filter: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'menu_error',
+            'Не удалось загрузить рестораны. Пожалуйста, попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([
+    t.get('filter_street', '') for t in translations.values()
+    if t.get('filter_street')
+]))
+async def handle_restaurants_street(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик фильтра 'Уличная еда' для ресторанов."""
+    logger.debug(f"User {message.from_user.id} selected Street food filter")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        await show_catalog_page(bot, message.chat.id, lang, 'restaurants', 'street', page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"Error in Street food filter: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'menu_error',
+            'Не удалось загрузить рестораны. Пожалуйста, попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([
+    t.get('filter_vege', '') for t in translations.values()
+    if t.get('filter_vege')
+]))
+async def handle_restaurants_vegetarian(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик фильтра 'Вегетарианская кухня' для ресторанов."""
+    logger.debug(f"User {message.from_user.id} selected Vegetarian cuisine filter")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        await show_catalog_page(bot, message.chat.id, lang, 'restaurants', 'vege', page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"Error in Vegetarian cuisine filter: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'menu_error',
+            'Не удалось загрузить рестораны. Пожалуйста, попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([
+    t.get('restaurants_show_all', '') for t in translations.values()
+    if t.get('restaurants_show_all')
+]))
+async def handle_restaurants_show_all(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик кнопки 'Показать все' для ресторанов."""
+    logger.debug(f"User {message.from_user.id} selected Show all restaurants")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        await show_catalog_page(bot, message.chat.id, lang, 'restaurants', 'all', page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"Error in Show all restaurants: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'menu_error',
+            'Не удалось загрузить рестораны. Пожалуйста, попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
 @main_menu_router.message(F.text.in_([
     t.get('back_to_categories', '') for t in translations.values()
     if t.get('back_to_categories')

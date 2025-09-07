@@ -132,12 +132,12 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None):
-    # Сначала показываем фильтры, а не сам каталог
-    from ..keyboards.inline_v2 import get_restaurant_filters_inline
+    # Показываем reply клавиатуру с фильтрами кухни
+    from ..keyboards.reply_v2 import get_restaurants_reply_keyboard
     await log_event("category_open", user=message.from_user, slug="restaurants", lang=lang, city_id=city_id)
     await message.answer(
         text=get_text('restaurants_choose_cuisine', lang),
-        reply_markup=get_restaurant_filters_inline(lang=lang)
+        reply_markup=get_restaurants_reply_keyboard(lang)
     )
 
 async def on_spa(message: Message, bot: Bot, lang: str, city_id: int | None):
