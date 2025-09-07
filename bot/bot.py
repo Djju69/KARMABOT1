@@ -306,3 +306,6 @@ try:
 except Exception as e:
     logger.critical(f"Failed to initialize bot: {e}", exc_info=True)
     raise
+
+# Export bot and dispatcher for webhook usage
+__all__ = ['bot', 'dp']

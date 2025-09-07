@@ -285,12 +285,12 @@ setup_monitoring()
 async def webhook_handler(request: Request):
     """Handle Telegram webhook updates"""
     try:
-        # Import bot module and get instances
-        import bot.bot as bot_module
+        # Get bot and dispatcher from the global scope
+        from bot.bot import bot, dp
         update_data = await request.json()
         
-        # Process the update using the bot's dispatcher
-        await bot_module.dp.feed_update(bot_module.bot, update_data)
+        # Process the update
+        await dp.feed_update(bot, update_data)
         
         return {"ok": True}
     except Exception as e:
@@ -302,12 +302,12 @@ async def webhook_handler(request: Request):
 async def root_webhook_handler(request: Request):
     """Handle Telegram webhook updates on root path"""
     try:
-        # Import bot module and get instances
-        import bot.bot as bot_module
+        # Get bot and dispatcher from the global scope
+        from bot.bot import bot, dp
         update_data = await request.json()
         
-        # Process the update using the bot's dispatcher
-        await bot_module.dp.feed_update(bot_module.bot, update_data)
+        # Process the update
+        await dp.feed_update(bot, update_data)
         
         return {"ok": True}
     except Exception as e:
