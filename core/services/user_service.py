@@ -4,8 +4,8 @@ Including karma management, level calculation, and transaction history.
 """
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import sqlite3
-from pathlib import Path
+import asyncpg
+import os
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -16,13 +16,11 @@ class KarmaService:
     
     def __init__(self):
         """Initialize with database connection."""
-        self.db_path = Path(__file__).parent.parent / "database" / "data.db"
+        self.database_url = os.getenv("DATABASE_URL", "")
     
-    def get_connection(self) -> sqlite3.Connection:
+    async def get_connection(self) -> asyncpg.Connection:
         """Get database connection."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return await asyncpg.connect(self.database_url)
     
     async def get_user_karma(self, user_id: int) -> int:
         """
@@ -35,13 +33,15 @@ class KarmaService:
             int: User's current karma points
         """
         try:
-            with self.get_connection() as conn:
-                cursor = conn.execute(
-                    "SELECT karma_points FROM users WHERE user_id = ?",
-                    (user_id,)
+            conn = await self.get_connection()
+            try:
+                result = await conn.fetchrow(
+                    "SELECT karma_points FROM users WHERE telegram_id = $1",
+                    user_id
                 )
-                result = cursor.fetchone()
                 return result['karma_points'] if result else 0
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error getting karma for user {user_id}: {str(e)}")
             return 0
@@ -73,28 +73,30 @@ class KarmaService:
             bool: Success status
         """
         try:
-            with self.get_connection() as conn:
+            conn = await self.get_connection()
+            try:
                 # Get current karma
                 current_karma = await self.get_user_karma(user_id)
                 new_karma = current_karma + amount
                 
                 # Update user karma
-                conn.execute(
-                    "UPDATE users SET karma_points = ? WHERE user_id = ?",
-                    (new_karma, user_id)
+                await conn.execute(
+                    "UPDATE users SET karma_points = $1 WHERE telegram_id = $2",
+                    new_karma, user_id
                 )
                 
                 # Log transaction
-                conn.execute("""
+                await conn.execute("""
                     INSERT INTO karma_transactions 
                     (user_id, amount, reason, admin_id, created_at)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (user_id, amount, reason, admin_id))
+                    VALUES ($1, $2, $3, $4, NOW())
+                """, user_id, amount, reason, admin_id)
                 
-                conn.commit()
                 logger.info(f"Added {amount} karma to user {user_id}. New total: {new_karma}")
                 return True
                 
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error adding karma to user {user_id}: {str(e)}")
             return False
@@ -113,28 +115,30 @@ class KarmaService:
             bool: Success status
         """
         try:
-            with self.get_connection() as conn:
+            conn = await self.get_connection()
+            try:
                 # Get current karma
                 current_karma = await self.get_user_karma(user_id)
                 new_karma = max(0, current_karma - amount)  # Don't go below 0
                 
                 # Update user karma
-                conn.execute(
-                    "UPDATE users SET karma_points = ? WHERE user_id = ?",
-                    (new_karma, user_id)
+                await conn.execute(
+                    "UPDATE users SET karma_points = $1 WHERE telegram_id = $2",
+                    new_karma, user_id
                 )
                 
                 # Log transaction
-                conn.execute("""
+                await conn.execute("""
                     INSERT INTO karma_transactions 
                     (user_id, amount, reason, admin_id, created_at)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (user_id, -amount, reason, admin_id))
+                    VALUES ($1, $2, $3, $4, NOW())
+                """, user_id, -amount, reason, admin_id)
                 
-                conn.commit()
                 logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
                 return True
                 
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")
             return False
@@ -152,17 +156,18 @@ class KarmaService:
             list: List of karma transactions
         """
         try:
-            with self.get_connection() as conn:
-                cursor = conn.execute("""
+            conn = await self.get_connection()
+            try:
+                rows = await conn.fetch("""
                     SELECT amount, reason, admin_id, created_at
                     FROM karma_transactions 
-                    WHERE user_id = ?
+                    WHERE user_id = $1
                     ORDER BY created_at DESC
-                    LIMIT ? OFFSET ?
-                """, (user_id, limit, offset))
+                    LIMIT $2 OFFSET $3
+                """, user_id, limit, offset)
                 
                 transactions = []
-                for row in cursor.fetchall():
+                for row in rows:
                     transactions.append({
                         'amount': row['amount'],
                         'reason': row['reason'],
@@ -172,6 +177,8 @@ class KarmaService:
                 
                 return transactions
                 
+            finally:
+                await conn.close()
         except Exception as e:
             logger.error(f"Error getting karma history for user {user_id}: {str(e)}")
             return []
@@ -305,7 +312,7 @@ async def get_user_history(user_id: int, page: int = 1, per_page: int = 5) -> Di
         'total': len(transactions)
     }
 
-async def get_or_create_user(telegram_id: int, username: str = None, first_name: str = None, last_name: str = None) -> Dict[str, Any]:
+async def get_or_create_user(telegram_id: int, username: str = None, first_name: str = None, last_name: str = None, lang_code: str = 'ru') -> Dict[str, Any]:
     """
     Получить или создать пользователя.
     
@@ -314,57 +321,71 @@ async def get_or_create_user(telegram_id: int, username: str = None, first_name:
         username: Имя пользователя
         first_name: Имя
         last_name: Фамилия
+        lang_code: Код языка
         
     Returns:
         dict: Информация о пользователе
     """
     try:
-        with karma_service.get_connection() as conn:
+        conn = await karma_service.get_connection()
+        try:
             # Проверяем, существует ли пользователь
-            cursor = conn.execute(
-                "SELECT * FROM users WHERE telegram_id = ?",
-                (telegram_id,)
+            user = await conn.fetchrow(
+                "SELECT * FROM users WHERE telegram_id = $1",
+                telegram_id
             )
-            user = cursor.fetchone()
             
             if user:
                 return {
-                    'telegram_id': user[1],
-                    'username': user[2],
-                    'first_name': user[3],
-                    'last_name': user[4],
-                    'language_code': user[5],
-                    'karma_points': user[6],
-                    'created_at': user[7],
-                    'updated_at': user[8]
+                    'telegram_id': user['telegram_id'],
+                    'username': user['username'],
+                    'first_name': user['first_name'],
+                    'last_name': user['last_name'],
+                    'language_code': user['language_code'],
+                    'karma_points': user['karma_points'],
+                    'created_at': user['created_at'],
+                    'updated_at': user['updated_at']
                 }
             
             # Создаем нового пользователя
-            conn.execute("""
+            await conn.execute("""
                 INSERT INTO users (telegram_id, username, first_name, last_name, language_code, karma_points)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (telegram_id, username, first_name, last_name, 'ru', 0))
-            
-            conn.commit()
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, telegram_id, username, first_name, last_name, lang_code, 0)
             
             # Получаем созданного пользователя
-            cursor = conn.execute(
-                "SELECT * FROM users WHERE telegram_id = ?",
-                (telegram_id,)
+            user = await conn.fetchrow(
+                "SELECT * FROM users WHERE telegram_id = $1",
+                telegram_id
             )
-            user = cursor.fetchone()
             
             return {
-                'telegram_id': user[1],
-                'username': user[2],
-                'first_name': user[3],
-                'last_name': user[4],
-                'language_code': user[5],
-                'karma_points': user[6],
-                'created_at': user[7],
-                'updated_at': user[8]
+                'telegram_id': user['telegram_id'],
+                'username': user['username'],
+                'first_name': user['first_name'],
+                'last_name': user['last_name'],
+                'language_code': user['language_code'],
+                'karma_points': user['karma_points'],
+                'created_at': user['created_at'],
+                'updated_at': user['updated_at']
             }
             
+        finally:
+            await conn.close()
     except Exception as e:
         logger.error(f"Error getting or creating user {telegram_id}: {str(e)}")
         return None
+
+
+# Export all required functions
+__all__ = [
+    'KarmaService',
+    'karma_service',
+    'get_user_balance',
+    'get_user_level',
+    'add_points',
+    'get_user_history',
+    'get_or_create_user',
+    'subtract_karma',
+    'add_karma'
+]
