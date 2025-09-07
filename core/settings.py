@@ -111,6 +111,62 @@ class DatabaseSettings:
             logging.getLogger(__name__).info("[DB] Database: %s", db_log)
 
 @dataclass
+class KarmaConfig:
+    """Конфигурация системы кармы согласно ТЗ"""
+    level_thresholds: List[int] = field(default_factory=lambda: [100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000])
+    daily_login_bonus: int = field(default=5)
+    card_bind_bonus: int = field(default=25)
+    referral_bonus: int = field(default=50)
+    admin_karma_limit: int = field(default=1000)  # макс изменение кармы за раз админом
+    card_generation_limit: int = field(default=10000)  # макс карт за раз
+    rate_limit_per_minute: int = field(default=20)  # макс запросов в минуту
+    
+    def __post_init__(self):
+        """Инициализация конфигурации кармы"""
+        env = Env()
+        
+        # Загрузка из переменных окружения, если они существуют
+        self.daily_login_bonus = env.int('KARMA_DAILY_LOGIN_BONUS', self.daily_login_bonus)
+        self.card_bind_bonus = env.int('KARMA_CARD_BIND_BONUS', self.card_bind_bonus)
+        self.referral_bonus = env.int('KARMA_REFERRAL_BONUS', self.referral_bonus)
+        self.admin_karma_limit = env.int('KARMA_ADMIN_LIMIT', self.admin_karma_limit)
+        self.card_generation_limit = env.int('KARMA_CARD_GENERATION_LIMIT', self.card_generation_limit)
+        self.rate_limit_per_minute = env.int('KARMA_RATE_LIMIT', self.rate_limit_per_minute)
+        
+        # Логируем настройки
+        logger = logging.getLogger(__name__)
+        logger.info("[KARMA] Daily login bonus: %s", self.daily_login_bonus)
+        logger.info("[KARMA] Card bind bonus: %s", self.card_bind_bonus)
+        logger.info("[KARMA] Referral bonus: %s", self.referral_bonus)
+        logger.info("[KARMA] Admin karma limit: %s", self.admin_karma_limit)
+        logger.info("[KARMA] Level thresholds: %s", self.level_thresholds)
+
+@dataclass
+class CardConfig:
+    """Конфигурация системы карт согласно ТЗ"""
+    prefix: str = field(default="KS")
+    start_number: int = field(default=12340001)
+    format: str = field(default="{prefix}{number:08d}")  # KS12340001
+    printable_format: str = field(default="{prefix}-{group1}-{group2}")  # KS-1234-0001
+    
+    def __post_init__(self):
+        """Инициализация конфигурации карт"""
+        env = Env()
+        
+        # Загрузка из переменных окружения, если они существуют
+        self.prefix = env.str('CARD_PREFIX', self.prefix)
+        self.start_number = env.int('CARD_START_NUMBER', self.start_number)
+        self.format = env.str('CARD_FORMAT', self.format)
+        self.printable_format = env.str('CARD_PRINTABLE_FORMAT', self.printable_format)
+        
+        # Логируем настройки
+        logger = logging.getLogger(__name__)
+        logger.info("[CARDS] Prefix: %s", self.prefix)
+        logger.info("[CARDS] Start number: %s", self.start_number)
+        logger.info("[CARDS] Format: %s", self.format)
+        logger.info("[CARDS] Printable format: %s", self.printable_format)
+
+@dataclass
 class Settings:
     """Основные настройки приложения"""
     debug: bool = field(default_factory=lambda: os.getenv("DEBUG", "false").lower() == "true")
@@ -122,6 +178,8 @@ class Settings:
     auth: AuthSettings = field(default_factory=AuthSettings)
     database: DatabaseSettings = field(default_factory=DatabaseSettings)
     telegram: TelegramSettings = field(default_factory=TelegramSettings)
+    karma: KarmaConfig = field(default_factory=KarmaConfig)
+    cards: CardConfig = field(default_factory=CardConfig)
     
     def __post_init__(self):
         """Инициализация основных настроек"""

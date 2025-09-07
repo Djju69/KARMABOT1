@@ -46,18 +46,78 @@ class KarmaService:
             logger.error(f"Error getting karma for user {user_id}: {str(e)}")
             return 0
     
-    async def get_user_level(self, user_id: int) -> str:
+    async def get_user_level(self, user_id: int) -> int:
         """
-        Calculate user level based on their karma.
-        Упрощенная версия - только один уровень для запуска.
+        Calculate user level based on their karma according to TZ.
         
         Args:
             user_id: Telegram user ID
             
         Returns:
-            str: User level (всегда "Member" для упрощения)
+            int: User level (1-10 based on karma thresholds)
         """
-        return "Member"  # Упрощенная версия - один уровень
+        karma_points = await self.get_user_karma(user_id)
+        return self.calculate_level(karma_points)
+    
+    def calculate_level(self, karma_points: int) -> int:
+        """
+        Calculate user level based on karma points according to TZ.
+        
+        Args:
+            karma_points: Current karma points
+            
+        Returns:
+            int: User level (1-10)
+        """
+        from core.settings import settings
+        
+        thresholds = settings.karma.level_thresholds
+        
+        for level, threshold in enumerate(thresholds, 1):
+            if karma_points < threshold:
+                return level
+        
+        return len(thresholds) + 1  # Maximum level
+    
+    async def get_level_progress(self, user_id: int) -> Dict[str, Any]:
+        """
+        Get user's progress to next level.
+        
+        Args:
+            user_id: Telegram user ID
+            
+        Returns:
+            dict: Progress information
+        """
+        karma_points = await self.get_user_karma(user_id)
+        current_level = self.calculate_level(karma_points)
+        
+        from core.settings import settings
+        thresholds = settings.karma.level_thresholds
+        
+        if current_level > len(thresholds):
+            return {
+                'current_level': current_level,
+                'next_threshold': None,
+                'progress_karma': 0,
+                'total_needed': 0,
+                'progress_percent': 100
+            }
+        
+        next_threshold = thresholds[current_level - 1]
+        prev_threshold = thresholds[current_level - 2] if current_level > 1 else 0
+        
+        progress_karma = karma_points - prev_threshold
+        total_needed = next_threshold - prev_threshold
+        progress_percent = (progress_karma / total_needed) * 100
+        
+        return {
+            'current_level': current_level,
+            'next_threshold': next_threshold,
+            'progress_karma': progress_karma,
+            'total_needed': total_needed,
+            'progress_percent': min(progress_percent, 100)
+        }
     
     async def add_karma(self, user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
         """
@@ -91,6 +151,15 @@ class KarmaService:
                     (user_id, amount, reason, admin_id, created_at)
                     VALUES ($1, $2, $3, $4, NOW())
                 """, user_id, amount, reason, admin_id)
+                
+                # Check for level up and achievements
+                old_level = self.calculate_level(current_karma)
+                new_level = self.calculate_level(new_karma)
+                
+                if new_level > old_level:
+                    await self._check_level_up_achievements(user_id, new_level)
+                
+                await self._check_karma_milestone_achievements(user_id, new_karma)
                 
                 logger.info(f"Added {amount} karma to user {user_id}. New total: {new_karma}")
                 return True
@@ -278,6 +347,72 @@ class KarmaService:
                 'message': 'Произошла ошибка при трате кармы.',
                 'error_code': 'database_error'
             }
+    
+    async def _check_level_up_achievements(self, user_id: int, level: int):
+        """Check and award level up achievements"""
+        try:
+            conn = await self.get_connection()
+            try:
+                # Check if achievement already exists
+                existing = await conn.fetchrow("""
+                    SELECT id FROM user_achievements 
+                    WHERE user_id = $1 AND achievement_type = 'level_up' 
+                    AND achievement_data::json->>'level' = $2
+                """, user_id, str(level))
+                
+                if not existing:
+                    # Award achievement
+                    await conn.execute("""
+                        INSERT INTO user_achievements (user_id, achievement_type, achievement_data, earned_at)
+                        VALUES ($1, 'level_up', $2, NOW())
+                    """, user_id, f'{{"level": {level}}}')
+                    
+                    # Add notification
+                    await conn.execute("""
+                        INSERT INTO user_notifications (user_id, message, notification_type, created_at)
+                        VALUES ($1, $2, 'level_up', NOW())
+                    """, user_id, f"🎉 Поздравляем! Вы достигли {level} уровня!")
+                    
+                    logger.info(f"Level up achievement awarded to user {user_id} for level {level}")
+            finally:
+                await conn.close()
+        except Exception as e:
+            logger.error(f"Error checking level up achievements for user {user_id}: {str(e)}")
+    
+    async def _check_karma_milestone_achievements(self, user_id: int, karma_points: int):
+        """Check and award karma milestone achievements"""
+        try:
+            conn = await self.get_connection()
+            try:
+                milestones = [1000, 2500, 5000, 10000, 25000]
+                
+                for milestone in milestones:
+                    if karma_points >= milestone:
+                        # Check if achievement already exists
+                        existing = await conn.fetchrow("""
+                            SELECT id FROM user_achievements 
+                            WHERE user_id = $1 AND achievement_type = 'karma_milestone' 
+                            AND achievement_data::json->>'karma' = $2
+                        """, user_id, str(milestone))
+                        
+                        if not existing:
+                            # Award achievement
+                            await conn.execute("""
+                                INSERT INTO user_achievements (user_id, achievement_type, achievement_data, earned_at)
+                                VALUES ($1, 'karma_milestone', $2, NOW())
+                            """, user_id, f'{{"karma": {milestone}}}')
+                            
+                            # Add notification
+                            await conn.execute("""
+                                INSERT INTO user_notifications (user_id, message, notification_type, created_at)
+                                VALUES ($1, $2, 'karma_change', NOW())
+                            """, user_id, f"💎 Достижение! У вас {milestone} кармы!")
+                            
+                            logger.info(f"Karma milestone achievement awarded to user {user_id} for {milestone} karma")
+            finally:
+                await conn.close()
+        except Exception as e:
+            logger.error(f"Error checking karma milestone achievements for user {user_id}: {str(e)}")
 
 
 # Create singleton instance

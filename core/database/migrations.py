@@ -499,6 +499,10 @@ class DatabaseMigrator:
         self.migrate_008_card_photos()
         # Karma system and plastic cards
         self.migrate_016_plastic_cards()
+        # Loyalty system and partner ecosystem
+        self.migrate_017_loyalty_system()
+        # Personal cabinets system
+        self.migrate_018_personal_cabinets()
         
         logger.info("All migrations completed successfully")
 
@@ -822,6 +826,335 @@ class DatabaseMigrator:
             "EXPAND: Create admin_logs table",
             admin_logs_sql,
         )
+
+    def migrate_017_loyalty_system(self):
+        """
+        EXPAND Phase: Create loyalty system and partner ecosystem tables.
+        - Add points_balance to users table
+        - Create points_history table
+        - Create partner_places table (adapted from cards_v2)
+        - Create partner_sales table
+        - Create place_moderation_logs table
+        - Create platform_loyalty_config table
+        """
+        # Import the migration function
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        
+        try:
+            from migrations.migration_017_loyalty_system import upgrade_017
+            
+            # For SQLite, we need to adapt the PostgreSQL-specific syntax
+            if not self._is_memory:
+                with self.get_connection() as conn:
+                    # Check if we're using PostgreSQL
+                    is_postgres = False
+                    try:
+                        cursor = conn.execute("SELECT 1 FROM pg_catalog.pg_tables LIMIT 1")
+                        is_postgres = cursor.fetchone() is not None
+                    except:
+                        pass
+                    
+                    if is_postgres:
+                        # Use PostgreSQL migration
+                        import asyncpg
+                        import os
+                        database_url = os.getenv("DATABASE_URL")
+                        if database_url:
+                            import asyncio
+                            async def run_migration():
+                                pg_conn = await asyncpg.connect(database_url)
+                                try:
+                                    await upgrade_017(pg_conn)
+                                finally:
+                                    await pg_conn.close()
+                            asyncio.run(run_migration())
+                    else:
+                        # SQLite adaptation
+                        self._migrate_017_sqlite(conn)
+                        
+        except ImportError:
+            # Fallback to SQLite-only migration
+            if not self._is_memory:
+                with self.get_connection() as conn:
+                    self._migrate_017_sqlite(conn)
+            else:
+                conn = self.get_connection()
+                self._migrate_017_sqlite(conn)
+                conn.commit()
+        
+        self.apply_migration(
+            "017",
+            "EXPAND: Create loyalty system and partner ecosystem tables",
+            "-- Migration applied programmatically",
+        )
+
+    def _migrate_017_sqlite(self, conn):
+        """SQLite-specific migration for loyalty system"""
+        # 1. Add points_balance and partner_id to users table
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN points_balance INTEGER DEFAULT 0")
+        except:
+            pass  # Column might already exist
+            
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN partner_id INTEGER")
+        except:
+            pass  # Column might already exist
+        
+        # 2. Create points_history table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS points_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                change_amount INTEGER NOT NULL,
+                reason TEXT,
+                transaction_type TEXT DEFAULT 'earned',
+                sale_id INTEGER,
+                admin_id INTEGER,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 3. Create partner_places table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS partner_places (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                partner_id INTEGER,
+                title TEXT NOT NULL,
+                status TEXT DEFAULT 'draft',
+                address TEXT,
+                geo_lat REAL,
+                geo_lon REAL,
+                hours TEXT,
+                phone TEXT,
+                website TEXT,
+                price_level TEXT,
+                rating REAL DEFAULT 0,
+                reviews_count INTEGER DEFAULT 0,
+                description TEXT,
+                base_discount_pct REAL,
+                loyalty_accrual_pct REAL DEFAULT 5.00,
+                min_redeem INTEGER DEFAULT 0,
+                max_percent_per_bill REAL DEFAULT 50.00,
+                cover_file_id TEXT,
+                gallery_file_ids TEXT DEFAULT '[]',
+                categories TEXT DEFAULT '[]',
+                referral_bonus_1_10 INTEGER DEFAULT 5,
+                referral_bonus_11_20 INTEGER DEFAULT 7,
+                referral_bonus_over_20 INTEGER DEFAULT 3,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                created_by INTEGER,
+                updated_by INTEGER
+            )
+        """)
+        
+        # 4. Create place_moderation_logs table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS place_moderation_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                place_id INTEGER,
+                moderator_id INTEGER,
+                action TEXT,
+                old_status TEXT,
+                new_status TEXT,
+                reason TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 5. Create partner_sales table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS partner_sales (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                partner_id INTEGER,
+                place_id INTEGER,
+                operator_telegram_id INTEGER,
+                user_telegram_id INTEGER,
+                amount_gross REAL NOT NULL,
+                base_discount_pct REAL NOT NULL,
+                extra_discount_pct REAL DEFAULT 0.00,
+                extra_value REAL DEFAULT 0.00,
+                amount_partner_due REAL NOT NULL,
+                amount_user_subsidy REAL NOT NULL,
+                points_spent INTEGER DEFAULT 0,
+                points_earned INTEGER DEFAULT 0,
+                redeem_rate REAL NOT NULL,
+                receipt TEXT,
+                qr_token TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 6. Create platform_loyalty_config table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                redeem_rate REAL NOT NULL DEFAULT 5000.0,
+                rounding_rule TEXT DEFAULT 'bankers',
+                max_accrual_percent REAL DEFAULT 20.00,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER
+            )
+        """)
+        
+        # 7. Create indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_points_history_user_id ON points_history(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_points_history_created_at ON points_history(created_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_places_partner_id ON partner_places(partner_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_places_status ON partner_places(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_sales_partner_id ON partner_sales(partner_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_sales_user_id ON partner_sales(user_telegram_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_sales_created_at ON partner_sales(created_at)")
+        
+        # 8. Insert default loyalty config
+        conn.execute("""
+            INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
+            VALUES (5000.0, 'bankers', 20.00)
+        """)
+
+    def migrate_018_personal_cabinets(self):
+        """
+        EXPAND Phase: Create personal cabinets system tables.
+        - Add missing fields to users table (role, reputation_score, level, ban fields, last_activity)
+        - Create user_notifications table
+        - Create user_achievements table
+        - Update admin_logs table with additional fields
+        - Update cards_generated table with additional fields
+        """
+        # Import the migration function
+        import sys
+        import os
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        
+        try:
+            from migrations.migration_018_personal_cabinets import upgrade_018
+            
+            # For SQLite, we need to adapt the PostgreSQL-specific syntax
+            if not self._is_memory:
+                with self.get_connection() as conn:
+                    # Check if we're using PostgreSQL
+                    is_postgres = False
+                    try:
+                        cursor = conn.execute("SELECT 1 FROM pg_catalog.pg_tables LIMIT 1")
+                        is_postgres = cursor.fetchone() is not None
+                    except:
+                        pass
+                    
+                    if is_postgres:
+                        # Use PostgreSQL migration
+                        import asyncpg
+                        import os
+                        database_url = os.getenv("DATABASE_URL")
+                        if database_url:
+                            import asyncio
+                            async def run_migration():
+                                pg_conn = await asyncpg.connect(database_url)
+                                try:
+                                    await upgrade_018(pg_conn)
+                                finally:
+                                    await pg_conn.close()
+                            asyncio.run(run_migration())
+                    else:
+                        # SQLite adaptation
+                        self._migrate_018_sqlite(conn)
+                        
+        except ImportError:
+            # Fallback to SQLite-only migration
+            if not self._is_memory:
+                with self.get_connection() as conn:
+                    self._migrate_018_sqlite(conn)
+            else:
+                conn = self.get_connection()
+                self._migrate_018_sqlite(conn)
+                conn.commit()
+        
+        self.apply_migration(
+            "018",
+            "EXPAND: Create personal cabinets system tables",
+            "-- Migration applied programmatically",
+        )
+
+    def _migrate_018_sqlite(self, conn):
+        """SQLite-specific migration for personal cabinets system"""
+        # 1. Add missing fields to users table
+        fields_to_add = [
+            ("role", "TEXT DEFAULT 'user'"),
+            ("reputation_score", "INTEGER DEFAULT 0"),
+            ("level", "INTEGER DEFAULT 1"),
+            ("is_banned", "BOOLEAN DEFAULT 0"),
+            ("ban_reason", "TEXT"),
+            ("banned_by", "INTEGER"),
+            ("banned_at", "TEXT"),
+            ("last_activity", "TEXT")
+        ]
+        
+        for field_name, field_type in fields_to_add:
+            try:
+                conn.execute(f"ALTER TABLE users ADD COLUMN {field_name} {field_type}")
+            except:
+                pass  # Column might already exist
+        
+        # 2. Create user_notifications table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                message TEXT NOT NULL,
+                is_read BOOLEAN DEFAULT 0,
+                notification_type TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 3. Create user_achievements table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_achievements (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                achievement_type TEXT,
+                achievement_data TEXT,
+                earned_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 4. Update admin_logs table with additional fields
+        admin_logs_fields = [
+            ("target_user_id", "INTEGER"),
+            ("target_card_id", "TEXT"),
+            ("details", "TEXT")
+        ]
+        
+        for field_name, field_type in admin_logs_fields:
+            try:
+                conn.execute(f"ALTER TABLE admin_logs ADD COLUMN {field_name} {field_type}")
+            except:
+                pass  # Column might already exist
+        
+        # 5. Update cards_generated table with additional fields
+        cards_generated_fields = [
+            ("block_reason", "TEXT"),
+            ("blocked_by", "INTEGER"),
+            ("blocked_at", "TEXT")
+        ]
+        
+        for field_name, field_type in cards_generated_fields:
+            try:
+                conn.execute(f"ALTER TABLE cards_generated ADD COLUMN {field_name} {field_type}")
+            except:
+                pass  # Column might already exist
+        
+        # 6. Create indexes for new tables
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_type ON user_notifications(notification_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_notifications_is_read ON user_notifications(is_read)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_achievements_user_id ON user_achievements(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_user_achievements_type ON user_achievements(achievement_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_is_banned ON users(is_banned)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_users_level ON users(level)")
 
 # Global migrator instance
 migrator = DatabaseMigrator()
