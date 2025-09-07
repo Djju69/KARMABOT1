@@ -147,8 +147,8 @@ async def run_bot():
         from bot.bot import start as start_bot
         logger.info("✅ Bot module imported successfully")
 
-        # Всегда запускаем polling (режим определяется в main())
-        logger.info("🚀 Starting bot polling...")
+        # Запускаем бота (режим определяется в bot.py)
+        logger.info("🚀 Starting bot...")
         await start_bot()
 
     except ImportError as e:

@@ -194,8 +194,10 @@ try:
     async def start():
         """Start the bot with conflict/logged-out auto-recovery"""
         import asyncio
+        import os
         max_retries = 10
         attempt = 0
+        
         # Assign SUPER_ADMIN role to configured admin in SQLite runtime (best-effort)
         try:
             from core.settings import settings as _settings
@@ -207,26 +209,59 @@ try:
                 logger.info("✅ Ensured SUPER_ADMIN role for admin_id=%s", admin_id)
         except Exception as _e:
             logger.warning("Could not assign SUPER_ADMIN role at startup: %s", _e)
-        while True:
-            logger.info("🚀 Starting bot with polling...")
+        
+        # Check if we should use webhook mode
+        webhook_url = os.getenv('WEBHOOK_URL')
+        disable_polling = os.getenv('DISABLE_POLLING', 'false').lower() == 'true'
+        
+        if webhook_url and disable_polling:
+            logger.info("🚀 Starting bot with webhook...")
             try:
                 # Preflight: ensure bot is not in 'Logged out' state
                 try:
                     await bot.get_me()
                 except TelegramBadRequest as pre:
                     if "Logged out" in str(pre):
-                        attempt += 1
-                        wait_s = min(60 + attempt * 10, 180)
-                        logger.warning(f"Bot is 'Logged out' (preflight). Retry in {wait_s}s (attempt {attempt}/{max_retries})")
-                        await asyncio.sleep(wait_s)
-                        if attempt >= max_retries:
-                            logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
-                            raise
-                        continue
+                        logger.warning(f"Bot is 'Logged out' (preflight). Retrying...")
+                        await asyncio.sleep(5)
+                        await bot.get_me()
                     else:
                         raise
 
-                await dp.start_polling(bot, skip_updates=True)
+                # Set webhook
+                await bot.set_webhook(
+                    url=webhook_url,
+                    allowed_updates=["message", "callback_query"]
+                )
+                logger.info("✅ Webhook set up successfully")
+                
+                # Start webhook
+                await dp.start_webhook(bot, webhook_path="/webhook")
+                
+            except Exception as e:
+                logger.error(f"❌ Webhook startup error: {e}", exc_info=True)
+                raise
+        else:
+            logger.info("🚀 Starting bot with polling...")
+            while True:
+                try:
+                    # Preflight: ensure bot is not in 'Logged out' state
+                    try:
+                        await bot.get_me()
+                    except TelegramBadRequest as pre:
+                        if "Logged out" in str(pre):
+                            attempt += 1
+                            wait_s = min(60 + attempt * 10, 180)
+                            logger.warning(f"Bot is 'Logged out' (preflight). Retry in {wait_s}s (attempt {attempt}/{max_retries})")
+                            await asyncio.sleep(wait_s)
+                            if attempt >= max_retries:
+                                logger.critical("Exceeded max retries due to 'Logged out'. Aborting.")
+                                raise
+                            continue
+                        else:
+                            raise
+
+                    await dp.start_polling(bot, skip_updates=True)
                 return
             except TelegramConflictError as e:
                 attempt += 1
