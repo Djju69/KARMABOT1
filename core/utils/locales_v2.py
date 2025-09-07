@@ -58,6 +58,23 @@ translations_v2 = {
         'keyboard.nearest': '📍 가까운 매장',
         'keyboard.help': '❓ 도움말',
         'keyboard.choose_language': '🌐 언어 변경',
+        
+        # Restaurant filters
+        'restaurants_choose_cuisine': '🍽️ 요리 종류를 선택하세요:',
+        'filter_asia': '🌶️ 아시아',
+        'filter_europe': '🍝 유럽',
+        'filter_street': '🌭 길거리 음식',
+        'filter_vege': '🥗 채식',
+        'filter_all': '🔍 전체',
+        
+        # SPA services
+        'spa_choose': '🧖‍♀️ SPA 서비스를 선택하세요:',
+        'spa_salon': '💅 미용실',
+        'spa_massage': '💆‍♀️ 마사지',
+        'spa_sauna': '🧖‍♂️ 사우나',
+        
+        # Categories
+        'category_shops_services': '🛍️ 상점 및 서비스',
         'keyboard.back_to_main': '🏠 메인 메뉴',
         
         # Profile/help
@@ -228,6 +245,29 @@ translations_v2 = {
         'categories.tours': '🚶‍♂️ Экскурсии',
         'categories.shops': '🛍️ Магазины и услуги',
         
+        # Restaurant filters
+        'restaurants_choose_cuisine': '🍽️ Выберите тип кухни:',
+        'filter_asia': '🌶️ Азиатская',
+        'filter_europe': '🍝 Европейская',
+        'filter_street': '🌭 Уличная еда',
+        'filter_vege': '🥗 Вегетарианская',
+        'filter_all': '🔍 Все',
+        
+        # SPA services
+        'spa_choose': '🧖‍♀️ Выберите SPA услугу:',
+        'spa_salon': '💅 Салон красоты',
+        'spa_massage': '💆‍♀️ Массаж',
+        'spa_sauna': '🧖‍♂️ Сауна',
+        
+        # Categories
+        'category_shops_services': '🛍️ Магазины и услуги',
+        
+        # Keyboard buttons
+        'keyboard.categories': '🗂️ Категории',
+        'keyboard.nearest': '📍 Ближайшие',
+        'keyboard.help': '❓ Помощь',
+        'keyboard.choose_language': '🌐 Сменить язык',
+        
         # Policy
         'policy_text': '''Пожалуйста, согласитесь с политикой конфиденциальности.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
         'policy_message': '''🔒 Политика конфиденциальности\n\nПожалуйста, согласитесь с политикой конфиденциальности перед использованием сервиса.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
@@ -239,17 +279,17 @@ translations_v2 = {
         # Welcome message
         'welcome_message': '''{name} 👋 Добро пожаловать в Karma System! 
 
-✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:  
-🍽️ Рестораны и кафе  
-🧖‍♀️ SPA и массаж  
-🏍️ Аренда байков  
-🏨 Отели  
+✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:
+🍽️ Рестораны и кафе
+🧖‍♀️ SPA и массаж
+🏍️ Аренда байков
+🏨 Отели
 🚶‍♂️ Экскурсии
 🛍️ Магазины и услуги  
 
-А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀  
+А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀
 
-Начни экономить прямо сейчас — выбирай категорию и получай свои скидки! 
+Начни экономить прямо сейчас — выбирай категорию и получай свои скидки!
 
 Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
         
@@ -269,6 +309,29 @@ translations_v2 = {
         'invite.my_link': '🔗 My link',
         'invite.invited': '📋 Invited',
         'invite.earnings': '💵 Earnings',
+        
+        # Restaurant filters
+        'restaurants_choose_cuisine': '🍽️ Choose cuisine type:',
+        'filter_asia': '🌶️ Asian',
+        'filter_europe': '🍝 European',
+        'filter_street': '🌭 Street food',
+        'filter_vege': '🥗 Vegetarian',
+        'filter_all': '🔍 All',
+        
+        # SPA services
+        'spa_choose': '🧖‍♀️ Choose SPA service:',
+        'spa_salon': '💅 Beauty salon',
+        'spa_massage': '💆‍♀️ Massage',
+        'spa_sauna': '🧖‍♂️ Sauna',
+        
+        # Categories
+        'category_shops_services': '🛍️ Shops and services',
+        
+        # Keyboard buttons
+        'keyboard.categories': '🗂️ Categories',
+        'keyboard.nearest': '📍 Nearest',
+        'keyboard.help': '❓ Help',
+        'keyboard.choose_language': '🌐 Change language',
         
         # Policy
         'policy_text': '''Please agree to the privacy policy.\n\nContinuing means you agree to the privacy policy.''',

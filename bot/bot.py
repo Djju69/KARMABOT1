@@ -46,6 +46,7 @@ from aiogram.fsm.context import FSMContext
 
 # Import middlewares
 from core.middleware import setup_rbac_middleware, setup_2fa_middleware
+from core.middleware.privacy_policy import PrivacyPolicyMiddleware
 
 # Initialize bot with default properties
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -74,6 +75,11 @@ try:
     except Exception as e:
         logger.warning(f"Could not ensure user_roles table: {e}")
 
+    # КРИТИЧЕСКИ ВАЖНО: Privacy Policy middleware должен быть ПЕРВЫМ
+    dp.message.middleware(PrivacyPolicyMiddleware())
+    dp.callback_query.middleware(PrivacyPolicyMiddleware())
+    logger.info("🔒 Privacy Policy Middleware registered - ALL actions now protected")
+    
     setup_rbac_middleware(dp)
     setup_2fa_middleware(dp)
     

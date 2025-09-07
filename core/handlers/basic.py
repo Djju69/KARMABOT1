@@ -469,3 +469,39 @@ async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext) 
         # В случае ошибки разрешаем продолжить, чтобы не блокировать пользователя
         return True
     return True
+
+
+# Обработчики политики конфиденциальности
+@router.callback_query(lambda c: c.data == "accept_policy")
+async def handle_accept_policy(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    """Обработка принятия политики конфиденциальности"""
+    try:
+        # Отмечаем, что пользователь принял политику
+        await state.update_data(policy_accepted=True)
+        
+        # Отвечаем на callback
+        await callback.answer("✅ Политика принята!")
+        
+        # Удаляем сообщение с политикой
+        await callback.message.delete()
+        
+        # Показываем главное меню
+        await get_start(callback.message, bot, state)
+        
+    except Exception as e:
+        logger.error(f"Error handling policy acceptance: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка. Попробуйте снова.", show_alert=True)
+
+
+@router.callback_query(lambda c: c.data == "decline_policy")
+async def handle_decline_policy(callback: CallbackQuery, bot: Bot, state: FSMContext):
+    """Обработка отклонения политики конфиденциальности"""
+    try:
+        # Отвечаем на callback
+        await callback.answer("❌ Для использования бота необходимо принять политику конфиденциальности", show_alert=True)
+        
+        # Не удаляем сообщение, чтобы пользователь мог принять политику
+        
+    except Exception as e:
+        logger.error(f"Error handling policy decline: {e}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка.", show_alert=True)
