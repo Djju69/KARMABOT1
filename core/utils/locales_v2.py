@@ -133,7 +133,37 @@ translations_v2 = {
         'profile_help': '❓ 도움말',
         
         # Policy
-        'policy_text': '''개인정보 처리방침에 동의해 주세요.\n\n계속하시면 개인정보 처리방침에 동의하는 것으로 간주됩니다.''',
+        'policy_text': '''🔒 <b>개인정보 처리방침</b>
+
+<b>1. 일반 조항</b>
+본 개인정보 처리방침은 Karma System 봇 사용자의 개인정보 처리 절차를 정의합니다.
+
+<b>2. 수집하는 데이터</b>
+• 텔레그램 사용자 ID
+• 사용자명 및 이름
+• 언어 설정
+• 봇 상호작용 데이터
+• 위치 정보 ("근처" 기능 사용 시)
+
+<b>3. 처리 목적</b>
+• 봇 서비스 제공
+• 콘텐츠 개인화
+• 사용 분석
+• 서비스 품질 향상
+
+<b>4. 데이터 전송</b>
+귀하의 데이터는 법률에 의해 요구되는 경우를 제외하고 제3자에게 전송되지 않습니다.
+
+<b>5. 보안</b>
+귀하의 개인정보를 보호하기 위해 모든 필요한 조치를 취합니다.
+
+<b>6. 귀하의 권리</b>
+귀하는 귀하의 개인정보에 대한 접근, 수정 및 삭제 권리가 있습니다.
+
+<b>7. 연락처</b>
+개인정보 처리에 대한 문의사항은 봇 관리자에게 연락하세요.
+
+<i>마지막 업데이트: 2025.09.07</i>''',
         'policy_message': '''🔒 개인정보 처리방침\n\n서비스를 이용하기 전에 개인정보 처리방침에 동의해 주세요.\n\n계속하시면 개인정보 처리방침에 동의하는 것으로 간주됩니다.''',
         'policy_accept': '✅ 동의합니다',
         'policy_view': '📄 개인정보 처리방침',
@@ -221,7 +251,37 @@ translations_v2 = {
         'save': '💾 Lưu',
         
         # Policy
-        'policy_text': '''Vui lòng đồng ý với chính sách bảo mật.\n\nTiếp tục có nghĩa là bạn đồng ý với chính sách bảo mật.''',
+        'policy_text': '''🔒 <b>CHÍNH SÁCH BẢO MẬT</b>
+
+<b>1. QUY ĐỊNH CHUNG</b>
+Chính sách Bảo mật này xác định thủ tục xử lý dữ liệu cá nhân của người dùng bot Karma System.
+
+<b>2. DỮ LIỆU CHÚNG TÔI THU THẬP</b>
+• ID người dùng Telegram
+• Tên người dùng và tên
+• Cài đặt ngôn ngữ
+• Dữ liệu tương tác với bot
+• Thông tin vị trí (khi sử dụng tính năng "Gần đây")
+
+<b>3. MỤC ĐÍCH XỬ LÝ</b>
+• Cung cấp dịch vụ bot
+• Cá nhân hóa nội dung
+• Phân tích sử dụng
+• Cải thiện chất lượng dịch vụ
+
+<b>4. CHUYỂN GIAO DỮ LIỆU</b>
+Dữ liệu của bạn không được chuyển giao cho bên thứ ba, trừ trường hợp pháp luật yêu cầu.
+
+<b>5. BẢO MẬT</b>
+Chúng tôi thực hiện mọi biện pháp cần thiết để bảo vệ dữ liệu cá nhân của bạn.
+
+<b>6. QUYỀN CỦA BẠN</b>
+Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của mình.
+
+<b>7. LIÊN HỆ</b>
+Đối với các câu hỏi về xử lý dữ liệu cá nhân, hãy liên hệ với quản trị viên bot.
+
+<i>Cập nhật lần cuối: 07/09/2025</i>''',
         'policy_message': '''🔒 Chính sách bảo mật\n\nVui lòng đồng ý với chính sách bảo mật trước khi sử dụng dịch vụ.\n\nTiếp tục có nghĩa là bạn đồng ý với chính sách bảo mật.''',
         'policy_accept': '✅ Đồng ý',
         'policy_view': '📄 Chính sách bảo mật',
@@ -332,7 +392,37 @@ translations_v2 = {
         'keyboard.choose_language': '🌐 Сменить язык',
         
         # Policy
-        'policy_text': '''Пожалуйста, согласитесь с политикой конфиденциальности.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
+        'policy_text': '''🔒 <b>ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ</b>
+
+<b>1. ОБЩИЕ ПОЛОЖЕНИЯ</b>
+Настоящая Политика конфиденциальности определяет порядок обработки персональных данных пользователей бота Karma System.
+
+<b>2. КАКИЕ ДАННЫЕ МЫ СОБИРАЕМ</b>
+• Идентификатор пользователя Telegram
+• Имя пользователя и имя
+• Языковые настройки
+• Данные о взаимодействии с ботом
+• Информация о местоположении (при использовании функции "Рядом")
+
+<b>3. ЦЕЛИ ОБРАБОТКИ</b>
+• Предоставление услуг бота
+• Персонализация контента
+• Аналитика использования
+• Улучшение качества сервиса
+
+<b>4. ПЕРЕДАЧА ДАННЫХ</b>
+Ваши данные не передаются третьим лицам, за исключением случаев, предусмотренных законодательством.
+
+<b>5. БЕЗОПАСНОСТЬ</b>
+Мы принимаем все необходимые меры для защиты ваших персональных данных.
+
+<b>6. ВАШИ ПРАВА</b>
+Вы имеете право на доступ, исправление и удаление ваших персональных данных.
+
+<b>7. КОНТАКТЫ</b>
+По вопросам обработки персональных данных обращайтесь к администратору бота.
+
+<i>Дата последнего обновления: 07.09.2025</i>''',
         'policy_message': '''🔒 Политика конфиденциальности\n\nПожалуйста, согласитесь с политикой конфиденциальности перед использованием сервиса.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
         'policy_accept': '✅ Согласен',
         'policy_decline': '❌ Отклонить',
@@ -416,7 +506,37 @@ translations_v2 = {
         'keyboard.choose_language': '🌐 Change language',
         
         # Policy
-        'policy_text': '''Please agree to the privacy policy.\n\nContinuing means you agree to the privacy policy.''',
+        'policy_text': '''🔒 <b>PRIVACY POLICY</b>
+
+<b>1. GENERAL PROVISIONS</b>
+This Privacy Policy defines the procedure for processing personal data of Karma System bot users.
+
+<b>2. DATA WE COLLECT</b>
+• Telegram user ID
+• Username and first name
+• Language settings
+• Bot interaction data
+• Location information (when using "Nearby" feature)
+
+<b>3. PROCESSING PURPOSES</b>
+• Providing bot services
+• Content personalization
+• Usage analytics
+• Service quality improvement
+
+<b>4. DATA TRANSFER</b>
+Your data is not transferred to third parties, except as required by law.
+
+<b>5. SECURITY</b>
+We take all necessary measures to protect your personal data.
+
+<b>6. YOUR RIGHTS</b>
+You have the right to access, correct and delete your personal data.
+
+<b>7. CONTACTS</b>
+For questions about personal data processing, contact the bot administrator.
+
+<i>Last updated: 09/07/2025</i>''',
         'policy_message': '''🔒 Privacy Policy\n\nPlease agree to the privacy policy before using the service.\n\nContinuing means you agree to the privacy policy.''',
         'policy_accept': '✅ I agree',
         'policy_view': '📄 Privacy Policy',
