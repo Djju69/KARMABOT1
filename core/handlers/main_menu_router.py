@@ -436,43 +436,28 @@ async def handle_shops(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 
-@main_menu_router.message(F.text.in_([t.get('back_to_categories', '') for t in translations.values()]))
-async def handle_back_to_categories(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Назад' в подкатегориях - возвращает в категории."""
-    logger.debug(f"User {message.from_user.id} clicked back to categories")
+@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
+async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик кнопки 'В главное меню' - возвращает в главное меню."""
+    logger.debug(f"User {message.from_user.id} clicked back to main menu")
     if not await ensure_policy_accepted(message, bot, state):
         return
         
     try:
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        await show_categories_v2(message, bot, lang)
-    except Exception as e:
-        logger.error(f"Error going back to categories: {e}", exc_info=True)
-        user_data = await state.get_data()
-        lang = user_data.get('lang', 'ru')
-        error_text = translations.get(lang, {}).get(
-            'categories_error',
-            'Не удалось загрузить категории. Пожалуйста, попробуйте позже.'
-        )
-        await message.answer(error_text, parse_mode="HTML")
-
-
-@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
-async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Назад в главное меню'."""
-    logger.debug(f"User {message.from_user.id} clicked back to main menu")
-    try:
+        # Импортируем get_start из basic.py
+        from core.handlers.basic import get_start
         await get_start(message, bot, state)
     except Exception as e:
         logger.error(f"Error returning to main menu: {e}", exc_info=True)
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         error_text = translations.get(lang, {}).get(
-            'main_menu_error',
-            'Не удалось загрузить главное меню. Пожалуйста, попробуйте позже.'
+            'menu_error',
+            'Не удалось вернуться в главное меню. Пожалуйста, попробуйте позже.'
         )
         await message.answer(error_text, parse_mode="HTML")
+
+
 
 
 # Обработчики подменю
@@ -492,6 +477,15 @@ async def handle_transport_bikes(message: Message, bot: Bot, state: FSMContext) 
 async def handle_transport_cars(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик подменю 'Аренда автомобилей'."""
     await handle_transport_submenu_typed(message, bot, state, 'cars')
+
+
+@main_menu_router.message(F.text.in_([
+    t.get('transport_bicycles', '') for t in translations.values()
+    if t.get('transport_bicycles')
+]))
+async def handle_transport_bicycles(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик подменю 'Аренда велосипедов'."""
+    await handle_transport_submenu_typed(message, bot, state, 'bicycles')
 
 
 @main_menu_router.message(F.text.in_([
@@ -528,6 +522,15 @@ async def handle_massage(message: Message, bot: Bot, state: FSMContext) -> None:
 async def handle_sauna(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик подменю 'Сауна'."""
     await handle_spa_submenu_typed(message, bot, state, 'sauna')
+
+
+@main_menu_router.message(F.text.in_([
+    t.get('spa_salon', '') for t in translations.values()
+    if t.get('spa_salon')
+]))
+async def handle_beauty_salon(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик подменю 'Салон красоты'."""
+    await handle_spa_submenu_typed(message, bot, state, 'salon')
 
 
 @main_menu_router.message(F.text.in_([
@@ -647,7 +650,7 @@ async def handle_hotels_submenu_typed(message: Message, bot: Bot, state: FSMCont
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
         # Внутренний обработчик сам определяет sub_slug по тексту кнопки
-        await on_hotels_submenu(message, bot, lang, city_id)
+        await on_hotels_submenu(message, bot, lang, city_id, state)
     except Exception as e:
         logger.error(f"Error in {accommodation_type} accommodation: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -670,7 +673,7 @@ async def handle_shops_submenu_typed(message: Message, bot: Bot, state: FSMConte
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
         # Внутренний обработчик сам определяет sub_slug по тексту кнопки
-        await on_shops_submenu(message, bot, lang, city_id)
+        await on_shops_submenu(message, bot, lang, city_id, state)
     except Exception as e:
         logger.error(f"Error in {shop_type} shops: {e}", exc_info=True)
         user_data = await state.get_data()

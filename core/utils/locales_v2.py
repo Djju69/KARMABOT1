@@ -77,16 +77,23 @@ translations_v2 = {
         'spa_massage': '💆‍♀️ 마사지',
         'spa_sauna': '🧖‍♂️ 사우나',
         
+        # Transport
+        'transport_bikes': '🛵 바이크',
+        'transport_cars': '🚘 자동차',
+        'transport_bicycles': '🚲 자전거',
+        
         # Categories
         'category_shops_services': '🛍️ 상점 및 서비스',
         
         # Hotels
         'hotels_hotels': '🏨 호텔',
         'hotels_apartments': '🏠 아파트',
+        'hotels_choose': '🏨 숙박 유형을 선택하세요:',
         
         # Shops
         'shops_shops': '🛍️ 상점',
         'shops_services': '🔧 서비스',
+        'shops_choose': '🛍️ 상점 유형을 선택하세요:',
         'keyboard.back_to_main': '🏠 메인 메뉴',
         
         # Profile/help
@@ -230,6 +237,27 @@ translations_v2 = {
         'success': 'Thành công!',
         'failed': 'Thất bại!',
         
+        # SPA services
+        'spa_choose': '🧖‍♀️ Chọn dịch vụ SPA:',
+        'spa_salon': '💅 Salon làm đẹp',
+        'spa_massage': '💆‍♀️ Massage',
+        'spa_sauna': '🧖‍♂️ Xông hơi',
+        
+        # Transport
+        'transport_bikes': '🛵 Xe máy',
+        'transport_cars': '🚘 Ô tô',
+        'transport_bicycles': '🚲 Xe đạp',
+        
+        # Hotels
+        'hotels_hotels': '🏨 Khách sạn',
+        'hotels_apartments': '🏠 Căn hộ',
+        'hotels_choose': '🏨 Chọn loại chỗ ở:',
+        
+        # Shops
+        'shops_shops': '🛍️ Cửa hàng',
+        'shops_services': '🔧 Dịch vụ',
+        'shops_choose': '🛍️ Chọn loại cửa hàng:',
+        
         # Errors
         'menu_error': 'Không thể quay lại menu chính. Vui lòng thử lại sau.'
     },
@@ -277,16 +305,23 @@ translations_v2 = {
         'spa_massage': '💆‍♀️ Массаж',
         'spa_sauna': '🧖‍♂️ Сауна',
         
+        # Transport
+        'transport_bikes': '🛵 Байки',
+        'transport_cars': '🚘 Машины',
+        'transport_bicycles': '🚲 Велосипеды',
+        
         # Categories
         'category_shops_services': '🛍️ Магазины и услуги',
         
         # Hotels
         'hotels_hotels': '🏨 Отели',
         'hotels_apartments': '🏠 Апартаменты',
+        'hotels_choose': '🏨 Выберите тип размещения:',
         
         # Shops
         'shops_shops': '🛍️ Магазины',
         'shops_services': '🔧 Услуги',
+        'shops_choose': '🛍️ Выберите тип магазина:',
         
         # Keyboard buttons
         'keyboard.categories': '🗂️ Категории',
@@ -353,16 +388,24 @@ translations_v2 = {
         'spa_massage': '💆‍♀️ Massage',
         'spa_sauna': '🧖‍♂️ Sauna',
         
+        # Transport
+        'transport_bikes': '🛵 Bikes',
+        'transport_cars': '🚘 Cars',
+        'transport_bicycles': '🚲 Bicycles',
+        
         # Categories
         'category_shops_services': '🛍️ Shops and services',
         
         # Hotels
         'hotels_hotels': '🏨 Hotels',
         'hotels_apartments': '🏠 Apartments',
+        'hotels_choose': '🏨 Choose accommodation type:',
         
         # Shops
         'shops_shops': '🛍️ Shops',
         'shops_services': '🔧 Services',
+        'shops_choose': '🛍️ Choose shop type:',
+        'shops_choose': '🛍️ Choose shop type:',
         
         # Keyboard buttons
         'keyboard.categories': '🗂️ Categories',
