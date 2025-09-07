@@ -75,6 +75,14 @@ translations_v2 = {
         
         # Categories
         'category_shops_services': '🛍️ 상점 및 서비스',
+        
+        # Hotels
+        'hotels_hotels': '🏨 호텔',
+        'hotels_apartments': '🏠 아파트',
+        
+        # Shops
+        'shops_shops': '🛍️ 상점',
+        'shops_services': '🔧 서비스',
         'keyboard.back_to_main': '🏠 메인 메뉴',
         
         # Profile/help
@@ -262,6 +270,14 @@ translations_v2 = {
         # Categories
         'category_shops_services': '🛍️ Магазины и услуги',
         
+        # Hotels
+        'hotels_hotels': '🏨 Отели',
+        'hotels_apartments': '🏠 Апартаменты',
+        
+        # Shops
+        'shops_shops': '🛍️ Магазины',
+        'shops_services': '🔧 Услуги',
+        
         # Keyboard buttons
         'keyboard.categories': '🗂️ Категории',
         'keyboard.nearest': '📍 Ближайшие',
@@ -326,6 +342,14 @@ translations_v2 = {
         
         # Categories
         'category_shops_services': '🛍️ Shops and services',
+        
+        # Hotels
+        'hotels_hotels': '🏨 Hotels',
+        'hotels_apartments': '🏠 Apartments',
+        
+        # Shops
+        'shops_shops': '🛍️ Shops',
+        'shops_services': '🔧 Services',
         
         # Keyboard buttons
         'keyboard.categories': '🗂️ Categories',

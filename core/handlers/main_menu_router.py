@@ -578,7 +578,7 @@ async def handle_transport_submenu_typed(message: Message, bot: Bot, state: FSMC
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
         # Внутренний обработчик сам определяет sub_slug по тексту кнопки
-        await on_transport_submenu(message, bot, lang, city_id)
+        await on_transport_submenu(message, bot, lang, city_id, state)
     except Exception as e:
         logger.error(f"Error in {transport_type} transport: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -624,7 +624,7 @@ async def handle_spa_submenu_typed(message: Message, bot: Bot, state: FSMContext
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
         # Внутренний обработчик сам определяет sub_slug по тексту кнопки
-        await on_spa_submenu(message, bot, lang, city_id)
+        await on_spa_submenu(message, bot, lang, city_id, state)
     except Exception as e:
         logger.error(f"Error in {service_type} SPA service: {e}", exc_info=True)
         user_data = await state.get_data()
