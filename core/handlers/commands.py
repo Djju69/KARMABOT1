@@ -115,7 +115,7 @@ def register_commands(router):
                 await getattr(cache_service, "delete_by_mask")("*")  # type: ignore[attr-defined]
             except Exception:
                 pass
-            await message.answer("🧹 Кэш очищен")
+            await message.answer("🧹 Кэш очищен! Удалены ключи кэша для пользователя и системы")
         except Exception as e:
             logging.getLogger(__name__).error(f"clear_cache failed: {e}")
             await message.answer("⚠️ Ошибка при очистке кэша")

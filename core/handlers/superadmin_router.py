@@ -402,11 +402,12 @@ async def system_settings_handler(message: Message, state: FSMContext):
 async def back_to_main_handler(message: Message, state: FSMContext):
     """Handle back button to return to main menu."""
     try:
-        # Импортируем get_start из basic.py
-        from core.handlers.basic import get_start
-        from aiogram import Bot
-        bot = Bot.get_current()
-        await get_start(message, bot, state)
+        # Просто показываем главное меню без приветствия
+        from core.keyboards.reply_v2 import get_main_menu_reply
+        await message.answer(
+            "🏠 Главное меню",
+            reply_markup=get_main_menu_reply()
+        )
     except Exception as e:
         logger.error(f"Error returning to main menu from superadmin: {e}", exc_info=True)
         await message.answer("Не удалось вернуться в главное меню. Попробуйте позже.")

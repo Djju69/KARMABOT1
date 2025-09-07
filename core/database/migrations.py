@@ -1079,6 +1079,21 @@ class DatabaseMigrator:
 
     def _migrate_018_sqlite(self, conn):
         """SQLite-specific migration for personal cabinets system"""
+        # 0. Create users table if it doesn't exist
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER UNIQUE NOT NULL,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                language_code TEXT DEFAULT 'ru',
+                karma_points INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         # 1. Add missing fields to users table
         fields_to_add = [
             ("role", "TEXT DEFAULT 'user'"),

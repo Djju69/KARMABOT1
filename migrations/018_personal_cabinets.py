@@ -8,8 +8,24 @@ from datetime import datetime
 async def upgrade_018(conn):
     """Дополняет схему базы данных для системы личных кабинетов"""
     try:
-        # Дополняем таблицу users недостающими полями согласно ТЗ
-        print("🔧 Updating users table...")
+        # Создаем таблицу users если её нет
+        print("🔧 Creating/updating users table...")
+        
+        # Создаем таблицу users если её нет
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                telegram_id BIGINT UNIQUE NOT NULL,
+                username VARCHAR(255),
+                first_name VARCHAR(255),
+                last_name VARCHAR(255),
+                language_code VARCHAR(10) DEFAULT 'ru',
+                karma_points INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )
+        """)
+        print("✅ Created users table")
         
         # Добавляем поле role
         try:
