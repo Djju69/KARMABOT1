@@ -3,8 +3,8 @@ Service layer for plastic cards functionality.
 Handles card binding, validation, management, and generation.
 """
 from typing import Optional, Dict, Any, List
-import sqlite3
-from pathlib import Path
+import os
+import asyncpg
 from datetime import datetime
 import csv
 import io
@@ -18,13 +18,11 @@ class PlasticCardsService:
     
     def __init__(self):
         """Initialize with database connection."""
-        self.db_path = Path(__file__).parent.parent.parent / "core" / "database" / "data.db"
+        self.database_url = os.getenv("DATABASE_URL", "")
     
-    def get_connection(self) -> sqlite3.Connection:
+    async def get_connection(self) -> asyncpg.Connection:
         """Get database connection."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return await asyncpg.connect(self.database_url)
     
     async def bind_card_to_user(
         self, 
@@ -46,69 +44,71 @@ class PlasticCardsService:
             dict: Result with success status and message
         """
         try:
-            with self.get_connection() as conn:
+            conn = await self.get_connection()
+            try:
                 # Check if card exists in generated cards
-                cursor = conn.execute(
-                    "SELECT id FROM cards_generated WHERE card_id = ? AND is_deleted = 0",
-                    (card_id,)
+                card_exists = await conn.fetchrow(
+                    "SELECT id FROM cards_generated WHERE card_id = $1 AND is_deleted = false",
+                    card_id
                 )
-                if not cursor.fetchone():
+                if not card_exists:
                     return {
                         'success': False,
                         'message': 'Карта не найдена в системе.',
                         'error_code': 'card_not_found'
                     }
                 
-        # Check if user already has cards (ограничение до 1 карты)
-        cursor = conn.execute(
-            "SELECT COUNT(*) FROM cards_binding WHERE telegram_id = ? AND status = 'active'",
-            (telegram_id,)
-        )
-        existing_cards_count = cursor.fetchone()[0]
-        
-        if existing_cards_count >= 1:  # Лимит 1 карта
-            return {
-                'success': False,
-                'message': 'Вы можете привязать только одну карту к аккаунту.\n\nДля привязки новой карты сначала отвяжите текущую.',
-                'error_code': 'card_limit_reached'
-            }
-        
-        # Check if this specific card is already bound to someone else
-        cursor = conn.execute(
-            "SELECT telegram_id FROM cards_binding WHERE card_id = ? AND status = 'active'",
-            (card_id,)
-        )
-        existing_binding = cursor.fetchone()
-        
-        if existing_binding:
-            return {
-                'success': False,
-                'message': 'Эта карта уже привязана к другому пользователю.',
-                'error_code': 'bound_to_other_user'
-            }
+                # Check if user already has cards (ограничение до 1 карты)
+                existing_cards_count = await conn.fetchval(
+                    "SELECT COUNT(*) FROM cards_binding WHERE telegram_id = $1 AND status = 'active'",
+                    telegram_id
+                )
+                
+                if existing_cards_count >= 1:  # Лимит 1 карта
+                    return {
+                        'success': False,
+                        'message': 'Вы можете привязать только одну карту к аккаунту.\n\nДля привязки новой карты сначала отвяжите текущую.',
+                        'error_code': 'card_limit_reached'
+                    }
+                
+                # Check if this specific card is already bound to someone else
+                existing_binding = await conn.fetchrow(
+                    "SELECT telegram_id FROM cards_binding WHERE card_id = $1 AND status = 'active'",
+                    card_id
+                )
+                
+                if existing_binding:
+                    return {
+                        'success': False,
+                        'message': 'Эта карта уже привязана к другому пользователю.',
+                        'error_code': 'bound_to_other_user'
+                    }
                 
                 # Bind the card
-                cursor = conn.execute("""
-                    INSERT INTO cards_binding 
-                    (telegram_id, card_id, card_id_printable, qr_url, status, bound_at)
-                    VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)
-                """, (telegram_id, card_id, card_id_printable, qr_url))
-                
-                conn.commit()
+                await conn.execute(
+                    """
+                    INSERT INTO cards_binding (telegram_id, card_id, card_id_printable, qr_url, status, created_at)
+                    VALUES ($1, $2, $3, $4, 'active', $5)
+                    """,
+                    telegram_id, card_id, card_id_printable or card_id, qr_url, datetime.now()
+                )
                 
                 return {
                     'success': True,
-                    'message': f'Карта {card_id_printable or card_id} успешно привязана к вашему аккаунту.',
+                    'message': f'Карта {card_id_printable or card_id} успешно привязана к вашему аккаунту!',
                     'card_id': card_id,
-                    'card_id_printable': card_id_printable
+                    'card_id_printable': card_id_printable or card_id
                 }
+                
+            finally:
+                await conn.close()
                 
         except Exception as e:
             logger.error(f"Error binding card {card_id} to user {telegram_id}: {str(e)}")
             return {
                 'success': False,
                 'message': 'Произошла ошибка при привязке карты. Попробуйте позже.',
-                'error_code': 'database_error'
+                'error_code': 'binding_error'
             }
     
     async def get_user_cards(self, telegram_id: int) -> List[Dict[str, Any]]:
@@ -122,25 +122,28 @@ class PlasticCardsService:
             list: List of bound cards
         """
         try:
-            with self.get_connection() as conn:
-                cursor = conn.execute("""
-                    SELECT card_id, card_id_printable, qr_url, bound_at, status
+            conn = await self.get_connection()
+            try:
+                rows = await conn.fetch("""
+                    SELECT card_id, card_id_printable, qr_url, created_at, status
                     FROM cards_binding 
-                    WHERE telegram_id = ? AND status = 'active'
-                    ORDER BY bound_at DESC
-                """, (telegram_id,))
+                    WHERE telegram_id = $1 AND status = 'active'
+                    ORDER BY created_at DESC
+                """, telegram_id)
                 
                 cards = []
-                for row in cursor.fetchall():
+                for row in rows:
                     cards.append({
                         'card_id': row['card_id'],
                         'card_id_printable': row['card_id_printable'],
                         'qr_url': row['qr_url'],
-                        'bound_at': row['bound_at'],
+                        'bound_at': row['created_at'],
                         'status': row['status']
                     })
                 
                 return cards
+            finally:
+                await conn.close()
                 
         except Exception as e:
             logger.error(f"Error getting cards for user {telegram_id}: {str(e)}")
