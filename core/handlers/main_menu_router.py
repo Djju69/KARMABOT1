@@ -240,11 +240,11 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
         user_data = await state.get_data()
         current_lang = user_data.get('lang', 'ru')
         
-        # Show inline keyboard with language selection, hiding current language
-        from ..handlers.language import build_language_inline_kb
+        # Show inline keyboard with language selection
+        from core.keyboards.inline_v2 import get_language_inline
         await message.answer(
             "Выберите язык / Select language / 언어를 선택하세요 / Chọn ngôn ngữ:",
-            reply_markup=build_language_inline_kb(active=current_lang)
+            reply_markup=get_language_inline(active=current_lang)
         )
     except Exception as e:
         logger.error(f"Error showing language selection: {e}", exc_info=True)

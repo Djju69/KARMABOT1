@@ -94,15 +94,33 @@ async def handle_language_selection(callback: CallbackQuery, state: FSMContext, 
         # Сохраняем язык в FSM
         await state.update_data(lang=lang_code)
         
-        # Получаем текст для политики на выбранном языке
-        policy_text = get_text_v2("policy_message", lang_code)
+        # Получаем имя пользователя
+        user_name = callback.from_user.first_name or "Пользователь"
         
-        # Показываем политику конфиденциальности
+        # Создаем приветственное сообщение с именем пользователя
+        welcome_text = f"""{user_name} 👋 Добро пожаловать в Karma System! 
+
+✨ Получай эксклюзивные скидки и предложения через QR-код в удобных категориях:  
+🍽️ Рестораны и кафе  
+🧖‍♀️ SPA и массаж  
+🏍️ Аренда байков  
+🏨 Отели  
+🚶‍♂️ Экскурсии
+🛍️ Магазины и услуги  
+
+А если ты владелец бизнеса — присоединяйся к нам как партнёр и подключай свою систему лояльности! 🚀  
+
+Начни экономить прямо сейчас — выбирай категорию и получай свои скидки! 
+
+Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных."""
+        
+        # Показываем приветственное сообщение с политикой
         policy_keyboard = get_policy_inline(lang_code)
         
         await callback.message.edit_text(
-            text=policy_text,
-            reply_markup=policy_keyboard
+            text=welcome_text,
+            reply_markup=policy_keyboard,
+            parse_mode='HTML'
         )
         
         await callback.answer(f"✅ Язык установлен: {lang_code}")

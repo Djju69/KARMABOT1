@@ -255,6 +255,7 @@ translations_v2 = {
         
         # Navigation
         'back_to_main': '🏠 Главное меню',
+        'back_to_main_menu': '◀️ Назад',
         'back_to_categories': '⬅️ Назад к категориям',
     },
     'en': {
@@ -275,6 +276,9 @@ translations_v2 = {
         'policy_accept': '✅ I agree',
         'policy_view': '📄 Privacy Policy',
         'policy_url': '/policy',
+        
+        # Navigation
+        'back_to_main_menu': '◀️ Back',
     }
 }
 
