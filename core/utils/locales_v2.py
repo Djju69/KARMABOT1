@@ -137,7 +137,10 @@ translations_v2 = {
         'no_results': '결과가 없습니다.',
         'try_again': '다시 시도하세요.',
         'success': '성공!',
-        'failed': '실패했습니다.'
+        'failed': '실패했습니다.',
+        
+        # Errors
+        'menu_error': '메인 메뉴로 돌아갈 수 없습니다. 나중에 다시 시도해주세요.'
     },
     'vi': {
         # v4.2.4 minimal labels
@@ -221,7 +224,10 @@ translations_v2 = {
         'no_results': 'Không có kết quả.',
         'try_again': 'Thử lại.',
         'success': 'Thành công!',
-        'failed': 'Thất bại!'
+        'failed': 'Thất bại!',
+        
+        # Errors
+        'menu_error': 'Không thể quay lại menu chính. Vui lòng thử lại sau.'
     },
     'ru': {
         # v4.2.4 menu keys
@@ -291,6 +297,9 @@ translations_v2 = {
         'policy_decline': '❌ Отклонить',
         'policy_view': '📄 Политика обработки персональных данных',
         'policy_url': '/policy',
+        
+        # Errors
+        'menu_error': 'Не удалось вернуться в главное меню. Пожалуйста, попробуйте позже.',
         
         # Welcome message
         'welcome_message': '''{name} 👋 Добро пожаловать в Karma System! 
@@ -363,6 +372,9 @@ translations_v2 = {
         'policy_accept': '✅ I agree',
         'policy_view': '📄 Privacy Policy',
         'policy_url': '/policy',
+        
+        # Errors
+        'menu_error': 'Failed to return to main menu. Please try again later.',
         
         # Navigation
         'back_to_main_menu': '◀️ Back',
