@@ -48,20 +48,21 @@ from aiogram.fsm.context import FSMContext
 from core.middleware import setup_rbac_middleware, setup_2fa_middleware
 
 # Initialize bot with default properties
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN environment variable is not set")
+    
+logger.info(f"Initializing bot with token: {BOT_TOKEN[:10]}...{BOT_TOKEN[-5:] if BOT_TOKEN else 'MISSING'}")
+
+# Create global bot and dispatcher instances
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
+
+dp = Dispatcher()
+
 try:
-    BOT_TOKEN = os.getenv("BOT_TOKEN")
-    if not BOT_TOKEN:
-        raise ValueError("BOT_TOKEN environment variable is not set")
-        
-    logger.info(f"Initializing bot with token: {BOT_TOKEN[:10]}...{BOT_TOKEN[-5:] if BOT_TOKEN else 'MISSING'}")
-    
-    # Create global bot and dispatcher instances
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-    )
-    
-    dp = Dispatcher()
     
     # Setup middlewares
     # Ensure SQLite user_roles exists to avoid 'no such table' during RBAC
