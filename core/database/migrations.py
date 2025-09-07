@@ -648,7 +648,7 @@ class DatabaseMigrator:
         # Create users table if it doesn't exist
         users_sql = """
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             telegram_id BIGINT UNIQUE NOT NULL,
             username VARCHAR(255),
             first_name VARCHAR(255),
@@ -668,7 +668,7 @@ class DatabaseMigrator:
         # Karma transactions table
         karma_transactions_sql = """
         CREATE TABLE IF NOT EXISTS karma_transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id BIGINT NOT NULL,
             amount INTEGER NOT NULL,
             reason TEXT,
@@ -683,7 +683,7 @@ class DatabaseMigrator:
         # Cards generated table
         cards_generated_sql = """
         CREATE TABLE IF NOT EXISTS cards_generated (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             card_id VARCHAR(20) UNIQUE NOT NULL,
             card_id_printable VARCHAR(20) NOT NULL,
             qr_url TEXT NOT NULL,
@@ -701,7 +701,7 @@ class DatabaseMigrator:
         # Cards binding table
         cards_binding_sql = """
         CREATE TABLE IF NOT EXISTS cards_binding (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             telegram_id BIGINT NOT NULL,
             card_id VARCHAR(20) NOT NULL UNIQUE,
             card_id_printable VARCHAR(50),
@@ -725,7 +725,7 @@ class DatabaseMigrator:
         # Complaints table
         complaints_sql = """
         CREATE TABLE IF NOT EXISTS complaints (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             from_user_id BIGINT NOT NULL,
             target_user_id BIGINT NOT NULL,
             reason TEXT NOT NULL,
@@ -743,7 +743,7 @@ class DatabaseMigrator:
         # Thanks table
         thanks_sql = """
         CREATE TABLE IF NOT EXISTS thanks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             from_user_id BIGINT NOT NULL,
             target_user_id BIGINT NOT NULL,
             reason TEXT NOT NULL,
@@ -758,7 +758,7 @@ class DatabaseMigrator:
         # Admin logs table
         admin_logs_sql = """
         CREATE TABLE IF NOT EXISTS admin_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             admin_id BIGINT NOT NULL,
             action VARCHAR(50) NOT NULL,
             target_id VARCHAR(50),
