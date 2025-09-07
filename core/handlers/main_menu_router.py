@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Union, cast
 from aiogram import Bot, F, Router, html
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, Update, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, Update, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 
 from ..services.profile import profile_service
 from ..utils.locales_v2 import translations
@@ -167,6 +167,40 @@ async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> Non
     """Показывает список избранных (заглушка до реализации хранилища)."""
     logger.debug(f"User {message.from_user.id} opened favorites")
     await message.answer("⭐ Избранные: скоро. Здесь будут ваши сохранённые карточки.")
+
+
+# Invite friends (reply menu with 3 items)
+@main_menu_router.message(F.text.in_([
+    t.get('menu.invite_friends', '') for t in translations.values()
+]))
+async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Показывает меню "Пригласить друзей" (3 пункта)."""
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    logger.debug(f"User {message.from_user.id} opened Invite Friends menu")
+
+    kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="🔗 Моя ссылка"), KeyboardButton(text="📋 Приглашённые"), KeyboardButton(text="💵 Доходы")]],
+        resize_keyboard=True
+    )
+
+    await message.answer("👥 Пригласить друзей", reply_markup=kb, parse_mode="HTML")
+
+
+# Placeholders for invite submenu actions
+@main_menu_router.message(F.text.in_(["🔗 Моя ссылка"]))
+async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -> None:
+    await message.answer("🔗 Ваша ссылка: скоро.")
+
+
+@main_menu_router.message(F.text.in_(["📋 Приглашённые"]))
+async def handle_invite_list(message: Message, bot: Bot, state: FSMContext) -> None:
+    await message.answer("📋 Список приглашённых: скоро.")
+
+
+@main_menu_router.message(F.text.in_(["💵 Доходы"]))
+async def handle_invite_earnings(message: Message, bot: Bot, state: FSMContext) -> None:
+    await message.answer("💵 Доходы по рефералам: скоро.")
 
 
 @main_menu_router.message(F.text.in_([t.get('choose_language', '') for t in translations.values()]))
