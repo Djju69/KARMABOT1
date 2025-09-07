@@ -59,26 +59,33 @@ class PlasticCardsService:
                         'error_code': 'card_not_found'
                     }
                 
-                # Check if card is already bound
-                cursor = conn.execute(
-                    "SELECT telegram_id FROM cards_binding WHERE card_id = ? AND status = 'active'",
-                    (card_id,)
-                )
-                existing_binding = cursor.fetchone()
-                
-                if existing_binding:
-                    if existing_binding['telegram_id'] == telegram_id:
-                        return {
-                            'success': False,
-                            'message': 'Эта карта уже привязана к вашему аккаунту.',
-                            'error_code': 'already_bound_to_user'
-                        }
-                    else:
-                        return {
-                            'success': False,
-                            'message': 'Эта карта уже привязана к другому пользователю.',
-                            'error_code': 'bound_to_other_user'
-                        }
+        # Check if user already has cards (ограничение до 1 карты)
+        cursor = conn.execute(
+            "SELECT COUNT(*) FROM cards_binding WHERE telegram_id = ? AND status = 'active'",
+            (telegram_id,)
+        )
+        existing_cards_count = cursor.fetchone()[0]
+        
+        if existing_cards_count >= 1:  # Лимит 1 карта
+            return {
+                'success': False,
+                'message': 'Вы можете привязать только одну карту к аккаунту.\n\nДля привязки новой карты сначала отвяжите текущую.',
+                'error_code': 'card_limit_reached'
+            }
+        
+        # Check if this specific card is already bound to someone else
+        cursor = conn.execute(
+            "SELECT telegram_id FROM cards_binding WHERE card_id = ? AND status = 'active'",
+            (card_id,)
+        )
+        existing_binding = cursor.fetchone()
+        
+        if existing_binding:
+            return {
+                'success': False,
+                'message': 'Эта карта уже привязана к другому пользователю.',
+                'error_code': 'bound_to_other_user'
+            }
                 
                 # Bind the card
                 cursor = conn.execute("""

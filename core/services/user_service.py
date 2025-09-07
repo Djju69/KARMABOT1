@@ -49,21 +49,15 @@ class KarmaService:
     async def get_user_level(self, user_id: int) -> str:
         """
         Calculate user level based on their karma.
+        Упрощенная версия - только один уровень для запуска.
         
         Args:
             user_id: Telegram user ID
             
         Returns:
-            str: User level (Bronze, Silver, Gold, Platinum)
+            str: User level (всегда "Member" для упрощения)
         """
-        karma = await self.get_user_karma(user_id)
-        if karma >= 10000:
-            return "Platinum"
-        elif karma >= 5000:
-            return "Gold"
-        elif karma >= 1000:
-            return "Silver"
-        return "Bronze"
+        return "Member"  # Упрощенная версия - один уровень
     
     async def add_karma(self, user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
         """
@@ -182,41 +176,101 @@ class KarmaService:
             logger.error(f"Error getting karma history for user {user_id}: {str(e)}")
             return []
     
-    async def get_user_reputation(self, user_id: int) -> Dict[str, Any]:
+    async def convert_karma_to_dong(self, user_id: int, karma_amount: int) -> Dict[str, Any]:
         """
-        Get user reputation stats (complaints, thanks).
+        Конвертировать карму в донги (1 балл = 1000 донгов).
         
         Args:
             user_id: Telegram user ID
+            karma_amount: Количество кармы для конвертации
             
         Returns:
-            dict: Reputation statistics
+            dict: Результат конвертации
         """
         try:
-            with self.get_connection() as conn:
-                # Get complaints count
-                cursor = conn.execute(
-                    "SELECT COUNT(*) FROM complaints WHERE target_user_id = ?",
-                    (user_id,)
-                )
-                complaints = cursor.fetchone()[0]
-                
-                # Get thanks count
-                cursor = conn.execute(
-                    "SELECT COUNT(*) FROM thanks WHERE target_user_id = ?",
-                    (user_id,)
-                )
-                thanks = cursor.fetchone()[0]
-                
+            current_karma = await self.get_user_karma(user_id)
+            
+            if current_karma < karma_amount:
                 return {
-                    'complaints': complaints,
-                    'thanks': thanks,
-                    'reputation_score': thanks - complaints
+                    'success': False,
+                    'message': f'Недостаточно кармы. У вас {current_karma} баллов.',
+                    'error_code': 'insufficient_karma'
+                }
+            
+            # Конвертация: 1 балл = 1000 донгов
+            dong_amount = karma_amount * 1000
+            
+            # Списываем карму
+            success = await self.subtract_karma(user_id, karma_amount, f"Конвертация в донги: {dong_amount}")
+            
+            if success:
+                return {
+                    'success': True,
+                    'message': f'Успешно конвертировано {karma_amount} баллов в {dong_amount} донгов.',
+                    'karma_spent': karma_amount,
+                    'dong_received': dong_amount
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'Ошибка при конвертации кармы.',
+                    'error_code': 'conversion_error'
                 }
                 
         except Exception as e:
-            logger.error(f"Error getting reputation for user {user_id}: {str(e)}")
-            return {'complaints': 0, 'thanks': 0, 'reputation_score': 0}
+            logger.error(f"Error converting karma to dong for user {user_id}: {str(e)}")
+            return {
+                'success': False,
+                'message': 'Произошла ошибка при конвертации.',
+                'error_code': 'database_error'
+            }
+    
+    async def spend_karma_for_discount(self, user_id: int, discount_amount: int) -> Dict[str, Any]:
+        """
+        Потратить карму для увеличения скидки.
+        Скидка увеличивается на 1% за каждый потраченный балл кармы.
+        
+        Args:
+            user_id: Telegram user ID
+            discount_amount: Количество баллов кармы для траты
+            
+        Returns:
+            dict: Результат траты кармы
+        """
+        try:
+            current_karma = await self.get_user_karma(user_id)
+            
+            if current_karma < discount_amount:
+                return {
+                    'success': False,
+                    'message': f'Недостаточно кармы. У вас {current_karma} баллов.',
+                    'error_code': 'insufficient_karma'
+                }
+            
+            # Списываем карму
+            success = await self.subtract_karma(user_id, discount_amount, f"Трата на увеличение скидки: +{discount_amount}%")
+            
+            if success:
+                return {
+                    'success': True,
+                    'message': f'Потрачено {discount_amount} баллов кармы. Скидка увеличена на {discount_amount}%.',
+                    'karma_spent': discount_amount,
+                    'discount_bonus': discount_amount
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'Ошибка при трате кармы.',
+                    'error_code': 'spending_error'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error spending karma for discount for user {user_id}: {str(e)}")
+            return {
+                'success': False,
+                'message': 'Произошла ошибка при трате кармы.',
+                'error_code': 'database_error'
+            }
 
 
 # Create singleton instance

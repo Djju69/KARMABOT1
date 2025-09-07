@@ -57,7 +57,7 @@ async def handle_card_binding_start(message: Message, bot: Bot, state: FSMContex
         # Import plastic cards service
         from core.services.plastic_cards_service import plastic_cards_service
         
-        # Try to bind the card
+        # Try to bind the card (упрощенная версия - только одна карта)
         result = await plastic_cards_service.bind_card_to_user(
             telegram_id=user_id,
             card_id=card_id,

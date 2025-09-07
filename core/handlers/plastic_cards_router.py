@@ -262,45 +262,204 @@ async def process_card_id_handler(message: Message, state: FSMContext):
         await state.clear()
 
 
-@router.message(F.text == "📋 Мои карты")
-async def view_cards_handler(message: Message, state: FSMContext):
-    """Handle viewing user's bound cards."""
+@router.message(F.text == "📱 Сканировать QR")
+async def scan_qr_handler(message: Message, state: FSMContext):
+    """Handle QR code scanning request."""
+    try:
+        user_id = message.from_user.id
+        
+        # Check if user already has a card
+        cards = await plastic_cards_service.get_user_cards(user_id)
+        
+        if len(cards) >= 1:  # Лимит 1 карта
+            await message.answer(
+                "❌ У вас уже привязана карта.\n\n"
+                "Для привязки новой карты сначала отвяжите текущую в разделе «📋 Моя карта».",
+                reply_markup=get_user_cabinet_keyboard()
+            )
+            return
+        
+        await message.answer(
+            "📱 <b>Сканирование QR-кода</b>\n\n"
+            "Наведите камеру на QR-код на пластиковой карте.\n\n"
+            "Или введите ID карты вручную:",
+            reply_markup=get_return_to_main_menu(),
+            parse_mode='HTML'
+        )
+        
+        await state.set_state(PlasticCardsStates.waiting_for_card_id)
+        
+    except Exception as e:
+        logger.error(f"Error in scan_qr_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Произошла ошибка. Попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text == "📋 Моя карта")
+async def view_single_card_handler(message: Message, state: FSMContext):
+    """Handle viewing user's single card."""
     try:
         user_id = message.from_user.id
         cards = await plastic_cards_service.get_user_cards(user_id)
         
         if not cards:
             await message.answer(
-                "📋 <b>Мои карты</b>\n\n"
-                "У вас пока нет привязанных карт.\n\n"
-                "Нажмите «🔗 Привязать карту» чтобы добавить первую карту.",
+                "📋 <b>Моя карта</b>\n\n"
+                "У вас пока нет привязанной карты.\n\n"
+                "Нажмите «📱 Сканировать QR» чтобы добавить карту.",
                 reply_markup=get_user_cabinet_keyboard(),
                 parse_mode='HTML'
             )
             return
         
-        text = "📋 <b>Мои карты</b>\n\n"
-        for i, card in enumerate(cards, 1):
-            text += f"{i}. <b>{card['card_id_printable'] or card['card_id']}</b>\n"
-            text += f"   ID: <code>{card['card_id']}</code>\n"
-            text += f"   Привязана: {card['bound_at'][:10]}\n\n"
+        card = cards[0]  # Берем первую (и единственную) карту
+        text = (
+            f"📋 <b>Моя карта</b>\n\n"
+            f"🆔 <b>ID карты:</b> {card['card_id_printable'] or card['card_id']}\n"
+            f"📅 <b>Привязана:</b> {card['bound_at'][:10]}\n"
+            f"✅ <b>Статус:</b> Активна\n\n"
+            f"Для отвязки карты нажмите кнопку ниже:"
+        )
         
-        text += f"Всего карт: {len(cards)}/5"
+        # Создаем клавиатуру с кнопкой отвязки
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🔓 Отвязать карту", callback_data=f"unbind_card:{card['card_id']}")]
+        ])
         
         await message.answer(
             text,
-            reply_markup=get_user_cabinet_keyboard(),
+            reply_markup=keyboard,
             parse_mode='HTML'
         )
         
-        await state.set_state(PlasticCardsStates.viewing_cards)
-        
     except Exception as e:
-        logger.error(f"Error in view_cards_handler: {str(e)}", exc_info=True)
+        logger.error(f"Error in view_single_card_handler: {str(e)}", exc_info=True)
         await message.answer(
-            "❌ Не удалось загрузить список карт. Попробуйте позже.",
+            "❌ Не удалось загрузить информацию о карте. Попробуйте позже.",
             reply_markup=get_user_cabinet_keyboard()
         )
+
+
+@router.message(F.text == "💰 Потратить карму")
+async def spend_karma_handler(message: Message, state: FSMContext):
+    """Handle karma spending for discount."""
+    try:
+        user_id = message.from_user.id
+        karma_points = await karma_service.get_user_karma(user_id)
+        
+        if karma_points <= 0:
+            await message.answer(
+                "💰 <b>Потратить карму</b>\n\n"
+                "У вас нет кармы для траты.\n\n"
+                "Зарабатывайте карму за хорошие поступки!",
+                reply_markup=get_user_cabinet_keyboard(),
+                parse_mode='HTML'
+            )
+            return
+        
+        await message.answer(
+            f"💰 <b>Потратить карму</b>\n\n"
+            f"У вас: {karma_points} баллов кармы\n\n"
+            f"💡 <b>Как это работает:</b>\n"
+            f"• 1 балл кармы = +1% к скидке\n"
+            f"• Максимум можно потратить: {min(karma_points, 50)} баллов\n"
+            f"• Скидка увеличивается за ваш счет\n\n"
+            f"Введите количество баллов для траты (1-{min(karma_points, 50)}):",
+            reply_markup=get_return_to_main_menu(),
+            parse_mode='HTML'
+        )
+        
+        await state.set_state(KarmaStates.waiting_for_karma_amount)
+        
+    except Exception as e:
+        logger.error(f"Error in spend_karma_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Произошла ошибка. Попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(KarmaStates.waiting_for_karma_amount)
+async def process_karma_spending_handler(message: Message, state: FSMContext):
+    """Process karma spending amount."""
+    try:
+        user_id = message.from_user.id
+        karma_points = await karma_service.get_user_karma(user_id)
+        
+        try:
+            amount = int(message.text.strip())
+        except ValueError:
+            await message.answer(
+                "❌ Введите корректное число баллов кармы.",
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+        
+        if amount <= 0 or amount > min(karma_points, 50):
+            await message.answer(
+                f"❌ Введите число от 1 до {min(karma_points, 50)}.",
+                reply_markup=get_return_to_main_menu()
+            )
+            return
+        
+        # Тратим карму
+        result = await karma_service.spend_karma_for_discount(user_id, amount)
+        
+        if result['success']:
+            await message.answer(
+                f"✅ {result['message']}\n\n"
+                f"🎉 Скидка увеличена на {amount}%!\n"
+                f"💳 Теперь при оплате вы получите дополнительную скидку.",
+                reply_markup=get_user_cabinet_keyboard(),
+                parse_mode='HTML'
+            )
+        else:
+            await message.answer(
+                f"❌ {result['message']}",
+                reply_markup=get_user_cabinet_keyboard(),
+                parse_mode='HTML'
+            )
+        
+        await state.clear()
+        
+    except Exception as e:
+        logger.error(f"Error in process_karma_spending_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Произошла ошибка при трате кармы. Попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+        await state.clear()
+
+
+@router.callback_query(F.data.startswith("unbind_card:"))
+async def unbind_card_callback_handler(callback: CallbackQuery, state: FSMContext):
+    """Handle card unbinding via callback."""
+    try:
+        user_id = callback.from_user.id
+        card_id = callback.data.split(":", 1)[1]
+        
+        result = await plastic_cards_service.unbind_card(user_id, card_id)
+        
+        if result['success']:
+            await callback.message.edit_text(
+                f"✅ {result['message']}\n\n"
+                "Теперь вы можете привязать новую карту.",
+                reply_markup=None
+            )
+        else:
+            await callback.message.edit_text(
+                f"❌ {result['message']}",
+                reply_markup=None
+            )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logger.error(f"Error in unbind_card_callback_handler: {str(e)}", exc_info=True)
+        await callback.answer("❌ Произошла ошибка при отвязке карты.")
 
 
 @router.message(F.text.regexp(r'^Отвязать карту \d+$'))
@@ -348,9 +507,10 @@ async def unbind_card_handler(message: Message, state: FSMContext):
 router.message.register(show_karma_handler, F.text == "📊 Карма")
 router.message.register(show_karma_history_handler, F.text == "📜 История")
 router.message.register(show_achievements_handler, F.text == "🏅 Достижения")
-router.message.register(bind_card_handler, F.text == "🔗 Привязать карту")
-router.message.register(view_cards_handler, F.text == "📋 Мои карты")
-router.message.register(unbind_card_handler, F.text.regexp(r'^Отвязать карту \d+$'))
+router.message.register(scan_qr_handler, F.text == "📱 Сканировать QR")
+router.message.register(view_single_card_handler, F.text == "📋 Моя карта")
+router.message.register(spend_karma_handler, F.text == "💰 Потратить карму")
+router.callback_query.register(unbind_card_callback_handler, F.data.startswith("unbind_card:"))
 
 # Export the router
 __all__ = ['router', 'get_plastic_cards_router']
