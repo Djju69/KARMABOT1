@@ -304,3 +304,67 @@ async def get_user_history(user_id: int, page: int = 1, per_page: int = 5) -> Di
         'per_page': per_page,
         'total': len(transactions)
     }
+
+async def get_or_create_user(telegram_id: int, username: str = None, first_name: str = None, last_name: str = None) -> Dict[str, Any]:
+    """
+    Получить или создать пользователя.
+    
+    Args:
+        telegram_id: Telegram ID пользователя
+        username: Имя пользователя
+        first_name: Имя
+        last_name: Фамилия
+        
+    Returns:
+        dict: Информация о пользователе
+    """
+    try:
+        with karma_service.get_connection() as conn:
+            # Проверяем, существует ли пользователь
+            cursor = conn.execute(
+                "SELECT * FROM users WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            user = cursor.fetchone()
+            
+            if user:
+                return {
+                    'telegram_id': user[1],
+                    'username': user[2],
+                    'first_name': user[3],
+                    'last_name': user[4],
+                    'language_code': user[5],
+                    'karma_points': user[6],
+                    'created_at': user[7],
+                    'updated_at': user[8]
+                }
+            
+            # Создаем нового пользователя
+            conn.execute("""
+                INSERT INTO users (telegram_id, username, first_name, last_name, language_code, karma_points)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (telegram_id, username, first_name, last_name, 'ru', 0))
+            
+            conn.commit()
+            
+            # Получаем созданного пользователя
+            cursor = conn.execute(
+                "SELECT * FROM users WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            user = cursor.fetchone()
+            
+            return {
+                'telegram_id': user[1],
+                'username': user[2],
+                'first_name': user[3],
+                'last_name': user[4],
+                'language_code': user[5],
+                'karma_points': user[6],
+                'created_at': user[7],
+                'updated_at': user[8]
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting or creating user {telegram_id}: {str(e)}")
+        return None

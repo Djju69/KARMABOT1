@@ -24,8 +24,8 @@ from ..services.user_service import (
     get_user_balance,
     get_user_level,
     get_user_history,
-    spend_points,
-    add_points,
+    subtract_karma,
+    add_karma,
     get_or_create_user
 )
 
@@ -398,10 +398,10 @@ async def confirm_spend_points(callback: CallbackQuery, state: FSMContext):
         user = await get_or_create_user(telegram_id=callback.from_user.id)
         
         # Process points spending
-        success = await spend_points(
+        success = await subtract_karma(
             user_id=user.telegram_id,
             amount=amount,
-            description=get_text("points_spent", user.lang_code)
+            reason=get_text("points_spent", user.lang_code)
         )
         
         if success:
