@@ -140,6 +140,8 @@ try:
                     'language_router',
                     'main_menu_router',
                     'category_router',
+                    'plastic_cards_router',    # Добавляем роутер для карм и карт
+                    'cabinet_router',          # Добавляем роутер для личного кабинета
                 ]
                 for attr in dynamic_names:
                     if hasattr(module, attr):
@@ -163,7 +165,9 @@ try:
             'partner',
             'activity',
             'admin_cabinet',
-            'category_handlers_v2' # было 'category_handlers'
+            'category_handlers_v2', # было 'category_handlers'
+            'plastic_cards_router', # Добавляем обработчики карм и карт
+            'cabinet_router'        # Добавляем обработчики личного кабинета
         ]
         
         # Get all available routers
