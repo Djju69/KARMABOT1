@@ -280,28 +280,30 @@ app.add_middleware(
 # Инициализация мониторинга
 setup_monitoring()
 
-# Import bot and dispatcher at module level
-try:
-    from bot.bot import bot, dp
-    BOT_AVAILABLE = True
-    logging.info("✅ Bot and dispatcher imported successfully")
-except Exception as e:
-    BOT_AVAILABLE = False
-    logging.error(f"❌ Failed to import bot and dispatcher: {e}")
-
 # Webhook endpoint for Telegram bot
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     """Handle Telegram webhook updates"""
     try:
-        if not BOT_AVAILABLE:
-            logging.error("Bot not available for webhook processing")
-            return {"ok": False, "error": "Bot not available"}
-            
-        update_data = await request.json()
+        # Import bot and dispatcher directly
+        from bot.bot import bot, dp
+        from aiogram.types import Update
         
-        # Process the update
-        await dp.feed_update(bot, update_data)
+        # Get JSON data
+        data = await request.json()
+        
+        # Log incoming data for debugging
+        logging.info(f"Received webhook data: {data}")
+        
+        # Check data structure
+        if not isinstance(data, dict):
+            raise ValueError("Invalid data format")
+            
+        # Create Update object from JSON data
+        update = Update.model_validate(data)
+        
+        # Process the update with proper Update object
+        await dp.feed_update(bot, update)
         
         return {"ok": True}
     except Exception as e:
@@ -313,14 +315,25 @@ async def webhook_handler(request: Request):
 async def root_webhook_handler(request: Request):
     """Handle Telegram webhook updates on root path"""
     try:
-        if not BOT_AVAILABLE:
-            logging.error("Bot not available for webhook processing")
-            return {"ok": False, "error": "Bot not available"}
-            
-        update_data = await request.json()
+        # Import bot and dispatcher directly
+        from bot.bot import bot, dp
+        from aiogram.types import Update
         
-        # Process the update
-        await dp.feed_update(bot, update_data)
+        # Get JSON data
+        data = await request.json()
+        
+        # Log incoming data for debugging
+        logging.info(f"Received root webhook data: {data}")
+        
+        # Check data structure
+        if not isinstance(data, dict):
+            raise ValueError("Invalid data format")
+            
+        # Create Update object from JSON data
+        update = Update.model_validate(data)
+        
+        # Process the update with proper Update object
+        await dp.feed_update(bot, update)
         
         return {"ok": True}
     except Exception as e:
