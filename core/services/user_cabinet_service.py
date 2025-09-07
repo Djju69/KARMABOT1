@@ -36,11 +36,11 @@ class UserCabinetService:
         try:
             with self.get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT balance FROM users WHERE user_id = ?",
+                    "SELECT karma_points FROM users WHERE telegram_id = ?",
                     (user_id,)
                 )
                 result = cursor.fetchone()
-                return result['balance'] if result else 0
+                return result['karma_points'] if result else 0
         except Exception as e:
             logger.error(f"Error getting balance for user {user_id}: {str(e)}")
             return 0
@@ -75,7 +75,7 @@ class UserCabinetService:
         try:
             with self.get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT * FROM users WHERE user_id = ?",
+                    "SELECT * FROM users WHERE telegram_id = ?",
                     (user_id,)
                 )
                 user = cursor.fetchone()
@@ -84,15 +84,13 @@ class UserCabinetService:
                 
                 user_dict = dict(user)
                 return {
-                    "telegram_id": user_dict.get('user_id'),
+                    "telegram_id": user_dict.get('telegram_id'),
                     "username": user_dict.get('username'),
-                    "full_name": user_dict.get('full_name'),
-                    "balance": user_dict.get('balance', 0),
+                    "full_name": f"{user_dict.get('first_name', '')} {user_dict.get('last_name', '')}".strip(),
+                    "balance": user_dict.get('karma_points', 0),
                     "level": await self.get_user_level(user_id),
                     "registration_date": user_dict.get('created_at', 'Неизвестно'),
-                    "is_partner": user_dict.get('is_partner', False),
-                    "referral_code": user_dict.get('referral_code'),
-                    "language": user_dict.get('language', 'ru')
+                    "language": user_dict.get('language_code', 'ru')
                 }
         except Exception as e:
             logger.error(f"Error getting profile for user {user_id}: {str(e)}")
@@ -119,7 +117,7 @@ class UserCabinetService:
             with self.get_connection() as conn:
                 # Check if user exists
                 cursor = conn.execute(
-                    "SELECT id FROM users WHERE user_id = ?",
+                    "SELECT id FROM users WHERE telegram_id = ?",
                     (user_id,)
                 )
                 user = cursor.fetchone()
@@ -128,7 +126,7 @@ class UserCabinetService:
                 
                 # Get total count for pagination
                 cursor = conn.execute(
-                    "SELECT COUNT(*) FROM transactions WHERE user_id = ?",
+                    "SELECT COUNT(*) FROM karma_transactions WHERE user_id = ?",
                     (user['id'],)
                 )
                 total = cursor.fetchone()[0]
@@ -136,7 +134,7 @@ class UserCabinetService:
                 # Get paginated transactions
                 cursor = conn.execute(
                     """
-                    SELECT * FROM transactions 
+                    SELECT * FROM karma_transactions 
                     WHERE user_id = ? 
                     ORDER BY created_at DESC 
                     LIMIT ? OFFSET ?
@@ -150,10 +148,8 @@ class UserCabinetService:
                         {
                             "id": txn['id'],
                             "amount": txn['amount'],
-                            "type": txn['transaction_type'],
-                            "description": txn['description'],
-                            "created_at": txn['created_at'],
-                            "status": txn['status']
+                            "reason": txn['reason'],
+                            "created_at": txn['created_at']
                         } for txn in transactions
                     ],
                     "total": total,
