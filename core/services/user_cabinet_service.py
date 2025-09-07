@@ -3,10 +3,9 @@ Service layer for user cabinet functionality.
 Handles all business logic related to user profile, balance, and level management.
 """
 from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
+import sqlite3
+from pathlib import Path
 
-from core.database import get_db
-from core.models import User, Transaction, LoyaltyPoints
 from core.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -14,9 +13,15 @@ logger = get_logger(__name__)
 class UserCabinetService:
     """Service class for user cabinet operations."""
     
-    def __init__(self, db_session: Optional[Session] = None):
-        """Initialize with optional database session (creates new if not provided)."""
-        self.db = db_session if db_session else next(get_db())
+    def __init__(self):
+        """Initialize with database connection."""
+        self.db_path = Path(__file__).parent.parent / "database" / "data.db"
+    
+    def get_connection(self) -> sqlite3.Connection:
+        """Get database connection."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
     
     async def get_user_balance(self, user_id: int) -> int:
         """
@@ -29,8 +34,13 @@ class UserCabinetService:
             int: Current balance in points
         """
         try:
-            user = self.db.query(User).filter(User.telegram_id == user_id).first()
-            return user.balance if user else 0
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT balance FROM users WHERE user_id = ?",
+                    (user_id,)
+                )
+                result = cursor.fetchone()
+                return result['balance'] if result else 0
         except Exception as e:
             logger.error(f"Error getting balance for user {user_id}: {str(e)}")
             return 0
@@ -63,20 +73,27 @@ class UserCabinetService:
             dict: User profile data
         """
         try:
-            user = self.db.query(User).filter(User.telegram_id == user_id).first()
-            if not user:
-                return {}
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT * FROM users WHERE user_id = ?",
+                    (user_id,)
+                )
+                user = cursor.fetchone()
+                if not user:
+                    return {}
                 
-            return {
-                "telegram_id": user.telegram_id,
-                "username": user.username,
-                "full_name": user.full_name,
-                "balance": user.balance,
-                "level": await self.get_user_level(user_id),
-                "registration_date": user.created_at.strftime("%d.%m.%Y"),
-                "is_partner": user.is_partner,
-                "referral_code": user.referral_code
-            }
+                user_dict = dict(user)
+                return {
+                    "telegram_id": user_dict.get('user_id'),
+                    "username": user_dict.get('username'),
+                    "full_name": user_dict.get('full_name'),
+                    "balance": user_dict.get('balance', 0),
+                    "level": await self.get_user_level(user_id),
+                    "registration_date": user_dict.get('created_at', 'Неизвестно'),
+                    "is_partner": user_dict.get('is_partner', False),
+                    "referral_code": user_dict.get('referral_code'),
+                    "language": user_dict.get('language', 'ru')
+                }
         except Exception as e:
             logger.error(f"Error getting profile for user {user_id}: {str(e)}")
             return {}
@@ -99,38 +116,50 @@ class UserCabinetService:
             dict: Transaction history with pagination info
         """
         try:
-            user = self.db.query(User).filter(User.telegram_id == user_id).first()
-            if not user:
-                return {"transactions": [], "total": 0, "limit": limit, "offset": offset}
-            
-            # Get total count for pagination
-            total = self.db.query(Transaction).filter(Transaction.user_id == user.id).count()
-            
-            # Get paginated transactions
-            transactions = (
-                self.db.query(Transaction)
-                .filter(Transaction.user_id == user.id)
-                .order_by(Transaction.created_at.desc())
-                .offset(offset)
-                .limit(limit)
-                .all()
-            )
-            
-            return {
-                "transactions": [
-                    {
-                        "id": txn.id,
-                        "amount": txn.amount,
-                        "type": txn.transaction_type,
-                        "description": txn.description,
-                        "created_at": txn.created_at.strftime("%d.%m.%Y %H:%M"),
-                        "status": txn.status
-                    } for txn in transactions
-                ],
-                "total": total,
-                "limit": limit,
-                "offset": offset
-            }
+            with self.get_connection() as conn:
+                # Check if user exists
+                cursor = conn.execute(
+                    "SELECT id FROM users WHERE user_id = ?",
+                    (user_id,)
+                )
+                user = cursor.fetchone()
+                if not user:
+                    return {"transactions": [], "total": 0, "limit": limit, "offset": offset}
+                
+                # Get total count for pagination
+                cursor = conn.execute(
+                    "SELECT COUNT(*) FROM transactions WHERE user_id = ?",
+                    (user['id'],)
+                )
+                total = cursor.fetchone()[0]
+                
+                # Get paginated transactions
+                cursor = conn.execute(
+                    """
+                    SELECT * FROM transactions 
+                    WHERE user_id = ? 
+                    ORDER BY created_at DESC 
+                    LIMIT ? OFFSET ?
+                    """,
+                    (user['id'], limit, offset)
+                )
+                transactions = cursor.fetchall()
+                
+                return {
+                    "transactions": [
+                        {
+                            "id": txn['id'],
+                            "amount": txn['amount'],
+                            "type": txn['transaction_type'],
+                            "description": txn['description'],
+                            "created_at": txn['created_at'],
+                            "status": txn['status']
+                        } for txn in transactions
+                    ],
+                    "total": total,
+                    "limit": limit,
+                    "offset": offset
+                }
             
         except Exception as e:
             logger.error(f"Error getting transaction history for user {user_id}: {str(e)}")
