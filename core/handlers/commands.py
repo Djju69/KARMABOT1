@@ -8,6 +8,7 @@ from aiogram.types import BotCommand, BotCommandScopeDefault, Message
 from core.utils.locales_v2 import get_text
 from core.security.roles import Role
 from core.security.roles import get_user_role
+from core.services.cache import cache_service
 from aiogram.fsm.context import FSMContext
 
 async def set_commands(bot: Bot) -> None:
@@ -91,10 +92,32 @@ def register_commands(router):
     async def cmd_clear_cache(message: Message):
         # RBAC: only ADMIN/SUPER_ADMIN
         role = await get_user_role(message.from_user.id)
-        if role.name.lower() not in ("admin", "super_admin"):
+        role_name = getattr(role, "name", str(role)).lower()
+        if role_name not in ("admin", "super_admin"):
             await message.answer("⛔ Недостаточно прав")
             return
-        # TODO: hook cache service clearing if present
-        await message.answer("🧹 Кэш очищен")
+        # Очистка типовых ключей кэша (безопасно и точечно)
+        try:
+            uid = message.from_user.id
+            # RBAC роль
+            await cache_service.delete(f"rbac:role:{uid}")
+            # Карта привязки
+            await cache_service.delete(f"card_bind_wait:{uid}")
+            # Лояльность: баланс и история
+            await cache_service.delete(f"loyalty:balance:{uid}")
+            for limit in (5, 10, 20, 50, 100):
+                await cache_service.delete(f"loyalty:tx_history:{uid}:{limit}")
+            # Нотификации
+            await cache_service.delete(f"notify:{uid}:on")
+            await cache_service.delete(f"notify:{uid}:off")
+            # Попытка вызвать массовую очистку по маске, если реализована
+            try:
+                await getattr(cache_service, "delete_by_mask")("*")  # type: ignore[attr-defined]
+            except Exception:
+                pass
+            await message.answer("🧹 Кэш очищен")
+        except Exception as e:
+            logging.getLogger(__name__).error(f"clear_cache failed: {e}")
+            await message.answer("⚠️ Ошибка при очистке кэша")
     
     return router

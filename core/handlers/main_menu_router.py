@@ -179,8 +179,12 @@ async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMConte
     lang = user_data.get('lang', 'ru')
     logger.debug(f"User {message.from_user.id} opened Invite Friends menu")
 
+    back_text = translations.get(lang, {}).get('back_to_main_menu', '🏠 Главное меню')
     kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="🔗 Моя ссылка"), KeyboardButton(text="📋 Приглашённые"), KeyboardButton(text="💵 Доходы")]],
+        keyboard=[
+            [KeyboardButton(text="🔗 Моя ссылка"), KeyboardButton(text="📋 Приглашённые"), KeyboardButton(text="💵 Доходы")],
+            [KeyboardButton(text=back_text)]
+        ],
         resize_keyboard=True
     )
 
