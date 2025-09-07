@@ -134,6 +134,31 @@ async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: 
         logging.getLogger(__name__).error(f"Error in policy acceptance: {e}")
         await callback.answer("❌ Ошибка при принятии политики")
 
+# --- Просмотр политики ---
+@router.callback_query(F.data == "policy:view")
+async def handle_policy_view(callback: CallbackQuery, state: FSMContext):
+    """Обработчик просмотра политики конфиденциальности"""
+    try:
+        # Получаем язык из FSM
+        data = await state.get_data()
+        lang = data.get("lang", "ru")
+        
+        # Получаем текст политики
+        policy_text = get_text_v2("policy_text", lang)
+        
+        # Показываем текст политики
+        await callback.message.edit_text(
+            text=policy_text,
+            reply_markup=get_policy_inline(lang)
+        )
+        
+        await callback.answer("📄 Политика конфиденциальности")
+        
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error in policy view: {e}")
+        await callback.answer("❌ Ошибка при просмотре политики")
+
 # --- Обработчик прочих callback (если потребуется) ---
 @router.callback_query(F.data.in_({"rests_by_district", "rest_near_me", "rests_by_kitchen"}))
 async def main_menu_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):

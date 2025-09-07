@@ -218,11 +218,6 @@ def get_policy_inline(lang: str = "ru") -> InlineKeyboardMarkup:
         InlineKeyboardMarkup: Клавиатура с кнопками
     """
     from ..utils.locales_v2 import get_text
-    from ..settings import settings
-    # Telegram requires absolute URLs in inline buttons. Build from configured base.
-    base = (getattr(settings, 'webapp_qr_url', '') or '').rstrip('/')
-    policy_path = get_text("policy_url", lang)
-    policy_url = f"{base}{policy_path}" if base and policy_path.startswith('/') else policy_path
     
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -235,7 +230,7 @@ def get_policy_inline(lang: str = "ru") -> InlineKeyboardMarkup:
             [
                 InlineKeyboardButton(
                     text=get_text("policy_view", lang),
-                    url=policy_url
+                    callback_data="policy:view"
                 )
             ]
         ]
