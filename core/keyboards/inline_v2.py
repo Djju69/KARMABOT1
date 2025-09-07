@@ -16,13 +16,13 @@ CATEGORY_SLUGS = [
 
 
 def get_categories_inline(lang: str = "ru") -> InlineKeyboardMarkup:
-    """Five fixed inline categories. Callbacks: pg:<slug>:1"""
+    """Six fixed inline categories. Callbacks: pg:<slug>:all:1"""
     rows: List[List[InlineKeyboardButton]] = []
     for slug, emoji in CATEGORY_SLUGS:
         # Special-case: i18n key for shops uses 'category_shops_services'
         key = "category_shops_services" if slug == "shops" else f"category_{slug}"
         label = f"{emoji} {get_text(key, lang)}"
-        rows.append([InlineKeyboardButton(text=label, callback_data=f"pg:{slug}:1")])
+        rows.append([InlineKeyboardButton(text=label, callback_data=f"pg:{slug}:all:1")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

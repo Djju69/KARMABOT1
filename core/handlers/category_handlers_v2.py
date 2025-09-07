@@ -2,8 +2,9 @@
 Enhanced category handlers with unified card rendering
 Backward compatible with existing functionality
 """
-from aiogram import Router, F
+from aiogram import Router, F, Bot as AioBot
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.fsm.context import FSMContext
 from aiogram import Bot
 import logging
 
@@ -24,10 +25,13 @@ from ..keyboards.inline_v2 import (
     get_pagination_row,
     get_catalog_item_row,
     get_restaurant_filters_inline,
+    get_categories_inline,
 )
 from ..utils.locales_v2 import get_text, get_all_texts
 from ..utils.telemetry import log_event
 from ..settings import settings
+from ..services.profile import profile_service
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +39,11 @@ logger = logging.getLogger(__name__)
 category_router = Router(name="category_router")
 
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
-    """Показывает Reply-клавиатуру с 5 категориями согласно ТЗ."""
+    """Показывает Reply-клавиатуру с 6 категориями согласно ТЗ."""
     try:
         await log_event("categories_menu_shown", user=message.from_user, lang=lang)
         await message.answer(
-            text="🗂 Выберите категорию из меню ниже:",
+            text="🗂 Выберите категорию:",
             reply_markup=get_categories_keyboard(lang)
         )
     except Exception as e:
@@ -52,6 +56,35 @@ async def show_categories_v2(message: Message, bot: Bot, lang: str):
 
 # --- Этап 2: Интеграция с сервисом каталога ---
 
+async def show_cards(user_id: int, category: str, sub_slug: Optional[str] = None, page: int = 1):
+    """
+    Загружает и отображает карточки по фильтрам (унифицированная точка входа):
+    - category: обязательный slug ('restaurants'|'spa'|'transport'|'hotels'|'tours'|'shops')
+    - sub_slug: подкатегория (например 'asia', 'group', 'bikes'), по умолчанию 'all'
+    - page: номер страницы (>=1)
+    """
+    try:
+        bot = AioBot.get_current()
+    except Exception:
+        # В редких случаях контекст отсутствует — не выполняем
+        return
+    try:
+        lang = await profile_service.get_lang(user_id) or 'ru'
+    except Exception:
+        lang = 'ru'
+    try:
+        city_id = await profile_service.get_city_id(user_id)
+    except Exception:
+        city_id = None
+    await show_catalog_page(
+        bot=bot,
+        chat_id=user_id,
+        lang=lang,
+        slug=category,
+        sub_slug=(sub_slug or 'all'),
+        page=max(1, int(page or 1)),
+        city_id=city_id,
+    )
 async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_slug: str = "all", page: int = 1, city_id: int | None = None, message_id: int | None = None):
     """
     Универсальный обработчик для отображения страницы каталога с фильтрацией по sub_slug.
@@ -128,7 +161,7 @@ async def on_tours(message: Message, bot: Bot, lang: str):
 
 # --- Обработчики подменю --- 
 
-async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Транспорт'."""
     sub_slug_map = {
         get_text('transport_bikes', lang): 'bikes',
@@ -137,9 +170,13 @@ async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: i
     }
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="transport", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    try:
+        await state.update_data(category='transport', sub_slug=sub_slug, page=1)
+    except Exception:
+        pass
     await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
 
-async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Экскурсии'."""
     sub_slug_map = {
         get_text('tours_group', lang): 'group',
@@ -147,9 +184,13 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     }
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="tours", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    try:
+        await state.update_data(category='tours', sub_slug=sub_slug, page=1)
+    except Exception:
+        pass
     await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
 
-async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'SPA'."""
     sub_slug_map = {
         get_text('spa_salon', lang): 'salon',
@@ -158,9 +199,13 @@ async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | N
     }
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="spa", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    try:
+        await state.update_data(category='spa', sub_slug=sub_slug, page=1)
+    except Exception:
+        pass
     await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
 
-async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Отели'."""
     sub_slug_map = {
         get_text('hotels_hotels', lang): 'hotel',
@@ -168,6 +213,10 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
     }
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="hotels", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    try:
+        await state.update_data(category='hotels', sub_slug=sub_slug, page=1)
+    except Exception:
+        pass
     await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
 
 async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
@@ -175,7 +224,7 @@ async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
     await log_event("category_open", user=message.from_user, slug="shops", lang=lang, city_id=city_id)
     await message.answer(get_text('shops_choose', lang), reply_markup=get_shops_reply_keyboard(lang))
 
-async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Магазины и услуги'."""
     sub_slug_map = {
         get_text('shops_shops', lang): 'shops',
@@ -183,6 +232,10 @@ async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     }
     sub_slug = sub_slug_map.get(message.text, "all")
     await log_event("category_sub_open", user=message.from_user, slug="shops", sub_slug=sub_slug, lang=lang, city_id=city_id)
+    try:
+        await state.update_data(category='shops', sub_slug=sub_slug, page=1)
+    except Exception:
+        pass
     await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
@@ -428,8 +481,8 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
  
 
 
-@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours|shops):([a-zA-Z0-9_]+):[0-9]+$"))
-async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
+@category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours|shops):([a-zA-Z0-9_]+):([0-9]+)$"))
+async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Хендлер пагинации каталога. Формат: pg:<slug>:<sub_slug>:<page>"""
     try:
         _, slug, sub_slug, page_str = callback.data.split(":")
@@ -438,6 +491,10 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, ci
         # Вызываем универсальную функцию для обновления сообщения
         await log_event("catalog_page_click", user=callback.from_user, slug=slug, sub_slug=sub_slug, page=page)
         await show_catalog_page(bot, callback.message.chat.id, lang, slug, sub_slug, page, city_id, callback.message.message_id)
+        try:
+            await state.update_data(category=slug, sub_slug=sub_slug, page=page)
+        except Exception:
+            pass
         await callback.answer()
     except Exception as e:
         logger.error(f"on_catalog_pagination error: {e}")
@@ -445,7 +502,7 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, ci
 
 
 @category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
-async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None):
+async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Применение фильтра ресторанов и перерисовка pg:restaurants:1.
     Формат: filt:restaurants:<filter>
     """
@@ -489,6 +546,10 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
             text=header + "\n\n" + card_service.render_cards_list(cards_page, lang, max_cards=5),
             reply_markup=InlineKeyboardMarkup(inline_keyboard=kb)
         )
+        try:
+            await state.update_data(category='restaurants', sub_slug=filt, page=page)
+        except Exception:
+            pass
         await callback.answer()
     except Exception as e:
         logger.error(f"on_restaurants_filter error: {e}")

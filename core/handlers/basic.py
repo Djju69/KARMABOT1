@@ -53,18 +53,25 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
         # Debug: Log feature flags
         logger.info(f"[DEBUG] Feature flags: new_menu={settings.features.new_menu}")
         
-        # Get or set default language
+        # Get user state
         user_data = await state.get_data()
-        current_lang = user_data.get('lang', 'ru')
+        current_lang = user_data.get('lang')
         
         logger.info(f"[DEBUG] Current language: {current_lang}")
-        
-        # Force update user data
-        await state.update_data({
-            'started': True,
-            'lang': 'ru'
-        })
-        
+
+        # First run: ask for language inline and exit
+        if not current_lang:
+            from .language import build_language_inline_kb
+            await message.answer(
+                "🌐 Choose your language / Выберите язык / 언어를 선택하세요 / Chọn ngôn ngữ:",
+                reply_markup=build_language_inline_kb()
+            )
+            return
+
+        # Ensure policy consent before showing menu
+        if not await ensure_policy_accepted(message, bot, state):
+            return
+
         # Build spec-compliant main menu (reply keyboard v4.1)
         logger.info("[DEBUG] Building spec-compliant menu (reply v4.1)...")
         user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
@@ -88,6 +95,9 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
             reply_markup=keyboard,
             parse_mode='HTML'
         )
+
+        # Mark started
+        await state.update_data(started=True)
         
         logger.info("[SUCCESS] Menu sent successfully")
         
