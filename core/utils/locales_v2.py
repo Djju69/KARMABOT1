@@ -21,7 +21,7 @@ translations_v2 = {
         'invite.earnings': '수익',
         # Existing keys
         'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
-        'back_to_categories': '⬅️ 카테고리로 돌아가기',
+        'back_to_categories': '⬅️ 카테고리로',
         'choose_category': '🗂️ 카테고리',
         'show_nearest': '📍 가까운 매장',
         
@@ -362,7 +362,7 @@ translations_v2 = {
         # Navigation
         'back_to_main': '🏠 Главное меню',
         'back_to_main_menu': '◀️ Назад',
-        'back_to_categories': '⬅️ Назад к категориям',
+        'back_to_categories': '⬅️ К категориям',
     },
     'en': {
         # v4.2.4 minimal labels
@@ -427,7 +427,7 @@ translations_v2 = {
         
         # Navigation
         'back_to_main_menu': '◀️ Back',
-        'back_to_categories': '⬅️ Back to categories',
+        'back_to_categories': '⬅️ To categories',
         
         # Menu keys
         'menu.invite_friends': '👥 Invite friends',
