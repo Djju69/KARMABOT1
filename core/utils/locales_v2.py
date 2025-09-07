@@ -24,6 +24,10 @@ translations_v2 = {
         'choose_category': '🗂️ 카테고리',
         'show_nearest': '📍 가까운 매장',
         
+        # Menu keys
+        'menu.invite_friends': '👥 친구 초대',
+        'menu.favorites': '⭐ 즐겨찾기',
+        
         # User profile
         'cabinet.user_profile': '👤 내 정보\n\n💎 포인트: {points}\n🏆 레벨: {level}\n\n아래 메뉴를 사용하여 프로필을 관리하세요',
         'cabinet.user_points': '💰 내 포인트: {points}\n\n파트너사에서 사용할 수 있습니다',
@@ -378,6 +382,10 @@ translations_v2 = {
         
         # Navigation
         'back_to_main_menu': '◀️ Back',
+        
+        # Menu keys
+        'menu.invite_friends': '👥 Invite friends',
+        'menu.favorites': '⭐ Favorites',
     }
 }
 

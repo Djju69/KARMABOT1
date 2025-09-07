@@ -166,9 +166,16 @@ async def view_history_handler(message: Message, state: FSMContext):
 
 @router.message(F.text.in_(["◀️ Назад", "◀️ Back"]))
 async def back_to_profile_handler(message: Message, state: FSMContext):
-    """Handle back button to return to profile."""
-    # This will be handled by the main menu router
-    pass
+    """Handle back button to return to main menu."""
+    try:
+        # Импортируем get_start из basic.py
+        from core.handlers.basic import get_start
+        from aiogram import Bot
+        bot = Bot.get_current()
+        await get_start(message, bot, state)
+    except Exception as e:
+        logger.error(f"Error returning to main menu from cabinet: {e}", exc_info=True)
+        await message.answer("Не удалось вернуться в главное меню. Попробуйте позже.")
 
 
 # Register all handlers
