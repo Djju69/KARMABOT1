@@ -27,8 +27,8 @@ class Features:
         
         # Load from environment variables if they exist
         self.new_menu = env.bool('FEATURE_NEW_MENU', self.new_menu)
-        self.partner_fsm = env.bool('FEATURE_PARTNER_FSM', self.partner_fsm)
-        self.moderation = env.bool('FEATURE_MODERATION', self.moderation)
+        self.partner_fsm = env.bool('FEATURE_PARTNER_FSM', True)  # Принудительно включено
+        self.moderation = env.bool('FEATURE_MODERATION', True)  # Принудительно включено
         self.qr_webapp = env.bool('FEATURE_QR_WEBAPP', self.qr_webapp)
         self.listen_notify = env.bool('FEATURE_LISTEN_NOTIFY', self.listen_notify)
         
