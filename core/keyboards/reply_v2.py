@@ -243,7 +243,20 @@ def get_tours_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('tours_private', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_categories', lang))
+PS C:\Users\d9955\CascadeProjects\KARMABOT1-fixed> git commit -m "FIX: Implement real privacy policy for all languages
+>>
+>> - Replaced placeholder policy_text with comprehensive privacy policy
+>> - Added detailed 7-section policy for RU, EN, KO, VI languages
+>> - Policy covers data collection, processing, security, user rights
+>> - Policy view button now shows real policy instead of placeholder
+>> - Last updated: 07.09.2025"
+On branch main
+Your branch is up to date with 'origin/main'.
+
+nothing to commit, working tree clean
+PS C:\Users\d9955\CascadeProjects\KARMABOT1-fixed> git push origin main
+Everything up-to-date
+PS C:\Users\d9955\CascadeProjects\KARMABOT1-fixed>                KeyboardButton(text=get_text('back_to_categories', lang))
             ]
         ],
         resize_keyboard=True
