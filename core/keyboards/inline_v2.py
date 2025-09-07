@@ -153,7 +153,7 @@ def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") 
 
 def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     """
-    Language selection inline keyboard.
+    Language selection inline keyboard with flags in 2 rows.
     
     Args:
         active: Active language code to mark as selected (optional)
@@ -164,18 +164,22 @@ def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     Callback format: lang:set:(ru|en|vi|ko)
     """
     languages = [
-        ("Русский (RU)", "ru"),
-        ("English (EN)", "en"),
-        ("Tiếng Việt (VI)", "vi"),
-        ("한국어 (KO)", "ko"),
+        ("🇷🇺 Русский", "ru"),
+        ("🇺🇸 English", "en"),
+        ("🇻🇳 Tiếng Việt", "vi"),
+        ("🇰🇷 한국어", "ko"),
     ]
     
-    # Filter out current language if specified
-    buttons = [
-        [InlineKeyboardButton(text=text, callback_data=f"lang:set:{code}")]
-        for text, code in languages
-        if code != active
-    ]
+    # Create buttons in 2 rows (2 languages per row)
+    buttons = []
+    for i in range(0, len(languages), 2):
+        row = []
+        for j in range(2):
+            if i + j < len(languages):
+                text, code = languages[i + j]
+                # Don't filter out current language - show all options
+                row.append(InlineKeyboardButton(text=text, callback_data=f"lang:set:{code}"))
+        buttons.append(row)
     
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

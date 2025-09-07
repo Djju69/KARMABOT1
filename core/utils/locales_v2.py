@@ -97,6 +97,7 @@ translations_v2 = {
         
         # Policy
         'policy_text': '''개인정보 처리방침에 동의해 주세요.\n\n계속하시면 개인정보 처리방침에 동의하는 것으로 간주됩니다.''',
+        'policy_message': '''🔒 개인정보 처리방침\n\n서비스를 이용하기 전에 개인정보 처리방침에 동의해 주세요.\n\n계속하시면 개인정보 처리방침에 동의하는 것으로 간주됩니다.''',
         'policy_accept': '✅ 동의합니다',
         'policy_view': '📄 개인정보 처리방침',
         'policy_url': '/policy',
@@ -178,6 +179,13 @@ translations_v2 = {
         'delete': '🗑️ Xóa',
         'save': '💾 Lưu',
         
+        # Policy
+        'policy_text': '''Vui lòng đồng ý với chính sách bảo mật.\n\nTiếp tục có nghĩa là bạn đồng ý với chính sách bảo mật.''',
+        'policy_message': '''🔒 Chính sách bảo mật\n\nVui lòng đồng ý với chính sách bảo mật trước khi sử dụng dịch vụ.\n\nTiếp tục có nghĩa là bạn đồng ý với chính sách bảo mật.''',
+        'policy_accept': '✅ Đồng ý',
+        'policy_view': '📄 Chính sách bảo mật',
+        'policy_url': '/policy',
+        
         # Common UI
         'error_occurred': '⚠️ Đã xảy ra lỗi. Vui lòng thử lại sau.',
         'not_available': '🚧 Tính năng hiện không khả dụng.',
@@ -219,6 +227,13 @@ translations_v2 = {
         'categories.hotels': '🏨 hotels',
         'categories.tours': '🚶‍♂ tours',
         'categories.shops': '🛍 shops',
+        
+        # Policy
+        'policy_text': '''Пожалуйста, согласитесь с политикой конфиденциальности.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
+        'policy_message': '''🔒 Политика конфиденциальности\n\nПожалуйста, согласитесь с политикой конфиденциальности перед использованием сервиса.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
+        'policy_accept': '✅ Согласен',
+        'policy_view': '📄 Политика конфиденциальности',
+        'policy_url': '/policy',
     },
     'en': {
         # v4.2.4 minimal labels
@@ -231,6 +246,13 @@ translations_v2 = {
         'invite.my_link': '🔗 My link',
         'invite.invited': '📋 Invited',
         'invite.earnings': '💵 Earnings',
+        
+        # Policy
+        'policy_text': '''Please agree to the privacy policy.\n\nContinuing means you agree to the privacy policy.''',
+        'policy_message': '''🔒 Privacy Policy\n\nPlease agree to the privacy policy before using the service.\n\nContinuing means you agree to the privacy policy.''',
+        'policy_accept': '✅ I agree',
+        'policy_view': '📄 Privacy Policy',
+        'policy_url': '/policy',
     }
 }
 

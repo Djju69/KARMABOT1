@@ -4,9 +4,12 @@ from aiogram.fsm.context import FSMContext
 
 from core.keyboards.restaurant_keyboards import regional_restoran, kitchen_keyboard
 from core.keyboards.language_keyboard import language_keyboard
+from core.keyboards.inline_v2 import get_language_inline, get_policy_inline
 from core.utils.geo import find_restaurants  # Функция поиска ресторанов по координатам
 from core.utils.locales import get_text
+from core.utils.locales_v2 import get_text as get_text_v2
 from core.handlers.category_handlers_v2 import show_categories_v2  # Показываем категории через хендлер
+from core.handlers.basic import get_start
 
 router = Router(name="callback_router")
 
@@ -79,6 +82,57 @@ async def change_language_callback(callback: CallbackQuery):
     text = "🌐 Choose your language / Выберите язык / 언어를 선택하세요:"
     await callback.message.edit_text(text, reply_markup=language_keyboard)
     await callback.answer()
+
+# --- Выбор языка (новый обработчик) ---
+@router.callback_query(F.data.regexp(r"^lang:set:(ru|en|vi|ko)$"))
+async def handle_language_selection(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """Обработчик выбора языка из inline клавиатуры"""
+    try:
+        # Извлекаем код языка из callback_data
+        lang_code = callback.data.split(":")[-1]
+        
+        # Сохраняем язык в FSM
+        await state.update_data(lang=lang_code)
+        
+        # Получаем текст для политики на выбранном языке
+        policy_text = get_text_v2("policy_message", lang_code)
+        
+        # Показываем политику конфиденциальности
+        policy_keyboard = get_policy_inline(lang_code)
+        
+        await callback.message.edit_text(
+            text=policy_text,
+            reply_markup=policy_keyboard
+        )
+        
+        await callback.answer(f"✅ Язык установлен: {lang_code}")
+        
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error in language selection: {e}")
+        await callback.answer("❌ Ошибка при выборе языка")
+
+# --- Принятие политики ---
+@router.callback_query(F.data == "policy:accept")
+async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: Bot):
+    """Обработчик принятия политики конфиденциальности"""
+    try:
+        # Получаем язык из FSM
+        data = await state.get_data()
+        lang = data.get("lang", "ru")
+        
+        # Отмечаем, что пользователь принял политику
+        await state.update_data(policy_accepted=True)
+        
+        # Показываем главное меню
+        await get_start(callback.message, bot, state)
+        
+        await callback.answer("✅ Политика принята")
+        
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error in policy acceptance: {e}")
+        await callback.answer("❌ Ошибка при принятии политики")
 
 # --- Обработчик прочих callback (если потребуется) ---
 @router.callback_query(F.data.in_({"rests_by_district", "rest_near_me", "rests_by_kitchen"}))
