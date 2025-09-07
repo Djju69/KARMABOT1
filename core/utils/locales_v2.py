@@ -79,12 +79,18 @@ translations_v2 = {
         'spa_sauna': '🧖‍♂️ 사우나',
         
         # Transport
+        'transport_choose': '🚗 교통수단을 선택하세요',
         'transport_bikes': '🛵 바이크',
         'transport_cars': '🚘 자동차',
         'transport_bicycles': '🚲 자전거',
         
         # Categories
         'category_shops_services': '🛍️ 상점 및 서비스',
+        
+        # Tours
+        'tours_choose': '🗺️ 투어를 선택하세요:',
+        'tours_group': '👥 그룹 투어',
+        'tours_private': '👤 개인 투어',
         
         # Hotels
         'hotels_hotels': '🏨 호텔',
@@ -306,9 +312,15 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'spa_sauna': '🧖‍♂️ Xông hơi',
         
         # Transport
+        'transport_choose': '🚗 Chọn phương tiện giao thông',
         'transport_bikes': '🛵 Xe máy',
         'transport_cars': '🚘 Ô tô',
         'transport_bicycles': '🚲 Xe đạp',
+        
+        # Tours
+        'tours_choose': '🗺️ Chọn tour:',
+        'tours_group': '👥 Tour nhóm',
+        'tours_private': '👤 Tour riêng',
         
         # Hotels
         'hotels_hotels': '🏨 Khách sạn',
@@ -368,12 +380,18 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'spa_sauna': '🧖‍♂️ Сауна',
         
         # Transport
+        'transport_choose': '🚗 Выберите транспорт:',
         'transport_bikes': '🛵 Байки',
         'transport_cars': '🚘 Машины',
         'transport_bicycles': '🚲 Велосипеды',
         
         # Categories
         'category_shops_services': '🛍️ Магазины и услуги',
+        
+        # Tours
+        'tours_choose': '🗺️ Выберите экскурсию:',
+        'tours_group': '👥 Групповые',
+        'tours_private': '👤 Индивидуальные',
         
         # Hotels
         'hotels_hotels': '🏨 Отели',
@@ -481,12 +499,18 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'spa_sauna': '🧖‍♂️ Sauna',
         
         # Transport
+        'transport_choose': '🚗 Choose transport:',
         'transport_bikes': '🛵 Bikes',
         'transport_cars': '🚘 Cars',
         'transport_bicycles': '🚲 Bicycles',
         
         # Categories
         'category_shops_services': '🛍️ Shops and services',
+        
+        # Tours
+        'tours_choose': '🗺️ Choose tour:',
+        'tours_group': '👥 Group tours',
+        'tours_private': '👤 Private tours',
         
         # Hotels
         'hotels_hotels': '🏨 Hotels',
