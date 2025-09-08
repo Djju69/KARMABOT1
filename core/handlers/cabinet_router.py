@@ -542,7 +542,7 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
 router.message.register(user_cabinet_handler, F.text == "👤 Личный кабинет")
 router.message.register(view_karma_handler, F.text == "📊 Моя карма")
 router.message.register(view_cards_handler, F.text == "💳 Мои карты")
-router.message.register(view_points_handler, F.text == "💎 Мои баллы")
+router.message.register(view_karma_handler, F.text == "💎 Мои баллы")
 router.message.register(view_catalog_handler, F.text == "🏪 Каталог мест")
 router.message.register(view_achievements_handler, F.text == "🏆 Достижения")
 router.message.register(view_history_handler, F.text == "📋 История")
