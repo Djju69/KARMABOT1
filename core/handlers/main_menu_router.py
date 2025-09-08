@@ -585,26 +585,26 @@ async def handle_restaurants_show_all(message: Message, bot: Bot, state: FSMCont
         await message.answer(error_text, parse_mode="HTML")
 
 @main_menu_router.message(F.text.in_([
-    t.get('back_to_categories', '') for t in translations.values()
-    if t.get('back_to_categories')
+    t.get('back_to_main', '') for t in translations.values()
+    if t.get('back_to_main')
 ]))
 async def handle_back_to_categories(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Назад к категориям' - возвращает в список категорий."""
-    logger.debug(f"User {message.from_user.id} clicked back to categories")
+    """Обработчик кнопки 'Назад' - возвращает в главное меню."""
+    logger.debug(f"User {message.from_user.id} clicked back to main menu")
     if not await ensure_policy_accepted(message, bot, state):
         return
         
     try:
-        # Импортируем show_categories_v2 из main_menu_router
-        from core.handlers.main_menu_router import show_categories_v2
-        await show_categories_v2(message, bot, message.from_user.language_code or 'ru')
+        # Возвращаемся в главное меню
+        from core.handlers.basic import get_start
+        await get_start(message, bot, state)
     except Exception as e:
-        logger.error(f"Error returning to categories: {e}", exc_info=True)
+        logger.error(f"Error returning to main menu: {e}", exc_info=True)
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         error_text = translations.get(lang, {}).get(
             'menu_error',
-            'Не удалось вернуться к категориям. Пожалуйста, попробуйте позже.'
+            'Не удалось вернуться в главное меню. Пожалуйста, попробуйте позже.'
         )
         await message.answer(error_text, parse_mode="HTML")
 
