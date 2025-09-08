@@ -142,7 +142,7 @@ class TestDataCreator:
                         "cover_file_id": self.test_photo_id,
                         "gallery_file_ids": f'["{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}"]',
                         "categories": f'["{category["slug"]}"]',  # Используем slug категории
-                        "status": "pending"  # Статус на модерации
+                        "status": "approved"  # Статус одобрен для тестирования
                     }
                         
                         await conn.execute("""

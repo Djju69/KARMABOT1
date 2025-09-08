@@ -1676,8 +1676,8 @@ class DatabaseMigrator:
                     
                     # Insert default loyalty config
                     await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, min_purchase_for_points, max_discount_percent, max_percent_per_bill)
-                        VALUES (5000.0, 'bankers', 20.00, 10000, 40.00, 50.00)
+                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
+                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00)
                         ON CONFLICT DO NOTHING;
                     """)
                     
@@ -1686,7 +1686,17 @@ class DatabaseMigrator:
                 finally:
                     await conn.close()
             
-            asyncio.run(run_migration())
+            # Check if we're in an event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an event loop, use ThreadPoolExecutor
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, run_migration())
+                    future.result()
+            except RuntimeError:
+                # No event loop running, safe to use asyncio.run
+                asyncio.run(run_migration())
             
         except ImportError:
             logger.warning("asyncpg not available, skipping PostgreSQL migration")

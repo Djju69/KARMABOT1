@@ -5,7 +5,7 @@
 
 import logging
 from typing import Dict, List
-from core.security.roles import get_user_role, UserRole
+from core.security.roles import get_user_role, Role
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class HelpService:
         
         # Ссылки для каждой роли
         self.help_links = {
-            UserRole.USER: [
+            Role.USER: [
                 {
                     "title": "Инструкция для пользователей",
                     "url": f"{self.base_url}/user",
@@ -55,7 +55,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            UserRole.PARTNER: [
+            Role.PARTNER: [
                 {
                     "title": "Инструкция для пользователей",
                     "url": f"{self.base_url}/user",
@@ -102,7 +102,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            UserRole.ADMIN: [
+            Role.ADMIN: [
                 {
                     "title": "Инструкция для пользователей",
                     "url": f"{self.base_url}/user",
@@ -169,7 +169,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            UserRole.SUPER_ADMIN: [
+            Role.SUPER_ADMIN: [
                 {
                     "title": "Инструкция для пользователей",
                     "url": f"{self.base_url}/user",
@@ -286,9 +286,9 @@ class HelpService:
 
 Попробуйте позже или обратитесь в поддержку."""
     
-    def get_help_links_for_role(self, role: UserRole) -> List[Dict]:
+    def get_help_links_for_role(self, role: Role) -> List[Dict]:
         """Получить ссылки для конкретной роли"""
-        return self.help_links.get(role, self.help_links[UserRole.USER])
+        return self.help_links.get(role, self.help_links[Role.USER])
     
     def update_base_url(self, new_url: str):
         """Обновить базовый URL документации"""

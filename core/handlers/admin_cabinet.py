@@ -370,28 +370,39 @@ async def handle_dashboard(message: Message, state: FSMContext):
             return
         
         # Получаем реальные данные из базы
-        from core.database.db_v2 import get_connection
-        
-        with get_connection() as conn:
-            # Партнеры на модерации
-            cursor = conn.execute("SELECT COUNT(*) FROM partners WHERE status = 'pending'")
-            partners_pending = cursor.fetchone()[0]
+        try:
+            import asyncpg
+            from core.settings import settings
             
-            # Заведения на модерации
-            cursor = conn.execute("SELECT COUNT(*) FROM partner_places WHERE status = 'pending'")
-            places_pending = cursor.fetchone()[0]
-            
-            # Непрочитанные уведомления
-            cursor = conn.execute("SELECT COUNT(*) FROM user_notifications WHERE is_read = 0")
-            notifications_count = cursor.fetchone()[0]
-            
-            # Общее количество пользователей
-            cursor = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'user'")
-            total_users = cursor.fetchone()[0]
-            
-            # Активные партнеры
-            cursor = conn.execute("SELECT COUNT(*) FROM partners WHERE status = 'approved'")
-            active_partners = cursor.fetchone()[0]
+            # Подключаемся к PostgreSQL
+            conn = await asyncpg.connect(settings.database_url)
+            try:
+                # Партнеры на модерации
+                partners_pending = await conn.fetchval("SELECT COUNT(*) FROM partners WHERE status = 'pending'")
+                
+                # Заведения на модерации
+                places_pending = await conn.fetchval("SELECT COUNT(*) FROM partner_places WHERE status = 'pending'")
+                
+                # Непрочитанные уведомления
+                notifications_count = await conn.fetchval("SELECT COUNT(*) FROM user_notifications WHERE is_read = false")
+                
+                # Общее количество пользователей
+                total_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE role = 'user'")
+                
+                # Активные партнеры
+                active_partners = await conn.fetchval("SELECT COUNT(*) FROM partners WHERE status = 'approved'")
+                
+            finally:
+                await conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting dashboard data: {e}")
+            # Fallback значения
+            partners_pending = 0
+            places_pending = 0
+            notifications_count = 0
+            total_users = 0
+            active_partners = 0
         
         moderation_count = partners_pending + places_pending
         system_status = "OK"  # TODO: Проверить статус системы
