@@ -169,7 +169,9 @@ try:
             'plastic_cards_router', # Добавляем обработчики карм и карт
             'cabinet_router',       # Добавляем обработчики личного кабинета
             'partner_fsm_router',    # Добавляем FSM обработчики регистрации партнеров
-            'partner_confirmation_router'  # Добавляем FSM обработчики подтверждения партнеров
+            'partner_confirmation_router',  # Добавляем FSM обработчики подтверждения партнеров
+            'broadcast_router',      # Добавляем FSM обработчики рассылки
+            'loyalty_settings_router' # Добавляем FSM обработчики настроек лояльности
         ]
         
         # Get all available routers

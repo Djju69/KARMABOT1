@@ -11,6 +11,9 @@ from core.security.roles import get_user_role
 from core.services.cache import cache_service
 from aiogram.fsm.context import FSMContext
 
+logger = logging.getLogger(__name__)
+router = Router()
+
 async def set_commands(bot: Bot) -> None:
     """
     Set up the bot's commands in the Telegram interface
@@ -224,6 +227,10 @@ async def cmd_create_test_data(message: Message, state: FSMContext):
             
             # Сохраняем выбранный город в состояние пользователя
             await state.update_data(selected_city_id=city_id, selected_city_name=city_name)
+            
+            # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Сохраняем город в базу данных
+            from ..services.profile import profile_service
+            await profile_service.set_city_id(callback.from_user.id, city_id)
             
             # Обновляем сообщение
             await callback.message.edit_text(

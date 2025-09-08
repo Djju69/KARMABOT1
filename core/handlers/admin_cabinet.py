@@ -429,21 +429,9 @@ async def handle_broadcast(message: Message, state: FSMContext):
             await message.answer("⛔ Недостаточно прав. Только администраторы могут делать рассылки.")
             return
         
-        await message.answer(
-            "📧 <b>Система рассылок</b>\n\n"
-            "🔍 <b>Доступные функции:</b>\n"
-            "• 📱 Рассылка в Telegram всем пользователям\n"
-            "• 📧 Рассылка по email (если указан)\n"
-            "• 👥 Рассылка определенным группам пользователей\n"
-            "• 📊 Статистика доставки сообщений\n\n"
-            "💡 <b>Типы рассылок:</b>\n"
-            "• Уведомления о новых функциях\n"
-            "• Маркетинговые предложения\n"
-            "• Важные системные сообщения\n"
-            "• Персональные уведомления\n\n"
-            "🚧 <i>Функции рассылки будут реализованы в следующих обновлениях.</i>",
-            parse_mode='HTML'
-        )
+        # Запускаем FSM для создания рассылки
+        from core.fsm.broadcast import start_broadcast
+        await start_broadcast(message, state)
     except Exception as e:
         logger.error(f"Error in handle_broadcast: {str(e)}", exc_info=True)
         await message.answer("❌ Ошибка при загрузке системы рассылок.")
@@ -500,16 +488,19 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
             f"• Изменить курс обмена баллов\n"
             f"• Настроить минимальную сумму покупки\n"
             f"• Установить максимальный процент скидки\n"
-            f"• 🎯 Изменить границу закрытия чека баллами\n"
-            f"• Изменить правила начисления\n\n"
+            f"• 🎯 Изменить границу закрытия чека баллами\n\n"
             f"💡 <b>Примеры:</b>\n"
             f"• При курсе 5000 VND: 100 баллов = 500,000 VND скидки\n"
             f"• При минимуме 10,000 VND: покупки меньше не дают баллы\n"
             f"• При максимуме 40%: скидка за баллы не может превышать 40% от чека\n"
             f"• При границе 50%: баллы могут закрыть до 50% от суммы чека\n\n"
-            f"🚧 <i>Функции изменения настроек будут реализованы в следующих обновлениях.</i>",
+            f"✏️ <b>Для редактирования настроек отправьте любое сообщение.</b>",
             parse_mode='HTML'
         )
+        
+        # Запускаем FSM для редактирования настроек
+        from core.fsm.loyalty_settings import start_loyalty_settings_edit
+        await start_loyalty_settings_edit(message, state)
     except Exception as e:
         logger.error(f"Error in handle_loyalty_settings: {str(e)}", exc_info=True)
         await message.answer("❌ Ошибка при загрузке настроек лояльности.")

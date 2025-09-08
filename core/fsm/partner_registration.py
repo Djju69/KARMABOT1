@@ -205,7 +205,7 @@ async def save_partner_data(user_id: int, data: dict) -> bool:
                 INSERT INTO partners (
                     code, title, status, contact_name, contact_telegram, 
                     contact_phone, contact_email, legal_info, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (
                 partner_code,
                 data['business_name'],
