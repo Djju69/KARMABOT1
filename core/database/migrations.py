@@ -1084,7 +1084,7 @@ class DatabaseMigrator:
         try:
             database_url = os.getenv("DATABASE_URL")
             if database_url and database_url.startswith("postgresql"):
-                # PostgreSQL migration
+                # PostgreSQL migration - use existing event loop
                 import asyncio
                 import asyncpg
                 
@@ -1096,7 +1096,17 @@ class DatabaseMigrator:
                     finally:
                         await conn.close()
                 
-                asyncio.run(run_migration())
+                # Check if we're in an event loop
+                try:
+                    loop = asyncio.get_running_loop()
+                    # We're in an event loop, create a task
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(asyncio.run, run_migration())
+                        future.result()
+                except RuntimeError:
+                    # No event loop running, safe to use asyncio.run
+                    asyncio.run(run_migration())
             else:
                 # SQLite migration
                 if not self._is_memory:
