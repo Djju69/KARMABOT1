@@ -20,6 +20,7 @@ class Features:
     moderation: bool = field(default=False)
     qr_webapp: bool = field(default=False)
     listen_notify: bool = field(default=False)
+    support_voice: bool = field(default=False)  # Голосовой ввод
     
     def __post_init__(self):
         """Initialize feature flags from environment variables"""
@@ -31,6 +32,7 @@ class Features:
         self.moderation = env.bool('FEATURE_MODERATION', True)  # Принудительно включено
         self.qr_webapp = env.bool('FEATURE_QR_WEBAPP', self.qr_webapp)
         self.listen_notify = env.bool('FEATURE_LISTEN_NOTIFY', self.listen_notify)
+        self.support_voice = env.bool('FEATURE_SUPPORT_VOICE', self.support_voice)
         
         # Log current feature flags
         logger = logging.getLogger(__name__)
@@ -39,6 +41,7 @@ class Features:
         logger.info(f"[FEATURES] Moderation: {self.moderation}")
         logger.info(f"[FEATURES] QR WebApp: {self.qr_webapp}")
         logger.info(f"[FEATURES] Listen Notify: {self.listen_notify}")
+        logger.info(f"[FEATURES] Support Voice: {self.support_voice}")
 
 @dataclass
 class AuthSettings:
@@ -167,6 +170,30 @@ class CardConfig:
         logger.info("[CARDS] Printable format: %s", self.printable_format)
 
 @dataclass
+class VoiceSettings:
+    """Настройки голосового функционала"""
+    max_duration: int = field(default=60)  # seconds
+    max_filesize_mb: int = field(default=2)  # MB
+    rate_limit: int = field(default=5)  # max requests per user
+    rate_period: int = field(default=60)  # seconds rate limit window
+    supported_formats: List[str] = field(default_factory=lambda: ['.ogg', '.mp3', '.m4a', '.wav'])
+    
+    def __post_init__(self):
+        """Initialize voice settings from environment variables"""
+        env = Env()
+        
+        self.max_duration = env.int('VOICE_MAX_DURATION', self.max_duration)
+        self.max_filesize_mb = env.int('VOICE_MAX_FILESIZE_MB', self.max_filesize_mb)
+        self.rate_limit = env.int('VOICE_RATE_LIMIT', self.rate_limit)
+        self.rate_period = env.int('VOICE_RATE_PERIOD', self.rate_period)
+        
+        # Log voice settings
+        logger = logging.getLogger(__name__)
+        logger.info(f"[VOICE] Max duration: {self.max_duration}s")
+        logger.info(f"[VOICE] Max filesize: {self.max_filesize_mb}MB")
+        logger.info(f"[VOICE] Rate limit: {self.rate_limit}/{self.rate_period}s")
+
+@dataclass
 class Settings:
     """Основные настройки приложения"""
     debug: bool = field(default_factory=lambda: os.getenv("DEBUG", "false").lower() == "true")
@@ -180,6 +207,7 @@ class Settings:
     telegram: TelegramSettings = field(default_factory=TelegramSettings)
     karma: KarmaConfig = field(default_factory=KarmaConfig)
     cards: CardConfig = field(default_factory=CardConfig)
+    voice: VoiceSettings = field(default_factory=VoiceSettings)
     
     def __post_init__(self):
         """Инициализация основных настроек"""

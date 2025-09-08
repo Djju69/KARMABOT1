@@ -1,0 +1,26 @@
+# Голосовой функционал для KarmaSystem
+# Дополнительные зависимости для STT (Speech-to-Text)
+
+# Основные зависимости для голосового ввода
+faster-whisper>=0.10.0
+ffmpeg-python>=0.2.0
+
+# Опциональные зависимости (fallback)
+vosk>=0.3.45
+
+# Дополнительные утилиты
+pydub>=0.25.1
+numpy>=1.24.0
+
+# Для работы с аудио форматами
+librosa>=0.10.0
+
+# Примечания по установке:
+# 1. Для faster-whisper: pip install faster-whisper
+# 2. Для ffmpeg: установить ffmpeg в системе
+#    - Windows: скачать с https://ffmpeg.org/download.html
+#    - Ubuntu/Debian: sudo apt install ffmpeg
+#    - macOS: brew install ffmpeg
+# 3. Для vosk (опционально): скачать модели с https://alphacephei.com/vosk/models
+#    - Модели поместить в папку models/
+#    - Установить переменную окружения VOSK_MODEL_PATH

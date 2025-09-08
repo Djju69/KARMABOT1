@@ -379,6 +379,16 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'commands.help': 'Помощь/FAQ',
         'commands.policy': 'Политика конфиденциальности',
         'commands.clear_cache': 'Очистить кэш (только админ)',
+        
+        # Voice functionality
+        'voice.too_long': 'Сообщение длинновато. Запиши, пожалуйста, короче — до 60 секунд 🙏',
+        'voice.too_large': 'Файл слишком большой. Отправь, пожалуйста, до 2 МБ 🤏',
+        'voice.processing': 'Слушаю… секунду 🎧',
+        'voice.couldnt_understand': 'Похоже, записалось неразборчиво. Давай ещё раз? Можно ближе к микрофону.',
+        'voice.rate_limit': 'Слишком много запросов. Попробуй через минуту ⏳',
+        'voice.btn_yes': 'Да',
+        'voice.btn_retry': 'Повторить',
+        
         # v4.2.4 categories labels
         'categories.restaurants': '🍽️ Рестораны и кафе',
         'categories.spa': '🧖‍♀️ SPA и массаж',
@@ -512,6 +522,15 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'invite.my_link': '🔗 My link',
         'invite.invited': '📋 Invited',
         'invite.earnings': '💵 Earnings',
+        
+        # Voice functionality
+        'voice.too_long': 'Message is too long. Please record shorter — up to 60 seconds 🙏',
+        'voice.too_large': 'File is too large. Please send up to 2 MB 🤏',
+        'voice.processing': 'Listening… one second 🎧',
+        'voice.couldnt_understand': 'Seems like it recorded unclear. Let\'s try again? You can get closer to the microphone.',
+        'voice.rate_limit': 'Too many requests. Try again in a minute ⏳',
+        'voice.btn_yes': 'Yes',
+        'voice.btn_retry': 'Retry',
         
         # Restaurant filters
         'restaurants_choose_cuisine': '🍽️ Choose cuisine type:',
