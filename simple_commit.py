@@ -1,38 +1,28 @@
-#!/usr/bin/env python3
+import os
 import subprocess
-import sys
 
-def run_command(cmd):
+# Change to the project directory
+os.chdir(r'C:\Users\d9955\CascadeProjects\KARMABOT1-fixed')
+
+# Run git commands
+commands = [
+    'git add .',
+    'git commit -m "CRITICAL FIX: Fixed IndentationError in migrations.py line 503"',
+    'git push origin main'
+]
+
+for cmd in commands:
+    print(f"Running: {cmd}")
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        print(f"Running: {cmd}")
+        print(f"Return code: {result.returncode}")
         if result.stdout:
-            print(result.stdout)
+            print(f"STDOUT: {result.stdout}")
         if result.stderr:
-            print(f"Error: {result.stderr}")
-        return result.returncode == 0
+            print(f"STDERR: {result.stderr}")
+        print("---")
     except Exception as e:
-        print(f"Exception: {e}")
-        return False
+        print(f"Error: {e}")
+        print("---")
 
-# Add file
-if not run_command("git add bot/bootstrap.py"):
-    sys.exit(1)
-
-# Commit
-commit_msg = """fix: Correct router import paths in bootstrap.py
-
-- Fix main_menu_router import path from main_menu to main_menu_router
-- Fix activity_router import from get_activity_router() to activity_router
-- Add missing profile_router and language_router imports
-- Remove conditional partner router logic that was causing issues"""
-
-if not run_command(f'git commit -m "{commit_msg}"'):
-    sys.exit(1)
-
-# Push
-if not run_command("git push origin main"):
-    sys.exit(1)
-
-print("✅ Bootstrap fixes committed and pushed successfully!")
-print("📊 Check Railway deployment logs...")
+print("Done!")
