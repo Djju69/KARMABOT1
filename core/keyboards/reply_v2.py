@@ -121,8 +121,8 @@ def get_superadmin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> ReplyKeyboardMarkup:
     """
     Главное Reply-меню для админов.
-    - Для супер-админа: скрываем «Личный кабинет», кнопка «👑 Админ кабинет».
-    - Для обычного админа: оставляем «Личный кабинет», кнопка «Админ кабинет».
+    - Для супер-админа: скрываем «Личный кабинет» и «Помощь», кнопка «👑 Админ кабинет».
+    - Для обычного админа: оставляем «Личный кабинет» и «Помощь», кнопка «Админ кабинет».
     """
     admin_btn_text = "👑 Админ кабинет" if is_superadmin else "Админ кабинет"
 
@@ -132,14 +132,14 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
             KeyboardButton(text=get_text('show_nearest', lang)),
         ],
         [
-            KeyboardButton(text=get_text('help', lang)),
             KeyboardButton(text=get_text('choose_language', lang)),
         ],
     ]
 
-    # У обычных админов остаётся «Личный кабинет»
+    # У обычных админов остаётся «Личный кабинет» и «Помощь»
     if not is_superadmin:
         rows.append([KeyboardButton(text=get_text('profile', lang))])
+        rows.append([KeyboardButton(text=get_text('help', lang))])
 
     # Всегда добавляем «Админ кабинет» (с короной для супер-админа)
     rows.append([KeyboardButton(text=admin_btn_text)])
@@ -434,9 +434,8 @@ def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
 def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура админа"""
     buttons = [
-        [KeyboardButton("🔍 Поиск пользователей"), KeyboardButton("📊 Статистика")],
-        [KeyboardButton("🚫 Забанить"), KeyboardButton("✅ Разбанить")],
-        [KeyboardButton("🔗 Заблокировать карту"), KeyboardButton("📋 Очередь модерации")],
+        [KeyboardButton("📋 Модерация"), KeyboardButton("🔍 Поиск")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("👥 Пользователи")],
         [KeyboardButton("◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -444,10 +443,11 @@ def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
 def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура супер-админа"""
     buttons = [
-        [KeyboardButton("🧾 Выпустить карты"), KeyboardButton("🗂️ Управление картами")],
-        [KeyboardButton("👥 Управление пользователями"), KeyboardButton("🤝 Управление партнёрами")],
-        [KeyboardButton("🔍 Поиск"), KeyboardButton("📊 Отчёты")],
-        [KeyboardButton("🗑️ Удалить карту/контакт"), KeyboardButton("◀️ Назад")]
+        [KeyboardButton("📋 Модерация"), KeyboardButton("👑 Админы")],
+        [KeyboardButton("🔍 Поиск"), KeyboardButton("📊 Статистика")],
+        [KeyboardButton("👥 Пользователи"), KeyboardButton("🤝 Партнёры")],
+        [KeyboardButton("🧾 Карты"), KeyboardButton("🗑️ Удаление")],
+        [KeyboardButton("◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

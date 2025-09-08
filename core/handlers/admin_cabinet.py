@@ -40,14 +40,14 @@ async def admin_cabinet_handler(message: Message, state: FSMContext):
             await message.answer("⛔ Недостаточно прав для доступа к админ-кабинету")
             return
         
-        # Show admin cabinet inline menu
-        from core.keyboards.inline_v2 import get_admin_cabinet_inline, get_superadmin_inline
+        # Show admin cabinet reply keyboard
+        from core.keyboards.reply_v2 import get_admin_keyboard, get_superadmin_keyboard
         
         if role_name == "super_admin":
-            keyboard = get_superadmin_inline()
+            keyboard = get_superadmin_keyboard()
             text = "👑 <b>Супер-админ панель</b>\n\nВыберите действие:"
         else:
-            keyboard = get_admin_cabinet_inline()
+            keyboard = get_admin_keyboard()
             text = "🛡️ <b>Админ панель</b>\n\nВыберите действие:"
         
         await message.answer(
@@ -63,6 +63,207 @@ async def admin_cabinet_handler(message: Message, state: FSMContext):
 # Simple in-memory rate limit for search (per admin)
 _search_last_at: dict[int, float] = {}
 import time
+
+
+@router.message(F.text == "📋 Модерация")
+async def handle_moderation(message: Message, state: FSMContext):
+    """Handle moderation queue."""
+    try:
+        await message.answer(
+            "📋 <b>Очередь модерации</b>\n\n"
+            "Здесь будут отображаться карточки, ожидающие модерации:\n\n"
+            "• Новые карточки партнёров\n"
+            "• Изменения в существующих карточках\n"
+            "• Жалобы пользователей\n\n"
+            "🚧 <i>Функция модерации будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_moderation: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке очереди модерации.")
+
+
+@router.message(F.text == "👑 Админы")
+async def handle_admins_management(message: Message, state: FSMContext):
+    """Handle admins management (super admin only)."""
+    try:
+        # Check if user is super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name != "super_admin":
+            await message.answer("⛔ Недостаточно прав. Только супер-админ может управлять админами.")
+            return
+        
+        await message.answer(
+            "👑 <b>Управление админами</b>\n\n"
+            "Доступные действия:\n\n"
+            "• ➕ Добавить нового админа\n"
+            "• 🗑️ Удалить админа\n"
+            "• 🚫 Заблокировать админа\n"
+            "• ✅ Разблокировать админа\n"
+            "• 📋 Список всех админов\n\n"
+            "🚧 <i>Функция управления админами будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_admins_management: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке управления админами.")
+
+
+@router.message(F.text == "🔍 Поиск")
+async def handle_search(message: Message, state: FSMContext):
+    """Handle search functionality."""
+    try:
+        await message.answer(
+            "🔍 <b>Поиск</b>\n\n"
+            "Доступные типы поиска:\n\n"
+            "• 👥 Поиск пользователей\n"
+            "• 🤝 Поиск партнёров\n"
+            "• 🧾 Поиск карточек\n"
+            "• 📊 Поиск по статистике\n\n"
+            "🚧 <i>Функция поиска будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_search: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке поиска.")
+
+
+@router.message(F.text == "📊 Статистика")
+async def handle_statistics(message: Message, state: FSMContext):
+    """Handle statistics."""
+    try:
+        await message.answer(
+            "📊 <b>Статистика</b>\n\n"
+            "Доступная статистика:\n\n"
+            "• 👥 Количество пользователей\n"
+            "• 🤝 Количество партнёров\n"
+            "• 🧾 Количество карточек\n"
+            "• 📈 Активность пользователей\n"
+            "• 💰 Финансовая статистика\n\n"
+            "🚧 <i>Функция статистики будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_statistics: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке статистики.")
+
+
+@router.message(F.text == "👥 Пользователи")
+async def handle_users_management(message: Message, state: FSMContext):
+    """Handle users management."""
+    try:
+        await message.answer(
+            "👥 <b>Управление пользователями</b>\n\n"
+            "Доступные действия:\n\n"
+            "• 🔍 Поиск пользователя\n"
+            "• 👤 Просмотр профиля\n"
+            "• 🚫 Заблокировать пользователя\n"
+            "• ✅ Разблокировать пользователя\n"
+            "• 📊 Статистика пользователя\n\n"
+            "🚧 <i>Функция управления пользователями будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_users_management: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке управления пользователями.")
+
+
+@router.message(F.text == "🤝 Партнёры")
+async def handle_partners_management(message: Message, state: FSMContext):
+    """Handle partners management."""
+    try:
+        await message.answer(
+            "🤝 <b>Управление партнёрами</b>\n\n"
+            "Доступные действия:\n\n"
+            "• 🔍 Поиск партнёра\n"
+            "• 👤 Просмотр профиля партнёра\n"
+            "• ✅ Одобрить заявку\n"
+            "• ❌ Отклонить заявку\n"
+            "• 🚫 Заблокировать партнёра\n"
+            "• 📊 Статистика партнёра\n\n"
+            "🚧 <i>Функция управления партнёрами будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_partners_management: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке управления партнёрами.")
+
+
+@router.message(F.text == "🧾 Карты")
+async def handle_cards_management(message: Message, state: FSMContext):
+    """Handle cards management."""
+    try:
+        await message.answer(
+            "🧾 <b>Управление картами</b>\n\n"
+            "Доступные действия:\n\n"
+            "• 🧾 Выпустить новые карты\n"
+            "• 🔍 Поиск карты\n"
+            "• 📋 Список всех карт\n"
+            "• 🔗 Привязать карту\n"
+            "• 🔓 Развязать карту\n"
+            "• 📊 Статистика карт\n\n"
+            "🚧 <i>Функция управления картами будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_cards_management: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке управления картами.")
+
+
+@router.message(F.text == "🗑️ Удаление")
+async def handle_deletion(message: Message, state: FSMContext):
+    """Handle deletion operations (super admin only)."""
+    try:
+        # Check if user is super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name != "super_admin":
+            await message.answer("⛔ Недостаточно прав. Только супер-админ может выполнять операции удаления.")
+            return
+        
+        await message.answer(
+            "🗑️ <b>Операции удаления</b>\n\n"
+            "⚠️ <b>ВНИМАНИЕ!</b> Эти операции необратимы!\n\n"
+            "Доступные действия:\n\n"
+            "• 🗑️ Удалить карточку\n"
+            "• 🗑️ Удалить пользователя\n"
+            "• 🗑️ Удалить партнёра\n"
+            "• 🗑️ Удалить все карточки партнёра\n"
+            "• 🗑️ Массовое удаление\n\n"
+            "🚧 <i>Функция удаления будет реализована в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_deletion: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке операций удаления.")
+
+
+@router.message(F.text == "◀️ Назад")
+async def handle_back_to_main(message: Message, state: FSMContext):
+    """Handle back to main menu."""
+    try:
+        from core.keyboards.reply_v2 import get_main_menu_reply_admin
+        from core.security.roles import get_user_role
+        
+        # Check user role to show appropriate menu
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        is_superadmin = role_name == "super_admin"
+        
+        keyboard = get_main_menu_reply_admin(is_superadmin=is_superadmin)
+        
+        await message.answer(
+            "🏠 Главное меню",
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_back_to_main: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при возврате в главное меню.")
 
 # Simple anti-spam for superadmin prompt flows
 _su_last_at: dict[int, float] = {}
