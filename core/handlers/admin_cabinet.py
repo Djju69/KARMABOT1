@@ -79,29 +79,37 @@ async def handle_moderation(message: Message, state: FSMContext):
             return
         
         # Получаем партнеров на модерации
-        from core.database.db_v2 import get_connection
-        
-        with get_connection() as conn:
-            # Партнеры на модерации
-            cursor = conn.execute("""
-                SELECT id, title, contact_name, contact_phone, contact_email, created_at, status
-                FROM partners 
-                WHERE status = 'pending' 
-                ORDER BY created_at ASC 
-                LIMIT 10
-            """)
-            pending_partners = cursor.fetchall()
+        try:
+            import asyncpg
+            from core.settings import settings
             
-            # Заведения на модерации
-            cursor = conn.execute("""
-                SELECT pp.id, pp.title, pp.address, pp.status, p.title as partner_name, pp.created_at
-                FROM partner_places pp
-                JOIN partners p ON pp.partner_id = p.id
-                WHERE pp.status = 'pending' 
-                ORDER BY pp.created_at ASC 
-                LIMIT 10
-            """)
-            pending_places = cursor.fetchall()
+            conn = await asyncpg.connect(settings.database_url)
+            try:
+                # Партнеры на модерации
+                pending_partners = await conn.fetch("""
+                    SELECT id, title, contact_name, contact_phone, contact_email, created_at, status
+                    FROM partners 
+                    WHERE status = 'pending' 
+                    ORDER BY created_at ASC 
+                    LIMIT 10
+                """)
+                
+                # Заведения на модерации
+                pending_places = await conn.fetch("""
+                    SELECT pp.id, pp.title, pp.address, pp.status, p.title as partner_name, pp.created_at
+                    FROM partner_places pp
+                    JOIN partners p ON pp.partner_id = p.id
+                    WHERE pp.status = 'pending' 
+                    ORDER BY pp.created_at ASC 
+                    LIMIT 10
+                """)
+            finally:
+                await conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting moderation data: {e}")
+            pending_partners = []
+            pending_places = []
         
         text = "📋 <b>Очередь модерации</b>\n\n"
         
@@ -109,10 +117,10 @@ async def handle_moderation(message: Message, state: FSMContext):
         if pending_partners:
             text += f"🤝 <b>Партнеры на модерации ({len(pending_partners)}):</b>\n"
             for partner in pending_partners[:5]:  # Показываем только первые 5
-                text += f"• <b>{partner[1]}</b>\n"
-                text += f"  👤 {partner[2]}\n"
-                text += f"  📞 {partner[3]}\n"
-                text += f"  📅 {partner[5][:10]}\n\n"
+                text += f"• <b>{partner['title']}</b>\n"
+                text += f"  👤 {partner['contact_name']}\n"
+                text += f"  📞 {partner['contact_phone']}\n"
+                text += f"  📅 {str(partner['created_at'])[:10]}\n\n"
         else:
             text += "🤝 <b>Партнеры на модерации:</b> Нет заявок\n\n"
         
@@ -120,10 +128,10 @@ async def handle_moderation(message: Message, state: FSMContext):
         if pending_places:
             text += f"🏪 <b>Заведения на модерации ({len(pending_places)}):</b>\n"
             for place in pending_places[:5]:  # Показываем только первые 5
-                text += f"• <b>{place[1]}</b>\n"
-                text += f"  🏢 {place[4]}\n"
-                text += f"  📍 {place[2] or 'Адрес не указан'}\n"
-                text += f"  📅 {place[5][:10]}\n\n"
+                text += f"• <b>{place['title']}</b>\n"
+                text += f"  🏢 {place['partner_name']}\n"
+                text += f"  📍 {place['address'] or 'Адрес не указан'}\n"
+                text += f"  📅 {str(place['created_at'])[:10]}\n\n"
         else:
             text += "🏪 <b>Заведения на модерации:</b> Нет заявок\n\n"
         
@@ -164,16 +172,24 @@ async def handle_admins_management(message: Message, state: FSMContext):
             return
         
         # Получаем список всех администраторов
-        from core.database.db_v2 import get_connection
-        
-        with get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT telegram_id, first_name, last_name, username, role, is_banned, created_at
-                FROM users 
-                WHERE role IN ('admin', 'super_admin')
-                ORDER BY created_at ASC
-            """)
-            admins = cursor.fetchall()
+        try:
+            import asyncpg
+            from core.settings import settings
+            
+            conn = await asyncpg.connect(settings.database_url)
+            try:
+                admins = await conn.fetch("""
+                    SELECT telegram_id, first_name, last_name, username, role, is_banned, created_at
+                    FROM users 
+                    WHERE role IN ('admin', 'super_admin')
+                    ORDER BY created_at ASC
+                """)
+            finally:
+                await conn.close()
+                
+        except Exception as e:
+            logger.error(f"Error getting admins data: {e}")
+            admins = []
         
         text = "👥 <b>Управление администраторами</b>\n\n"
         
@@ -181,29 +197,27 @@ async def handle_admins_management(message: Message, state: FSMContext):
             text += f"📋 <b>Список администраторов ({len(admins)}):</b>\n\n"
             
             for admin in admins:
-                telegram_id, first_name, last_name, username, role, is_banned, created_at = admin
-                
                 # Определяем статус
-                status_emoji = "👑" if role == "super_admin" else "👤"
-                ban_status = "🚫 Заблокирован" if is_banned else "✅ Активен"
+                status_emoji = "👑" if admin['role'] == "super_admin" else "👤"
+                ban_status = "🚫 Заблокирован" if admin['is_banned'] else "✅ Активен"
                 
                 # Имя
-                full_name = f"{first_name or ''} {last_name or ''}".strip()
+                full_name = f"{admin['first_name'] or ''} {admin['last_name'] or ''}".strip()
                 if not full_name:
-                    full_name = username or f"ID: {telegram_id}"
+                    full_name = admin['username'] or f"ID: {admin['telegram_id']}"
                 
                 text += f"{status_emoji} <b>{full_name}</b>\n"
-                text += f"   🆔 ID: {telegram_id}\n"
-                text += f"   🎭 Роль: {role}\n"
+                text += f"   🆔 ID: {admin['telegram_id']}\n"
+                text += f"   🎭 Роль: {admin['role']}\n"
                 text += f"   📊 Статус: {ban_status}\n"
-                text += f"   📅 С: {created_at[:10]}\n\n"
+                text += f"   📅 С: {str(admin['created_at'])[:10]}\n\n"
         else:
             text += "📋 <b>Администраторы не найдены</b>\n\n"
         
         # Статистика
-        super_admins_count = len([a for a in admins if a[4] == 'super_admin'])
-        regular_admins_count = len([a for a in admins if a[4] == 'admin'])
-        banned_count = len([a for a in admins if a[5]])
+        super_admins_count = len([a for a in admins if a['role'] == 'super_admin'])
+        regular_admins_count = len([a for a in admins if a['role'] == 'admin'])
+        banned_count = len([a for a in admins if a['is_banned']])
         
         text += f"📊 <b>Статистика:</b>\n"
         text += f"• Супер-админы: {super_admins_count}\n"

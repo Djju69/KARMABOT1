@@ -1615,6 +1615,22 @@ class DatabaseMigrator:
                         );
                     """)
                     
+                    # Add missing columns if they don't exist
+                    await conn.execute("""
+                        ALTER TABLE platform_loyalty_config 
+                        ADD COLUMN IF NOT EXISTS max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00;
+                    """)
+                    
+                    await conn.execute("""
+                        ALTER TABLE platform_loyalty_config 
+                        ADD COLUMN IF NOT EXISTS min_purchase_for_points INTEGER DEFAULT 10000;
+                    """)
+                    
+                    await conn.execute("""
+                        ALTER TABLE platform_loyalty_config 
+                        ADD COLUMN IF NOT EXISTS max_discount_percent NUMERIC(5,2) DEFAULT 40.00;
+                    """)
+                    
                     # Create payment_qr_tokens table
                     await conn.execute("""
                         CREATE TABLE IF NOT EXISTS payment_qr_tokens (

@@ -260,15 +260,17 @@ class HelpService:
             user_role = await get_user_role(user_id)
             
             # Получаем ссылки для роли
-            links = self.help_links.get(user_role, self.help_links[UserRole.USER])
+            links = self.help_links.get(user_role, self.help_links[Role.USER])
             
             # Формируем сообщение
-            message = "📚 **Добро пожаловать в справочный центр!**\n\n"
+            message = "📚 *Добро пожаловать в справочный центр\\!*\n\n"
             message += "Вот полезные материалы, которые помогут вам разобраться в системе:\n\n"
             
             # Добавляем ссылки
             for link in links:
-                message += f"{link['emoji']} [{link['title']}]({link['url']})\n"
+                # Экранируем специальные символы для MarkdownV2
+                title = link['title'].replace('.', '\\.').replace('-', '\\-').replace('(', '\\(').replace(')', '\\)')
+                message += f"{link['emoji']} [{title}]({link['url']})\n"
             
             return message
             
@@ -278,13 +280,13 @@ class HelpService:
     
     def _get_fallback_message(self) -> str:
         """Резервное сообщение при ошибке"""
-        return """📚 **Справочный центр**
+        return """📚 *Справочный центр*
 
-К сожалению, произошла ошибка при загрузке справочной информации.
+К сожалению, произошла ошибка при загрузке справочной информации\\.
 
-🔹 [Связаться с поддержкой](https://t.me/karma_system_official)
+🔹 [Связаться с поддержкой](https://t\\.me/karma_system_official)
 
-Попробуйте позже или обратитесь в поддержку."""
+Попробуйте позже или обратитесь в поддержку\\."""
     
     def get_help_links_for_role(self, role: Role) -> List[Dict]:
         """Получить ссылки для конкретной роли"""
