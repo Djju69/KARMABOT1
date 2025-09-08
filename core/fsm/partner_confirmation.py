@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
-from core.utils.texts import get_text
+from core.utils.locales_v2 import get_text
 import logging
 import random
 import string

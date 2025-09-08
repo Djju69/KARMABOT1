@@ -14,6 +14,34 @@ from .migrations import DatabaseMigrator
 
 logger = logging.getLogger(__name__)
 
+def get_connection():
+    """Get database connection for backward compatibility"""
+    import sqlite3
+    from core.settings import settings
+    
+    if hasattr(settings, 'database_url') and 'postgresql' in settings.database_url.lower():
+        # For PostgreSQL, return asyncpg connection wrapper
+        import asyncpg
+        import asyncio
+        
+        class AsyncConnectionWrapper:
+            def __init__(self):
+                self.conn = None
+                
+            async def __aenter__(self):
+                self.conn = await asyncpg.connect(settings.database_url)
+                return self.conn
+                
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                if self.conn:
+                    await self.conn.close()
+        
+        return AsyncConnectionWrapper()
+    else:
+        # SQLite fallback
+        db_path = os.getenv('DATABASE_PATH', 'karma_bot.db')
+        return sqlite3.connect(db_path)
+
 @dataclass
 class Partner:
     id: Optional[int]

@@ -1645,10 +1645,39 @@ class DatabaseMigrator:
                         );
                     """)
                     
+                    # Create cards_binding table if missing
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS cards_binding (
+                            id BIGSERIAL PRIMARY KEY,
+                            telegram_id BIGINT NOT NULL,
+                            card_id VARCHAR(20) NOT NULL UNIQUE,
+                            card_id_printable VARCHAR(50),
+                            qr_url TEXT,
+                            bound_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            status VARCHAR(20) DEFAULT 'active',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    
+                    # Create indexes for cards_binding
+                    await conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_cards_binding_telegram_id 
+                        ON cards_binding(telegram_id);
+                    """)
+                    await conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_cards_binding_card_id 
+                        ON cards_binding(card_id);
+                    """)
+                    await conn.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_cards_binding_status 
+                        ON cards_binding(status);
+                    """)
+                    
                     # Insert default loyalty config
                     await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
-                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00)
+                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, min_purchase_for_points, max_discount_percent, max_percent_per_bill)
+                        VALUES (5000.0, 'bankers', 20.00, 10000, 40.00, 50.00)
                         ON CONFLICT DO NOTHING;
                     """)
                     

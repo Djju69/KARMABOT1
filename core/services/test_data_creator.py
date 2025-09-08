@@ -16,9 +16,12 @@ class TestDataCreator:
     async def create_test_partners(self) -> bool:
         """Создать тестовых партнеров"""
         try:
-            from core.database.db_v2 import get_connection
+            import asyncpg
+            from core.settings import settings
             
-            with get_connection() as conn:
+            # Подключаемся к PostgreSQL
+            conn = await asyncpg.connect(settings.database_url)
+            try:
                 # Создаем тестовых партнеров
                 partners_data = [
                     {
@@ -70,13 +73,14 @@ class TestDataCreator:
                 
                 partner_ids = []
                 for partner_data in partners_data:
-                    cursor = conn.execute("""
+                    partner_id = await conn.fetchval("""
                         INSERT INTO partners (
-                            code, title, status, base_discount_pct, contact_name,
+                            code, title, status, base_discount_pct, contact_name, 
                             contact_telegram, contact_phone, contact_email, legal_info,
                             created_at, approved_by, approved_at
-                        ) VALUES (?, ?, 'approved', ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
+                        ) VALUES ($1, $2, 'approved', $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                        RETURNING id
+                    """, 
                         partner_data["code"],
                         partner_data["title"],
                         partner_data["base_discount_pct"],
@@ -88,15 +92,17 @@ class TestDataCreator:
                         datetime.now().isoformat(),
                         123456789,  # Тестовый admin_id
                         datetime.now().isoformat()
-                    ))
-                    partner_ids.append(cursor.lastrowid)
+                    )
+                    partner_ids.append(partner_id)
                 
                 # Создаем заведения для каждого партнера
                 await self._create_test_places(conn, partner_ids)
                 
-                conn.commit()
                 logger.info(f"Created {len(partners_data)} test partners with places")
                 return True
+                
+            finally:
+                await conn.close()
                 
         except Exception as e:
             logger.error(f"Error creating test partners: {e}")
@@ -105,47 +111,49 @@ class TestDataCreator:
     async def _create_test_places(self, conn, partner_ids: List[int]):
         """Создать тестовые заведения для партнеров"""
         try:
+            # Получаем существующие категории из БД
+            categories = await conn.fetch("SELECT id, slug, name FROM categories ORDER BY id")
+            
             place_counter = 0
             
-            for category in self.categories:
-                for subcategory in category["subcategories"]:
-                    # Создаем 2 заведения для каждой подкатегории
-                    for i in range(2):
-                        partner_id = partner_ids[place_counter % len(partner_ids)]
-                        place_counter += 1
+            for category in categories:
+                # Создаем 2 заведения для каждой категории
+                for i in range(2):
+                    partner_id = partner_ids[place_counter % len(partner_ids)]
+                    place_counter += 1
+                    
+                    place_data = {
+                        "partner_id": partner_id,
+                        "title": f"{category['name']} #{i+1}",
+                        "address": f"ул. Тестовая, д. {place_counter}",
+                        "geo_lat": 55.7558 + (place_counter * 0.001),
+                        "geo_lon": 37.6176 + (place_counter * 0.001),
+                        "hours": "09:00-22:00",
+                        "phone": f"+7 999 {100 + place_counter:03d} {10 + place_counter:02d} {20 + place_counter:02d}",
+                        "website": f"https://test-{place_counter}.ru",
+                        "price_level": "$$",
+                        "rating": 4.5 + (place_counter % 5) * 0.1,
+                        "reviews_count": 50 + place_counter * 10,
+                        "description": f"Тестовое заведение {category['name']} с отличным сервисом и качественными услугами.",
+                        "base_discount_pct": 10.0 + (place_counter % 20),
+                        "loyalty_accrual_pct": 5.0 + (place_counter % 10),
+                        "min_redeem": 1000,
+                        "max_percent_per_bill": 50.0,
+                        "cover_file_id": self.test_photo_id,
+                        "gallery_file_ids": f'["{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}"]',
+                        "categories": f'["{category["slug"]}"]',  # Используем slug категории
+                        "status": "pending"  # Статус на модерации
+                    }
                         
-                        place_data = {
-                            "partner_id": partner_id,
-                            "title": f"{subcategory['name']} #{i+1}",
-                            "address": f"ул. Тестовая, д. {place_counter}",
-                            "geo_lat": 55.7558 + (place_counter * 0.001),
-                            "geo_lon": 37.6176 + (place_counter * 0.001),
-                            "hours": "09:00-22:00",
-                            "phone": f"+7 999 {100 + place_counter:03d} {10 + place_counter:02d} {20 + place_counter:02d}",
-                            "website": f"https://test-{place_counter}.ru",
-                            "price_level": "$$",
-                            "rating": 4.5 + (place_counter % 5) * 0.1,
-                            "reviews_count": 50 + place_counter * 10,
-                            "description": f"Тестовое заведение {subcategory['name']} с отличным сервисом и качественными услугами.",
-                            "base_discount_pct": 10.0 + (place_counter % 20),
-                            "loyalty_accrual_pct": 5.0 + (place_counter % 10),
-                            "min_redeem": 1000,
-                            "max_percent_per_bill": 50.0,
-                            "cover_file_id": self.test_photo_id,
-                            "gallery_file_ids": f'["{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}", "{self.test_photo_id}"]',
-                            "categories": f'["{category["slug"]}", "{subcategory["name"]}"]',  # Используем slug категории
-                            "status": "pending"  # Статус на модерации
-                        }
-                        
-                        conn.execute("""
+                        await conn.execute("""
                             INSERT INTO partner_places (
                                 partner_id, title, status, address, geo_lat, geo_lon,
                                 hours, phone, website, price_level, rating, reviews_count,
                                 description, base_discount_pct, loyalty_accrual_pct,
                                 min_redeem, max_percent_per_bill, cover_file_id,
                                 gallery_file_ids, categories, created_at, created_by
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+                        """, 
                             place_data["partner_id"],
                             place_data["title"],
                             place_data["status"],
