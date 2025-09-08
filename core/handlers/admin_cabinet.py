@@ -480,22 +480,33 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
                 min_purchase_for_points = 10000
                 max_discount_percent = 40.0
         
+        # Получаем границу закрытия чека баллами
+        cursor = conn.execute("""
+            SELECT max_percent_per_bill FROM platform_loyalty_config 
+            ORDER BY id DESC LIMIT 1
+        """)
+        max_percent_per_bill = cursor.fetchone()
+        max_percent_per_bill = max_percent_per_bill[0] if max_percent_per_bill else 50.0
+        
         await message.answer(
             f"⚙️ <b>Настройки системы лояльности</b>\n\n"
             f"💰 <b>Текущие параметры:</b>\n"
             f"• Курс обмена: 1 балл = {redeem_rate:,.0f} VND\n"
             f"• Максимальное начисление: {max_accrual_percent}%\n"
             f"• Минимальная покупка для начисления: {min_purchase_for_points:,.0f} VND\n"
-            f"• Максимальная скидка за баллы: {max_discount_percent}%\n\n"
+            f"• Максимальная скидка за баллы: {max_discount_percent}%\n"
+            f"• 🎯 Граница закрытия чека баллами: {max_percent_per_bill}%\n\n"
             f"🔧 <b>Доступные изменения:</b>\n"
             f"• Изменить курс обмена баллов\n"
             f"• Настроить минимальную сумму покупки\n"
             f"• Установить максимальный процент скидки\n"
+            f"• 🎯 Изменить границу закрытия чека баллами\n"
             f"• Изменить правила начисления\n\n"
             f"💡 <b>Примеры:</b>\n"
             f"• При курсе 5000 VND: 100 баллов = 500,000 VND скидки\n"
             f"• При минимуме 10,000 VND: покупки меньше не дают баллы\n"
-            f"• При максимуме 40%: скидка за баллы не может превышать 40% от чека\n\n"
+            f"• При максимуме 40%: скидка за баллы не может превышать 40% от чека\n"
+            f"• При границе 50%: баллы могут закрыть до 50% от суммы чека\n\n"
             f"🚧 <i>Функции изменения настроек будут реализованы в следующих обновлениях.</i>",
             parse_mode='HTML'
         )

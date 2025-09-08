@@ -86,44 +86,90 @@ def register_commands(router):
     async def cmd_policy(message: Message):
         await message.answer("📄 Политика конфиденциальности: ссылка будет добавлена позже.")
 
-    @router.message(Command("add"))
-    async def cmd_add(message: Message, state: FSMContext):
-        """/add - команда для добавления партнеров и карточек товаров"""
-        try:
-            # Проверяем, не является ли пользователь уже партнером
-            from core.database.db_v2 import get_connection
+@router.message(Command("add"))
+async def cmd_add(message: Message, state: FSMContext):
+    """/add - команда для добавления партнеров и карточек товаров"""
+    try:
+        # Проверяем, не является ли пользователь уже партнером
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT id, status FROM partners WHERE contact_telegram = ?",
+                (message.from_user.id,)
+            )
+            existing_partner = cursor.fetchone()
+        
+        if existing_partner:
+            status_text = {
+                'pending': '⏳ Ожидает рассмотрения',
+                'approved': '✅ Одобрен',
+                'rejected': '❌ Отклонен',
+                'suspended': '⏸️ Приостановлен'
+            }.get(existing_partner[1], '❓ Неизвестный статус')
             
-            with get_connection() as conn:
-                cursor = conn.execute(
-                    "SELECT id, status FROM partners WHERE contact_telegram = ?",
-                    (message.from_user.id,)
-                )
-                existing_partner = cursor.fetchone()
+            await message.answer(
+                f"🤝 <b>Статус партнерства</b>\n\n"
+                f"📋 Ваша заявка на партнерство уже подана.\n"
+                f"📊 Статус: {status_text}\n\n"
+                f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Начинаем процесс регистрации партнера с подтверждением через код
+        from core.fsm.partner_confirmation import start_partner_confirmation
+        await start_partner_confirmation(message, state)
             
-            if existing_partner:
-                status_text = {
-                    'pending': '⏳ Ожидает рассмотрения',
-                    'approved': '✅ Одобрен',
-                    'rejected': '❌ Отклонен',
-                    'suspended': '⏸️ Приостановлен'
-                }.get(existing_partner[1], '❓ Неизвестный статус')
-                
-                await message.answer(
-                    f"🤝 <b>Статус партнерства</b>\n\n"
-                    f"📋 Ваша заявка на партнерство уже подана.\n"
-                    f"📊 Статус: {status_text}\n\n"
-                    f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
-                    parse_mode='HTML'
-                )
-                return
+    except Exception as e:
+        logger.error(f"Error in cmd_add: {e}")
+        await message.answer("❌ Ошибка при запуске регистрации партнера. Попробуйте позже.")
+
+@router.message(Command("create_test_data"))
+async def cmd_create_test_data(message: Message, state: FSMContext):
+    """/create_test_data - команда для создания тестовых данных (только для админов)"""
+    try:
+        # Проверяем права администратора
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав. Только администраторы могут создавать тестовые данные.")
+            return
+        
+        await message.answer("🔄 Создание тестовых данных...")
+        
+        # Создаем тестовые данные
+        from core.services.test_data_creator import test_data_creator
+        success = await test_data_creator.create_test_partners()
+        
+        if success:
+            await message.answer(
+                "✅ <b>Тестовые данные созданы успешно!</b>\n\n"
+                "📊 <b>Создано:</b>\n"
+                "• 5 тестовых партнеров\n"
+                "• 36 тестовых заведений (по 2 в каждую подкатегорию)\n"
+                "• Все заведения отправлены на модерацию\n\n"
+                "🏷️ <b>Категории с тестовыми данными:</b>\n"
+                "• 🍜 Рестораны (6 заведений)\n"
+                "• 🧘 SPA и массаж (6 заведений)\n"
+                "• 🛵 Аренда байков (6 заведений)\n"
+                "• 🏨 Отели (6 заведений)\n"
+                "• 🗺️ Экскурсии (6 заведений)\n"
+                "• 🛍 Магазины и услуги (6 заведений)\n\n"
+                "💡 <b>Что дальше:</b>\n"
+                "• Проверьте дашборд - должны появиться заведения на модерации\n"
+                "• Используйте кнопку '📋 Модерация' для просмотра\n"
+                "• Заведения появятся в категориях после одобрения",
+                parse_mode='HTML'
+            )
+        else:
+            await message.answer("❌ Ошибка при создании тестовых данных.")
             
-                    # Начинаем процесс регистрации партнера с подтверждением через код
-                    from core.fsm.partner_confirmation import start_partner_confirmation
-                    await start_partner_confirmation(message, state)
-            
-        except Exception as e:
-            logger.error(f"Error in cmd_add: {e}")
-            await message.answer("❌ Ошибка при запуске регистрации партнера. Попробуйте позже.")
+    except Exception as e:
+        logger.error(f"Error in cmd_create_test_data: {e}")
+        await message.answer("❌ Ошибка при создании тестовых данных.")
 
     @router.message(Command("clear_cache"))
     async def cmd_clear_cache(message: Message):

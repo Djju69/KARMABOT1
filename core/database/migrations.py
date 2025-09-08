@@ -1580,17 +1580,20 @@ class DatabaseMigrator:
                         );
                     """)
                     
-                    # Create platform_loyalty_config table
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS platform_loyalty_config (
-                            id SERIAL PRIMARY KEY,
-                            redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
-                            rounding_rule VARCHAR(20) DEFAULT 'bankers',
-                            max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
-                            updated_at TIMESTAMP DEFAULT NOW(),
-                            updated_by BIGINT
-                        );
-                    """)
+                            # Create platform_loyalty_config table
+                            await conn.execute("""
+                                CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                                    id SERIAL PRIMARY KEY,
+                                    redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
+                                    rounding_rule VARCHAR(20) DEFAULT 'bankers',
+                                    max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
+                                    max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00,
+                                    min_purchase_for_points INTEGER DEFAULT 10000,
+                                    max_discount_percent NUMERIC(5,2) DEFAULT 40.00,
+                                    updated_at TIMESTAMP DEFAULT NOW(),
+                                    updated_by BIGINT
+                                );
+                            """)
                     
                     # Create payment_qr_tokens table
                     await conn.execute("""
@@ -1622,12 +1625,12 @@ class DatabaseMigrator:
                         );
                     """)
                     
-                    # Insert default loyalty config
-                    await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
-                        VALUES (5000.0, 'bankers', 20.00)
-                        ON CONFLICT DO NOTHING;
-                    """)
+                            # Insert default loyalty config
+                            await conn.execute("""
+                                INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
+                                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00)
+                                ON CONFLICT DO NOTHING;
+                            """)
                     
                     print("✅ PostgreSQL migration 020 completed successfully")
                     
@@ -1739,17 +1742,20 @@ class DatabaseMigrator:
                 );
             """)
             
-            # Create platform_loyalty_config table
-            conn.execute("""
-                CREATE TABLE IF NOT EXISTS platform_loyalty_config (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    redeem_rate REAL DEFAULT 5000.0,
-                    rounding_rule TEXT DEFAULT 'bankers',
-                    max_accrual_percent REAL DEFAULT 20.00,
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    updated_by INTEGER
-                );
-            """)
+                    # Create platform_loyalty_config table
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            redeem_rate REAL DEFAULT 5000.0,
+                            rounding_rule TEXT DEFAULT 'bankers',
+                            max_accrual_percent REAL DEFAULT 20.00,
+                            max_percent_per_bill REAL DEFAULT 50.00,
+                            min_purchase_for_points INTEGER DEFAULT 10000,
+                            max_discount_percent REAL DEFAULT 40.00,
+                            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                            updated_by INTEGER
+                        );
+                    """)
             
             # Create payment_qr_tokens table
             conn.execute("""
@@ -1781,11 +1787,11 @@ class DatabaseMigrator:
                 );
             """)
             
-            # Insert default loyalty config
-            conn.execute("""
-                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
-                VALUES (5000.0, 'bankers', 20.00);
-            """)
+                    # Insert default loyalty config
+                    conn.execute("""
+                        INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
+                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00);
+                    """)
             
             print("✅ SQLite migration 020 completed successfully")
             
