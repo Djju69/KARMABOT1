@@ -511,6 +511,14 @@ async def get_or_create_user(telegram_id: int, username: str = None, first_name:
         logger.error(f"Error getting or creating user {telegram_id}: {str(e)}")
         return None
 
+async def subtract_karma(user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
+    """Subtract karma from user"""
+    return await karma_service.subtract_karma(user_id, amount, reason, admin_id)
+
+async def add_karma(user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
+    """Add karma to user"""
+    return await karma_service.add_karma(user_id, amount, reason, admin_id)
+
 
 # Export all required functions
 __all__ = [

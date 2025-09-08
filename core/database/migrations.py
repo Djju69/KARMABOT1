@@ -1082,13 +1082,14 @@ class DatabaseMigrator:
     def migrate_019_fix_users_table(self):
         """Migration 019: Fix users table creation"""
         try:
-            if self.database_url.startswith("postgresql"):
+            database_url = os.getenv("DATABASE_URL")
+            if database_url and database_url.startswith("postgresql"):
                 # PostgreSQL migration
                 import asyncio
                 import asyncpg
                 
                 async def run_migration():
-                    conn = await asyncpg.connect(self.database_url)
+                    conn = await asyncpg.connect(database_url)
                     try:
                         from migrations.migrate_019_fix_users_table import upgrade_019
                         await upgrade_019(conn)
