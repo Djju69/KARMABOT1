@@ -168,7 +168,8 @@ try:
             'category_handlers_v2', # было 'category_handlers'
             'plastic_cards_router', # Добавляем обработчики карм и карт
             'cabinet_router',       # Добавляем обработчики личного кабинета
-            'partner_fsm_router'     # Добавляем FSM обработчики регистрации партнеров
+            'partner_fsm_router',    # Добавляем FSM обработчики регистрации партнеров
+            'partner_confirmation_router'  # Добавляем FSM обработчики подтверждения партнеров
         ]
         
         # Get all available routers

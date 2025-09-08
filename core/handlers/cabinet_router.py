@@ -530,9 +530,9 @@ async def become_partner_handler(message: Message, state: FSMContext):
             )
             return
         
-        # Начинаем процесс регистрации
-        from core.fsm.partner_registration import start_partner_registration
-        await start_partner_registration(message, state)
+                    # Начинаем процесс регистрации с подтверждением через код
+                    from core.fsm.partner_confirmation import start_partner_confirmation
+                    await start_partner_confirmation(message, state)
         
     except Exception as e:
         logger.error(f"Error in become_partner_handler: {str(e)}", exc_info=True)

@@ -117,9 +117,9 @@ def register_commands(router):
                 )
                 return
             
-            # Начинаем процесс регистрации партнера
-            from core.fsm.partner_registration import start_partner_registration
-            await start_partner_registration(message, state)
+                    # Начинаем процесс регистрации партнера с подтверждением через код
+                    from core.fsm.partner_confirmation import start_partner_confirmation
+                    await start_partner_confirmation(message, state)
             
         except Exception as e:
             logger.error(f"Error in cmd_add: {e}")

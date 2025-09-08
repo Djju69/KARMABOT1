@@ -449,7 +449,8 @@ def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="👥 Админы")],
         [KeyboardButton(text="🔍 Поиск"), KeyboardButton(text="📊 Статистика")],
         [KeyboardButton(text="👥 Пользователи"), KeyboardButton(text="🤝 Партнёры")],
-        [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="🗑️ Удаление")],
+        [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="📧 Рассылка")],
+        [KeyboardButton(text="⚙️ Настройки лояльности"), KeyboardButton(text="🗑️ Удаление")],
         [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)

@@ -416,6 +416,93 @@ async def handle_dashboard(message: Message, state: FSMContext):
         logger.error(f"Error in handle_dashboard: {str(e)}", exc_info=True)
         await message.answer("❌ Ошибка при загрузке дашборда.")
 
+@router.message(F.text == "📧 Рассылка")
+async def handle_broadcast(message: Message, state: FSMContext):
+    """Handle broadcast functionality for admins."""
+    try:
+        # Check if user is admin or super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав. Только администраторы могут делать рассылки.")
+            return
+        
+        await message.answer(
+            "📧 <b>Система рассылок</b>\n\n"
+            "🔍 <b>Доступные функции:</b>\n"
+            "• 📱 Рассылка в Telegram всем пользователям\n"
+            "• 📧 Рассылка по email (если указан)\n"
+            "• 👥 Рассылка определенным группам пользователей\n"
+            "• 📊 Статистика доставки сообщений\n\n"
+            "💡 <b>Типы рассылок:</b>\n"
+            "• Уведомления о новых функциях\n"
+            "• Маркетинговые предложения\n"
+            "• Важные системные сообщения\n"
+            "• Персональные уведомления\n\n"
+            "🚧 <i>Функции рассылки будут реализованы в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_broadcast: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке системы рассылок.")
+
+@router.message(F.text == "⚙️ Настройки лояльности")
+async def handle_loyalty_settings(message: Message, state: FSMContext):
+    """Handle loyalty settings management for admins."""
+    try:
+        # Check if user is admin or super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав. Только администраторы могут управлять настройками лояльности.")
+            return
+        
+        # Получаем текущие настройки
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent
+                FROM platform_loyalty_config 
+                ORDER BY id DESC LIMIT 1
+            """)
+            config = cursor.fetchone()
+            
+            if config:
+                redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent = config
+            else:
+                redeem_rate = 5000.0
+                max_accrual_percent = 20.0
+                min_purchase_for_points = 10000
+                max_discount_percent = 40.0
+        
+        await message.answer(
+            f"⚙️ <b>Настройки системы лояльности</b>\n\n"
+            f"💰 <b>Текущие параметры:</b>\n"
+            f"• Курс обмена: 1 балл = {redeem_rate:,.0f} VND\n"
+            f"• Максимальное начисление: {max_accrual_percent}%\n"
+            f"• Минимальная покупка для начисления: {min_purchase_for_points:,.0f} VND\n"
+            f"• Максимальная скидка за баллы: {max_discount_percent}%\n\n"
+            f"🔧 <b>Доступные изменения:</b>\n"
+            f"• Изменить курс обмена баллов\n"
+            f"• Настроить минимальную сумму покупки\n"
+            f"• Установить максимальный процент скидки\n"
+            f"• Изменить правила начисления\n\n"
+            f"💡 <b>Примеры:</b>\n"
+            f"• При курсе 5000 VND: 100 баллов = 500,000 VND скидки\n"
+            f"• При минимуме 10,000 VND: покупки меньше не дают баллы\n"
+            f"• При максимуме 40%: скидка за баллы не может превышать 40% от чека\n\n"
+            f"🚧 <i>Функции изменения настроек будут реализованы в следующих обновлениях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_loyalty_settings: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке настроек лояльности.")
+
 
 @router.message(F.text == "◀️ Назад")
 async def handle_back_to_main(message: Message, state: FSMContext):
