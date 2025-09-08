@@ -959,7 +959,17 @@ class DatabaseMigrator:
                                     await upgrade_017(pg_conn)
                                 finally:
                                     await pg_conn.close()
-                            asyncio.run(run_migration())
+                            # Check if we're in an event loop
+                            try:
+                                loop = asyncio.get_running_loop()
+                                # We're in an event loop, create a task
+                                import concurrent.futures
+                                with concurrent.futures.ThreadPoolExecutor() as executor:
+                                    future = executor.submit(asyncio.run, run_migration())
+                                    future.result()
+                            except RuntimeError:
+                                # No event loop running, safe to use asyncio.run
+                                asyncio.run(run_migration())
                     else:
                         # SQLite adaptation
                         self._migrate_017_sqlite(conn)
@@ -1146,7 +1156,17 @@ class DatabaseMigrator:
                                     await upgrade_018(pg_conn)
                                 finally:
                                     await pg_conn.close()
-                            asyncio.run(run_migration())
+                            # Check if we're in an event loop
+                            try:
+                                loop = asyncio.get_running_loop()
+                                # We're in an event loop, create a task
+                                import concurrent.futures
+                                with concurrent.futures.ThreadPoolExecutor() as executor:
+                                    future = executor.submit(asyncio.run, run_migration())
+                                    future.result()
+                            except RuntimeError:
+                                # No event loop running, safe to use asyncio.run
+                                asyncio.run(run_migration())
                     else:
                         # SQLite adaptation
                         self._migrate_018_sqlite(conn)
