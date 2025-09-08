@@ -25,6 +25,41 @@ logger = logging.getLogger(__name__)
 
 router = Router(name=__name__)
 
+
+async def admin_cabinet_handler(message: Message, state: FSMContext):
+    """Handle admin cabinet entry point."""
+    try:
+        user_id = message.from_user.id
+        
+        # Check if user is admin or super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(user_id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав для доступа к админ-кабинету")
+            return
+        
+        # Show admin cabinet inline menu
+        from core.keyboards.inline_v2 import get_admin_cabinet_inline, get_superadmin_inline
+        
+        if role_name == "super_admin":
+            keyboard = get_superadmin_inline()
+            text = "👑 <b>Супер-админ панель</b>\n\nВыберите действие:"
+        else:
+            keyboard = get_admin_cabinet_inline()
+            text = "🛡️ <b>Админ панель</b>\n\nВыберите действие:"
+        
+        await message.answer(
+            text,
+            reply_markup=keyboard,
+            parse_mode='HTML'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in admin_cabinet_handler: {str(e)}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при открытии админ-кабинета. Пожалуйста, попробуйте позже.")
+
 # Simple in-memory rate limit for search (per admin)
 _search_last_at: dict[int, float] = {}
 import time

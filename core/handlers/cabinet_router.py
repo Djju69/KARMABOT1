@@ -438,6 +438,91 @@ async def settings_handler(message: Message, state: FSMContext):
         )
 
 
+@router.message(F.text.in_(["🏪 Каталог мест", "🏪 Catalog"]))
+async def view_catalog_handler(message: Message, state: FSMContext):
+    """Handle catalog viewing."""
+    try:
+        await message.answer(
+            "🏪 <b>Каталог мест</b>\n\n"
+            "Здесь будет отображаться каталог всех заведений с возможностью поиска и фильтрации.",
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in view_catalog_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить каталог. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text.in_(["🌐 Язык", "🌐 Language"]))
+async def language_handler(message: Message, state: FSMContext):
+    """Handle language selection."""
+    try:
+        from core.handlers.language import build_language_inline_kb
+        await message.answer(
+            "🌐 <b>Выбор языка</b>\n\nВыберите язык интерфейса:",
+            reply_markup=build_language_inline_kb(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in language_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить выбор языка. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text.in_(["🤝 Стать партнером", "🤝 Become Partner"]))
+async def become_partner_handler(message: Message, state: FSMContext):
+    """Handle become partner functionality."""
+    try:
+        await message.answer(
+            "🤝 <b>Стать партнером</b>\n\n"
+            "Присоединяйтесь к нашей партнерской программе!\n\n"
+            "💡 <b>Преимущества:</b>\n"
+            "• Привлечение новых клиентов\n"
+            "• Управление скидками и акциями\n"
+            "• Аналитика и статистика\n"
+            "• Поддержка 24/7\n\n"
+            "🚧 <i>Функция регистрации партнера будет доступна в следующих обновлениях.</i>",
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in become_partner_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить информацию о партнерстве. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text.in_(["❓ Помощь", "❓ Help"]))
+async def help_handler(message: Message, state: FSMContext):
+    """Handle help functionality."""
+    try:
+        await message.answer(
+            "❓ <b>Помощь</b>\n\n"
+            "Добро пожаловать в KarmaBot!\n\n"
+            "💡 <b>Основные функции:</b>\n"
+            "• 📊 Карма - зарабатывайте баллы за активность\n"
+            "• 💳 Карты - привязывайте пластиковые карты\n"
+            "• 🏪 Каталог - найдите интересные места\n"
+            "• 🏆 Достижения - получайте награды\n\n"
+            "📞 <b>Поддержка:</b>\n"
+            "Если у вас есть вопросы, обратитесь к администратору.",
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in help_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить справку. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
 @router.message(F.text.in_(["◀️ Назад", "◀️ Back"]))
 async def back_to_profile_handler(message: Message, state: FSMContext):
     """Handle back button to return to main menu."""
@@ -453,16 +538,18 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
         await message.answer("Не удалось вернуться в главное меню. Попробуйте позже.")
 
 
-# Register all handlers with correct button texts
+# Register all handlers with correct button texts according to new menu
 router.message.register(user_cabinet_handler, F.text == "👤 Личный кабинет")
-router.message.register(view_karma_handler, F.text == "📊 Карма")
-router.message.register(view_history_handler, F.text == "📜 История")
-router.message.register(view_cards_handler, F.text == "📋 Моя карта")
+router.message.register(view_karma_handler, F.text == "📊 Моя карма")
+router.message.register(view_cards_handler, F.text == "💳 Мои карты")
+router.message.register(view_points_handler, F.text == "💎 Мои баллы")
+router.message.register(view_catalog_handler, F.text == "🏪 Каталог мест")
+router.message.register(view_achievements_handler, F.text == "🏆 Достижения")
+router.message.register(view_history_handler, F.text == "📋 История")
 router.message.register(view_notifications_handler, F.text == "🔔 Уведомления")
-router.message.register(view_achievements_handler, F.text == "🏅 Достижения")
-router.message.register(scan_qr_handler, F.text == "📱 Сканировать QR")
-router.message.register(spend_karma_handler, F.text == "💰 Потратить карму")
-router.message.register(settings_handler, F.text == "⚙️ Настройки")
+router.message.register(language_handler, F.text == "🌐 Язык")
+router.message.register(become_partner_handler, F.text == "🤝 Стать партнером")
+router.message.register(help_handler, F.text == "❓ Помощь")
 router.message.register(back_to_profile_handler, F.text == "◀️ Назад")
 
 # For backward compatibility

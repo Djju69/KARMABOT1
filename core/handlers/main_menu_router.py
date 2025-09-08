@@ -168,6 +168,32 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
         await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
 
 
+@main_menu_router.message(F.text.in_(["👑 Админ кабинет", "Админ кабинет"]))
+async def handle_admin_cabinet_button(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик кнопки админ-кабинета."""
+    logger.debug(f"User {message.from_user.id} opened admin cabinet")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        # Проверяем права доступа
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав для доступа к админ-кабинету")
+            return
+        
+        # Импортируем и вызываем админ-кабинет
+        from core.handlers.admin_cabinet import admin_cabinet_handler
+        await admin_cabinet_handler(message, state)
+        
+    except Exception as e:
+        logger.error(f"Error in admin cabinet handling: {e}", exc_info=True)
+        await message.answer("❌ Произошла ошибка при открытии админ-кабинета. Пожалуйста, попробуйте позже.")
+
+
 @main_menu_router.message(F.text.in_([
     t.get('help', '') for t in translations.values()
 ] + [

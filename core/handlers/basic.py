@@ -136,8 +136,30 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
 
         # Build spec-compliant main menu (reply keyboard v4.1)
         logger.info("[DEBUG] Building spec-compliant menu (reply v4.1)...")
-        user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
-        keyboard = get_reply_keyboard(user_ctx, screen="main")
+        
+        # Check user role to determine appropriate menu
+        from core.security.roles import get_user_role
+        try:
+            user_role = await get_user_role(message.from_user.id)
+            role_name = getattr(user_role, "name", str(user_role)).lower()
+            logger.info(f"[DEBUG] User role: {role_name}")
+            
+            # Show admin menu for admins and super admins
+            if role_name in ("admin", "super_admin"):
+                from core.keyboards.reply_v2 import get_main_menu_reply_admin
+                is_superadmin = role_name == "super_admin"
+                keyboard = get_main_menu_reply_admin(current_lang, is_superadmin)
+                logger.info(f"[DEBUG] Showing admin menu for {role_name}")
+            else:
+                # Regular user menu
+                user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
+                keyboard = get_reply_keyboard(user_ctx, screen="main")
+                logger.info(f"[DEBUG] Showing regular user menu")
+        except Exception as e:
+            logger.error(f"[ERROR] Failed to get user role: {e}")
+            # Fallback to regular user menu
+            user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
+            keyboard = get_reply_keyboard(user_ctx, screen="main")
         
         if not keyboard:
             logger.error("[ERROR] Failed to generate menu: keyboard is None")

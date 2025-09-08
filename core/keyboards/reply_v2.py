@@ -420,12 +420,14 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     return get_main_menu_reply(lang)
 
 def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
-    """Клавиатура личного кабинета пользователя с системой кармы (упрощенная версия)"""
+    """Клавиатура личного кабинета пользователя"""
     buttons = [
-        [KeyboardButton(text="📊 Карма"), KeyboardButton(text="📜 История")],
-        [KeyboardButton(text="📱 Сканировать QR"), KeyboardButton(text="📋 Моя карта")],
-        [KeyboardButton(text="💰 Потратить карму"), KeyboardButton(text="🏅 Достижения")],
-        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="◀️ Назад")]
+        [KeyboardButton(text="📊 Моя карма"), KeyboardButton(text="💳 Мои карты")],
+        [KeyboardButton(text="💎 Мои баллы"), KeyboardButton(text="🏪 Каталог мест")],
+        [KeyboardButton(text="🏆 Достижения"), KeyboardButton(text="📋 История")],
+        [KeyboardButton(text="🔔 Уведомления"), KeyboardButton(text="🌐 Язык")],
+        [KeyboardButton(text="🤝 Стать партнером"), KeyboardButton(text="❓ Помощь")],
+        [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
