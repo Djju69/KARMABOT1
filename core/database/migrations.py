@@ -503,6 +503,8 @@ class DatabaseMigrator:
         self.migrate_017_loyalty_system()
         # Personal cabinets system
         self.migrate_018_personal_cabinets()
+        # Fix users table
+        self.migrate_019_fix_users_table()
         
         logger.info("All migrations completed successfully")
 
@@ -1077,6 +1079,49 @@ class DatabaseMigrator:
             "-- Migration applied programmatically",
         )
 
+    def migrate_019_fix_users_table(self):
+        """Migration 019: Fix users table creation"""
+        try:
+            if self.database_url.startswith("postgresql"):
+                # PostgreSQL migration
+                import asyncio
+                import asyncpg
+                
+                async def run_migration():
+                    conn = await asyncpg.connect(self.database_url)
+                    try:
+                        from migrations.migrate_019_fix_users_table import upgrade_019
+                        await upgrade_019(conn)
+                    finally:
+                        await conn.close()
+                
+                asyncio.run(run_migration())
+            else:
+                # SQLite migration
+                if not self._is_memory:
+                    with self.get_connection() as conn:
+                        self._migrate_019_sqlite(conn)
+                else:
+                    conn = self.get_connection()
+                    self._migrate_019_sqlite(conn)
+                    conn.commit()
+                    
+        except ImportError:
+            # Fallback to SQLite-only migration
+            if not self._is_memory:
+                with self.get_connection() as conn:
+                    self._migrate_019_sqlite(conn)
+            else:
+                conn = self.get_connection()
+                self._migrate_019_sqlite(conn)
+                conn.commit()
+        
+        self.apply_migration(
+            "019",
+            "FIX: Force create users table if missing",
+            "-- Migration applied programmatically",
+        )
+
     def _migrate_018_sqlite(self, conn):
         """SQLite-specific migration for personal cabinets system"""
         # 0. Create users table if it doesn't exist
@@ -1170,6 +1215,81 @@ class DatabaseMigrator:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_is_banned ON users(is_banned)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_users_level ON users(level)")
+
+    def _migrate_019_sqlite(self, conn):
+        """SQLite-specific migration for fixing users table"""
+        try:
+            print("🔧 Force creating users table (SQLite)...")
+            
+            # Проверяем, существует ли таблица users
+            try:
+                conn.execute("SELECT COUNT(*) FROM users LIMIT 1").fetchone()
+                print("✅ Users table already exists")
+            except:
+                print("❌ Users table does not exist, creating...")
+                
+                # Создаем таблицу users
+                conn.execute("""
+                    CREATE TABLE users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        telegram_id INTEGER UNIQUE NOT NULL,
+                        username TEXT,
+                        first_name TEXT,
+                        last_name TEXT,
+                        language_code TEXT DEFAULT 'ru',
+                        karma_points INTEGER DEFAULT 0,
+                        role TEXT DEFAULT 'user',
+                        reputation_score INTEGER DEFAULT 0,
+                        level INTEGER DEFAULT 1,
+                        is_banned BOOLEAN DEFAULT 0,
+                        ban_reason TEXT,
+                        banned_by INTEGER,
+                        banned_at TEXT,
+                        last_activity TEXT DEFAULT CURRENT_TIMESTAMP,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                print("✅ Users table created successfully")
+            
+            # Создаем таблицу user_notifications если её нет
+            try:
+                conn.execute("SELECT COUNT(*) FROM user_notifications LIMIT 1").fetchone()
+                print("✅ user_notifications table already exists")
+            except:
+                print("❌ user_notifications table does not exist, creating...")
+                conn.execute("""
+                    CREATE TABLE user_notifications (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        message TEXT NOT NULL,
+                        is_read BOOLEAN DEFAULT 0,
+                        notification_type TEXT,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                print("✅ user_notifications table created successfully")
+            
+            # Создаем таблицу user_achievements если её нет
+            try:
+                conn.execute("SELECT COUNT(*) FROM user_achievements LIMIT 1").fetchone()
+                print("✅ user_achievements table already exists")
+            except:
+                print("❌ user_achievements table does not exist, creating...")
+                conn.execute("""
+                    CREATE TABLE user_achievements (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        achievement_type TEXT NOT NULL,
+                        achievement_data TEXT,
+                        earned_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                print("✅ user_achievements table created successfully")
+                
+        except Exception as e:
+            print(f"❌ Error in migration 019 (SQLite): {e}")
+            raise
 
 # Global migrator instance
 migrator = DatabaseMigrator()
