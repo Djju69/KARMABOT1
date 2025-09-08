@@ -243,6 +243,41 @@ async def handle_deletion(message: Message, state: FSMContext):
         await message.answer("❌ Ошибка при загрузке операций удаления.")
 
 
+@router.message(F.text.startswith("📊 Дашборд:"))
+async def handle_dashboard(message: Message, state: FSMContext):
+    """Handle dashboard button for super admin."""
+    try:
+        # Check if user is super admin
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name != "super_admin":
+            await message.answer("⛔ Недостаточно прав. Только супер-админ может просматривать дашборд.")
+            return
+        
+        # Здесь можно добавить реальные данные из базы
+        moderation_count = 0  # TODO: Получить из БД
+        notifications_count = 0  # TODO: Получить из БД
+        system_status = "OK"  # TODO: Проверить статус системы
+        
+        await message.answer(
+            f"📊 <b>Системный дашборд</b>\n\n"
+            f"📋 <b>Модерация:</b> {moderation_count} карточек в очереди\n"
+            f"🔔 <b>Уведомления:</b> {notifications_count} непрочитанных\n"
+            f"⚙️ <b>Система:</b> {system_status}\n\n"
+            f"💡 <b>Быстрые действия:</b>\n"
+            f"• Нажмите '📋 Модерация' для просмотра очереди\n"
+            f"• Нажмите '👑 Админы' для управления администраторами\n"
+            f"• Нажмите '📊 Статистика' для детальной аналитики\n\n"
+            f"🚧 <i>Дашборд будет обновляться в реальном времени в следующих версиях.</i>",
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in handle_dashboard: {str(e)}", exc_info=True)
+        await message.answer("❌ Ошибка при загрузке дашборда.")
+
+
 @router.message(F.text == "◀️ Назад")
 async def handle_back_to_main(message: Message, state: FSMContext):
     """Handle back to main menu."""

@@ -131,10 +131,13 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
             KeyboardButton(text=get_text('choose_category', lang)),
             KeyboardButton(text=get_text('show_nearest', lang)),
         ],
-        [
-            KeyboardButton(text=get_text('choose_language', lang)),
-        ],
     ]
+
+    # Для супер-админа добавляем визуальный дашборд вместо языка
+    if is_superadmin:
+        rows.append([KeyboardButton(text="📊 Дашборд: Модерация(0) | Уведомления(0) | Система(OK)")])
+    else:
+        rows.append([KeyboardButton(text=get_text('choose_language', lang))])
 
     # У обычных админов остаётся «Личный кабинет» и «Помощь»
     if not is_superadmin:
@@ -434,20 +437,20 @@ def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
 def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура админа"""
     buttons = [
-        [KeyboardButton("📋 Модерация"), KeyboardButton("🔍 Поиск")],
-        [KeyboardButton("📊 Статистика"), KeyboardButton("👥 Пользователи")],
-        [KeyboardButton("◀️ Назад")]
+        [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="🔍 Поиск")],
+        [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
+        [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура супер-админа"""
     buttons = [
-        [KeyboardButton("📋 Модерация"), KeyboardButton("👑 Админы")],
-        [KeyboardButton("🔍 Поиск"), KeyboardButton("📊 Статистика")],
-        [KeyboardButton("👥 Пользователи"), KeyboardButton("🤝 Партнёры")],
-        [KeyboardButton("🧾 Карты"), KeyboardButton("🗑️ Удаление")],
-        [KeyboardButton("◀️ Назад")]
+        [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="👑 Админы")],
+        [KeyboardButton(text="🔍 Поиск"), KeyboardButton(text="📊 Статистика")],
+        [KeyboardButton(text="👥 Пользователи"), KeyboardButton(text="🤝 Партнёры")],
+        [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="🗑️ Удаление")],
+        [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
