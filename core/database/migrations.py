@@ -500,11 +500,12 @@ class DatabaseMigrator:
         # Karma system and plastic cards
         self.migrate_016_plastic_cards()
         # Loyalty system and partner ecosystem
-        self.migrate_017_loyalty_system()
-        # Personal cabinets system
-        self.migrate_018_personal_cabinets()
-        # Fix users table
-        self.migrate_019_fix_users_table()
+            self.migrate_017_loyalty_system()
+            # Personal cabinets system
+            self.migrate_018_personal_cabinets()
+            # Fix users table - FORCE EXECUTE
+            print("🔧 FORCE executing migration 019 for PostgreSQL...")
+            self.migrate_019_fix_users_table()
         
         logger.info("All migrations completed successfully")
 
@@ -1093,6 +1094,7 @@ class DatabaseMigrator:
                     try:
                         from migrations.migrate_019_fix_users_table import upgrade_019
                         await upgrade_019(conn)
+                        print("✅ PostgreSQL migration 019 completed successfully")
                     finally:
                         await conn.close()
                 
