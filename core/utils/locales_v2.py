@@ -209,7 +209,7 @@ translations_v2 = {
         'invite.invited': 'Đã mời',
         'invite.earnings': 'Thu nhập',
         # Existing keys
-        'back_to_main_menu': 'Về menu chính🏘',
+        'back_to_main_menu': '◀️ Quay lại',
         'back_to_categories': '⬅️ Về danh mục',
         
         # Admin menu buttons

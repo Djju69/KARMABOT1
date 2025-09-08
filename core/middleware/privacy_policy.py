@@ -16,8 +16,8 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
     """
     
     # Разрешенные команды и callback_data
-    ALLOWED_COMMANDS = ['/start', '/help']
-    ALLOWED_CALLBACKS = ['lang:', 'policy:', 'accept_policy', 'decline_policy']
+    ALLOWED_COMMANDS = ['/start', '/help', '/city', '/clear_cache']
+    ALLOWED_CALLBACKS = ['lang:', 'policy:', 'accept_policy', 'decline_policy', 'city:']
     
     async def __call__(
         self,

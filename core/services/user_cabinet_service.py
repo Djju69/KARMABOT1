@@ -44,7 +44,15 @@ class UserCabinetService:
                     "SELECT karma_points FROM users WHERE telegram_id = $1",
                     user_id
                 )
-                return result['karma_points'] if result else 0
+                if not result:
+                    # Создаем пользователя если его нет
+                    await conn.execute("""
+                        INSERT INTO users (telegram_id, karma_points, role, level, created_at, updated_at)
+                        VALUES ($1, 0, 'user', 1, NOW(), NOW())
+                        ON CONFLICT (telegram_id) DO NOTHING
+                    """, user_id)
+                    return 0
+                return result['karma_points']
             finally:
                 await conn.close()
         except Exception as e:
@@ -86,7 +94,20 @@ class UserCabinetService:
                     user_id
                 )
                 if not user:
-                    return {}
+                    # Создаем пользователя если его нет
+                    await conn.execute("""
+                        INSERT INTO users (telegram_id, karma_points, role, level, created_at, updated_at)
+                        VALUES ($1, 0, 'user', 1, NOW(), NOW())
+                        ON CONFLICT (telegram_id) DO NOTHING
+                    """, user_id)
+                    
+                    # Получаем созданного пользователя
+                    user = await conn.fetchrow(
+                        "SELECT * FROM users WHERE telegram_id = $1",
+                        user_id
+                    )
+                    if not user:
+                        return {}
                 
                 user_dict = dict(user)
                 
