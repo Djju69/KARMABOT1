@@ -73,7 +73,14 @@ def register_commands(router):
 
     @router.message(Command("city"))
     async def cmd_city(message: Message):
-        await message.answer("🌆 Смена города скоро будет доступна")
+        """Показать выбор города"""
+        from ..keyboards.inline_v2 import get_cities_inline
+        await message.answer(
+            "🌆 <b>Выберите город:</b>\n\n"
+            "Выберите город для просмотра доступных заведений и предложений.",
+            reply_markup=get_cities_inline(),
+            parse_mode="HTML"
+        )
 
     @router.message(Command("policy"))
     async def cmd_policy(message: Message):
@@ -119,5 +126,44 @@ def register_commands(router):
         except Exception as e:
             logging.getLogger(__name__).error(f"clear_cache failed: {e}")
             await message.answer("⚠️ Ошибка при очистке кэша")
+
+    @router.callback_query(F.data.startswith("city:set:"))
+    async def handle_city_selection(callback: CallbackQuery):
+        """Обработчик выбора города"""
+        try:
+            await callback.answer()
+            
+            # Извлекаем ID города из callback_data
+            city_id = int(callback.data.split(":")[-1])
+            
+            # Маппинг ID городов на названия
+            cities = {
+                1: "Нячанг",
+                2: "Дананг", 
+                3: "Хошимин",
+                4: "Фукуок"
+            }
+            
+            city_name = cities.get(city_id, "Неизвестный город")
+            
+            # Сохраняем выбранный город в состояние пользователя
+            from aiogram.fsm.context import FSMContext
+            state = FSMContext(
+                storage=callback.bot.storage,
+                key=callback.from_user.id
+            )
+            await state.update_data(selected_city_id=city_id, selected_city_name=city_name)
+            
+            # Обновляем сообщение
+            await callback.message.edit_text(
+                f"✅ <b>Город выбран: {city_name}</b>\n\n"
+                f"Теперь вы можете просматривать заведения и предложения в городе {city_name}.\n\n"
+                f"Используйте команду /city для смены города.",
+                parse_mode="HTML"
+            )
+            
+        except Exception as e:
+            logging.getLogger(__name__).error(f"city selection failed: {e}")
+            await callback.answer("❌ Ошибка при выборе города")
     
     return router

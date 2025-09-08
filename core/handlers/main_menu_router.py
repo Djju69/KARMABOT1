@@ -129,13 +129,43 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
         await user_cabinet_handler(message, state)
     except Exception as e:
         logger.error(f"Error in profile handling: {e}", exc_info=True)
+        
+        # Fallback - показываем базовую информацию о пользователе
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
-        error_text = translations.get(lang, {}).get(
-            'profile_error', 
-            'Не удалось загрузить профиль. Пожалуйста, попробуйте позже.'
+        
+        # Получаем информацию о пользователе
+        user_name = message.from_user.full_name or "Пользователь"
+        user_id = message.from_user.id
+        username = f"@{message.from_user.username}" if message.from_user.username else "Не указан"
+        
+        # Показываем базовую информацию
+        profile_text = (
+            f"👤 <b>Личный кабинет</b>\n\n"
+            f"🆔 <b>ID:</b> {user_id}\n"
+            f"👤 <b>Имя:</b> {user_name}\n"
+            f"📱 <b>Username:</b> {username}\n"
+            f"🌐 <b>Язык:</b> {lang.upper()}\n\n"
+            f"💡 <b>Доступные функции:</b>\n"
+            f"• 📊 Карма и достижения\n"
+            f"• 📋 Управление картами\n"
+            f"• 🔔 Уведомления\n"
+            f"• ⚙️ Настройки\n\n"
+            f"🚧 <i>Полный функционал кабинета будет доступен после настройки базы данных.</i>"
         )
-        await message.answer(error_text, parse_mode="HTML")
+        
+        # Создаем простую клавиатуру
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="◀️ Назад")],
+                [KeyboardButton(text="📊 Карма"), KeyboardButton(text="📋 Моя карта")],
+                [KeyboardButton(text="🔔 Уведомления"), KeyboardButton(text="⚙️ Настройки")]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
 
 
 @main_menu_router.message(F.text.in_([
