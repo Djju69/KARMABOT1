@@ -88,12 +88,42 @@ def register_commands(router):
 
     @router.message(Command("add"))
     async def cmd_add(message: Message, state: FSMContext):
-        """/add partner — Telegram без пробелов, используем /add для запуска мастера"""
+        """/add - команда для добавления партнеров и карточек товаров"""
         try:
-            from .partner import start_add_card
-            await start_add_card(message, state)
-        except Exception:
-            await message.answer("➕ Добавление партнёрской карточки скоро будет доступно.")
+            # Проверяем, не является ли пользователь уже партнером
+            from core.database.db_v2 import get_connection
+            
+            with get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT id, status FROM partners WHERE contact_telegram = ?",
+                    (message.from_user.id,)
+                )
+                existing_partner = cursor.fetchone()
+            
+            if existing_partner:
+                status_text = {
+                    'pending': '⏳ Ожидает рассмотрения',
+                    'approved': '✅ Одобрен',
+                    'rejected': '❌ Отклонен',
+                    'suspended': '⏸️ Приостановлен'
+                }.get(existing_partner[1], '❓ Неизвестный статус')
+                
+                await message.answer(
+                    f"🤝 <b>Статус партнерства</b>\n\n"
+                    f"📋 Ваша заявка на партнерство уже подана.\n"
+                    f"📊 Статус: {status_text}\n\n"
+                    f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
+                    parse_mode='HTML'
+                )
+                return
+            
+            # Начинаем процесс регистрации партнера
+            from core.fsm.partner_registration import start_partner_registration
+            await start_partner_registration(message, state)
+            
+        except Exception as e:
+            logger.error(f"Error in cmd_add: {e}")
+            await message.answer("❌ Ошибка при запуске регистрации партнера. Попробуйте позже.")
 
     @router.message(Command("clear_cache"))
     async def cmd_clear_cache(message: Message):

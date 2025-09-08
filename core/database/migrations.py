@@ -557,6 +557,8 @@ class DatabaseMigrator:
         # Fix users table - FORCE EXECUTE
         print("🔧 FORCE executing migration 019 for PostgreSQL...")
         self.migrate_019_fix_users_table()
+        # Loyalty system expansion
+        self.migrate_020_loyalty_expansion()
         
         logger.info("All migrations completed successfully")
 
@@ -1438,6 +1440,357 @@ class DatabaseMigrator:
                 
         except Exception as e:
             print(f"❌ Error in migration 019 (SQLite): {e}")
+            raise
+
+    def migrate_020_loyalty_expansion(self):
+        """Migration 020: Expand users table and create loyalty system tables"""
+        version = "020"
+        desc = "EXPAND: Add loyalty system tables and expand users table"
+        
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+            
+        try:
+            database_url = os.getenv("DATABASE_URL")
+            if database_url and database_url.startswith("postgresql"):
+                # PostgreSQL migration
+                self._migrate_020_postgresql()
+            else:
+                # SQLite migration
+                if not self._is_memory:
+                    with self.get_connection() as conn:
+                        self._migrate_020_sqlite(conn)
+                else:
+                    conn = self.get_connection()
+                    self._migrate_020_sqlite(conn)
+                    conn.commit()
+                    
+        except Exception as e:
+            logger.error(f"Error in migration {version}: {e}")
+            raise
+            
+        self.apply_migration(
+            version,
+            desc,
+            "-- Migration applied programmatically",
+        )
+
+    def _migrate_020_postgresql(self):
+        """PostgreSQL-specific migration for loyalty system expansion"""
+        try:
+            import asyncio
+            import asyncpg
+            
+            async def run_migration():
+                database_url = os.getenv("DATABASE_URL")
+                conn = await asyncpg.connect(database_url)
+                
+                try:
+                    # Expand users table
+                    await conn.execute("""
+                        ALTER TABLE users 
+                        ADD COLUMN IF NOT EXISTS points_balance INTEGER DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS partner_id INTEGER;
+                    """)
+                    
+                    # Create points_history table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS points_history (
+                            id SERIAL PRIMARY KEY,
+                            user_id BIGINT NOT NULL,
+                            change_amount INTEGER NOT NULL,
+                            reason VARCHAR(500),
+                            transaction_type VARCHAR(20),
+                            sale_id INTEGER,
+                            admin_id BIGINT,
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                    """)
+                    
+                    # Create partners table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partners (
+                            id SERIAL PRIMARY KEY,
+                            code VARCHAR(50) UNIQUE NOT NULL,
+                            title VARCHAR(255) NOT NULL,
+                            status VARCHAR(20) DEFAULT 'pending',
+                            base_discount_pct NUMERIC(5,2) DEFAULT 0,
+                            contact_name VARCHAR(255),
+                            contact_telegram BIGINT,
+                            contact_phone VARCHAR(50),
+                            contact_email VARCHAR(255),
+                            legal_info TEXT,
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            is_deleted BOOLEAN DEFAULT FALSE,
+                            approved_by BIGINT,
+                            approved_at TIMESTAMP
+                        );
+                    """)
+                    
+                    # Create partner_places table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_places (
+                            id SERIAL PRIMARY KEY,
+                            partner_id INTEGER REFERENCES partners(id),
+                            title VARCHAR(60) NOT NULL,
+                            status VARCHAR(20) DEFAULT 'draft',
+                            address VARCHAR(255),
+                            geo_lat NUMERIC(10,6),
+                            geo_lon NUMERIC(10,6),
+                            hours VARCHAR(120),
+                            phone VARCHAR(50),
+                            website VARCHAR(255),
+                            price_level VARCHAR(5),
+                            rating NUMERIC(3,1) DEFAULT 0,
+                            reviews_count INTEGER DEFAULT 0,
+                            description TEXT,
+                            base_discount_pct NUMERIC(5,2),
+                            loyalty_accrual_pct NUMERIC(5,2) DEFAULT 5.00,
+                            min_redeem INTEGER DEFAULT 0,
+                            max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00,
+                            cover_file_id TEXT,
+                            gallery_file_ids JSONB DEFAULT '[]',
+                            categories JSONB DEFAULT '[]',
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            created_by BIGINT
+                        );
+                    """)
+                    
+                    # Create partner_sales table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_sales (
+                            id SERIAL PRIMARY KEY,
+                            partner_id INTEGER REFERENCES partners(id),
+                            place_id INTEGER REFERENCES partner_places(id),
+                            operator_telegram_id BIGINT,
+                            user_telegram_id BIGINT,
+                            amount_gross NUMERIC(12,2) NOT NULL,
+                            base_discount_pct NUMERIC(5,2) NOT NULL,
+                            extra_discount_pct NUMERIC(5,2) DEFAULT 0.00,
+                            extra_value NUMERIC(12,2) DEFAULT 0.00,
+                            amount_partner_due NUMERIC(12,2) NOT NULL,
+                            amount_user_subsidy NUMERIC(12,2) DEFAULT 0.00,
+                            points_spent INTEGER DEFAULT 0,
+                            points_earned INTEGER DEFAULT 0,
+                            redeem_rate NUMERIC(14,4) NOT NULL,
+                            receipt VARCHAR(100),
+                            qr_token VARCHAR(255),
+                            created_at TIMESTAMP DEFAULT NOW()
+                        );
+                    """)
+                    
+                    # Create platform_loyalty_config table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                            id SERIAL PRIMARY KEY,
+                            redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
+                            rounding_rule VARCHAR(20) DEFAULT 'bankers',
+                            max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
+                            updated_at TIMESTAMP DEFAULT NOW(),
+                            updated_by BIGINT
+                        );
+                    """)
+                    
+                    # Create payment_qr_tokens table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS payment_qr_tokens (
+                            id SERIAL PRIMARY KEY,
+                            token_hash VARCHAR(64) UNIQUE NOT NULL,
+                            user_id BIGINT NOT NULL,
+                            place_id INTEGER REFERENCES partner_places(id),
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            expires_at TIMESTAMP NOT NULL,
+                            is_used BOOLEAN DEFAULT FALSE,
+                            used_at TIMESTAMP,
+                            sale_id INTEGER
+                        );
+                    """)
+                    
+                    # Create pos_terminals table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS pos_terminals (
+                            id SERIAL PRIMARY KEY,
+                            partner_id INTEGER REFERENCES partners(id),
+                            place_id INTEGER REFERENCES partner_places(id),
+                            terminal_id VARCHAR(100) UNIQUE NOT NULL,
+                            api_key VARCHAR(255) UNIQUE NOT NULL,
+                            terminal_name VARCHAR(100),
+                            status VARCHAR(20) DEFAULT 'active',
+                            created_at TIMESTAMP DEFAULT NOW(),
+                            last_used_at TIMESTAMP
+                        );
+                    """)
+                    
+                    # Insert default loyalty config
+                    await conn.execute("""
+                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
+                        VALUES (5000.0, 'bankers', 20.00)
+                        ON CONFLICT DO NOTHING;
+                    """)
+                    
+                    print("✅ PostgreSQL migration 020 completed successfully")
+                    
+                finally:
+                    await conn.close()
+            
+            asyncio.run(run_migration())
+            
+        except ImportError:
+            logger.warning("asyncpg not available, skipping PostgreSQL migration")
+            raise
+
+    def _migrate_020_sqlite(self, conn):
+        """SQLite-specific migration for loyalty system expansion"""
+        try:
+            # Expand users table
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN points_balance INTEGER DEFAULT 0;
+            """)
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN partner_id INTEGER;
+            """)
+            
+            # Create points_history table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS points_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    change_amount INTEGER NOT NULL,
+                    reason TEXT,
+                    transaction_type TEXT,
+                    sale_id INTEGER,
+                    admin_id INTEGER,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create partners table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partners (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code TEXT UNIQUE NOT NULL,
+                    title TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    base_discount_pct REAL DEFAULT 0,
+                    contact_name TEXT,
+                    contact_telegram INTEGER,
+                    contact_phone TEXT,
+                    contact_email TEXT,
+                    legal_info TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    is_deleted BOOLEAN DEFAULT FALSE,
+                    approved_by INTEGER,
+                    approved_at TEXT
+                );
+            """)
+            
+            # Create partner_places table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_places (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER REFERENCES partners(id),
+                    title TEXT NOT NULL,
+                    status TEXT DEFAULT 'draft',
+                    address TEXT,
+                    geo_lat REAL,
+                    geo_lon REAL,
+                    hours TEXT,
+                    phone TEXT,
+                    website TEXT,
+                    price_level TEXT,
+                    rating REAL DEFAULT 0,
+                    reviews_count INTEGER DEFAULT 0,
+                    description TEXT,
+                    base_discount_pct REAL,
+                    loyalty_accrual_pct REAL DEFAULT 5.00,
+                    min_redeem INTEGER DEFAULT 0,
+                    max_percent_per_bill REAL DEFAULT 50.00,
+                    cover_file_id TEXT,
+                    gallery_file_ids TEXT DEFAULT '[]',
+                    categories TEXT DEFAULT '[]',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    created_by INTEGER
+                );
+            """)
+            
+            # Create partner_sales table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_sales (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER REFERENCES partners(id),
+                    place_id INTEGER REFERENCES partner_places(id),
+                    operator_telegram_id INTEGER,
+                    user_telegram_id INTEGER,
+                    amount_gross REAL NOT NULL,
+                    base_discount_pct REAL NOT NULL,
+                    extra_discount_pct REAL DEFAULT 0.00,
+                    extra_value REAL DEFAULT 0.00,
+                    amount_partner_due REAL NOT NULL,
+                    amount_user_subsidy REAL DEFAULT 0.00,
+                    points_spent INTEGER DEFAULT 0,
+                    points_earned INTEGER DEFAULT 0,
+                    redeem_rate REAL NOT NULL,
+                    receipt TEXT,
+                    qr_token TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create platform_loyalty_config table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    redeem_rate REAL DEFAULT 5000.0,
+                    rounding_rule TEXT DEFAULT 'bankers',
+                    max_accrual_percent REAL DEFAULT 20.00,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_by INTEGER
+                );
+            """)
+            
+            # Create payment_qr_tokens table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS payment_qr_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token_hash TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    place_id INTEGER REFERENCES partner_places(id),
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TEXT NOT NULL,
+                    is_used BOOLEAN DEFAULT FALSE,
+                    used_at TEXT,
+                    sale_id INTEGER
+                );
+            """)
+            
+            # Create pos_terminals table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pos_terminals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER REFERENCES partners(id),
+                    place_id INTEGER REFERENCES partner_places(id),
+                    terminal_id TEXT UNIQUE NOT NULL,
+                    api_key TEXT UNIQUE NOT NULL,
+                    terminal_name TEXT,
+                    status TEXT DEFAULT 'active',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at TEXT
+                );
+            """)
+            
+            # Insert default loyalty config
+            conn.execute("""
+                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
+                VALUES (5000.0, 'bankers', 20.00);
+            """)
+            
+            print("✅ SQLite migration 020 completed successfully")
+            
+        except Exception as e:
+            print(f"❌ Error in migration 020 (SQLite): {e}")
             raise
 
 # Global migrator instance

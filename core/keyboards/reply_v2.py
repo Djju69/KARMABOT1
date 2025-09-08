@@ -446,7 +446,7 @@ def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
 def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура супер-админа"""
     buttons = [
-        [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="👑 Админы")],
+        [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="👥 Админы")],
         [KeyboardButton(text="🔍 Поиск"), KeyboardButton(text="📊 Статистика")],
         [KeyboardButton(text="👥 Пользователи"), KeyboardButton(text="🤝 Партнёры")],
         [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="🗑️ Удаление")],

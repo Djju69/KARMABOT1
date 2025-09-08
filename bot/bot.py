@@ -167,7 +167,8 @@ try:
             'admin_cabinet',
             'category_handlers_v2', # было 'category_handlers'
             'plastic_cards_router', # Добавляем обработчики карм и карт
-            'cabinet_router'        # Добавляем обработчики личного кабинета
+            'cabinet_router',       # Добавляем обработчики личного кабинета
+            'partner_fsm_router'     # Добавляем FSM обработчики регистрации партнеров
         ]
         
         # Get all available routers

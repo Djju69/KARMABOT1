@@ -114,16 +114,16 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
         )
 
 
-@router.message(F.text.in_(["📊 Моя карма", "📊 My Karma"]))
+@router.message(F.text.in_(["📊 Моя карма", "📊 My Karma", "💎 Мои баллы"]))
 async def view_karma_handler(message: Message, state: FSMContext):
-    """Handle karma viewing according to TZ."""
+    """Handle karma and loyalty points viewing according to TZ."""
     try:
         user_id = message.from_user.id
         profile = await user_cabinet_service.get_user_profile(user_id)
         
         if not profile:
             await message.answer(
-                "❌ Произошла ошибка при загрузке кармы. Пожалуйста, попробуйте позже.",
+                "❌ Произошла ошибка при загрузке данных. Пожалуйста, попробуйте позже.",
                 reply_markup=get_user_cabinet_keyboard()
             )
             return
@@ -132,23 +132,47 @@ async def view_karma_handler(message: Message, state: FSMContext):
         level = profile.get('level', 1)
         level_progress = profile.get('level_progress', {})
         
+        # Получаем баллы лояльности
+        from core.services.loyalty_service import loyalty_service
+        loyalty_points = await loyalty_service.get_user_points_balance(user_id)
+        
+        # Получаем историю баллов
+        points_history = await loyalty_service.get_points_history(user_id, limit=5)
+        
         text = (
-            f"📊 <b>Система кармы</b>\n\n"
-            f"⭐ Текущая карма: <b>{karma_points}</b>\n"
-            f"🎯 Уровень: <b>{level} из 10</b>\n"
+            f"💎 <b>Мои баллы и карма</b>\n\n"
+            f"⭐ <b>Карма:</b> {karma_points}\n"
+            f"🎯 <b>Уровень:</b> {level} из 10\n"
+            f"💰 <b>Баллы лояльности:</b> {loyalty_points}\n\n"
         )
         
+        # Прогресс кармы
         if level_progress.get('next_threshold'):
-            text += f"📈 До следующего: {level_progress['next_threshold'] - karma_points} кармы\n\n"
+            text += f"📈 До следующего уровня: {level_progress['next_threshold'] - karma_points} кармы\n"
             
             # Add progress bar
             progress_percent = level_progress.get('progress_percent', 0)
             filled_bars = int(progress_percent / 10)
             empty_bars = 10 - filled_bars
             progress_bar = "█" * filled_bars + "░" * empty_bars
-            text += f"Прогресс: {progress_bar} {progress_percent:.0f}%"
+            text += f"Прогресс: {progress_bar} {progress_percent:.0f}%\n\n"
         else:
-            text += "\n🎉 Максимальный уровень достигнут!"
+            text += "🎉 Максимальный уровень кармы достигнут!\n\n"
+        
+        # История баллов
+        if points_history:
+            text += "📜 <b>Последние операции с баллами:</b>\n"
+            for entry in points_history[:3]:  # Показываем только последние 3
+                change_text = f"+{entry['change_amount']}" if entry['change_amount'] > 0 else str(entry['change_amount'])
+                text += f"• {change_text} - {entry['reason']}\n"
+        else:
+            text += "📜 История операций с баллами пуста\n"
+        
+        # Добавляем информацию о том, как использовать баллы
+        text += f"\n💡 <b>Как использовать баллы:</b>\n"
+        text += f"• 1 балл = 5000 VND скидки\n"
+        text += f"• Используйте QR-код для оплаты\n"
+        text += f"• Получайте баллы за покупки\n"
         
         await message.answer(
             text,
@@ -161,7 +185,7 @@ async def view_karma_handler(message: Message, state: FSMContext):
     except Exception as e:
         logger.error(f"Error in view_karma_handler: {str(e)}", exc_info=True)
         await message.answer(
-            "❌ Не удалось загрузить информацию о карме. Пожалуйста, попробуйте позже.",
+            "❌ Не удалось загрузить информацию о баллах и карме. Пожалуйста, попробуйте позже.",
             reply_markup=get_user_cabinet_keyboard()
         )
 
@@ -478,18 +502,38 @@ async def language_handler(message: Message, state: FSMContext):
 async def become_partner_handler(message: Message, state: FSMContext):
     """Handle become partner functionality."""
     try:
-        await message.answer(
-            "🤝 <b>Стать партнером</b>\n\n"
-            "Присоединяйтесь к нашей партнерской программе!\n\n"
-            "💡 <b>Преимущества:</b>\n"
-            "• Привлечение новых клиентов\n"
-            "• Управление скидками и акциями\n"
-            "• Аналитика и статистика\n"
-            "• Поддержка 24/7\n\n"
-            "🚧 <i>Функция регистрации партнера будет доступна в следующих обновлениях.</i>",
-            reply_markup=get_user_cabinet_keyboard(),
-            parse_mode='HTML'
-        )
+        # Проверяем, не является ли пользователь уже партнером
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT id, status FROM partners WHERE contact_telegram = ?",
+                (message.from_user.id,)
+            )
+            existing_partner = cursor.fetchone()
+        
+        if existing_partner:
+            status_text = {
+                'pending': '⏳ Ожидает рассмотрения',
+                'approved': '✅ Одобрен',
+                'rejected': '❌ Отклонен',
+                'suspended': '⏸️ Приостановлен'
+            }.get(existing_partner[1], '❓ Неизвестный статус')
+            
+            await message.answer(
+                f"🤝 <b>Статус партнерства</b>\n\n"
+                f"📋 Ваша заявка на партнерство уже подана.\n"
+                f"📊 Статус: {status_text}\n\n"
+                f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
+                reply_markup=get_user_cabinet_keyboard(),
+                parse_mode='HTML'
+            )
+            return
+        
+        # Начинаем процесс регистрации
+        from core.fsm.partner_registration import start_partner_registration
+        await start_partner_registration(message, state)
+        
     except Exception as e:
         logger.error(f"Error in become_partner_handler: {str(e)}", exc_info=True)
         await message.answer(

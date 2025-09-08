@@ -69,21 +69,88 @@ import time
 async def handle_moderation(message: Message, state: FSMContext):
     """Handle moderation queue."""
     try:
-        await message.answer(
-            "📋 <b>Очередь модерации</b>\n\n"
-            "Здесь будут отображаться карточки, ожидающие модерации:\n\n"
-            "• Новые карточки партнёров\n"
-            "• Изменения в существующих карточках\n"
-            "• Жалобы пользователей\n\n"
-            "🚧 <i>Функция модерации будет реализована в следующих обновлениях.</i>",
-            parse_mode='HTML'
-        )
+        # Проверяем права доступа
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав. Только администраторы могут просматривать модерацию.")
+            return
+        
+        # Получаем партнеров на модерации
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            # Партнеры на модерации
+            cursor = conn.execute("""
+                SELECT id, title, contact_name, contact_phone, contact_email, created_at, status
+                FROM partners 
+                WHERE status = 'pending' 
+                ORDER BY created_at ASC 
+                LIMIT 10
+            """)
+            pending_partners = cursor.fetchall()
+            
+            # Заведения на модерации
+            cursor = conn.execute("""
+                SELECT pp.id, pp.title, pp.address, pp.status, p.title as partner_name, pp.created_at
+                FROM partner_places pp
+                JOIN partners p ON pp.partner_id = p.id
+                WHERE pp.status = 'pending' 
+                ORDER BY pp.created_at ASC 
+                LIMIT 10
+            """)
+            pending_places = cursor.fetchall()
+        
+        text = "📋 <b>Очередь модерации</b>\n\n"
+        
+        # Партнеры на модерации
+        if pending_partners:
+            text += f"🤝 <b>Партнеры на модерации ({len(pending_partners)}):</b>\n"
+            for partner in pending_partners[:5]:  # Показываем только первые 5
+                text += f"• <b>{partner[1]}</b>\n"
+                text += f"  👤 {partner[2]}\n"
+                text += f"  📞 {partner[3]}\n"
+                text += f"  📅 {partner[5][:10]}\n\n"
+        else:
+            text += "🤝 <b>Партнеры на модерации:</b> Нет заявок\n\n"
+        
+        # Заведения на модерации
+        if pending_places:
+            text += f"🏪 <b>Заведения на модерации ({len(pending_places)}):</b>\n"
+            for place in pending_places[:5]:  # Показываем только первые 5
+                text += f"• <b>{place[1]}</b>\n"
+                text += f"  🏢 {place[4]}\n"
+                text += f"  📍 {place[2] or 'Адрес не указан'}\n"
+                text += f"  📅 {place[5][:10]}\n\n"
+        else:
+            text += "🏪 <b>Заведения на модерации:</b> Нет заявок\n\n"
+        
+        # Статистика
+        total_pending = len(pending_partners) + len(pending_places)
+        text += f"📊 <b>Общая статистика:</b>\n"
+        text += f"• Всего на модерации: {total_pending}\n"
+        text += f"• Партнеры: {len(pending_partners)}\n"
+        text += f"• Заведения: {len(pending_places)}\n\n"
+        
+        if total_pending > 0:
+            text += "💡 <b>Доступные действия:</b>\n"
+            text += "• Одобрить заявку\n"
+            text += "• Отклонить заявку\n"
+            text += "• Запросить дополнительную информацию\n\n"
+            text += "🚧 <i>Функции одобрения/отклонения будут реализованы в следующих обновлениях.</i>"
+        else:
+            text += "✅ Все заявки обработаны!"
+        
+        await message.answer(text, parse_mode='HTML')
+        
     except Exception as e:
         logger.error(f"Error in handle_moderation: {str(e)}", exc_info=True)
         await message.answer("❌ Ошибка при загрузке очереди модерации.")
 
 
-@router.message(F.text == "👑 Админы")
+@router.message(F.text == "👥 Админы")
 async def handle_admins_management(message: Message, state: FSMContext):
     """Handle admins management (super admin only)."""
     try:
@@ -96,17 +163,63 @@ async def handle_admins_management(message: Message, state: FSMContext):
             await message.answer("⛔ Недостаточно прав. Только супер-админ может управлять админами.")
             return
         
-        await message.answer(
-            "👑 <b>Управление админами</b>\n\n"
-            "Доступные действия:\n\n"
-            "• ➕ Добавить нового админа\n"
-            "• 🗑️ Удалить админа\n"
-            "• 🚫 Заблокировать админа\n"
-            "• ✅ Разблокировать админа\n"
-            "• 📋 Список всех админов\n\n"
-            "🚧 <i>Функция управления админами будет реализована в следующих обновлениях.</i>",
-            parse_mode='HTML'
-        )
+        # Получаем список всех администраторов
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT telegram_id, first_name, last_name, username, role, is_banned, created_at
+                FROM users 
+                WHERE role IN ('admin', 'super_admin')
+                ORDER BY created_at ASC
+            """)
+            admins = cursor.fetchall()
+        
+        text = "👥 <b>Управление администраторами</b>\n\n"
+        
+        if admins:
+            text += f"📋 <b>Список администраторов ({len(admins)}):</b>\n\n"
+            
+            for admin in admins:
+                telegram_id, first_name, last_name, username, role, is_banned, created_at = admin
+                
+                # Определяем статус
+                status_emoji = "👑" if role == "super_admin" else "👤"
+                ban_status = "🚫 Заблокирован" if is_banned else "✅ Активен"
+                
+                # Имя
+                full_name = f"{first_name or ''} {last_name or ''}".strip()
+                if not full_name:
+                    full_name = username or f"ID: {telegram_id}"
+                
+                text += f"{status_emoji} <b>{full_name}</b>\n"
+                text += f"   🆔 ID: {telegram_id}\n"
+                text += f"   🎭 Роль: {role}\n"
+                text += f"   📊 Статус: {ban_status}\n"
+                text += f"   📅 С: {created_at[:10]}\n\n"
+        else:
+            text += "📋 <b>Администраторы не найдены</b>\n\n"
+        
+        # Статистика
+        super_admins_count = len([a for a in admins if a[4] == 'super_admin'])
+        regular_admins_count = len([a for a in admins if a[4] == 'admin'])
+        banned_count = len([a for a in admins if a[5]])
+        
+        text += f"📊 <b>Статистика:</b>\n"
+        text += f"• Супер-админы: {super_admins_count}\n"
+        text += f"• Обычные админы: {regular_admins_count}\n"
+        text += f"• Заблокированные: {banned_count}\n\n"
+        
+        text += "💡 <b>Доступные действия:</b>\n"
+        text += "• ➕ Добавить нового админа\n"
+        text += "• 🗑️ Удалить админа\n"
+        text += "• 🚫 Заблокировать админа\n"
+        text += "• ✅ Разблокировать админа\n"
+        text += "• 📋 Просмотр логов действий\n\n"
+        text += "🚧 <i>Функции управления админами будут реализованы в следующих обновлениях.</i>"
+        
+        await message.answer(text, parse_mode='HTML')
+        
     except Exception as e:
         logger.error(f"Error in handle_admins_management: {str(e)}", exc_info=True)
         await message.answer("❌ Ошибка при загрузке управления админами.")
@@ -256,21 +369,47 @@ async def handle_dashboard(message: Message, state: FSMContext):
             await message.answer("⛔ Недостаточно прав. Только супер-админ может просматривать дашборд.")
             return
         
-        # Здесь можно добавить реальные данные из базы
-        moderation_count = 0  # TODO: Получить из БД
-        notifications_count = 0  # TODO: Получить из БД
+        # Получаем реальные данные из базы
+        from core.database.db_v2 import get_connection
+        
+        with get_connection() as conn:
+            # Партнеры на модерации
+            cursor = conn.execute("SELECT COUNT(*) FROM partners WHERE status = 'pending'")
+            partners_pending = cursor.fetchone()[0]
+            
+            # Заведения на модерации
+            cursor = conn.execute("SELECT COUNT(*) FROM partner_places WHERE status = 'pending'")
+            places_pending = cursor.fetchone()[0]
+            
+            # Непрочитанные уведомления
+            cursor = conn.execute("SELECT COUNT(*) FROM user_notifications WHERE is_read = 0")
+            notifications_count = cursor.fetchone()[0]
+            
+            # Общее количество пользователей
+            cursor = conn.execute("SELECT COUNT(*) FROM users WHERE role = 'user'")
+            total_users = cursor.fetchone()[0]
+            
+            # Активные партнеры
+            cursor = conn.execute("SELECT COUNT(*) FROM partners WHERE status = 'approved'")
+            active_partners = cursor.fetchone()[0]
+        
+        moderation_count = partners_pending + places_pending
         system_status = "OK"  # TODO: Проверить статус системы
         
         await message.answer(
             f"📊 <b>Системный дашборд</b>\n\n"
             f"📋 <b>Модерация:</b> {moderation_count} карточек в очереди\n"
+            f"   • Партнеры: {partners_pending}\n"
+            f"   • Заведения: {places_pending}\n"
             f"🔔 <b>Уведомления:</b> {notifications_count} непрочитанных\n"
+            f"👥 <b>Пользователи:</b> {total_users} зарегистрированных\n"
+            f"🤝 <b>Партнеры:</b> {active_partners} активных\n"
             f"⚙️ <b>Система:</b> {system_status}\n\n"
             f"💡 <b>Быстрые действия:</b>\n"
             f"• Нажмите '📋 Модерация' для просмотра очереди\n"
-            f"• Нажмите '👑 Админы' для управления администраторами\n"
+            f"• Нажмите '👥 Админы' для управления администраторами\n"
             f"• Нажмите '📊 Статистика' для детальной аналитики\n\n"
-            f"🚧 <i>Дашборд будет обновляться в реальном времени в следующих версиях.</i>",
+            f"🚧 <i>Дашборд обновляется в реальном времени.</i>",
             parse_mode='HTML'
         )
     except Exception as e:
