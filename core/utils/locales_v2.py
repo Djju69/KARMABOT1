@@ -494,6 +494,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'back_to_main': '🏠 Главное меню',
         'back_to_main_menu': '◀️ Назад',
         'back_to_categories': '⬅️ К категориям',
+        'back': '◀️ Назад',
         
         # Admin menu buttons
         'admin_menu_queue': '📋 Очередь модерации',

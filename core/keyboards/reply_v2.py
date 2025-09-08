@@ -197,7 +197,7 @@ def get_return_to_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
 def get_return_to_categories(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Return to main menu keyboard (changed from categories to main menu)"""
     return ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=get_text('back_to_main', lang))]],
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
         resize_keyboard=True
     )
 

@@ -332,7 +332,7 @@ async def hiw_user(message: Message, bot: Bot, state: FSMContext):
     user_data = await state.get_data()
     lang = user_data.get("lang", "ru")
     text = hiw_text(lang)
-    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode="HTML", reply_markup=get_return_to_categories(lang))
+    await bot.send_message(chat_id=message.chat.id, text=text, parse_mode="HTML", reply_markup=get_return_to_main_menu(lang))
 
 
 async def feedback_user(message: Message, bot: Bot, state: FSMContext):
