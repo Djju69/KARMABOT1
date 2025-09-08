@@ -200,13 +200,26 @@ async def handle_admin_cabinet_button(message: Message, bot: Bot, state: FSMCont
     t.get('menu.help', '') for t in translations.values()
 ]))
 async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Помощь'."""
+    """Обработчик кнопки 'Помощь' - новая справочная система."""
     logger.debug(f"User {message.from_user.id} requested help")
     if not await ensure_policy_accepted(message, bot, state):
         return
         
     try:
-        await hiw_user(message, bot, state)
+        # Импортируем сервис помощи
+        from ..services.help_service import HelpService
+        help_service = HelpService()
+        
+        # Получаем справочное сообщение
+        help_message = await help_service.get_help_message(message.from_user.id)
+        
+        # Отправляем сообщение с поддержкой MarkdownV2
+        await message.answer(
+            help_message,
+            parse_mode="MarkdownV2",
+            disable_web_page_preview=True
+        )
+        
     except Exception as e:
         logger.error(f"Error showing help: {e}", exc_info=True)
         user_data = await state.get_data()

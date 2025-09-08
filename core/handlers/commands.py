@@ -67,8 +67,25 @@ def register_commands(router):
 
     @router.message(Command("help"))
     async def cmd_help(message: Message):
-        """/help — Помощь/FAQ (заглушка)"""
-        await message.answer("❓ Помощь: раздел FAQ скоро будет обновлён.")
+        """/help — Новая справочная система"""
+        try:
+            # Импортируем сервис помощи
+            from core.services.help_service import HelpService
+            help_service = HelpService()
+            
+            # Получаем справочное сообщение
+            help_message = await help_service.get_help_message(message.from_user.id)
+            
+            # Отправляем сообщение с поддержкой MarkdownV2
+            await message.answer(
+                help_message,
+                parse_mode="MarkdownV2",
+                disable_web_page_preview=True
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in cmd_help: {e}", exc_info=True)
+            await message.answer("❌ Произошла ошибка при загрузке справочной информации. Попробуйте позже.")
     
     @router.message(Command("webapp"))
     async def cmd_webapp(message: Message):
