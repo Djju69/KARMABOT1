@@ -12,39 +12,6 @@ class TestDataCreator:
     
     def __init__(self):
         self.test_photo_id = "AgACAgIAAxkBAAIBY2YAAAAA"  # Заглушка для фото
-        # Используем существующие категории из системы
-        self.categories = [
-            {"slug": "restaurants", "name": "🍜 Рестораны", "subcategories": [
-                {"name": "Итальянская кухня"},
-                {"name": "Азиатская кухня"},
-                {"name": "Фастфуд"}
-            ]},
-            {"slug": "spa", "name": "🧘 SPA и массаж", "subcategories": [
-                {"name": "SPA-центры"},
-                {"name": "Массажные салоны"},
-                {"name": "Сауны"}
-            ]},
-            {"slug": "transport", "name": "🛵 Аренда байков", "subcategories": [
-                {"name": "Мотоциклы"},
-                {"name": "Скутеры"},
-                {"name": "Велосипеды"}
-            ]},
-            {"slug": "hotels", "name": "🏨 Отели", "subcategories": [
-                {"name": "Отели"},
-                {"name": "Хостелы"},
-                {"name": "Апартаменты"}
-            ]},
-            {"slug": "tours", "name": "🗺️ Экскурсии", "subcategories": [
-                {"name": "Пешие экскурсии"},
-                {"name": "Автобусные туры"},
-                {"name": "Морские прогулки"}
-            ]},
-            {"slug": "shops", "name": "🛍 Магазины и услуги", "subcategories": [
-                {"name": "Супермаркеты"},
-                {"name": "Одежда"},
-                {"name": "Электроника"}
-            ]}
-        ]
     
     async def create_test_partners(self) -> bool:
         """Создать тестовых партнеров"""
