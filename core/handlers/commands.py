@@ -128,7 +128,7 @@ def register_commands(router):
             await message.answer("⚠️ Ошибка при очистке кэша")
 
     @router.callback_query(F.data.startswith("city:set:"))
-    async def handle_city_selection(callback: CallbackQuery):
+    async def handle_city_selection(callback: CallbackQuery, state: FSMContext):
         """Обработчик выбора города"""
         try:
             await callback.answer()
@@ -147,11 +147,6 @@ def register_commands(router):
             city_name = cities.get(city_id, "Неизвестный город")
             
             # Сохраняем выбранный город в состояние пользователя
-            from aiogram.fsm.context import FSMContext
-            state = FSMContext(
-                storage=callback.bot.storage,
-                key=callback.from_user.id
-            )
             await state.update_data(selected_city_id=city_id, selected_city_name=city_name)
             
             # Обновляем сообщение

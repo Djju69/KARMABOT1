@@ -328,6 +328,116 @@ async def view_achievements_handler(message: Message, state: FSMContext):
         )
 
 
+@router.message(F.text.in_(["📱 Сканировать QR", "📱 Scan QR"]))
+async def scan_qr_handler(message: Message, state: FSMContext):
+    """Handle QR scanning functionality."""
+    try:
+        await message.answer(
+            "📱 <b>Сканирование QR-кода</b>\n\n"
+            "Для сканирования QR-кода:\n"
+            "1. Наведите камеру на QR-код\n"
+            "2. Или отправьте фото с QR-кодом\n"
+            "3. Или введите код карты вручную\n\n"
+            "💡 QR-коды можно найти на пластиковых картах или в приложении партнеров.",
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+        await state.set_state(CabinetStates.viewing_profile)
+    except Exception as e:
+        logger.error(f"Error in scan_qr_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось запустить сканирование QR. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text.in_(["💰 Потратить карму", "💰 Spend Karma"]))
+async def spend_karma_handler(message: Message, state: FSMContext):
+    """Handle karma spending functionality."""
+    try:
+        user_id = message.from_user.id
+        profile = await user_cabinet_service.get_user_profile(user_id)
+        
+        if not profile:
+            await message.answer(
+                "❌ Произошла ошибка при загрузке баланса. Пожалуйста, попробуйте позже.",
+                reply_markup=get_user_cabinet_keyboard()
+            )
+            return
+        
+        karma_points = profile.get('karma_points', 0)
+        
+        if karma_points <= 0:
+            text = (
+                "💰 <b>Трата кармы</b>\n\n"
+                "❌ У вас недостаточно кармы для трат.\n\n"
+                "💡 Зарабатывайте карму:\n"
+                "• Ежедневный вход: +5 кармы\n"
+                "• Привязка карты: +25 кармы\n"
+                "• Приглашение друзей: +50 кармы"
+            )
+        else:
+            text = (
+                f"💰 <b>Трата кармы</b>\n\n"
+                f"⭐ Доступно для трат: <b>{karma_points} кармы</b>\n\n"
+                f"💡 <b>Доступные скидки:</b>\n"
+                f"• 100 кармы = 5% скидка\n"
+                f"• 200 кармы = 10% скидка\n"
+                f"• 500 кармы = 20% скидка\n"
+                f"• 1000 кармы = 30% скидка\n\n"
+                f"🚧 <i>Функция траты кармы будет доступна в следующих обновлениях.</i>"
+            )
+        
+        await message.answer(
+            text,
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+        await state.set_state(CabinetStates.spending_points)
+        
+    except Exception as e:
+        logger.error(f"Error in spend_karma_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить информацию о тратах. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
+@router.message(F.text.in_(["⚙️ Настройки", "⚙️ Settings"]))
+async def settings_handler(message: Message, state: FSMContext):
+    """Handle settings functionality."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        text = (
+            "⚙️ <b>Настройки</b>\n\n"
+            f"🌐 <b>Язык:</b> {lang.upper()}\n"
+            f"🔔 <b>Уведомления:</b> Включены\n"
+            f"🔒 <b>Приватность:</b> Стандартная\n\n"
+            f"💡 <b>Доступные настройки:</b>\n"
+            f"• Изменение языка\n"
+            f"• Управление уведомлениями\n"
+            f"• Настройки приватности\n"
+            f"• Экспорт данных\n\n"
+            f"🚧 <i>Расширенные настройки будут доступны в следующих обновлениях.</i>"
+        )
+        
+        await message.answer(
+            text,
+            reply_markup=get_user_cabinet_keyboard(),
+            parse_mode='HTML'
+        )
+        await state.set_state(CabinetStates.viewing_settings)
+        
+    except Exception as e:
+        logger.error(f"Error in settings_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить настройки. Пожалуйста, попробуйте позже.",
+            reply_markup=get_user_cabinet_keyboard()
+        )
+
+
 @router.message(F.text.in_(["◀️ Назад", "◀️ Back"]))
 async def back_to_profile_handler(message: Message, state: FSMContext):
     """Handle back button to return to main menu."""
@@ -343,13 +453,16 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
         await message.answer("Не удалось вернуться в главное меню. Попробуйте позже.")
 
 
-# Register all handlers
+# Register all handlers with correct button texts
 router.message.register(user_cabinet_handler, F.text == "👤 Личный кабинет")
-router.message.register(view_karma_handler, F.text == "📊 Моя карма")
+router.message.register(view_karma_handler, F.text == "📊 Карма")
 router.message.register(view_history_handler, F.text == "📜 История")
-router.message.register(view_cards_handler, F.text == "💳 Мои карты")
+router.message.register(view_cards_handler, F.text == "📋 Моя карта")
 router.message.register(view_notifications_handler, F.text == "🔔 Уведомления")
-router.message.register(view_achievements_handler, F.text == "🏆 Достижения")
+router.message.register(view_achievements_handler, F.text == "🏅 Достижения")
+router.message.register(scan_qr_handler, F.text == "📱 Сканировать QR")
+router.message.register(spend_karma_handler, F.text == "💰 Потратить карму")
+router.message.register(settings_handler, F.text == "⚙️ Настройки")
 router.message.register(back_to_profile_handler, F.text == "◀️ Назад")
 
 # For backward compatibility

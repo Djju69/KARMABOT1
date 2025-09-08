@@ -95,10 +95,21 @@ class DatabaseMigrator:
         else:
             with self.get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT 1 FROM schema_migrations WHERE version = ?", 
+                    "SELECT 1 FROM schema_migrations WHERE version = ?",
                     (version,)
                 )
                 return cursor.fetchone() is not None
+    
+    def _is_postgres(self) -> bool:
+        """Check if we're using PostgreSQL"""
+        if self._is_memory:
+            return False
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("SELECT 1 FROM pg_catalog.pg_tables LIMIT 1")
+                return True
+        except:
+            return False
     
     def apply_migration(self, version: str, description: str, sql: str):
         """Apply migration if not already applied (idempotent)"""
@@ -745,11 +756,35 @@ class DatabaseMigrator:
         ON cards_generated(card_id);
         """
         
-        # Cards binding table
-        cards_binding_sql = """
+        # Cards binding table - PostgreSQL version
+        cards_binding_sql_pg = """
         CREATE TABLE IF NOT EXISTS cards_binding (
             id BIGSERIAL PRIMARY KEY,
             telegram_id BIGINT NOT NULL,
+            card_id VARCHAR(20) NOT NULL UNIQUE,
+            card_id_printable VARCHAR(50),
+            qr_url TEXT,
+            bound_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_cards_binding_telegram_id 
+        ON cards_binding(telegram_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_cards_binding_card_id 
+        ON cards_binding(card_id);
+        
+        CREATE INDEX IF NOT EXISTS idx_cards_binding_status 
+        ON cards_binding(status);
+        """
+        
+        # Cards binding table - SQLite version
+        cards_binding_sql_sqlite = """
+        CREATE TABLE IF NOT EXISTS cards_binding (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER NOT NULL,
             card_id VARCHAR(20) NOT NULL UNIQUE,
             card_id_printable VARCHAR(50),
             qr_url TEXT,
@@ -846,11 +881,21 @@ class DatabaseMigrator:
             cards_generated_sql,
         )
         
-        self.apply_migration(
-            "016.4",
-            "EXPAND: Create cards_binding table",
-            cards_binding_sql,
-        )
+        # Apply cards_binding migration with database-specific SQL
+        if self._is_memory or not self._is_postgres():
+            # SQLite version
+            self.apply_migration(
+                "016.4",
+                "EXPAND: Create cards_binding table",
+                cards_binding_sql_sqlite,
+            )
+        else:
+            # PostgreSQL version
+            self.apply_migration(
+                "016.4",
+                "EXPAND: Create cards_binding table",
+                cards_binding_sql_pg,
+            )
         
         self.apply_migration(
             "016.5",
