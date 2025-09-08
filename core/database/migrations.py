@@ -122,16 +122,56 @@ class DatabaseMigrator:
         else:
             with self.get_connection() as conn:
                 try:
-                    # Execute migration SQL
-                    conn.executescript(sql)
+                    # Check if we're using PostgreSQL
+                    is_postgres = False
+                    try:
+                        cursor = conn.execute("SELECT 1 FROM pg_catalog.pg_tables LIMIT 1")
+                        is_postgres = True
+                    except:
+                        pass
                     
-                    # Record migration
-                    conn.execute(
-                        "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
-                        (version, description)
-                    )
-                    
-                    logger.info(f"Applied migration {version}: {description}")
+                    if is_postgres:
+                        # PostgreSQL migration
+                        import asyncio
+                        import asyncpg
+                        from core.settings import get_settings
+                        
+                        async def run_postgres_migration():
+                            settings = get_settings()
+                            conn_pg = await asyncpg.connect(settings.database_url)
+                            try:
+                                # Split SQL into individual statements
+                                statements = [stmt.strip() for stmt in sql.split(';') if stmt.strip()]
+                                for statement in statements:
+                                    if statement:
+                                        await conn_pg.execute(statement)
+                                
+                                # Record migration
+                                await conn_pg.execute(
+                                    "INSERT INTO schema_migrations (version, description) VALUES ($1, $2)",
+                                    version, description
+                                )
+                                logger.info(f"Applied migration {version}: {description}")
+                            finally:
+                                await conn_pg.close()
+                        
+                        # Run PostgreSQL migration
+                        try:
+                            loop = asyncio.get_event_loop()
+                            loop.run_until_complete(run_postgres_migration())
+                        except RuntimeError:
+                            asyncio.run(run_postgres_migration())
+                    else:
+                        # SQLite migration
+                        conn.executescript(sql)
+                        
+                        # Record migration
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                            (version, description)
+                        )
+                        conn.commit()
+                        logger.info(f"Applied migration {version}: {description}")
                 except Exception as e:
                     logger.error(f"Failed to apply migration {version}: {e}")
                     raise
