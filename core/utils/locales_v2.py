@@ -20,7 +20,7 @@ translations_v2 = {
         'invite.invited': '초대한 사용자',
         'invite.earnings': '수익',
         # Existing keys
-        'back_to_main_menu': '메인 메뉴로 돌아가기🏘',
+        'back_to_main_menu': '◀️ 뒤로',
         'back_to_categories': '⬅️ 카테고리로',
         
         # Admin menu buttons

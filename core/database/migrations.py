@@ -708,7 +708,7 @@ class DatabaseMigrator:
         # Cards binding table
         cards_binding_sql = """
         CREATE TABLE IF NOT EXISTS cards_binding (
-            id SERIAL PRIMARY KEY,
+            id BIGSERIAL PRIMARY KEY,
             telegram_id BIGINT NOT NULL,
             card_id VARCHAR(20) NOT NULL UNIQUE,
             card_id_printable VARCHAR(50),

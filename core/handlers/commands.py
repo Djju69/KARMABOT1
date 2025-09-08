@@ -2,9 +2,9 @@
 Command handlers and utilities for the bot
 """
 import logging
-from aiogram import Bot, Router
+from aiogram import Bot, Router, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BotCommand, BotCommandScopeDefault, Message
+from aiogram.types import BotCommand, BotCommandScopeDefault, Message, CallbackQuery
 from core.utils.locales_v2 import get_text
 from core.security.roles import Role
 from core.security.roles import get_user_role
