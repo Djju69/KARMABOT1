@@ -21,6 +21,7 @@ class Features:
     qr_webapp: bool = field(default=False)
     listen_notify: bool = field(default=False)
     support_voice: bool = field(default=False)  # Голосовой ввод
+    webapp_url: str = field(default="https://web-production-d51c7.up.railway.app/webapp")
     
     def __post_init__(self):
         """Initialize feature flags from environment variables"""

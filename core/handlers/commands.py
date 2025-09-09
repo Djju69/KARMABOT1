@@ -89,7 +89,40 @@ def register_commands(router):
     
     @router.message(Command("webapp"))
     async def cmd_webapp(message: Message):
-        await message.answer("🔗 WebApp скоро будет доступен")
+        """Открыть WebApp личный кабинет"""
+        try:
+            # Получаем URL WebApp из настроек
+            webapp_url = getattr(settings, 'webapp_url', 'https://web-production-d51c7.up.railway.app/webapp')
+            
+            # Создаем кнопку WebApp
+            from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+            
+            webapp_keyboard = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(
+                        text="🌐 Открыть Личный кабинет",
+                        web_app=WebAppInfo(url=webapp_url)
+                    )]
+                ],
+                resize_keyboard=True,
+                one_time_keyboard=True
+            )
+            
+            await message.answer(
+                "🌐 <b>Личный кабинет WebApp</b>\n\n"
+                "Откройте полноценный личный кабинет в браузере с удобным интерфейсом:\n\n"
+                "• 📊 Дашборд и статистика\n"
+                "• 🏪 Управление карточками (для партнеров)\n"
+                "• 📋 Модерация (для админов)\n"
+                "• ⚙️ Настройки системы\n\n"
+                "Нажмите кнопку ниже для открытия:",
+                reply_markup=webapp_keyboard,
+                parse_mode="HTML"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in cmd_webapp: {e}", exc_info=True)
+            await message.answer("❌ WebApp временно недоступен. Попробуйте позже.")
 
     @router.message(Command("city"))
     async def cmd_city(message: Message):
