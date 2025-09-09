@@ -12,7 +12,6 @@ from typing import Optional, Dict, Any
 import logging
 
 from ..keyboards.reply_v2 import (
-    get_user_points_keyboard,
     get_user_settings_keyboard,
     get_confirmation_keyboard,
     get_return_to_main_menu,
@@ -108,10 +107,7 @@ async def user_points_handler(message: Message, state: FSMContext):
         )
         
         # Get points keyboard
-        keyboard = get_user_points_keyboard({
-            'lang': user.lang_code,
-            'id': user.telegram_id
-        })
+        keyboard = get_return_to_main_menu(lang)
         
         await message.answer(points_text, reply_markup=keyboard)
         await state.set_state(UserStates.viewing_points)

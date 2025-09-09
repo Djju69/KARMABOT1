@@ -212,15 +212,15 @@ class KarmaService:
             await conn.close()
 
     async def get_karma_history(self, user_id: int, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
-    """
+        """
         Get karma transaction history for user.
-    
-    Args:
-        user_id: Telegram user ID
+        
+        Args:
+            user_id: Telegram user ID
             limit: Number of transactions to return
             offset: Offset for pagination
         
-    Returns:
+        Returns:
             list: List of karma transactions
         """
         try:
