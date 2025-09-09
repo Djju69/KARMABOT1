@@ -402,7 +402,7 @@ async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -
         '🔗 Ваша реферальная ссылка'
     ) + "\n\n"
     
-    response += f"`{referral_link}`\n\n"
+    response += f"<code>{referral_link}</code>\n\n"
     response += translations.get(lang, {}).get(
         'referral_stats',
         '📊 Статистика:'
@@ -416,7 +416,7 @@ async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -
         '💡 Поделитесь ссылкой с друзьями и получайте бонусы за каждого приглашенного!'
     )
     
-    await message.answer(response, parse_mode="Markdown")
+    await message.answer(response, parse_mode="HTML")
 
 
 @main_menu_router.message(F.text.in_(["📋 Приглашённые"]))

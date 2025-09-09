@@ -191,9 +191,13 @@ async def cmd_add(message: Message, state: FSMContext):
             )
             return
         
-        # Начинаем процесс регистрации партнера с подтверждением через код
-        from core.fsm.partner_confirmation import start_partner_confirmation
-        await start_partner_confirmation(message, state)
+        # Начинаем процесс регистрации партнера
+        await message.answer(
+            "🤝 <b>Регистрация партнера</b>\n\n"
+            "Для регистрации в качестве партнера используйте кнопку '➕ Стать партнером' в главном меню.\n\n"
+            "💡 Это позволит вам добавлять свои заведения и управлять системой лояльности.",
+            parse_mode='HTML'
+        )
             
     except Exception as e:
         logger.error(f"Error in cmd_add: {e}")
