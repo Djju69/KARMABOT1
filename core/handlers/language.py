@@ -15,7 +15,7 @@ user_language = {}
 from core.utils.locales_v2 import get_text
 
 # reply клавиатуры
-from core.keyboards.reply import get_reply_keyboard
+from core.keyboards.reply_v2 import get_reply_keyboard
 
 # опционально: сервис профиля
 try:

@@ -18,8 +18,7 @@ from core.utils.locales import translations, get_text
 # Клавиатуры
 from core.keyboards.restaurant_keyboards import select_restoran, regional_restoran, kitchen_keyboard
 from core.keyboards.language_keyboard import language_keyboard
-from core.keyboards.reply import get_main_menu_reply, get_reply_keyboard
-from core.keyboards.reply_dynamic import get_return_to_main_menu, get_test_restoran
+from core.keyboards.reply_v2 import get_main_menu_reply, get_reply_keyboard, get_return_to_main_menu, get_test_restoran
 from core.keyboards.reply_v2 import get_return_to_categories
 
 # Тексты

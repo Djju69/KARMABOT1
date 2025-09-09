@@ -14,7 +14,7 @@ from ..utils.locales_v2 import get_text, get_all_texts
 
 def get_main_menu_reply(lang: str = 'ru', user_id: int | None = None) -> ReplyKeyboardMarkup:
     """
-    Главное Reply-меню согласно финальному ТЗ.
+    Главное Reply-меню согласно канонической версии.
     
     Args:
         lang: Язык интерфейса
@@ -23,72 +23,19 @@ def get_main_menu_reply(lang: str = 'ru', user_id: int | None = None) -> ReplyKe
     Returns:
         ReplyKeyboardMarkup: Клавиатура основного меню
         
-    Menu layouts:
-    - New (3 rows):
-      [Категории] [По районам/Рядом]
-      [Помощь] [Язык]
-      [Личный кабинет]
-      
-    - Legacy (2x2):
-      [Категории] [По районам/Рядом]
-      [Помощь] [Язык]
+    Menu layout:
+    [🗂️ Категории] [👥 Пригласить друзей]
+    [⭐ Избранные] [❓ Помощь]
+    [👤 Личный кабинет]
     """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Log feature flag status
-    try:
-        feature_enabled = getattr(settings.features, 'new_menu', False)
-        logger.info(
-            f"[MENU_DEBUG] Building menu | user_id={user_id} | "
-            f"new_menu={feature_enabled} | lang={lang}"
-        )
-    except Exception as e:
-        logger.error(f"[MENU_ERROR] Failed to check feature flag: {e}")
-        feature_enabled = False
-    
-    # Legacy compact layout (2x2) for backward compatibility when new menu is disabled
-    if not feature_enabled or not getattr(settings.features, 'new_menu', False):
-        logger.info("[MENU_DEBUG] Using legacy menu layout (2x2)")
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text=get_text('choose_category', lang)),
-                    KeyboardButton(text=get_text('show_nearest', lang)),
-                ],
-                [
-                    KeyboardButton(text=get_text('help', lang)),
-                    KeyboardButton(text=get_text('choose_language', lang)),
-                ],
-            ],
-            resize_keyboard=True,
-            input_field_placeholder=get_text('choose_action', lang)
-        )
-
-    # New layout (3 rows) when feature flag is enabled
-    menu_layout = [
-        [
-            KeyboardButton(text=get_text('choose_category', lang)),
-            KeyboardButton(text=get_text('show_nearest', lang)),
-        ],
-        [
-            KeyboardButton(text=get_text('help', lang)),
-            KeyboardButton(text=get_text('choose_language', lang)),
-        ],
-        [
-            KeyboardButton(text=get_text('profile', lang)),
-        ]
-    ]
-    
-    logger.debug(
-        f"[MENU_DEBUG] Using new menu layout | "
-        f"user_id={user_id} | buttons={[[b.text for b in row] for row in menu_layout]}"
-    )
-    
     return ReplyKeyboardMarkup(
-        keyboard=menu_layout,
+        keyboard=[
+            [KeyboardButton(text=get_text("choose_category", lang)), KeyboardButton(text=get_text("keyboard.referral_program", lang))],
+            [KeyboardButton(text=get_text("favorites", lang)), KeyboardButton(text=get_text("help", lang))],
+            [KeyboardButton(text=get_text("profile", lang))],
+        ],
         resize_keyboard=True,
-        input_field_placeholder=get_text('choose_action', lang)
+        input_field_placeholder=get_text("choose_action", lang)
     )
 
 def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
@@ -468,6 +415,39 @@ def get_partner_cabinet_keyboard(lang: str = "ru", has_cards: bool = False) -> R
     ])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
+
+def get_reply_keyboard(user: dict | None = None, screen: str = "main") -> ReplyKeyboardMarkup:
+    """Универсальная функция для получения reply клавиатуры"""
+    if not user:
+        return get_main_menu_reply()
+    
+    role = user.get("role", "user")
+    lang = user.get("lang", "ru")
+    
+    if screen == "main":
+        if role == "admin":
+            return get_admin_keyboard(lang)
+        elif role == "superadmin":
+            return get_superadmin_keyboard(lang)
+        elif role == "partner":
+            return get_partner_keyboard(lang)
+        else:
+            return get_main_menu_reply(lang)
+    
+    return get_main_menu_reply(lang)
+
+
+def get_test_restoran(lang: str = "ru") -> ReplyKeyboardMarkup:
+    """Тестовая клавиатура для ресторанов"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text("choose_category", lang))],
+            [KeyboardButton(text=get_text("back_to_main_menu", lang))],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder=get_text("choose_action", lang)
+    )
+
 # Export commonly used keyboards
 __all__ = [
     'get_main_menu_reply',
@@ -494,5 +474,8 @@ __all__ = [
     'get_main_menu_keyboard',
     'get_partner_keyboard',
     'get_admin_keyboard',
-    'get_superadmin_keyboard'
+    'get_superadmin_keyboard',
+    # New functions
+    'get_reply_keyboard',
+    'get_test_restoran'
 ]

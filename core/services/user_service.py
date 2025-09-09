@@ -25,11 +25,11 @@ class KarmaService:
     async def get_user_karma(self, user_id: int) -> int:
         """
         Get current user karma points.
+    
+    Args:
+        user_id: Telegram user ID
         
-        Args:
-            user_id: Telegram user ID
-            
-        Returns:
+    Returns:
             int: User's current karma points
         """
         try:
@@ -49,11 +49,11 @@ class KarmaService:
     async def get_user_level(self, user_id: int) -> int:
         """
         Calculate user level based on their karma according to TZ.
+    
+    Args:
+        user_id: Telegram user ID
         
-        Args:
-            user_id: Telegram user ID
-            
-        Returns:
+    Returns:
             int: User level (1-10 based on karma thresholds)
         """
         karma_points = await self.get_user_karma(user_id)
@@ -82,11 +82,11 @@ class KarmaService:
     async def get_level_progress(self, user_id: int) -> Dict[str, Any]:
         """
         Get user's progress to next level.
+    
+    Args:
+        user_id: Telegram user ID
         
-        Args:
-            user_id: Telegram user ID
-            
-        Returns:
+    Returns:
             dict: Progress information
         """
         karma_points = await self.get_user_karma(user_id)
@@ -122,14 +122,14 @@ class KarmaService:
     async def add_karma(self, user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
         """
         Add karma points to user.
-        
-        Args:
-            user_id: Telegram user ID
+    
+    Args:
+        user_id: Telegram user ID
             amount: Amount of karma to add
             reason: Reason for adding karma
             admin_id: Admin who added karma (if manual)
-            
-        Returns:
+        
+    Returns:
             bool: Success status
         """
         try:
@@ -169,7 +169,7 @@ class KarmaService:
         except Exception as e:
             logger.error(f"Error adding karma to user {user_id}: {str(e)}")
             return False
-    
+            
     async def subtract_karma(self, user_id: int, amount: int, reason: str = "", admin_id: int = None) -> bool:
         """
         Subtract karma points from user.
@@ -204,24 +204,24 @@ class KarmaService:
                 """, user_id, -amount, reason, admin_id)
                 
                 logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
-                return True
-                
+        return True
+
             finally:
                 await conn.close()
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")
             return False
-    
+
     async def get_karma_history(self, user_id: int, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
-        """
+    """
         Get karma transaction history for user.
-        
-        Args:
-            user_id: Telegram user ID
+    
+    Args:
+        user_id: Telegram user ID
             limit: Number of transactions to return
             offset: Offset for pagination
-            
-        Returns:
+        
+    Returns:
             list: List of karma transactions
         """
         try:

@@ -2,7 +2,7 @@ from aiogram.types import CallbackQuery
 from aiogram import Bot
 from aiogram.fsm.context import FSMContext
 from core.utils.locales import translations
-from core.keyboards.reply_dynamic import get_test_restoran
+from core.keyboards.reply_v2 import get_test_restoran
 
 async def language_callback(callback: CallbackQuery, bot: Bot, state: FSMContext):
     lang_code = callback.data.split("_")[-1]  # 'ru', 'en', 'ko'

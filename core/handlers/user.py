@@ -11,7 +11,7 @@ from aiogram.fsm.state import State, StatesGroup
 from typing import Optional, Dict, Any
 import logging
 
-from ..keyboards.reply import (
+from ..keyboards.reply_v2 import (
     get_user_profile_keyboard,
     get_user_points_keyboard,
     get_user_settings_keyboard,

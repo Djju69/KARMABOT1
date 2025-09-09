@@ -6,7 +6,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from core.keyboards.reply import get_main_menu_reply
+from core.keyboards.reply_v2 import get_main_menu_reply
 from core.utils.locales import get_text
 
 router = Router(name="main_menu")

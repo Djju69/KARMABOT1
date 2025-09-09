@@ -321,7 +321,14 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
 async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает список избранных (заглушка до реализации хранилища)."""
     logger.debug(f"User {message.from_user.id} opened favorites")
-    await message.answer("⭐ Избранные: скоро. Здесь будут ваши сохранённые карточки.")
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    
+    favorites_text = translations.get(lang, {}).get(
+        'favorites_coming_soon',
+        '⭐ Избранные: скоро. Здесь будут ваши сохранённые карточки.'
+    )
+    await message.answer(favorites_text)
 
 
 # Invite friends (reply menu with 3 items)
@@ -349,17 +356,38 @@ async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMConte
 # Placeholders for invite submenu actions
 @main_menu_router.message(F.text.in_(["🔗 Моя ссылка"]))
 async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -> None:
-    await message.answer("🔗 Ваша ссылка: скоро.")
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    
+    link_text = translations.get(lang, {}).get(
+        'referral_link_coming_soon',
+        '🔗 Ваша ссылка: скоро.'
+    )
+    await message.answer(link_text)
 
 
 @main_menu_router.message(F.text.in_(["📋 Приглашённые"]))
 async def handle_invite_list(message: Message, bot: Bot, state: FSMContext) -> None:
-    await message.answer("📋 Список приглашённых: скоро.")
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    
+    list_text = translations.get(lang, {}).get(
+        'referral_list_coming_soon',
+        '📋 Список приглашённых: скоро.'
+    )
+    await message.answer(list_text)
 
 
 @main_menu_router.message(F.text.in_(["💵 Доходы"]))
 async def handle_invite_earnings(message: Message, bot: Bot, state: FSMContext) -> None:
-    await message.answer("💵 Доходы по рефералам: скоро.")
+    user_data = await state.get_data()
+    lang = user_data.get('lang', 'ru')
+    
+    earnings_text = translations.get(lang, {}).get(
+        'referral_earnings_coming_soon',
+        '💵 Доходы по рефералам: скоро.'
+    )
+    await message.answer(earnings_text)
 
 
 # --- Policy consent callbacks ---

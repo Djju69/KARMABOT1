@@ -257,9 +257,11 @@ async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | 
     t = get_all_texts(lang)
     
     city_hint = f" (город #{city_id})" if city_id else ""
+    title = get_text('nearest_places_title', lang)
+    request_text = get_text('nearest_places_request', lang)
+    
     await message.answer(
-        "📍 **Ближайшие заведения**" + city_hint + "\n\n"
-        "Пожалуйста, отправьте свою геолокацию, чтобы найти заведения рядом с вами 🗺️",
+        f"{title}**{city_hint}\n\n{request_text}",
         reply_markup=get_location_request_keyboard(lang)
     )
 
@@ -304,7 +306,7 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
         )
         
         if nearby_cards:
-            response = f"📍 **Ближайшие заведения** (в радиусе 5 км):\n\n"
+            response = get_text('nearest_places_found', lang) + "\n\n"
             
             # Группируем по категориям для лучшего отображения
             by_category = {}
@@ -327,13 +329,13 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
                 response += "\n"
             
             # Добавляем информацию о точности поиска
-            response += f"✅ Найдено {len(nearby_cards)} заведений поблизости\n"
-            response += "💡 Покажите QR-код для получения скидки!"
+            count_text = get_text('nearest_places_count', lang).format(count=len(nearby_cards))
+            tip_text = get_text('nearest_places_tip', lang)
+            response += f"{count_text}\n{tip_text}"
             
         else:
-            response = "📭 **Поблизости пока нет заведений**\n\n"
-            response += "В радиусе 5 км не найдено ни одного заведения.\n"
-            response += "Попробуйте выбрать категорию из главного меню или добавьте свое заведение!"
+            response = get_text('nearest_places_none', lang) + "\n\n"
+            response += get_text('nearest_places_none_desc', lang)
         
         await log_event("nearest_results_shown", user=message.from_user, count=len(nearby_cards), radius_km=5.0)
         await message.answer(response)
@@ -348,8 +350,9 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
         
     except Exception as e:
         logger.error(f"Error in handle_location_v2: {e}")
+        error_text = get_text('location_error', lang)
         await message.answer(
-            "❌ Ошибка при обработке геолокации. Попробуйте позже.",
+            error_text,
             reply_markup=get_return_to_main_menu(lang)
         )
 
@@ -395,11 +398,10 @@ async def category_selected_v2(message: Message, bot: Bot, lang: str):
                 response += "\n\n💡 *Покажите QR-код перед заказом, чтобы получить скидку!*"
             
         else:
-            response = f"📭 **{matching_category.name}**\n\n"
-            response += "Заведения в этой категории появятся совсем скоро!\n\n"
+            response = get_text('category_empty', lang).format(category_name=matching_category.name) + "\n\n"
             
             if settings.features.partner_fsm:
-                response += "🤝 Хотите добавить свое заведение? Используйте команду /add_card"
+                response += get_text('category_empty_partner', lang)
         
         await message.answer(response)
         
@@ -421,32 +423,30 @@ async def handle_legacy_category(message: Message, bot: Bot, category_text: str)
     
     # Legacy category responses (preserved exactly)
     if category_text == '🍜 Рестораны':
-        await message.answer(
-            "Вот список ресторанов, участвующих в программе скидок: 🍽️\n\n"
-            "1. Hải sản Mộc quán Nha Trang\n"
-            "2. Test рест\n\n"
-            "Покажите QR-код перед заказом, чтобы получить скидку!"
-        )
+        restaurants_text = get_text('legacy_restaurants', lang)
+        await message.answer(restaurants_text)
     elif category_text == '🧘 SPA и массаж':
-        await message.answer("Список салонов SPA и массажей появится совсем скоро 💆‍♀️")
+        spa_text = get_text('legacy_spa', lang)
+        await message.answer(spa_text)
     elif category_text == '🛵 Аренда байков':
-        await message.answer("Сервис аренды байков будет доступен в ближайшее время 🛵")
+        transport_text = get_text('legacy_transport', lang)
+        await message.answer(transport_text)
     elif category_text == '🏨 Отели':
-        await message.answer("Мы работаем над добавлением отелей 🏨")
+        hotels_text = get_text('legacy_hotels', lang)
+        await message.answer(hotels_text)
     elif category_text == '🗺️ Экскурсии':
-        await message.answer("Экскурсионные туры скоро будут доступны 🗺️")
+        tours_text = get_text('legacy_tours', lang)
+        await message.answer(tours_text)
     else:
-        await message.answer("Пожалуйста, выберите категорию из списка.")
+        choose_text = get_text('legacy_choose_category', lang)
+        await message.answer(choose_text)
 
 # Profile handler (new feature)
 async def handle_profile(message: Message, bot: Bot, lang: str):
     """Handle profile button press"""
     if not settings.features.partner_fsm:
-        await message.answer(
-            "🚧 **Личный кабинет**\n\n"
-            "Функция находится в разработке и будет доступна в ближайшее время.\n\n"
-            "Следите за обновлениями! 🔔"
-        )
+        profile_text = get_text('profile_development', lang)
+        await message.answer(profile_text)
         return
     
     t = get_all_texts(lang)
@@ -457,17 +457,24 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
     if not partner:
         # New user
         response = f"👤 **{t['profile_main']}**\n\n"
-        response += "Добро пожаловать! Вы можете:\n\n"
-        response += f"➕ {t['add_card']} - добавить заведение\n"
-        response += f"📋 {t['my_cards']} - просмотреть карточки\n"
-        response += f"📊 {t['profile_stats']} - статистика\n\n"
-        response += "Начните с добавления первой карточки командой /add_card"
+        welcome_text = get_text('profile_welcome', lang)
+        add_desc = get_text('profile_add_card_desc', lang)
+        cards_desc = get_text('profile_my_cards_desc', lang)
+        stats_desc = get_text('profile_stats_desc', lang)
+        start_text = get_text('profile_start_add', lang)
+        
+        response += f"{welcome_text}\n\n"
+        response += f"➕ {t['add_card']}{add_desc}\n"
+        response += f"📋 {t['my_cards']}{cards_desc}\n"
+        response += f"📊 {t['profile_stats']}{stats_desc}\n\n"
+        response += start_text
     else:
         # Existing partner
         cards = db_v2.get_partner_cards(partner.id)
         
         response = f"👤 **{t['profile_main']}**\n\n"
-        response += f"Привет, {partner.display_name or 'Партнер'}! 👋\n\n"
+        hello_text = get_text('profile_hello_partner', lang).format(name=partner.display_name or 'Партнер')
+        response += f"{hello_text}\n\n"
         response += f"📊 **{t['profile_stats']}:**\n"
         response += f"   • {t['cards_count']}: {len(cards)}\n"
         
@@ -478,7 +485,8 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
             status_counts[status] = status_counts.get(status, 0) + 1
         
         if status_counts:
-            response += "\n📋 **По статусам:**\n"
+            by_status_text = get_text('profile_stats_by_status', lang)
+            response += f"\n{by_status_text}\n"
             for status, count in status_counts.items():
                 status_emoji = {
                     'draft': '📝',
@@ -567,7 +575,8 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
         await callback.answer()
     except Exception as e:
         logger.error(f"on_restaurants_filter error: {e}")
-        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
+        error_text = get_text('error_try_later', lang)
+        await callback.answer(error_text, show_alert=False)
 
 
 @category_router.callback_query(F.data.regexp(r"^act:view:[0-9]+$"))
@@ -588,10 +597,7 @@ async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
         if card:
             text = card_service.render_card(card if isinstance(card, dict) else dict(card), lang)
         else:
-            text = (
-                "Карточка скоро будет доступна.\n"
-                "ID: " + str(listing_id)
-            )
+            text = get_text('card_soon_available', lang).format(card_id=str(listing_id))
 
         # Кнопки действия: карта/контакты, если есть данные
         gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None) if card else None
@@ -601,7 +607,8 @@ async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
         await callback.answer()
     except Exception as e:
         logger.error(f"on_card_view error: {e}")
-        await callback.answer("Ошибка, попробуйте позже", show_alert=False)
+        error_text = get_text('error_try_later', lang)
+        await callback.answer(error_text, show_alert=False)
 
 def get_category_router() -> Router:
     """Get category router (always enabled)"""

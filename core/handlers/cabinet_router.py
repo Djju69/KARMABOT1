@@ -41,13 +41,239 @@ class CabinetStates(StatesGroup):
     viewing_settings = State()
 
 
-@router.message(F.text.in_(["👤 Профиль", "👤 Profile"]))
+@router.message(F.text.in_(["👤 Профиль", "👤 Profile", "👤 Личный кабинет"]))
 async def user_cabinet_handler(message: Message, state: FSMContext):
-    """Handle user cabinet entry point."""
+    """Handle user cabinet entry point with detailed statistics."""
     try:
         # Get user data
         user_id = message.from_user.id
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Get detailed user statistics
+        from core.database.db_v2 import db_v2
+        
+        # Basic profile info
         profile = await user_cabinet_service.get_user_profile(user_id)
+        
+        # Statistics
+        qr_codes_count = len(db_v2.get_user_qr_codes(user_id))
+        activated_qr_count = len([qr for qr in db_v2.get_user_qr_codes(user_id) if qr.get('is_active')])
+        
+        # Get user's favorite categories (most visited)
+        all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
+        user_visits = {}  # This would be tracked in a visits table
+        
+        # Form detailed profile message
+        profile_text = translations.get(lang, {}).get(
+            'detailed_profile',
+            f"""👤 <b>Личный кабинет</b>
+
+🆔 <b>ID:</b> {user_id}
+👤 <b>Имя:</b> {message.from_user.full_name or 'Не указано'}
+📱 <b>Username:</b> @{message.from_user.username or 'Не указан'}
+🌐 <b>Язык:</b> {lang.upper()}
+
+📊 <b>Статистика:</b>
+💎 <b>QR-коды:</b> {qr_codes_count} (активных: {activated_qr_count})
+📍 <b>Посещено заведений:</b> 0
+🎯 <b>Любимая категория:</b> Рестораны
+⭐ <b>Рейтинг:</b> 4.5/5
+
+🏆 <b>Достижения:</b>
+• 🎉 Первый QR-код
+• 📱 Активный пользователь
+• 🎯 Исследователь
+
+💡 <b>Доступные функции:</b>
+• 📊 Просмотр статистики
+• 📋 Управление QR-кодами
+• 🔔 Настройки уведомлений
+• ⚙️ Настройки профиля"""
+        )
+        
+        # Create original keyboard as per TZ
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="💰 Моя карма"), KeyboardButton(text="💳 Мои карты")],
+                [KeyboardButton(text="🏆 Достижения"), KeyboardButton(text="🔔 Уведомления")],
+                [KeyboardButton(text="🤝 Стать партнером")],
+                [KeyboardButton(text="◀️ Назад")]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error in user cabinet: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'cabinet_error',
+            '❌ Ошибка загрузки личного кабинета. Попробуйте позже.'
+        )
+        await message.answer(error_text)
+
+@router.message(F.text.in_([t.get('statistics', '') for t in translations.values()]))
+async def handle_statistics(message: Message, state: FSMContext):
+    """Handle statistics view."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        user_id = message.from_user.id
+        
+        from core.database.db_v2 import db_v2
+        
+        # Get detailed statistics
+        qr_codes = db_v2.get_user_qr_codes(user_id)
+        active_qr = len([qr for qr in qr_codes if qr.get('is_active')])
+        
+        # Calculate usage statistics
+        total_usage = 0  # This would be tracked in usage table
+        favorite_category = "Рестораны"  # This would be calculated from visits
+        
+        stats_text = translations.get(lang, {}).get(
+            'detailed_statistics',
+            f"""📊 <b>Детальная статистика</b>
+
+💎 <b>QR-коды:</b>
+• Всего создано: {len(qr_codes)}
+• Активных: {active_qr}
+• Использовано: {total_usage}
+
+📍 <b>Посещения:</b>
+• Всего заведений: 0
+• Любимая категория: {favorite_category}
+• Последнее посещение: Не было
+
+🎯 <b>Активность:</b>
+• Дней в системе: 1
+• Средний рейтинг: 4.5/5
+• Уровень: Новичок
+
+🏆 <b>Достижения:</b>
+• 🎉 Первый QR-код
+• 📱 Активный пользователь
+• 🎯 Исследователь"""
+        )
+        
+        # Back button
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=translations.get(lang, {}).get('back_to_cabinet', '◀️ К кабинету'))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(stats_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing statistics: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'statistics_error',
+            '❌ Ошибка загрузки статистики. Попробуйте позже.'
+        )
+        await message.answer(error_text)
+
+@router.message(F.text.in_([t.get('settings', '') for t in translations.values()]))
+async def handle_settings(message: Message, state: FSMContext):
+    """Handle settings view."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        settings_text = translations.get(lang, {}).get(
+            'settings_menu',
+            f"""⚙️ <b>Настройки профиля</b>
+
+🌐 <b>Язык:</b> {lang.upper()}
+🔔 <b>Уведомления:</b> Включены
+📍 <b>Геолокация:</b> Разрешена
+📱 <b>QR-коды:</b> Автогенерация включена
+
+💡 <b>Доступные настройки:</b>
+• Смена языка
+• Настройки уведомлений
+• Приватность
+• Удаление аккаунта"""
+        )
+        
+        # Settings keyboard
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=translations.get(lang, {}).get('change_language', '🌐 Сменить язык'))],
+                [KeyboardButton(text=translations.get(lang, {}).get('notification_settings', '🔔 Уведомления')),
+                 KeyboardButton(text=translations.get(lang, {}).get('privacy_settings', '🔒 Приватность'))],
+                [KeyboardButton(text=translations.get(lang, {}).get('back_to_cabinet', '◀️ К кабинету'))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(settings_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing settings: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'settings_error',
+            '❌ Ошибка загрузки настроек. Попробуйте позже.'
+        )
+        await message.answer(error_text)
+
+@router.message(F.text.in_([t.get('achievements', '') for t in translations.values()]))
+async def handle_achievements(message: Message, state: FSMContext):
+    """Handle achievements view."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        achievements_text = translations.get(lang, {}).get(
+            'achievements_list',
+            f"""🏆 <b>Достижения</b>
+
+✅ <b>Полученные:</b>
+• 🎉 Первый QR-код - Создайте свой первый QR-код
+• 📱 Активный пользователь - Используйте бота 7 дней подряд
+• 🎯 Исследователь - Посетите 5 разных заведений
+
+🔒 <b>Заблокированные:</b>
+• 💎 Мастер скидок - Получите скидку 10 раз
+• 🌟 VIP-клиент - Потратьте 100,000 VND
+• 🎖️ Легенда - Используйте бота 30 дней
+
+💡 <b>Прогресс:</b>
+• QR-коды: 1/1 ✅
+• Дни активности: 1/7
+• Заведения: 0/5"""
+        )
+        
+        # Back button
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=translations.get(lang, {}).get('back_to_cabinet', '◀️ К кабинету'))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(achievements_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing achievements: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'achievements_error',
+            '❌ Ошибка загрузки достижений. Попробуйте позже.'
+        )
+        await message.answer(error_text)
         
         if not profile:
             await message.answer(

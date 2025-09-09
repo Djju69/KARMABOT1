@@ -6,7 +6,7 @@ import segno
 import gspread
 import json
 from datetime import timezone, timedelta, datetime
-from core.keyboards.reply import return_to_main_menu
+from core.keyboards.reply_v2 import return_to_main_menu
 from urllib.parse import urlencode
 import asyncio
 from qrcode_artistic import write_artistic

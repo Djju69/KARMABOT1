@@ -6,7 +6,7 @@ import gspread
 from aiogram import types, Bot
 from aiogram.types import Message, BufferedInputFile
 from datetime import timezone, timedelta, datetime
-from core.keyboards.reply import get_return_to_main_menu  # Исправлено здесь
+from core.keyboards.reply_v2 import get_return_to_main_menu  # Исправлено здесь
 from urllib.parse import urlencode
 from qrcode_artistic import write_artistic
 
