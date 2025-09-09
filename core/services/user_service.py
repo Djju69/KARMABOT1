@@ -185,26 +185,25 @@ class KarmaService:
         """
         try:
             conn = await self.get_connection()
-            try:
-                # Get current karma
-                current_karma = await self.get_user_karma(user_id)
-                new_karma = max(0, current_karma - amount)  # Don't go below 0
-                
-                # Update user karma
-                await conn.execute(
-                    "UPDATE users SET karma_points = $1 WHERE telegram_id = $2",
-                    new_karma, user_id
-                )
-                
-                # Log transaction
-                await conn.execute("""
-                    INSERT INTO karma_transactions 
-                    (user_id, amount, reason, admin_id, created_at)
-                    VALUES ($1, $2, $3, $4, NOW())
-                """, user_id, -amount, reason, admin_id)
-                
-                logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
-                return True
+            # Get current karma
+            current_karma = await self.get_user_karma(user_id)
+            new_karma = max(0, current_karma - amount)  # Don't go below 0
+            
+            # Update user karma
+            await conn.execute(
+                "UPDATE users SET karma_points = $1 WHERE telegram_id = $2",
+                new_karma, user_id
+            )
+            
+            # Log transaction
+            await conn.execute("""
+                INSERT INTO karma_transactions 
+                (user_id, amount, reason, admin_id, created_at)
+                VALUES ($1, $2, $3, $4, NOW())
+            """, user_id, -amount, reason, admin_id)
+            
+            logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
+            return True
 
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")

@@ -68,9 +68,6 @@ async def user_profile_handler(message: Message, state: FSMContext):
         
         # Get profile keyboard with user language
         keyboard = get_return_to_main_menu(lang)
-            'lang': user.lang_code,
-            'id': user.telegram_id
-        })
         
         # Send or update profile message
         await message.answer(profile_text, reply_markup=keyboard)
@@ -222,9 +219,6 @@ async def spend_points_handler(message: Message, state: FSMContext):
             await message.answer(
                 get_text("not_enough_points", user.lang_code),
                 reply_markup=get_return_to_main_menu(lang)
-                    'lang': user.lang_code,
-                    'id': user.telegram_id
-                })
             )
             return
         
