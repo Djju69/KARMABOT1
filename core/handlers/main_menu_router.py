@@ -388,7 +388,7 @@ async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -
     lang = user_data.get('lang', 'ru')
     
     from core.services.referral_service import referral_service
-    from core.config import settings
+    from core.settings import settings
     
     # Генерируем реферальную ссылку
     bot_username = (await bot.get_me()).username

@@ -12,7 +12,6 @@ from typing import Optional, Dict, Any
 import logging
 
 from ..keyboards.reply_v2 import (
-    get_confirmation_keyboard,
     get_return_to_main_menu,
     get_cancel_keyboard
 )

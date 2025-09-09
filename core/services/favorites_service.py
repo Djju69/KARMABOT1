@@ -63,7 +63,7 @@ class FavoritesService:
                 LIMIT ?
             """
             
-            favorites = db_v2.fetch_all(query, (user_id, limit))
+            favorites = db_v2.execute_query(query, (user_id, limit))
             return favorites
             
         except Exception as e:

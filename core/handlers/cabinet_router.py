@@ -57,8 +57,8 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
         profile = await user_cabinet_service.get_user_profile(user_id)
         
         # Statistics
-        qr_codes_count = len(db_v2.get_user_qr_codes(user_id))
-        activated_qr_count = len([qr for qr in db_v2.get_user_qr_codes(user_id) if qr.get('is_active')])
+        qr_codes_count = 0  # Временно отключено - таблица не существует
+        activated_qr_count = 0
         
         # Get user's favorite categories (most visited)
         all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
@@ -127,8 +127,8 @@ async def handle_statistics(message: Message, state: FSMContext):
         from core.database.db_v2 import db_v2
         
         # Get detailed statistics
-        qr_codes = db_v2.get_user_qr_codes(user_id)
-        active_qr = len([qr for qr in qr_codes if qr.get('is_active')])
+        qr_codes = []  # Временно отключено - таблица не существует
+        active_qr = 0
         
         # Calculate usage statistics
         total_usage = 0  # This would be tracked in usage table

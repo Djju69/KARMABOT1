@@ -54,14 +54,14 @@ class ReferralService:
                 return False
             
             # Проверяем, что приглашенный еще не использовал реферальную систему
-            existing_referral = db_v2.fetch_one(
+            existing_referral = db_v2.execute_query(
                 "SELECT id FROM referrals WHERE invited_id = ?",
                 (invited_user_id,)
             )
             if existing_referral:
                 return False
-            
-            # Создаем запись о реферале
+
+                # Создаем запись о реферале
             db_v2.execute_query(
                 """INSERT INTO referrals (inviter_id, invited_id, status, reward_points) 
                    VALUES (?, ?, 'completed', ?)""",
@@ -115,24 +115,27 @@ class ReferralService:
         """Получить статистику рефералов"""
         try:
             # Общее количество приглашенных
-            total_count = db_v2.fetch_one(
+            total_count_result = db_v2.execute_query(
                 "SELECT COUNT(*) as count FROM referrals WHERE inviter_id = ?",
                 (user_id,)
-            )['count']
+            )
+            total_count = total_count_result[0]['count'] if total_count_result else 0
             
             # Количество активных (за последние 30 дней)
-            active_count = db_v2.fetch_one(
+            active_count_result = db_v2.execute_query(
                 """SELECT COUNT(*) as count FROM referrals 
                    WHERE inviter_id = ? AND created_at > datetime('now', '-30 days')""",
                 (user_id,)
-            )['count']
+            )
+            active_count = active_count_result[0]['count'] if active_count_result else 0
             
             # Общие доходы от рефералов
-            total_earnings = db_v2.fetch_one(
+            total_earnings_result = db_v2.execute_query(
                 """SELECT SUM(reward_points) as total FROM referrals 
                    WHERE inviter_id = ?""",
                 (user_id,)
-            )['total'] or 0
+            )
+            total_earnings = total_earnings_result[0]['total'] if total_earnings_result and total_earnings_result[0]['total'] else 0
             
             return {
                 'total_referrals': total_count,
