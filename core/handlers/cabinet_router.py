@@ -19,7 +19,7 @@ from ..keyboards.reply_v2 import (
     get_partner_cabinet_keyboard,
     get_return_to_main_menu
 )
-from ..utils.locales_v2 import get_text, get_all_texts
+from ..utils.locales_v2 import get_text, get_all_texts, translations
 
 logger = logging.getLogger(__name__)
 
