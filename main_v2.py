@@ -285,11 +285,22 @@ async def main():
         partner_router
     )
     
+    # AI Support routers
+    from core.handlers.help_with_ai import router as help_with_ai_router
+    from core.handlers.support_ai import router as support_ai_router
+    
     # Include routers with proper order
     dp.include_router(basic_router)
     dp.include_router(callback_router)
     dp.include_router(main_menu_router)
     dp.include_router(language_router)
+    
+    # AI Support routers (with feature flags)
+    from core.settings import settings
+    if settings.features.support_ai:
+        dp.include_router(help_with_ai_router)
+        dp.include_router(support_ai_router)
+        logger.info("✅ AI Support routers included")
     
     # Set up bot commands
     await set_commands(bot)

@@ -404,19 +404,17 @@ async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -
     
     response += f"<code>{referral_link}</code>\n\n"
     response += translations.get(lang, {}).get(
-        'referral_stats',
-        '📊 Статистика:'
-    ) + "\n"
-    response += f"• Приглашено: {stats['total_referrals']}\n"
-    response += f"• Активных: {stats['active_referrals']}\n"
-    response += f"• Заработано: {stats['total_earnings']} баллов\n\n"
-    
-    response += translations.get(lang, {}).get(
         'referral_instructions',
         '💡 Поделитесь ссылкой с друзьями и получайте бонусы за каждого приглашенного!'
     )
     
-    await message.answer(response, parse_mode="HTML")
+    # Создаем inline кнопку "Поделиться"
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    share_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Поделиться", url=f"https://t.me/share/url?url={referral_link}&text=Присоединяйся к Karma System!")]
+    ])
+    
+    await message.answer(response, parse_mode="HTML", reply_markup=share_keyboard)
 
 
 @main_menu_router.message(F.text.in_(["📋 Приглашённые"]))

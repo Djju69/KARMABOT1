@@ -262,8 +262,24 @@ class HelpService:
             # Получаем ссылки для роли
             links = self.help_links.get(user_role, self.help_links[Role.USER])
             
-            # Формируем красивое сообщение в HTML
-            message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
+            # Формируем сообщение в зависимости от роли пользователя
+            if user_role == Role.USER:
+                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
+
+Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
+
+<b>👤 Для пользователей</b>
+• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+
+<b>💡 Помощь</b>
+• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
+
+<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+            
+            elif user_role == Role.PARTNER:
+                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
 
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
 
@@ -276,6 +292,56 @@ class HelpService:
 • 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
 • 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
 • 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведениями</a>
+
+<b>💡 Помощь</b>
+• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
+
+<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+            
+            elif user_role == Role.ADMIN:
+                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
+
+Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
+
+<b>👤 Для пользователей</b>
+• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+
+<b>🤝 Партнёрство</b>
+• 🚀 <a href="https://docs.karma-system.com/partner/become">Как стать партнёром</a>
+• 📍 <a href="https://docs.karma-system.com/partner/create-place">Создание заведений</a>
+• 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
+• 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
+• 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведений</a>
+
+<b>🛡️ Администраторы</b>
+• 📊 <a href="https://docs.karma-system.com/admin/dashboard">Админская панель</a>
+• ✅ <a href="https://docs.karma-system.com/admin/moderation">Модерация заявок</a>
+• 👥 <a href="https://docs.karma-system.com/admin/users">Управление пользователями</a>
+• ⚙️ <a href="https://docs.karma-system.com/admin/settings">Системные настройки</a>
+
+<b>💡 Помощь</b>
+• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
+
+<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+            
+            else:  # SUPER_ADMIN
+                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
+
+Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
+
+<b>👤 Для пользователей</b>
+• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+
+<b>🤝 Партнёрство</b>
+• 🚀 <a href="https://docs.karma-system.com/partner/become">Как стать партнёром</a>
+• 📍 <a href="https://docs.karma-system.com/partner/create-place">Создание заведений</a>
+• 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
+• 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
+• 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведений</a>
 
 <b>🛡️ Администраторы</b>
 • 📊 <a href="https://docs.karma-system.com/admin/dashboard">Админская панель</a>

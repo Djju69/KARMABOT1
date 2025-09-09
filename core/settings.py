@@ -21,6 +21,8 @@ class Features:
     qr_webapp: bool = field(default=False)
     listen_notify: bool = field(default=False)
     support_voice: bool = field(default=False)  # Голосовой ввод
+    support_ai: bool = field(default=False)  # AI-ассистент
+    support_reports: bool = field(default=False)  # Отчёты через AI
     webapp_url: str = field(default="https://web-production-d51c7.up.railway.app/webapp")
     
     def __post_init__(self):
@@ -34,6 +36,8 @@ class Features:
         self.qr_webapp = env.bool('FEATURE_QR_WEBAPP', self.qr_webapp)
         self.listen_notify = env.bool('FEATURE_LISTEN_NOTIFY', self.listen_notify)
         self.support_voice = env.bool('FEATURE_SUPPORT_VOICE', self.support_voice)
+        self.support_ai = env.bool('FEATURE_SUPPORT_AI', self.support_ai)
+        self.support_reports = env.bool('FEATURE_SUPPORT_REPORTS', self.support_reports)
         
         # Log current feature flags
         logger = logging.getLogger(__name__)
@@ -43,6 +47,8 @@ class Features:
         logger.info(f"[FEATURES] QR WebApp: {self.qr_webapp}")
         logger.info(f"[FEATURES] Listen Notify: {self.listen_notify}")
         logger.info(f"[FEATURES] Support Voice: {self.support_voice}")
+        logger.info(f"[FEATURES] Support AI: {self.support_ai}")
+        logger.info(f"[FEATURES] Support Reports: {self.support_reports}")
 
 @dataclass
 class AuthSettings:
