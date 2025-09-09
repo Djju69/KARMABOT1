@@ -83,7 +83,7 @@ async def handle_moderation(message: Message, state: FSMContext):
             import asyncpg
             from core.settings import settings
             
-            conn = await asyncpg.connect(settings.database.database_url)
+            conn = await asyncpg.connect(settings.database.url)
             try:
                 # Партнеры на модерации
                 pending_partners = await conn.fetch("""
@@ -176,7 +176,7 @@ async def handle_admins_management(message: Message, state: FSMContext):
             import asyncpg
             from core.settings import settings
             
-            conn = await asyncpg.connect(settings.database.database_url)
+            conn = await asyncpg.connect(settings.database.url)
             try:
                 admins = await conn.fetch("""
                     SELECT telegram_id, first_name, last_name, username, role, is_banned, created_at
@@ -389,7 +389,7 @@ async def handle_dashboard(message: Message, state: FSMContext):
             from core.settings import settings
             
             # Подключаемся к PostgreSQL
-            conn = await asyncpg.connect(settings.database.database_url)
+            conn = await asyncpg.connect(settings.database.url)
             try:
                 # Партнеры на модерации
                 partners_pending = await conn.fetchval("SELECT COUNT(*) FROM partners WHERE status = 'pending'")

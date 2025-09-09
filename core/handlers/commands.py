@@ -76,16 +76,37 @@ def register_commands(router):
             # Получаем справочное сообщение
             help_message = await help_service.get_help_message(message.from_user.id)
             
-            # Отправляем сообщение с поддержкой MarkdownV2
+            # Отправляем сообщение с поддержкой HTML
             await message.answer(
                 help_message,
-                parse_mode="MarkdownV2",
+                parse_mode="HTML",
                 disable_web_page_preview=True
             )
             
         except Exception as e:
             logger.error(f"Error in cmd_help: {e}", exc_info=True)
             await message.answer("❌ Произошла ошибка при загрузке справочной информации. Попробуйте позже.")
+
+@router.message(Command("test_help"))
+async def cmd_test_help(message: Message):
+    """Тестовая команда для проверки ссылок"""
+    try:
+        from core.services.help_service import HelpService
+        help_service = HelpService()
+        
+        # Получаем тестовое сообщение
+        test_message = help_service.test_help_message()
+        
+        # Отправляем с HTML
+        await message.answer(
+            test_message,
+            parse_mode="HTML",
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in cmd_test_help: {e}", exc_info=True)
+        await message.answer(f"❌ Ошибка теста: {e}")
     
     @router.message(Command("webapp"))
     async def cmd_webapp(message: Message):

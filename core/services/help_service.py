@@ -13,7 +13,7 @@ class HelpService:
     """Сервис справочной системы"""
     
     def __init__(self):
-        # Базовый URL документации
+        # Базовый URL документации (постоянный домен)
         self.base_url = "https://docs.karma-system.com"
         
         # Ссылки для каждой роли
@@ -35,17 +35,17 @@ class HelpService:
                     "emoji": "🔹"
                 },
                 {
-                    "title": "Сканирование QR-кодов",
+                    "title": "Сканирование QR",
                     "url": f"{self.base_url}/partner/qr-scan",
                     "emoji": "🔹"
                 },
                 {
-                    "title": "Часто задаваемые вопросы (FAQ)",
+                    "title": "Частые вопросы (FAQ)",
                     "url": f"{self.base_url}/faq",
                     "emoji": "🔹"
                 },
                 {
-                    "title": "Решение проблем и типовые ошибки",
+                    "title": "Решение проблем",
                     "url": f"{self.base_url}/troubleshooting",
                     "emoji": "🔹"
                 },
@@ -262,15 +262,12 @@ class HelpService:
             # Получаем ссылки для роли
             links = self.help_links.get(user_role, self.help_links[Role.USER])
             
-            # Формируем сообщение
-            message = "📚 *Добро пожаловать в справочный центр\\!*\n\n"
-            message += "Вот полезные материалы, которые помогут вам разобраться в системе:\n\n"
+            # Формируем сообщение в HTML согласно ТЗ
+            message = "✨ Привет! Это <b>Справочный центр Karma System</b> 🧭\n\n"
             
-            # Добавляем ссылки
+            # Добавляем ссылки в HTML
             for link in links:
-                # Экранируем специальные символы для MarkdownV2
-                title = link['title'].replace('.', '\\.').replace('-', '\\-').replace('(', '\\(').replace(')', '\\)')
-                message += f"{link['emoji']} [{title}]({link['url']})\n"
+                message += f"{link['emoji']} <a href=\"{link['url']}\">{link['title']}</a>\n"
             
             return message
             
@@ -280,13 +277,13 @@ class HelpService:
     
     def _get_fallback_message(self) -> str:
         """Резервное сообщение при ошибке"""
-        return """📚 *Справочный центр*
+        return """📚 <b>Справочный центр</b>
 
-К сожалению, произошла ошибка при загрузке справочной информации\\.
+К сожалению, произошла ошибка при загрузке справочной информации.
 
-🔹 [Связаться с поддержкой](https://t\\.me/karma_system_official)
+🔹 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
 
-Попробуйте позже или обратитесь в поддержку\\."""
+Попробуйте позже или обратитесь в поддержку."""
     
     def get_help_links_for_role(self, role: Role) -> List[Dict]:
         """Получить ссылки для конкретной роли"""
@@ -300,3 +297,24 @@ class HelpService:
             for link in role_links:
                 if link['url'].startswith('https://docs.karma-system.com'):
                     link['url'] = link['url'].replace('https://docs.karma-system.com', new_url)
+    
+    def test_help_message(self) -> str:
+        """Тестовая функция для проверки ссылок"""
+        try:
+            # Тестируем с ролью USER
+            links = self.help_links[Role.USER]
+            
+            # Формируем тестовое сообщение
+            message = "🧪 <b>ТЕСТ ССЫЛОК</b>\n\n"
+            message += "Проверяем работу ссылок:\n\n"
+            
+            # Добавляем первые 3 ссылки для теста
+            for i, link in enumerate(links[:3]):
+                message += f"{link['emoji']} <a href=\"{link['url']}\">{link['title']}</a>\n"
+            
+            message += "\n<b>Если ссылки кликабельные - тест пройден!</b>"
+            
+            return message
+            
+        except Exception as e:
+            return f"❌ Ошибка теста: {e}"

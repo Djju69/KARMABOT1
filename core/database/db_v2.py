@@ -527,6 +527,36 @@ class DatabaseServiceV2:
             return cursor.fetchone() is not None
     
     # Backward compatibility methods
+    def get_user_qr_codes(self, user_id: int) -> List[Dict]:
+        """Get QR codes for user"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, qr_id, name, discount, is_active, created_at, expires_at
+                FROM qr_codes_v2
+                WHERE user_id = ? AND is_active = 1
+                ORDER BY created_at DESC
+                """,
+                (user_id,)
+            )
+            return [dict(row) for row in cursor.fetchall()]
+    
+    def create_user_qr_code(self, user_id: int, qr_id: str, name: str, discount: int = 10) -> bool:
+        """Create QR code for user"""
+        with self.get_connection() as conn:
+            try:
+                cursor = conn.execute(
+                    """
+                    INSERT INTO qr_codes_v2 (user_id, qr_id, name, discount, is_active, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP, datetime('now', '+30 days'))
+                    """,
+                    (user_id, qr_id, name, discount)
+                )
+                return cursor.rowcount > 0
+            except Exception as e:
+                logger.error(f"Error creating QR code: {e}")
+                return False
+
     def get_legacy_categories(self) -> List[Dict]:
         """Get categories in legacy format for backward compatibility"""
         categories = self.get_categories()

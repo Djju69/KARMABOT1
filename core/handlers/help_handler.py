@@ -24,10 +24,10 @@ async def help_command_handler(message: Message):
         # Получаем справочное сообщение
         help_message = await help_service.get_help_message(user_id)
         
-        # Отправляем сообщение с поддержкой MarkdownV2
+        # Отправляем сообщение с поддержкой HTML
         await message.answer(
             help_message,
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
         
@@ -49,10 +49,10 @@ async def help_button_handler(callback: CallbackQuery):
         # Получаем справочное сообщение
         help_message = await help_service.get_help_message(user_id)
         
-        # Отправляем сообщение с поддержкой MarkdownV2
+        # Отправляем сообщение с поддержкой HTML
         await callback.message.edit_text(
             help_message,
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
         

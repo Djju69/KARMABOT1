@@ -31,31 +31,117 @@ if 'show_nearest_v2' not in globals():
 if 'show_categories_v2' not in globals():
     from .basic import show_categories as show_categories_v2  # type: ignore
 
-# Заглушки для отсутствующих функций
-async def show_places_page(*args, **kwargs):
-    """Заглушка для функции показа страницы мест"""
-    logger.warning("show_places_page function is not implemented")
-    return None
+# Реализованные функции вместо заглушек
+async def show_places_page(callback_query: CallbackQuery, bot: Bot, lang: str, city_id: int, page: int = 1):
+    """Показывает страницу мест с пагинацией"""
+    try:
+        from core.handlers.category_handlers_v2 import show_catalog_page
+        await show_catalog_page(bot, callback_query.message.chat.id, lang, 'places', 'all', page, city_id)
+    except Exception as e:
+        logger.error(f"Error in show_places_page: {e}")
+        await callback_query.answer("Ошибка загрузки мест", show_alert=True)
 
-async def show_offers_page(*args, **kwargs):
-    """Заглушка для функции показа страницы предложений"""
-    logger.warning("show_offers_page function is not implemented")
-    return None
+async def show_offers_page(callback_query: CallbackQuery, bot: Bot, lang: str, city_id: int, page: int = 1):
+    """Показывает страницу предложений с пагинацией"""
+    try:
+        from core.handlers.category_handlers_v2 import show_catalog_page
+        await show_catalog_page(bot, callback_query.message.chat.id, lang, 'offers', 'all', page, city_id)
+    except Exception as e:
+        logger.error(f"Error in show_offers_page: {e}")
+        await callback_query.answer("Ошибка загрузки предложений", show_alert=True)
 
-async def show_place_details(*args, **kwargs):
-    """Заглушка для функции показа деталей места"""
-    logger.warning("show_place_details function is not implemented")
-    return None
+async def show_place_details(callback_query: CallbackQuery, bot: Bot, lang: str, place_id: str):
+    """Показывает детали места"""
+    try:
+        from core.database.db_v2 import db_v2
+        place = db_v2.get_card_by_id(int(place_id))
+        
+        if not place:
+            await callback_query.answer("Место не найдено", show_alert=True)
+            return
+            
+        # Формируем сообщение с деталями
+        details_text = f"""
+🏢 <b>{place.get('name', 'Название не указано')}</b>
 
-async def show_offer_details(*args, **kwargs):
-    """Заглушка для функции показа деталей предложения"""
-    logger.warning("show_offer_details function is not implemented")
-    return None
+📍 <b>Адрес:</b> {place.get('address', 'Не указан')}
+📞 <b>Телефон:</b> {place.get('phone', 'Не указан')}
+⭐ <b>Рейтинг:</b> {place.get('rating', 'Н/Д')}
 
-async def show_category_items(*args, **kwargs):
-    """Заглушка для функции показа элементов категории"""
-    logger.warning("show_category_items function is not implemented")
-    return None
+📝 <b>Описание:</b>
+{place.get('description', 'Описание отсутствует')}
+
+💎 <b>Скидка:</b> {place.get('discount', 'Н/Д')}%
+        """
+        
+        # Клавиатура с действиями
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📍 Показать на карте", callback_data=f"map_{place_id}")],
+            [InlineKeyboardButton(text="📱 QR-код", callback_data=f"qr_{place_id}")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_list")]
+        ])
+        
+        await callback_query.message.edit_text(
+            details_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in show_place_details: {e}")
+        await callback_query.answer("Ошибка загрузки деталей", show_alert=True)
+
+async def show_offer_details(callback_query: CallbackQuery, bot: Bot, lang: str, offer_id: str):
+    """Показывает детали предложения"""
+    try:
+        from core.database.db_v2 import db_v2
+        offer = db_v2.get_card_by_id(int(offer_id))
+        
+        if not offer:
+            await callback_query.answer("Предложение не найдено", show_alert=True)
+            return
+            
+        # Формируем сообщение с деталями предложения
+        details_text = f"""
+🎁 <b>{offer.get('name', 'Предложение не указано')}</b>
+
+💰 <b>Цена:</b> {offer.get('price', 'Н/Д')}
+📅 <b>Действует до:</b> {offer.get('valid_until', 'Не указано')}
+⭐ <b>Рейтинг:</b> {offer.get('rating', 'Н/Д')}
+
+📝 <b>Описание:</b>
+{offer.get('description', 'Описание отсутствует')}
+
+💎 <b>Скидка:</b> {offer.get('discount', 'Н/Д')}%
+        """
+        
+        # Клавиатура с действиями
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🎫 Активировать", callback_data=f"activate_{offer_id}")],
+            [InlineKeyboardButton(text="📱 QR-код", callback_data=f"qr_{offer_id}")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="back_to_list")]
+        ])
+        
+        await callback_query.message.edit_text(
+            details_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in show_offer_details: {e}")
+        await callback_query.answer("Ошибка загрузки деталей предложения", show_alert=True)
+
+async def show_category_items(message: Message, bot: Bot, lang: str, city_id: int, category: str):
+    """Показывает элементы категории"""
+    try:
+        from core.handlers.category_handlers_v2 import show_catalog_page
+        await show_catalog_page(bot, message.chat.id, lang, category, 'all', 1, city_id)
+    except Exception as e:
+        logger.error(f"Error in show_category_items: {e}")
+        await message.answer("Ошибка загрузки элементов категории")
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -213,10 +299,10 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         # Получаем справочное сообщение
         help_message = await help_service.get_help_message(message.from_user.id)
         
-        # Отправляем сообщение с поддержкой MarkdownV2
+        # Отправляем сообщение с поддержкой HTML
         await message.answer(
             help_message,
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
             disable_web_page_preview=True
         )
         
@@ -311,8 +397,14 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
         
         # Show inline keyboard with language selection
         from core.keyboards.inline_v2 import get_language_inline
+        # Получаем текст на текущем языке
+        lang_text = translations.get(current_lang, {}).get(
+            'choose_language_text', 
+            'Выберите язык:'
+        )
+        
         await message.answer(
-            "Выберите язык / Select language / 언어를 선택하세요 / Chọn ngôn ngữ:",
+            lang_text,
             reply_markup=get_language_inline(active=current_lang)
         )
     except Exception as e:
@@ -322,7 +414,7 @@ async def handle_choose_language(message: Message, bot: Bot, state: FSMContext):
 
 @main_menu_router.message(F.text.in_([t.get('show_nearest', '') for t in translations.values()]))
 async def handle_show_nearest(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки 'Ближайшие заведения'."""
+    """Обработчик кнопки 'Ближайшие заведения' с запросом геолокации."""
     logger.debug(f"User {message.from_user.id} requested nearest places")
     if not await ensure_policy_accepted(message, bot, state):
         return
@@ -330,10 +422,21 @@ async def handle_show_nearest(message: Message, bot: Bot, state: FSMContext) -> 
     try:
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
-        city_id = await profile_service.get_city_id(message.from_user.id)
-        await show_nearest_v2(message, bot, lang, city_id)
+        
+        # Запрашиваем геолокацию
+        from core.keyboards.reply_v2 import get_location_request_keyboard
+        location_text = translations.get(lang, {}).get(
+            'request_location',
+            '📍 Поделитесь своим местоположением, чтобы найти ближайшие заведения:'
+        )
+        
+        await message.answer(
+            location_text,
+            reply_markup=get_location_request_keyboard(lang)
+        )
+        
     except Exception as e:
-        logger.error(f"Error showing nearest places: {e}", exc_info=True)
+        logger.error(f"Error requesting location: {e}", exc_info=True)
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         error_text = translations.get(lang, {}).get(
@@ -341,6 +444,113 @@ async def handle_show_nearest(message: Message, bot: Bot, state: FSMContext) -> 
             'Не удалось загрузить ближайшие заведения. Пожалуйста, попробуйте позже.'
         )
         await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.location)
+async def handle_location(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик геолокации для поиска ближайших заведений."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Получаем координаты
+        latitude = message.location.latitude
+        longitude = message.location.longitude
+        
+        logger.info(f"User {message.from_user.id} shared location: {latitude}, {longitude}")
+        
+        # Ищем ближайшие заведения
+        from core.database.db_v2 import db_v2
+        all_cards = db_v2.get_cards_by_category('all', status='published', limit=50)
+        
+        if not all_cards:
+            no_places_text = translations.get(lang, {}).get(
+                'no_places_found',
+                '❌ Поблизости не найдено заведений. Попробуйте другой район.'
+            )
+            await message.answer(no_places_text)
+            return
+        
+        # Вычисляем расстояния и сортируем
+        places_with_distance = []
+        for card in all_cards:
+            if card.get('latitude') and card.get('longitude'):
+                distance = calculate_distance(
+                    latitude, longitude,
+                    card['latitude'], card['longitude']
+                )
+                places_with_distance.append((card, distance))
+        
+        # Сортируем по расстоянию
+        places_with_distance.sort(key=lambda x: x[1])
+        
+        # Показываем топ-5 ближайших
+        nearest_places = places_with_distance[:5]
+        
+        if not nearest_places:
+            no_places_text = translations.get(lang, {}).get(
+                'no_places_found',
+                '❌ Поблизости не найдено заведений. Попробуйте другой район.'
+            )
+            await message.answer(no_places_text)
+            return
+        
+        # Формируем сообщение
+        result_text = translations.get(lang, {}).get(
+            'nearest_places_found',
+            '📍 <b>Ближайшие заведения:</b>\n\n'
+        )
+        
+        for i, (place, distance) in enumerate(nearest_places, 1):
+            distance_text = f"{distance:.1f} км" if distance >= 1 else f"{distance*1000:.0f} м"
+            result_text += f"{i}. <b>{place.get('name', 'Название не указано')}</b>\n"
+            result_text += f"   📍 {place.get('address', 'Адрес не указан')}\n"
+            result_text += f"   📏 {distance_text}\n"
+            result_text += f"   💎 Скидка: {place.get('discount', 'Н/Д')}%\n\n"
+        
+        # Клавиатура с действиями
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=translations.get(lang, {}).get('back_to_main_menu', '◀️ Главное меню'))],
+                [KeyboardButton(text=translations.get(lang, {}).get('choose_category', '🗂️ Категории'))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(result_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error processing location: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'location_error',
+            '❌ Ошибка обработки геолокации. Попробуйте еще раз.'
+        )
+        await message.answer(error_text)
+
+def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Вычисляет расстояние между двумя точками в километрах (формула гаверсинуса)."""
+    import math
+    
+    # Радиус Земли в километрах
+    R = 6371.0
+    
+    # Преобразуем в радианы
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+    
+    # Разности координат
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    # Формула гаверсинуса
+    a = math.sin(dlat/2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    return R * c
 
 
 @main_menu_router.message(F.text.in_([
@@ -504,6 +714,218 @@ async def handle_shops(message: Message, bot: Bot, state: FSMContext) -> None:
         )
         await message.answer(error_text, parse_mode="HTML")
 
+
+@main_menu_router.message(F.text.in_([t.get('choose_district', '') for t in translations.values()]))
+async def handle_choose_district(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик кнопки 'По районам' - показывает группировку по районам."""
+    logger.debug(f"User {message.from_user.id} requested districts")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(message.from_user.id)
+        
+        # Получаем все заведения
+        from core.database.db_v2 import db_v2
+        all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
+        
+        if city_id is not None:
+            all_cards = [c for c in all_cards if c.get('city_id') == city_id]
+        
+        # Группируем по районам
+        districts = {}
+        for card in all_cards:
+            district = card.get('district', 'Не указан')
+            if district not in districts:
+                districts[district] = []
+            districts[district].append(card)
+        
+        if not districts:
+            no_districts_text = translations.get(lang, {}).get(
+                'no_districts_found',
+                '❌ Заведений по районам не найдено.'
+            )
+            await message.answer(no_districts_text)
+            return
+        
+        # Формируем сообщение с районами
+        districts_text = translations.get(lang, {}).get(
+            'districts_found',
+            '🌆 <b>Заведения по районам:</b>\n\n'
+        )
+        
+        for district, cards in sorted(districts.items()):
+            districts_text += f"📍 <b>{district}</b> ({len(cards)} заведений)\n"
+        
+        # Создаем клавиатуру с районами
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard_rows = []
+        
+        # Группируем кнопки по 2 в ряд
+        district_list = list(districts.keys())
+        for i in range(0, len(district_list), 2):
+            row = [KeyboardButton(text=district_list[i])]
+            if i + 1 < len(district_list):
+                row.append(KeyboardButton(text=district_list[i + 1]))
+            keyboard_rows.append(row)
+        
+        # Добавляем кнопку "Назад"
+        keyboard_rows.append([KeyboardButton(text=translations.get(lang, {}).get('back_to_main_menu', '◀️ Главное меню'))])
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=keyboard_rows,
+            resize_keyboard=True
+        )
+        
+        await message.answer(districts_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing districts: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'districts_error',
+            '❌ Ошибка загрузки районов. Попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([t.get('qr_codes', '') for t in translations.values()]))
+async def handle_qr_codes(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик кнопки 'QR-коды' - показывает QR-коды пользователя."""
+    logger.debug(f"User {message.from_user.id} requested QR codes")
+    if not await ensure_policy_accepted(message, bot, state):
+        return
+        
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Получаем QR-коды пользователя
+        from core.database.db_v2 import db_v2
+        user_qr_codes = db_v2.get_user_qr_codes(message.from_user.id)
+        
+        if not user_qr_codes:
+            no_qr_text = translations.get(lang, {}).get(
+                'no_qr_codes',
+                '📱 У вас пока нет QR-кодов.\n\nСоздайте QR-код для получения скидок в заведениях-партнерах.'
+            )
+            
+            # Клавиатура для создания QR-кода
+            from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text=translations.get(lang, {}).get('create_qr_code', '📱 Создать QR-код'))],
+                    [KeyboardButton(text=translations.get(lang, {}).get('back_to_main_menu', '◀️ Главное меню'))]
+                ],
+                resize_keyboard=True
+            )
+            
+            await message.answer(no_qr_text, reply_markup=keyboard)
+            return
+        
+        # Формируем сообщение с QR-кодами
+        qr_text = translations.get(lang, {}).get(
+            'qr_codes_list',
+            '📱 <b>Ваши QR-коды:</b>\n\n'
+        )
+        
+        for i, qr_code in enumerate(user_qr_codes[:5], 1):  # Показываем только первые 5
+            status_emoji = "✅" if qr_code.get('is_active') else "❌"
+            qr_text += f"{i}. {status_emoji} <b>{qr_code.get('name', 'QR-код')}</b>\n"
+            qr_text += f"   💎 Скидка: {qr_code.get('discount', 'Н/Д')}%\n"
+            qr_text += f"   📅 Создан: {qr_code.get('created_at', 'Н/Д')}\n\n"
+        
+        if len(user_qr_codes) > 5:
+            qr_text += f"... и еще {len(user_qr_codes) - 5} QR-кодов"
+        
+        # Клавиатура с действиями
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=translations.get(lang, {}).get('create_qr_code', '📱 Создать QR-код'))],
+                [KeyboardButton(text=translations.get(lang, {}).get('my_qr_codes', '📋 Мои QR-коды'))],
+                [KeyboardButton(text=translations.get(lang, {}).get('back_to_main_menu', '◀️ Главное меню'))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(qr_text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing QR codes: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'qr_codes_error',
+            '❌ Ошибка загрузки QR-кодов. Попробуйте позже.'
+        )
+        await message.answer(error_text, parse_mode="HTML")
+
+@main_menu_router.message(F.text.in_([t.get('create_qr_code', '') for t in translations.values()]))
+async def handle_create_qr_code(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Обработчик создания QR-кода."""
+    try:
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        
+        # Генерируем QR-код
+        import qrcode
+        import io
+        from aiogram.types import InputFile
+        
+        # Создаем уникальный код
+        import uuid
+        qr_id = str(uuid.uuid4())[:8]
+        
+        # Создаем QR-код
+        qr = qrcode.QRCode(version=1, box_size=10, border=5)
+        qr.add_data(f"KARMA_QR:{qr_id}:{message.from_user.id}")
+        qr.make(fit=True)
+        
+        # Создаем изображение
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Сохраняем в байты
+        bio = io.BytesIO()
+        img.save(bio, format='PNG')
+        bio.seek(0)
+        
+        # Отправляем QR-код
+        qr_text = translations.get(lang, {}).get(
+            'qr_code_created',
+            f'📱 <b>Ваш QR-код создан!</b>\n\n'
+            f'🆔 Код: {qr_id}\n'
+            f'💎 Скидка: 10%\n'
+            f'📅 Действует: 30 дней\n\n'
+            f'Покажите этот QR-код в заведениях-партнерах для получения скидки.'
+        )
+        
+        await message.answer_photo(
+            photo=InputFile(bio, filename=f"qr_{qr_id}.png"),
+            caption=qr_text,
+            parse_mode="HTML"
+        )
+        
+        # Сохраняем QR-код в БД
+        from core.database.db_v2 import db_v2
+        db_v2.create_user_qr_code(
+            user_id=message.from_user.id,
+            qr_id=qr_id,
+            name=f"QR-код {qr_id}",
+            discount=10
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating QR code: {e}", exc_info=True)
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        error_text = translations.get(lang, {}).get(
+            'qr_create_error',
+            '❌ Ошибка создания QR-кода. Попробуйте позже.'
+        )
+        await message.answer(error_text)
 
 @main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
 async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:

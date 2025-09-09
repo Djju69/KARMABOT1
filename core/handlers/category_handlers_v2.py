@@ -39,12 +39,26 @@ logger = logging.getLogger(__name__)
 category_router = Router(name="category_router")
 
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
-    """Показывает Reply-клавиатуру с 6 категориями согласно ТЗ."""
+    """Показывает Reply-клавиатуру с 6 категориями согласно ТЗ с подсчетом заведений."""
     try:
         await log_event("categories_menu_shown", user=message.from_user, lang=lang)
+        
+        # Получаем категории из БД с подсчетом заведений
+        categories = db_v2.get_categories(only_active=True)
+        
+        # Формируем текст с информацией о количестве заведений
+        categories_text = get_text('choose_category', lang) + "\n\n"
+        
+        for category in categories:
+            # Подсчитываем количество заведений в категории
+            cards_count = len(db_v2.get_cards_by_category(category.slug, status='published', limit=1000))
+            
+            categories_text += f"{category.emoji} <b>{category.name}</b> ({cards_count})\n"
+        
         await message.answer(
-            text="🗂 Выберите категорию:",
-            reply_markup=get_categories_keyboard(lang)
+            text=categories_text,
+            reply_markup=get_categories_keyboard(lang),
+            parse_mode="HTML"
         )
     except Exception as e:
         logger.error(f"Error in show_categories_v2: {e}")
