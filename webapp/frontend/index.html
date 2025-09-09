@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KarmaSystem - Личный кабинет</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: var(--tg-theme-text-color, #000000);
+            margin-bottom: 10px;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .role-user { background: #e3f2fd; color: #1976d2; }
+        .role-partner { background: #f3e5f5; color: #7b1fa2; }
+        .role-admin { background: #fff3e0; color: #f57c00; }
+        .role-superadmin { background: #ffebee; color: #d32f2f; }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+        }
+        
+        .card h3 {
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--tg-theme-button-color, #007bff);
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section h2 {
+            margin-bottom: 15px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .btn {
+            background: var(--tg-theme-button-color, #007bff);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-secondary {
+            background: var(--tg-theme-secondary-bg-color, #6c757d);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--tg-theme-hint-color, #666666);
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .partner-cards {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .partner-card {
+            background: var(--tg-theme-secondary-bg-color, #f8f9fa);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+        }
+        
+        .partner-card h4 {
+            margin-bottom: 8px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .status-draft { background: #fff3e0; color: #f57c00; }
+        .status-pending { background: #e3f2fd; color: #1976d2; }
+        .status-approved { background: #e8f5e8; color: #2e7d32; }
+        .status-rejected { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌐 KarmaSystem</h1>
+            <p>Личный кабинет</p>
+            <div id="role-badge" class="role-badge hidden"></div>
+        </div>
+        
+        <div id="loading" class="loading">
+            Загрузка...
+        </div>
+        
+        <div id="error" class="error hidden"></div>
+        
+        <div id="content" class="hidden">
+            <!-- Дашборд -->
+            <div class="section">
+                <h2>📊 Дашборд</h2>
+                <div class="dashboard" id="dashboard">
+                    <!-- Карточки статистики будут добавлены динамически -->
+                </div>
+            </div>
+            
+            <!-- Карточки партнера (только для partner/admin/superadmin) -->
+            <div id="partner-section" class="section hidden">
+                <h2>🏪 Мои карточки</h2>
+                <button class="btn" onclick="createCard()">➕ Создать карточку</button>
+                <div id="partner-cards" class="partner-cards">
+                    <!-- Карточки будут добавлены динамически -->
+                </div>
+            </div>
+            
+            <!-- Модерация (только для admin/superadmin) -->
+            <div id="moderation-section" class="section hidden">
+                <h2>📋 Модерация</h2>
+                <div id="moderation-queue">
+                    <!-- Очередь модерации будет добавлена динамически -->
+                </div>
+            </div>
+            
+            <!-- Системные функции (только для superadmin) -->
+            <div id="system-section" class="section hidden">
+                <h2>⚙️ Системные функции</h2>
+                <button class="btn btn-secondary" onclick="showSystemInfo()">ℹ️ Информация о системе</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let currentUser = null;
+        let authToken = null;
+        const API_BASE = 'https://your-domain.com/api'; // Замените на ваш домен
+        
+        // Инициализация WebApp
+        function initWebApp() {
+            const tg = window.Telegram?.WebApp;
+            if (!tg) {
+                showError('Telegram WebApp не доступен');
+                return;
+            }
+            
+            tg.ready();
+            tg.expand();
+            
+            // Получаем initData
+            const initData = tg.initData;
+            if (!initData) {
+                showError('Не удалось получить данные авторизации');
+                return;
+            }
+            
+            // Авторизуемся
+            authenticate(initData);
+        }
+        
+        // Авторизация
+        async function authenticate(initData) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/webapp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ init_data: initData })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Ошибка авторизации');
+                }
+                
+                const data = await response.json();
+                authToken = data.token;
+                currentUser = data.user;
+                
+                // Сохраняем токен
+                localStorage.setItem('auth_token', authToken);
+                
+                // Показываем интерфейс
+                showContent();
+                
+            } catch (error) {
+                showError('Ошибка авторизации: ' + error.message);
+            }
+        }
+        
+        // Показать контент
+        function showContent() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('content').classList.remove('hidden');
+            
+            // Показываем роль
+            const roleBadge = document.getElementById('role-badge');
+            roleBadge.textContent = `Роль: ${currentUser.role}`;
+            roleBadge.className = `role-badge role-${currentUser.role}`;
+            roleBadge.classList.remove('hidden');
+            
+            // Загружаем данные
+            loadDashboard();
+            
+            // Показываем секции по роли
+            if (['partner', 'admin', 'superadmin'].includes(currentUser.role)) {
+                document.getElementById('partner-section').classList.remove('hidden');
+                loadPartnerCards();
+            }
+            
+            if (['admin', 'superadmin'].includes(currentUser.role)) {
+                document.getElementById('moderation-section').classList.remove('hidden');
+                loadModerationQueue();
+            }
+            
+            if (currentUser.role === 'superadmin') {
+                document.getElementById('system-section').classList.remove('hidden');
+            }
+        }
+        
+        // Загрузить дашборд
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_BASE}/stats/overview`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Ошибка загрузки статистики');
+                
+                const stats = await response.json();
+                renderDashboard(stats);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки дашборда:', error);
+            }
+        }
+        
+        // Отобразить дашборд
+        function renderDashboard(stats) {
+            const dashboard = document.getElementById('dashboard');
+            dashboard.innerHTML = '';
+            
+            const cards = [
+                { title: 'Всего пользователей', value: stats.total_users || 0 },
+                { title: 'Партнеров', value: stats.total_partners || 0 },
+                { title: 'Заведений', value: stats.total_places || 0 }
+            ];
+            
+            if (stats.my_places !== undefined) {
+                cards.push({ title: 'Мои заведения', value: stats.my_places });
+            }
+            
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.innerHTML = `
+                    <h3>${card.title}</h3>
+                    <div class="value">${card.value}</div>
+                `;
+                dashboard.appendChild(cardElement);
+            });
+        }
+        
+        // Загрузить карточки партнера
+        async function loadPartnerCards() {
+            try {
+                const response = await fetch(`${API_BASE}/partner/cards`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Ошибка загрузки карточек');
+                
+                const data = await response.json();
+                renderPartnerCards(data.cards);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки карточек:', error);
+            }
+        }
+        
+        // Отобразить карточки партнера
+        function renderPartnerCards(cards) {
+            const container = document.getElementById('partner-cards');
+            container.innerHTML = '';
+            
+            if (cards.length === 0) {
+                container.innerHTML = '<p>У вас пока нет карточек</p>';
+                return;
+            }
+            
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'partner-card';
+                cardElement.innerHTML = `
+                    <h4>${card.title}</h4>
+                    <p>${card.description}</p>
+                    <p><strong>Категория:</strong> ${card.category}</p>
+                    <span class="status status-${card.status}">${card.status}</span>
+                `;
+                container.appendChild(cardElement);
+            });
+        }
+        
+        // Загрузить очередь модерации
+        async function loadModerationQueue() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/moderation`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Ошибка загрузки модерации');
+                
+                const data = await response.json();
+                renderModerationQueue(data);
+                
+            } catch (error) {
+                console.error('Ошибка загрузки модерации:', error);
+            }
+        }
+        
+        // Отобразить очередь модерации
+        function renderModerationQueue(data) {
+            const container = document.getElementById('moderation-queue');
+            container.innerHTML = '';
+            
+            if (data.partners.length === 0 && data.places.length === 0) {
+                container.innerHTML = '<p>Очередь модерации пуста</p>';
+                return;
+            }
+            
+            if (data.partners.length > 0) {
+                container.innerHTML += '<h3>🤝 Партнеры на модерации</h3>';
+                data.partners.forEach(partner => {
+                    const element = document.createElement('div');
+                    element.className = 'partner-card';
+                    element.innerHTML = `
+                        <h4>${partner.title}</h4>
+                        <p>👤 ${partner.contact_name}</p>
+                        <p>📞 ${partner.contact_phone}</p>
+                    `;
+                    container.appendChild(element);
+                });
+            }
+            
+            if (data.places.length > 0) {
+                container.innerHTML += '<h3>🏪 Заведения на модерации</h3>';
+                data.places.forEach(place => {
+                    const element = document.createElement('div');
+                    element.className = 'partner-card';
+                    element.innerHTML = `
+                        <h4>${place.title}</h4>
+                        <p>🏢 ${place.partner_name}</p>
+                        <p>📍 ${place.address || 'Адрес не указан'}</p>
+                    `;
+                    container.appendChild(element);
+                });
+            }
+        }
+        
+        // Создать карточку
+        function createCard() {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.showAlert('Функция создания карточки будет доступна в следующей версии');
+            } else {
+                alert('Функция создания карточки будет доступна в следующей версии');
+            }
+        }
+        
+        // Показать системную информацию
+        function showSystemInfo() {
+            const tg = window.Telegram?.WebApp;
+            if (tg) {
+                tg.showAlert('Версия системы: 1.0.0\nСтатус: Работает');
+            } else {
+                alert('Версия системы: 1.0.0\nСтатус: Работает');
+            }
+        }
+        
+        // Показать ошибку
+        function showError(message) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').classList.remove('hidden');
+        }
+        
+        // Запуск при загрузке страницы
+        document.addEventListener('DOMContentLoaded', initWebApp);
+    </script>
+</body>
+</html>
