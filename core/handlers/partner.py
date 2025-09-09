@@ -1488,6 +1488,24 @@ async def partner_cabinet_handler(message: Message):
             reply_markup=get_return_to_main_menu()
         )
 
+
+@partner_router.message(F.text.in_(["🌐 Язык", "🌐 Language", "🌐 Ngôn ngữ", "🌐 언어"]))
+async def partner_language_handler(message: Message, state: FSMContext):
+    """Handle language selection in partner cabinet."""
+    try:
+        from core.handlers.language import build_language_inline_kb
+        await message.answer(
+            "🌐 <b>Выбор языка</b>\n\nВыберите язык интерфейса:",
+            reply_markup=build_language_inline_kb(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in partner_language_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить выбор языка. Попробуйте позже.",
+            reply_markup=get_partner_cabinet_keyboard()
+        )
+
 @partner_router.message(F.text.in_(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"]))
 @partner_router.callback_query(F.data.startswith("partner:stats"))
 async def partner_statistics_handler(update: Union[Message, CallbackQuery], state: FSMContext = None):

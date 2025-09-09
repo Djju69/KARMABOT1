@@ -60,6 +60,24 @@ async def admin_cabinet_handler(message: Message, state: FSMContext):
         logger.error(f"Error in admin_cabinet_handler: {str(e)}", exc_info=True)
         await message.answer("❌ Произошла ошибка при открытии админ-кабинета. Пожалуйста, попробуйте позже.")
 
+
+@router.message(F.text.in_(["🌐 Язык", "🌐 Language", "🌐 Ngôn ngữ", "🌐 언어"]))
+async def admin_language_handler(message: Message, state: FSMContext):
+    """Handle language selection in admin cabinet."""
+    try:
+        from core.handlers.language import build_language_inline_kb
+        await message.answer(
+            "🌐 <b>Выбор языка</b>\n\nВыберите язык интерфейса:",
+            reply_markup=build_language_inline_kb(),
+            parse_mode='HTML'
+        )
+    except Exception as e:
+        logger.error(f"Error in admin_language_handler: {str(e)}", exc_info=True)
+        await message.answer(
+            "❌ Не удалось загрузить выбор языка. Попробуйте позже.",
+            reply_markup=get_admin_keyboard()
+        )
+
 # Simple in-memory rate limit for search (per admin)
 _search_last_at: dict[int, float] = {}
 import time
