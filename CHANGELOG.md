@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### [2025-09-09 16:45] ИСПРАВЛЕНИЯ AI-АССИСТЕНТА И МИГРАЦИЙ
+
+#### Исправлено
+- **Feature flags AI** - включены `FEATURE_SUPPORT_AI=True` и `FEATURE_SUPPORT_REPORTS=True`
+- **Миграция 010** - добавлена в список миграций для создания таблиц favorites, referrals, karma_log, points_log, achievements
+- **Отсутствующие таблицы** - исправлена ошибка "relation cards_generated does not exist"
+
 ### [2025-09-09 16:30] ВОССТАНОВЛЕНИЕ AI-АССИСТЕНТА "КАРМА"
 
 #### Восстановлено

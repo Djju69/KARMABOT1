@@ -559,6 +559,8 @@ class DatabaseMigrator:
         self.migrate_019_fix_users_table()
         # Loyalty system expansion
         self.migrate_020_loyalty_expansion()
+        # User features (favorites, referrals, karma_log, points_log, achievements)
+        self.migrate_010_user_features()
         
         logger.info("All migrations completed successfully")
 
@@ -1872,6 +1874,75 @@ class DatabaseMigrator:
             
         except Exception as e:
             print(f"❌ Error in migration 020 (SQLite): {e}")
+            raise
+
+    def migrate_010_user_features(self):
+        """Migration 010: User features tables"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Избранные заведения
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS favorites (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_telegram_id INTEGER NOT NULL,
+                    place_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (place_id) REFERENCES partner_places(id)
+                )
+            """)
+            
+            # Реферальная система
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS referrals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    inviter_id INTEGER NOT NULL,
+                    invited_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(invited_id)
+                )
+            """)
+            
+            # История кармы
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS karma_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_telegram_id INTEGER NOT NULL,
+                    points_change INTEGER NOT NULL,
+                    reason TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # История баллов
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS points_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_telegram_id INTEGER NOT NULL,
+                    points_earned INTEGER DEFAULT 0,
+                    points_spent INTEGER DEFAULT 0,
+                    reason TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            # Достижения пользователей
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS achievements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_telegram_id INTEGER NOT NULL,
+                    achievement_type TEXT NOT NULL,
+                    achievement_data TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            conn.commit()
+            logger.info("Applied migration 010: User features tables")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply migration 010: {e}")
             raise
 
 # Global migrator instance
