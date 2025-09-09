@@ -316,19 +316,47 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         )
         await message.answer(error_text, parse_mode="HTML")
 
-# Favorites (v4.2.5) — placeholder list
+# Favorites (v4.2.5) — real implementation
 @main_menu_router.message(F.text.in_([t.get('menu.favorites', '') for t in translations.values()]))
 async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Показывает список избранных (заглушка до реализации хранилища)."""
+    """Показывает список избранных заведений пользователя."""
     logger.debug(f"User {message.from_user.id} opened favorites")
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
     
-    favorites_text = translations.get(lang, {}).get(
-        'favorites_coming_soon',
-        '⭐ Избранные: скоро. Здесь будут ваши сохранённые карточки.'
-    )
-    await message.answer(favorites_text)
+    from core.services.favorites_service import favorites_service
+    
+    # Получаем избранные заведения
+    favorites = await favorites_service.get_user_favorites(message.from_user.id, limit=10)
+    
+    if not favorites:
+        empty_text = translations.get(lang, {}).get(
+            'favorites_empty',
+            '⭐ Избранные\n\nУ вас пока нет избранных заведений.\nДобавляйте понравившиеся места в избранное!'
+        )
+        await message.answer(empty_text)
+        return
+    
+    # Формируем список избранных
+    response = translations.get(lang, {}).get(
+        'favorites_title',
+        '⭐ Избранные заведения'
+    ) + "\n\n"
+    
+    for i, fav in enumerate(favorites, 1):
+        name = fav.get('name', 'Без названия')
+        category = fav.get('category_name', 'Другое')
+        address = fav.get('address', 'Адрес не указан')
+        
+        response += f"{i}. **{name}**\n"
+        response += f"   📂 {category}\n"
+        response += f"   📍 {address}\n\n"
+    
+    # Добавляем кнопки управления
+    from core.keyboards.inline_v2 import get_favorites_keyboard
+    keyboard = get_favorites_keyboard(lang)
+    
+    await message.answer(response, reply_markup=keyboard, parse_mode="Markdown")
 
 
 # Invite friends (reply menu with 3 items)
@@ -353,17 +381,42 @@ async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMConte
     await message.answer("👥 Пригласить друзей", reply_markup=kb, parse_mode="HTML")
 
 
-# Placeholders for invite submenu actions
+# Real implementation for invite submenu actions
 @main_menu_router.message(F.text.in_(["🔗 Моя ссылка"]))
 async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -> None:
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
     
-    link_text = translations.get(lang, {}).get(
-        'referral_link_coming_soon',
-        '🔗 Ваша ссылка: скоро.'
+    from core.services.referral_service import referral_service
+    from core.config import settings
+    
+    # Генерируем реферальную ссылку
+    bot_username = (await bot.get_me()).username
+    referral_link = referral_service.generate_referral_link(message.from_user.id, bot_username)
+    
+    # Получаем статистику
+    stats = await referral_service.get_referral_stats(message.from_user.id)
+    
+    response = translations.get(lang, {}).get(
+        'referral_link_title',
+        '🔗 Ваша реферальная ссылка'
+    ) + "\n\n"
+    
+    response += f"`{referral_link}`\n\n"
+    response += translations.get(lang, {}).get(
+        'referral_stats',
+        '📊 Статистика:'
+    ) + "\n"
+    response += f"• Приглашено: {stats['total_referrals']}\n"
+    response += f"• Активных: {stats['active_referrals']}\n"
+    response += f"• Заработано: {stats['total_earnings']} баллов\n\n"
+    
+    response += translations.get(lang, {}).get(
+        'referral_instructions',
+        '💡 Поделитесь ссылкой с друзьями и получайте бонусы за каждого приглашенного!'
     )
-    await message.answer(link_text)
+    
+    await message.answer(response, parse_mode="Markdown")
 
 
 @main_menu_router.message(F.text.in_(["📋 Приглашённые"]))
@@ -371,11 +424,34 @@ async def handle_invite_list(message: Message, bot: Bot, state: FSMContext) -> N
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
     
-    list_text = translations.get(lang, {}).get(
-        'referral_list_coming_soon',
-        '📋 Список приглашённых: скоро.'
-    )
-    await message.answer(list_text)
+    from core.services.referral_service import referral_service
+    
+    # Получаем список приглашенных
+    referrals = await referral_service.get_user_referrals(message.from_user.id)
+    
+    if not referrals:
+        empty_text = translations.get(lang, {}).get(
+            'referrals_empty',
+            '📋 Приглашённые\n\nВы пока никого не пригласили.\nПоделитесь своей ссылкой с друзьями!'
+        )
+        await message.answer(empty_text)
+        return
+    
+    response = translations.get(lang, {}).get(
+        'referrals_title',
+        '📋 Ваши приглашённые'
+    ) + "\n\n"
+    
+    for i, ref in enumerate(referrals, 1):
+        name = ref.get('first_name', '') or ref.get('username', 'Пользователь')
+        created_at = ref.get('created_at', '')
+        reward = ref.get('reward_points', 0)
+        
+        response += f"{i}. **{name}**\n"
+        response += f"   📅 {created_at}\n"
+        response += f"   💰 +{reward} баллов\n\n"
+    
+    await message.answer(response, parse_mode="Markdown")
 
 
 @main_menu_router.message(F.text.in_(["💵 Доходы"]))
@@ -383,11 +459,30 @@ async def handle_invite_earnings(message: Message, bot: Bot, state: FSMContext) 
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
     
-    earnings_text = translations.get(lang, {}).get(
-        'referral_earnings_coming_soon',
-        '💵 Доходы по рефералам: скоро.'
+    from core.services.referral_service import referral_service
+    
+    # Получаем статистику доходов
+    stats = await referral_service.get_referral_stats(message.from_user.id)
+    
+    response = translations.get(lang, {}).get(
+        'earnings_title',
+        '💵 Доходы от рефералов'
+    ) + "\n\n"
+    
+    response += f"💰 **Всего заработано:** {stats['total_earnings']} баллов\n"
+    response += f"👥 **Приглашено:** {stats['total_referrals']} человек\n"
+    response += f"🔥 **Активных:** {stats['active_referrals']} за 30 дней\n\n"
+    
+    if stats['total_referrals'] > 0:
+        avg_earnings = stats['total_earnings'] / stats['total_referrals']
+        response += f"📊 **Средний доход:** {avg_earnings:.1f} баллов с человека\n\n"
+    
+    response += translations.get(lang, {}).get(
+        'earnings_tip',
+        '💡 Приглашайте больше друзей, чтобы увеличить доходы!'
     )
-    await message.answer(earnings_text)
+    
+    await message.answer(response, parse_mode="Markdown")
 
 
 # --- Policy consent callbacks ---

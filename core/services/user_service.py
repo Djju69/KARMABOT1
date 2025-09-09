@@ -204,13 +204,13 @@ class KarmaService:
                 """, user_id, -amount, reason, admin_id)
                 
                 logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
-        return True
+                return True
 
-            finally:
-                await conn.close()
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")
             return False
+        finally:
+            await conn.close()
 
     async def get_karma_history(self, user_id: int, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
     """

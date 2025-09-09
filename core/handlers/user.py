@@ -12,7 +12,6 @@ from typing import Optional, Dict, Any
 import logging
 
 from ..keyboards.reply_v2 import (
-    get_user_profile_keyboard,
     get_user_points_keyboard,
     get_user_settings_keyboard,
     get_confirmation_keyboard,
@@ -68,7 +67,7 @@ async def user_profile_handler(message: Message, state: FSMContext):
         )
         
         # Get profile keyboard with user language
-        keyboard = get_user_profile_keyboard({
+        keyboard = get_return_to_main_menu(lang)
             'lang': user.lang_code,
             'id': user.telegram_id
         })
@@ -222,7 +221,7 @@ async def spend_points_handler(message: Message, state: FSMContext):
         if balance <= 0:
             await message.answer(
                 get_text("not_enough_points", user.lang_code),
-                reply_markup=get_user_profile_keyboard({
+                reply_markup=get_return_to_main_menu(lang)
                     'lang': user.lang_code,
                     'id': user.telegram_id
                 })
