@@ -31,12 +31,21 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
             # Получаем пользователя и состояние
             user_id = None
             state = data.get('state')
+            current_state = None
             
             if isinstance(event, Message):
                 user_id = event.from_user.id
                 # Проверяем разрешенные команды
                 if event.text and any(event.text.startswith(cmd) for cmd in self.ALLOWED_COMMANDS):
                     return await handler(event, data)
+                # Разрешаем сообщения в AI-чате (ожидание вопроса)
+                if state:
+                    try:
+                        current_state = await state.get_state()
+                    except Exception:
+                        current_state = None
+                    if current_state and ('AIState' in current_state or current_state.endswith(':waiting_question')):
+                        return await handler(event, data)
                     
             elif isinstance(event, CallbackQuery):
                 user_id = event.from_user.id
@@ -47,9 +56,25 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
             if not user_id or not state:
                 return await handler(event, data)
             
-            # Проверяем статус принятия политики
+            # Проверяем статус принятия политики (FSM -> DB)
             user_data = await state.get_data()
             policy_accepted = user_data.get('policy_accepted', False)
+            if not policy_accepted:
+                # Пытаемся проверить в БД (users.policy_accepted)
+                try:
+                    from core.database.db_v2 import db_v2
+                    rows = await db_v2.execute_query(
+                        "SELECT policy_accepted FROM users WHERE telegram_id = $1",
+                        (user_id,)
+                    )
+                    if rows and isinstance(rows, list):
+                        rec = rows[0]
+                        # asyncpg row or dict
+                        value = rec.get('policy_accepted') if isinstance(rec, dict) else rec['policy_accepted']
+                        policy_accepted = bool(value)
+                except Exception:
+                    # В случае ошибки — оставляем предыдущее значение
+                    pass
             
             if not policy_accepted:
                 # Блокируем действие и показываем политику
