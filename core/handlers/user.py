@@ -12,8 +12,7 @@ from typing import Optional, Dict, Any
 import logging
 
 from ..keyboards.reply_v2 import (
-    get_return_to_main_menu,
-    get_cancel_keyboard
+    get_return_to_main_menu
 )
 from ..utils.locales_v2 import get_text
 from ..services.user_service import (
@@ -219,7 +218,7 @@ async def spend_points_handler(message: Message, state: FSMContext):
         # Ask for amount to spend
         await message.answer(
             get_text("enter_amount_to_spend", user.lang_code).format(balance=balance),
-            reply_markup=get_cancel_keyboard(user.lang_code)
+            reply_markup=get_return_to_main_menu(user.lang_code)
         )
         
         await state.set_state(UserStates.spending_points)
@@ -255,7 +254,7 @@ async def process_spend_amount(message: Message, state: FSMContext):
         except (ValueError, AttributeError):
             await message.answer(
                 get_text("invalid_amount", user.lang_code),
-                reply_markup=get_cancel_keyboard(user.lang_code)
+                reply_markup=get_return_to_main_menu(user.lang_code)
             )
             return
         
@@ -264,7 +263,7 @@ async def process_spend_amount(message: Message, state: FSMContext):
         if amount > balance:
             await message.answer(
                 get_text("not_enough_points", user.lang_code),
-                reply_markup=get_cancel_keyboard(user.lang_code)
+                reply_markup=get_return_to_main_menu(user.lang_code)
             )
             return
         
@@ -467,10 +466,7 @@ async def user_settings_handler(message: Message, state: FSMContext):
         settings_text = get_text("settings_header", user.lang_code)
         
         # Get settings keyboard with user language
-        keyboard = get_user_settings_keyboard({
-            'lang': user.lang_code,
-            'id': user.telegram_id
-        })
+        keyboard = get_return_to_main_menu(user.lang_code)
         
         await message.answer(settings_text, reply_markup=keyboard)
         await state.set_state(UserStates.viewing_settings)

@@ -58,7 +58,7 @@ class ReferralService:
                 "SELECT id FROM referrals WHERE invited_id = ?",
                 (invited_user_id,)
             )
-            if existing_referral:
+            if existing_referral and len(existing_referral) > 0:
                 return False
 
                 # Создаем запись о реферале
@@ -119,7 +119,7 @@ class ReferralService:
                 "SELECT COUNT(*) as count FROM referrals WHERE inviter_id = ?",
                 (user_id,)
             )
-            total_count = total_count_result[0]['count'] if total_count_result else 0
+            total_count = total_count_result[0]['count'] if total_count_result and len(total_count_result) > 0 else 0
             
             # Количество активных (за последние 30 дней)
             active_count_result = db_v2.execute_query(
@@ -127,7 +127,7 @@ class ReferralService:
                    WHERE inviter_id = ? AND created_at > datetime('now', '-30 days')""",
                 (user_id,)
             )
-            active_count = active_count_result[0]['count'] if active_count_result else 0
+            active_count = active_count_result[0]['count'] if active_count_result and len(active_count_result) > 0 else 0
             
             # Общие доходы от рефералов
             total_earnings_result = db_v2.execute_query(
@@ -135,7 +135,7 @@ class ReferralService:
                    WHERE inviter_id = ?""",
                 (user_id,)
             )
-            total_earnings = total_earnings_result[0]['total'] if total_earnings_result and total_earnings_result[0]['total'] else 0
+            total_earnings = total_earnings_result[0]['total'] if total_earnings_result and len(total_earnings_result) > 0 and total_earnings_result[0]['total'] else 0
             
             return {
                 'total_referrals': total_count,

@@ -89,17 +89,8 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
 • 🔔 Настройки уведомлений
 • ⚙️ Настройки профиля"""
         
-        # Create original keyboard as per TZ
-        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="💰 Моя карма"), KeyboardButton(text="💳 Мои карты")],
-                [KeyboardButton(text="🏆 Достижения"), KeyboardButton(text="🔔 Уведомления")],
-                [KeyboardButton(text="🤝 Стать партнером")],
-                [KeyboardButton(text="◀️ Назад")]
-            ],
-            resize_keyboard=True
-        )
+        # Use proper user cabinet keyboard with language button
+        keyboard = get_user_cabinet_keyboard(lang)
         
         await message.answer(profile_text, reply_markup=keyboard, parse_mode="HTML")
         
@@ -703,21 +694,18 @@ async def become_partner_handler(message: Message, state: FSMContext):
 
 @router.message(F.text.in_(["❓ Помощь", "❓ Help"]))
 async def help_handler(message: Message, state: FSMContext):
-    """Handle help functionality."""
+    """Handle help functionality with AI assistant."""
     try:
-        await message.answer(
-            "❓ <b>Помощь</b>\n\n"
-            "Добро пожаловать в KarmaBot!\n\n"
-            "💡 <b>Основные функции:</b>\n"
-            "• 📊 Карма - зарабатывайте баллы за активность\n"
-            "• 💳 Карты - привязывайте пластиковые карты\n"
-            "• 🏪 Каталог - найдите интересные места\n"
-            "• 🏆 Достижения - получайте награды\n\n"
-            "📞 <b>Поддержка:</b>\n"
-            "Если у вас есть вопросы, обратитесь к администратору.",
-            reply_markup=get_user_cabinet_keyboard(),
-            parse_mode='HTML'
-        )
+        from core.ui.kb_support_ai import kb_support_ai
+        from core.services.help_service import HelpService
+        
+        # Получаем текст помощи для роли
+        help_service = HelpService()
+        text = await help_service.get_help_message(message.from_user.id)
+        
+        # Отправляем с кнопкой AI
+        await message.answer(text, reply_markup=kb_support_ai(), parse_mode="HTML")
+        
     except Exception as e:
         logger.error(f"Error in help_handler: {str(e)}", exc_info=True)
         await message.answer(
