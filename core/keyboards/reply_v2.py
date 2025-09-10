@@ -375,8 +375,7 @@ def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📊 Моя карма"), KeyboardButton(text="💳 Мои карты")],
         [KeyboardButton(text="💎 Мои баллы"), KeyboardButton(text="🏪 Каталог мест")],
         [KeyboardButton(text="🏆 Достижения"), KeyboardButton(text="📋 История")],
-        [KeyboardButton(text="🔔 Уведомления"), KeyboardButton(text="🌐 Язык")],
-        [KeyboardButton(text="⚙️ Управление уведомлениями")],
+        [KeyboardButton(text="⚙️ Настройки")],
         [KeyboardButton(text="🤝 Стать партнером"), KeyboardButton(text="❓ Помощь")],
         [KeyboardButton(text="◀️ Назад")]
     ]
@@ -387,8 +386,7 @@ def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     buttons = [
         [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="🔍 Поиск")],
         [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
-        [KeyboardButton(text="🌐 Язык"), KeyboardButton(text="❓ Помощь")],
-        [KeyboardButton(text="⚙️ Управление уведомлениями")],
+        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="❓ Помощь")],
         [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -401,8 +399,7 @@ def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="👥 Пользователи"), KeyboardButton(text="🤝 Партнёры")],
         [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="📧 Рассылка")],
         [KeyboardButton(text="⚙️ Настройки лояльности"), KeyboardButton(text="🗑️ Удаление")],
-        [KeyboardButton(text="🌐 Язык"), KeyboardButton(text="❓ Помощь")],
-        [KeyboardButton(text="⚙️ Управление уведомлениями")],
+        [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="❓ Помощь")],
         [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
