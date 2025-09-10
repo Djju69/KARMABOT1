@@ -168,3 +168,49 @@ async def support_ai_audio(message: Message, state: FSMContext):
     """Обработка аудиофайлов в AI-режиме"""
     # Обрабатываем как голосовое сообщение
     await support_ai_voice(message, state)
+
+
+@router.message(Command("notifications"))
+async def cmd_notifications(message: Message, state: FSMContext):
+    """Handle /notifications command for AI assistant."""
+    try:
+        # Get user language
+        lang = getattr(message.from_user, 'language_code', 'ru') or 'ru'
+        
+        # Get AI response for notification management
+        reply = await support_ai.answer(message.from_user.id, "уведомления", lang)
+        
+        # Send response
+        await message.answer(
+            reply,
+            parse_mode="Markdown"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in notifications command: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при получении настроек уведомлений. Попробуйте позже."
+        )
+
+
+@router.message(F.text == "⚙️ Управление уведомлениями")
+async def txt_notifications_management(message: Message, state: FSMContext):
+    """Handle 'Управление уведомлениями' text button."""
+    try:
+        # Get user language
+        lang = getattr(message.from_user, 'language_code', 'ru') or 'ru'
+        
+        # Get AI response for notification management
+        reply = await support_ai.answer(message.from_user.id, "уведомления", lang)
+        
+        # Send response
+        await message.answer(
+            reply,
+            parse_mode="Markdown"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error in notifications management: {e}")
+        await message.answer(
+            "❌ Произошла ошибка при получении настроек уведомлений. Попробуйте позже."
+        )
