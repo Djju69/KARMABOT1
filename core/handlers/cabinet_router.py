@@ -634,12 +634,19 @@ async def view_catalog_handler(message: Message, state: FSMContext):
 async def language_handler(message: Message, state: FSMContext):
     """Handle language selection."""
     try:
+        logger.info(f"Language handler called for user {message.from_user.id}")
         from core.handlers.language import build_language_inline_kb
+        logger.info("build_language_inline_kb imported successfully")
+        
+        keyboard = build_language_inline_kb()
+        logger.info(f"Language keyboard created: {keyboard}")
+        
         await message.answer(
             "🌐 <b>Выбор языка</b>\n\nВыберите язык интерфейса:",
-            reply_markup=build_language_inline_kb(),
+            reply_markup=keyboard,
             parse_mode='HTML'
         )
+        logger.info("Language selection message sent successfully")
     except Exception as e:
         logger.error(f"Error in language_handler: {str(e)}", exc_info=True)
         await message.answer(
@@ -692,26 +699,7 @@ async def become_partner_handler(message: Message, state: FSMContext):
         )
 
 
-@router.message(F.text.in_(["❓ Помощь", "❓ Help"]))
-async def help_handler(message: Message, state: FSMContext):
-    """Handle help functionality with AI assistant."""
-    try:
-        from core.ui.kb_support_ai import kb_support_ai
-        from core.services.help_service import HelpService
-        
-        # Получаем текст помощи для роли
-        help_service = HelpService()
-        text = await help_service.get_help_message(message.from_user.id)
-        
-        # Отправляем с кнопкой AI
-        await message.answer(text, reply_markup=kb_support_ai(), parse_mode="HTML")
-        
-    except Exception as e:
-        logger.error(f"Error in help_handler: {str(e)}", exc_info=True)
-        await message.answer(
-            "❌ Не удалось загрузить справку. Пожалуйста, попробуйте позже.",
-            reply_markup=get_user_cabinet_keyboard()
-        )
+# Help handler removed - handled by help_with_ai_router
 
 
 @router.message(F.text.in_(["◀️ Назад", "◀️ Back"]))
@@ -740,7 +728,7 @@ router.message.register(view_history_handler, F.text == "📋 История")
 router.message.register(view_notifications_handler, F.text == "🔔 Уведомления")
 router.message.register(language_handler, F.text == "🌐 Язык")
 router.message.register(become_partner_handler, F.text == "🤝 Стать партнером")
-router.message.register(help_handler, F.text == "❓ Помощь")
+# help_handler removed - handled by help_with_ai_router
 router.message.register(back_to_profile_handler, F.text == "◀️ Назад")
 
 # For backward compatibility
