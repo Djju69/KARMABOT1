@@ -64,10 +64,8 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
         all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
         user_visits = {}  # This would be tracked in a visits table
         
-        # Form detailed profile message
-        profile_text = translations.get(lang, {}).get(
-            'detailed_profile',
-            f"""👤 <b>Личный кабинет</b>
+        # Form detailed profile message with real data
+        profile_text = f"""👤 <b>Личный кабинет</b>
 
 🆔 <b>ID:</b> {user_id}
 👤 <b>Имя:</b> {message.from_user.full_name or 'Не указано'}
@@ -90,7 +88,6 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
 • 📋 Управление QR-кодами
 • 🔔 Настройки уведомлений
 • ⚙️ Настройки профиля"""
-        )
         
         # Create original keyboard as per TZ
         from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -274,70 +271,6 @@ async def handle_achievements(message: Message, state: FSMContext):
             '❌ Ошибка загрузки достижений. Попробуйте позже.'
         )
         await message.answer(error_text)
-        
-        if not profile:
-            await message.answer(
-                "❌ Произошла ошибка при загрузке профиля. Пожалуйста, попробуйте позже.",
-                reply_markup=get_return_to_main_menu()
-            )
-            return
-        
-        # Format profile message according to TZ
-        text = (
-            f"👤 <b>Ваш профиль</b>\n\n"
-            f"🏷 ID: <code>{profile['telegram_id']}</code>\n"
-            f"👤 Имя: {profile['full_name'] or 'Не указано'}\n"
-            f"💬 Логин: @{profile['username'] or 'Не указан'}\n"
-            f"⭐ Карма: <b>{profile['karma_points']}</b> (Уровень {profile['level']})\n"
-            f"🏆 Репутация: +{profile.get('reputation_score', 0)}\n"
-            f"📅 Регистрация: {profile['registration_date']}\n"
-            f"💳 Показать карту: {profile['cards_count']}"
-        )
-        
-        # Add level progress if available
-        if profile.get('level_progress'):
-            progress = profile['level_progress']
-            if progress.get('next_threshold'):
-                text += f"\n📈 До следующего уровня: {progress['next_threshold'] - progress['progress_karma']} кармы"
-        
-        # Add notifications count
-        if profile.get('unread_notifications', 0) > 0:
-            text += f"\n🔔 Непрочитанных уведомлений: {profile['unread_notifications']}"
-        
-        # Add achievements count
-        if profile.get('achievements_count', 0) > 0:
-            text += f"\n🏅 Достижений: {profile['achievements_count']}"
-        
-        # Add partner info if user is a partner
-        if profile.get('is_partner'):
-            text += "\n\n🔹 <b>Партнёрский статус: Активирован</b>"
-        
-        # Add referral info if available
-        if profile.get('referral_code'):
-            text += f"\n🔗 Реферальный код: <code>{profile['referral_code']}</code>"
-        
-        # Send message with appropriate keyboard
-        keyboard = (
-            get_partner_cabinet_keyboard(has_cards=profile.get('is_partner', False))
-            if profile.get('is_partner') 
-            else get_user_cabinet_keyboard()
-        )
-        
-        await message.answer(
-            text,
-            reply_markup=keyboard,
-            parse_mode='HTML'
-        )
-        
-        # Set state to viewing profile
-        await state.set_state(CabinetStates.viewing_profile)
-        
-    except Exception as e:
-        logger.error(f"Error in user_cabinet_handler: {str(e)}", exc_info=True)
-        await message.answer(
-            "❌ Произошла ошибка при загрузке профиля. Пожалуйста, попробуйте позже.",
-            reply_markup=get_return_to_main_menu()
-        )
 
 
 @router.message(F.text.in_(["📊 Моя карма", "📊 My Karma", "💎 Мои баллы"]))

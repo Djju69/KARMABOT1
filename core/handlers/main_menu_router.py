@@ -402,11 +402,12 @@ async def handle_invite_my_link(message: Message, bot: Bot, state: FSMContext) -
         '🔗 Ваша реферальная ссылка'
     ) + "\n\n"
     
-    response += f"<code>{referral_link}</code>\n\n"
     response += translations.get(lang, {}).get(
         'referral_instructions',
         '💡 Поделитесь ссылкой с друзьями и получайте бонусы за каждого приглашенного!'
-    )
+    ) + "\n\n"
+    
+    response += f"<a href='{referral_link}'>🎁 Присоединяйся к Karma System!</a>"
     
     # Создаем inline кнопку "Поделиться"
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton

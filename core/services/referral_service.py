@@ -103,7 +103,7 @@ class ReferralService:
                 ORDER BY r.created_at DESC
             """
             
-            referrals = db_v2.fetch_all(query, (user_id,))
+            referrals = db_v2.execute_query(query, (user_id,))
             return referrals
             
         except Exception as e:
@@ -163,7 +163,7 @@ class ReferralService:
                 LIMIT ?
             """
             
-            leaderboard = db_v2.fetch_all(query, (limit,))
+            leaderboard = db_v2.execute_query(query, (limit,))
             return leaderboard
             
         except Exception as e:
