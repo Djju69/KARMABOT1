@@ -162,8 +162,8 @@ async def generate_ai_response(question: str, context: Dict = None) -> str:
         "Попробуйте переформулировать вопрос или обратитесь в поддержку @karma_support"
     )
 
-# Обработчик кнопки "❓ Помощь"
-@ai_help_router.message(F.text == "❓ Помощь")
+# Обработчик кнопки "❓ Помощь" - ОСНОВНОЙ ОБРАБОТЧИК ДЛЯ ВСЕХ ЯЗЫКОВ
+@ai_help_router.message(F.text.in_(["❓ Помощь", "❓ Help", "❓ 도움말", "❓ Trợ giúp"]))
 async def help_button_handler(message: Message, state: FSMContext):
     """Обработчик кнопки помощи"""
     try:
@@ -171,6 +171,8 @@ async def help_button_handler(message: Message, state: FSMContext):
         user_id = message.from_user.id
         lang = await get_user_lang(user_id)
         texts = get_all_texts(lang)
+        
+        logger.info(f"[AI_HELP] Help button pressed by user {user_id}, lang={lang}")
         
         help_text = texts.get('help.main_menu', 
             "🆘 **Центр помощи Karma System**\n\n"
@@ -186,10 +188,10 @@ async def help_button_handler(message: Message, state: FSMContext):
             parse_mode="HTML"
         )
         
-        logger.info(f"Help menu shown to user {user_id}")
+        logger.info(f"[AI_HELP] Help menu shown to user {user_id}")
         
     except Exception as e:
-        logger.error(f"Error in help handler: {e}", exc_info=True)
+        logger.error(f"[AI_HELP] Error in help handler: {e}", exc_info=True)
         await message.answer("❌ Произошла ошибка. Попробуйте позже.")
 
 # Обработчик команды /help
@@ -457,6 +459,32 @@ async def back_to_help_menu(callback: CallbackQuery, state: FSMContext):
         
     except Exception as e:
         logger.error(f"Error going back: {e}", exc_info=True)
+
+# Обработчик возврата в главное меню
+@ai_help_router.callback_query(F.data == "help:main_menu")
+async def back_to_main_menu(callback: CallbackQuery, state: FSMContext):
+    """Возвращает в главное меню бота"""
+    try:
+        await callback.answer()
+        await state.clear()
+        
+        user_id = callback.from_user.id
+        lang = await get_user_lang(user_id)
+        
+        # Удаляем сообщение с меню помощи
+        await callback.message.delete()
+        
+        # Отправляем сообщение с главным меню
+        await callback.message.answer(
+            get_text(lang, "main.menu_restored", "Главное меню восстановлено"),
+            reply_markup=get_main_menu_reply(lang)
+        )
+        
+        logger.info(f"[AI_HELP] User {user_id} returned to main menu")
+        
+    except Exception as e:
+        logger.error(f"[AI_HELP] Error returning to main menu: {e}", exc_info=True)
+        await callback.answer("Используйте /start для возврата в главное меню")
 
 # Обработчик любых сообщений в состоянии in_chat
 @ai_help_router.message(AIHelpStates.in_chat)

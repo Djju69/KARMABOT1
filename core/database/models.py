@@ -124,7 +124,7 @@ class PlaceInDB(PlaceBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Модели для категорий
 class CategoryBase(BaseModel):
@@ -141,4 +141,4 @@ class CategoryInDB(CategoryBase):
     updated_at: Optional[datetime] = None
     
     class Config:
-        orm_mode = True
+        from_attributes = True

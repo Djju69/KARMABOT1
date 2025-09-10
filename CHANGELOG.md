@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2025-01-10 - Critical Fixes and AI Help Implementation
+
+### Critical Fixes
+1. **Fixed AI Help Handler**
+   - Added explicit handler for "❓ Помощь" button in all languages
+   - Added callback handler for `help:main_menu` to return to main menu
+   - Enhanced logging with [AI_HELP] prefix for better debugging
+
+2. **Fixed Privacy Policy Middleware**
+   - Added help commands to ALLOWED_COMMANDS list
+   - Added `help:` callbacks to ALLOWED_CALLBACKS
+   - Now allows `/help` and "❓ Помощь" button without policy acceptance
+
+3. **Fixed Database Issues**
+   - Created `fix_database.sql` script to fix missing tables
+   - Handles duplicate column errors gracefully
+   - Creates missing tables: `cards_generated`, `favorites`, `karma_log`
+   - Adds missing indexes for performance
+
+4. **Fixed Pydantic Deprecation Warnings**
+   - Replaced `orm_mode = True` with `from_attributes = True` in all schema files
+   - Updated: models.py, auth.py, review.py, media.py, place.py, category.py, base.py
+
 ## 2025-01-10 - AI Help Implementation
 
 ### Added
