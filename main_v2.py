@@ -298,11 +298,17 @@ async def main():
     
     # AI Support routers (with feature flags) - подключаем ПЕРВЫМИ для приоритета
     from core.settings import settings
+    logger.info(f"🔍 Support AI feature flag: {settings.features.support_ai}")
     if settings.features.support_ai:
-        dp.include_router(help_with_ai_router)  # ПЕРВЫМ для перехвата /help
-        dp.include_router(settings_router)
-        dp.include_router(support_ai_router)
-        logger.info("✅ AI Support routers included")
+        try:
+            dp.include_router(help_with_ai_router)  # ПЕРВЫМ для перехвата /help
+            dp.include_router(settings_router)
+            dp.include_router(support_ai_router)
+            logger.info("✅ AI Support routers included")
+        except Exception as e:
+            logger.error(f"❌ Error including AI routers: {e}")
+    else:
+        logger.warning("⚠️ AI Support feature is disabled")
     
     # Set up bot commands
     await set_commands(bot)

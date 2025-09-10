@@ -61,18 +61,23 @@ async def txt_help(message: Message):
 async def txt_help_button(message: Message):
     """Обработчик кнопки '❓ Помощь' с кнопкой AI"""
     try:
+        logger.info(f"🔍 Help button pressed by user {message.from_user.id}")
+        
         # Получаем роль пользователя
         user_role = await get_user_role(message.from_user.id)
+        logger.info(f"🔍 User role: {user_role}")
         
         # Получаем текст помощи для роли
         help_service = HelpService()
         text = await help_service.get_help_message(message.from_user.id)
+        logger.info(f"🔍 Help text length: {len(text)}")
         
         # Отправляем с кнопкой AI
         await message.answer(text, reply_markup=kb_support_ai(), parse_mode="HTML")
+        logger.info("✅ Help message sent successfully")
         
     except Exception as e:
-        logger.error(f"Error in help button: {e}")
+        logger.error(f"Error in help button: {e}", exc_info=True)
         await message.answer(
             "❌ Произошла ошибка при получении справки. Попробуйте позже.",
             reply_markup=kb_support_ai()
