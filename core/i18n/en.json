@@ -149,5 +149,15 @@
     "favorites_coming_soon": "⭐ Favorites: coming soon. Your saved cards will be here.",
     "referral_link_coming_soon": "🔗 Your link: coming soon.",
     "referral_list_coming_soon": "📋 Invited list: coming soon.",
-    "referral_earnings_coming_soon": "💵 Referral earnings: coming soon."
+    "referral_earnings_coming_soon": "💵 Referral earnings: coming soon.",
+    "btn.ai_assistant": "🤖 AI Assistant",
+    "btn.faq": "📋 FAQ",
+    "btn.contact_support": "📞 Support",
+    "btn.ask_another": "❓ Another question",
+    "btn.end_chat": "❌ End chat",
+    "help.main_menu": "🆘 **Karma System Help Center**\n\nChoose how I can help:\n\n🤖 **AI Assistant** - instant answers to your questions\n📋 **FAQ** - answers to popular questions\n📞 **Support** - contact our team",
+    "ai.intro_message": "🤖 Hi! I'm Karma System AI assistant.\n\nI can answer questions about:\n• Discounts and QR codes\n• Karma system and points\n• Registration and partnership\n• Venue categories\n\nAsk your question:",
+    "ai.ask_question": "❓ Ask your question:",
+    "ai.goodbye": "👋 Thank you for using AI assistant!\nHappy to help again. Have a great day!",
+    "main.menu_restored": "Main menu restored"
 }

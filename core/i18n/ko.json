@@ -129,5 +129,15 @@
     "favorites_coming_soon": "⭐ 즐겨찾기: 곧 제공됩니다. 저장된 카드가 여기에 표시됩니다.",
     "referral_link_coming_soon": "🔗 귀하의 링크: 곧 제공됩니다.",
     "referral_list_coming_soon": "📋 초대 목록: 곧 제공됩니다.",
-    "referral_earnings_coming_soon": "💵 추천 수익: 곧 제공됩니다."
+    "referral_earnings_coming_soon": "💵 추천 수익: 곧 제공됩니다.",
+    "btn.ai_assistant": "🤖 AI 도우미",
+    "btn.faq": "📋 FAQ",
+    "btn.contact_support": "📞 지원",
+    "btn.ask_another": "❓ 다른 질문",
+    "btn.end_chat": "❌ 종료",
+    "help.main_menu": "🆘 **Karma System 도움말 센터**\n\n어떻게 도와드릴까요:\n\n🤖 **AI 도우미** - 질문에 대한 즉각적인 답변\n📋 **FAQ** - 자주 묻는 질문에 대한 답변\n📞 **지원** - 저희 팀에 문의",
+    "ai.intro_message": "🤖 안녕하세요! Karma System AI 도우미입니다.\n\n다음에 대한 질문에 답변할 수 있습니다:\n• 할인 및 QR 코드\n• 카르마 시스템 및 포인트\n• 등록 및 파트너십\n• 장소 카테고리\n\n질문을 해주세요:",
+    "ai.ask_question": "❓ 질문을 해주세요:",
+    "ai.goodbye": "👋 AI 도우미를 이용해 주셔서 감사합니다!\n다시 도움을 드리게 되어 기쁩니다. 좋은 하루 되세요!",
+    "main.menu_restored": "메인 메뉴가 복원되었습니다"
 }

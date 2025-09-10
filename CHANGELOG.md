@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## 2025-01-10 - AI Help Implementation
+
+### Added
+- **Complete AI Help System** (`core/handlers/ai_help.py`)
+  - Implemented full AI assistant functionality with menu system
+  - Added interactive chat with FSM states (`AIHelpStates`)
+  - Smart keyword-based responses for common questions (discounts, karma, registration, etc.)
+  - FAQ section with structured Q&A format
+  - Direct support contact integration
+  - Multi-language support through i18n system
+
+### Features
+- **AI Chat Features**:
+  - Context-aware responses based on keywords
+  - Chat history tracking
+  - "Ask another question" and "End chat" buttons
+  - Graceful error handling
+  - Rate limiting ready (stub implemented)
+
+- **Help Menu Structure**:
+  ```
+  🆘 Центр помощи Karma System
+  [🤖 AI Помощник] - мгновенные ответы
+  [📋 FAQ] - популярные вопросы  
+  [📞 Поддержка] - связь с командой
+  [◀️ Назад] - в главное меню
+  ```
+
+### Localization
+- Added translations for all 4 languages (RU/EN/VI/KO):
+  - `btn.ai_assistant`, `btn.faq`, `btn.contact_support`
+  - `btn.ask_another`, `btn.end_chat`
+  - `help.main_menu`, `ai.intro_message`
+  - `ai.ask_question`, `ai.goodbye`, `main.menu_restored`
+
+### Integration
+- Integrated `ai_help_router` into `main_v2.py`
+- Proper router ordering for priority handling
+- Feature flag support (`settings.features.support_ai`)
+
+### Technical Details
+- Fallback responses for when OpenAI API is not available
+- Keyword matching system for common topics
+- Database integration for user language preferences
+- Proper FSM state management for conversations
+
 Дата: 2025-08-24
 
 ## [Unreleased]

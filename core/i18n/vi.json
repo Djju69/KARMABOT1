@@ -131,5 +131,15 @@
     "favorites_coming_soon": "⭐ Yêu thích: sắp có. Các thẻ đã lưu của bạn sẽ ở đây.",
     "referral_link_coming_soon": "🔗 Liên kết của bạn: sắp có.",
     "referral_list_coming_soon": "📋 Danh sách mời: sắp có.",
-    "referral_earnings_coming_soon": "💵 Thu nhập giới thiệu: sắp có."
+    "referral_earnings_coming_soon": "💵 Thu nhập giới thiệu: sắp có.",
+    "btn.ai_assistant": "🤖 Trợ lý AI",
+    "btn.faq": "📋 FAQ",
+    "btn.contact_support": "📞 Hỗ trợ",
+    "btn.ask_another": "❓ Câu hỏi khác",
+    "btn.end_chat": "❌ Kết thúc",
+    "help.main_menu": "🆘 **Trung tâm hỗ trợ Karma System**\n\nChọn cách tôi có thể giúp:\n\n🤖 **Trợ lý AI** - trả lời tức thì cho câu hỏi của bạn\n📋 **FAQ** - câu trả lời cho các câu hỏi phổ biến\n📞 **Hỗ trợ** - liên hệ với nhóm của chúng tôi",
+    "ai.intro_message": "🤖 Xin chào! Tôi là trợ lý AI Karma System.\n\nTôi có thể trả lời câu hỏi về:\n• Giảm giá và mã QR\n• Hệ thống karma và điểm\n• Đăng ký và đối tác\n• Danh mục địa điểm\n\nHãy đặt câu hỏi của bạn:",
+    "ai.ask_question": "❓ Đặt câu hỏi của bạn:",
+    "ai.goodbye": "👋 Cảm ơn bạn đã sử dụng trợ lý AI!\nRất vui được giúp đỡ lần nữa. Chúc bạn ngày tốt lành!",
+    "main.menu_restored": "Menu chính đã được khôi phục"
 }

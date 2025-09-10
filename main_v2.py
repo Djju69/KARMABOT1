@@ -287,6 +287,7 @@ async def main():
     
     # AI Support routers
     from core.handlers.help_with_ai import router as help_with_ai_router
+    from core.handlers.ai_help import ai_help_router
     from core.handlers.settings_router import router as settings_router
     from core.handlers.support_ai import router as support_ai_router
     
@@ -302,6 +303,7 @@ async def main():
     if settings.features.support_ai:
         try:
             dp.include_router(help_with_ai_router)  # ПЕРВЫМ для перехвата /help
+            dp.include_router(ai_help_router)  # AI Help menu router
             dp.include_router(settings_router)
             dp.include_router(support_ai_router)
             logger.info("✅ AI Support routers included")
