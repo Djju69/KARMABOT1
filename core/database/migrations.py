@@ -527,8 +527,35 @@ class DatabaseMigrator:
                     raise
     
     def run_all_migrations(self):
-        """Run all pending migrations in order"""
+        """Run all pending migrations in order (guarded, idempotent)"""
         logger.info("Starting database migrations...")
+        # Prevent concurrent/racey runs on Postgres via advisory lock
+        advisory_locked = False
+        if not self._is_memory and self._is_postgres():
+            try:
+                import asyncio, asyncpg, os
+                database_url = os.getenv("DATABASE_URL")
+                async def _lock():
+                    conn_pg = await asyncpg.connect(database_url)
+                    try:
+                        # Arbitrary big int lock key for this app
+                        await conn_pg.execute("SELECT pg_advisory_lock(8612345678901234)")
+                        return conn_pg
+                    except Exception:
+                        await conn_pg.close()
+                        raise
+                try:
+                    loop = asyncio.get_running_loop()
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as ex:
+                        fut = ex.submit(asyncio.run, _lock())
+                        self._pg_lock_conn = fut.result()
+                except RuntimeError:
+                    self._pg_lock_conn = asyncio.run(_lock())
+                advisory_locked = True
+                logger.info("🔒 Acquired PG advisory lock for migrations")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not acquire advisory lock: {e}")
         
         self.init_migration_table()
         self.migrate_001_expand_legacy_tables()
@@ -554,15 +581,36 @@ class DatabaseMigrator:
         self.migrate_017_loyalty_system()
         # Personal cabinets system
         self.migrate_018_personal_cabinets()
-        # Fix users table - FORCE EXECUTE
-        print("🔧 FORCE executing migration 019 for PostgreSQL...")
-        self.migrate_019_fix_users_table()
+        # Fix users table - execute only if not applied; avoid noisy FORCE
+        if not self.is_migration_applied("019"):
+            logger.info("🔧 Executing migration 019 (users table fix)")
+            self.migrate_019_fix_users_table()
         # Loyalty system expansion
         self.migrate_020_loyalty_expansion()
         # User features (favorites, referrals, karma_log, points_log, achievements)
         self.migrate_010_user_features()
         
         logger.info("All migrations completed successfully")
+        # Release advisory lock
+        if advisory_locked:
+            try:
+                import asyncio
+                async def _unlock(conn_pg):
+                    try:
+                        await conn_pg.execute("SELECT pg_advisory_unlock(8612345678901234)")
+                    finally:
+                        await conn_pg.close()
+                try:
+                    loop = asyncio.get_running_loop()
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as ex:
+                        fut = ex.submit(asyncio.run, _unlock(self._pg_lock_conn))
+                        fut.result()
+                except RuntimeError:
+                    asyncio.run(_unlock(self._pg_lock_conn))
+                logger.info("🔓 Released PG advisory lock for migrations")
+            except Exception as e:
+                logger.warning(f"⚠️ Could not release advisory lock: {e}")
 
     def migrate_001_1_add_categories_created_at(self):
         """
@@ -723,6 +771,7 @@ class DatabaseMigrator:
         """
         
         # Add karma_points column if it doesn't exist
+        # We'll do a pre-check to avoid noisy duplicate-column errors in logs
         karma_column_sql = """
         ALTER TABLE users ADD COLUMN karma_points INTEGER DEFAULT 0;
         """
@@ -863,15 +912,58 @@ class DatabaseMigrator:
             users_sql,
         )
         
-        # Try to add karma_points column (might fail if already exists)
+        # Try to add karma_points column safely: pre-check and mark applied if exists
         try:
-            self.apply_migration(
-                "016.1",
-                "EXPAND: Add karma_points column to users",
-                karma_column_sql,
-            )
-        except:
-            pass  # Column might already exist
+            column_exists = False
+            if self._is_memory or not self._is_postgres():
+                # SQLite path
+                try:
+                    with self.get_connection() as _conn_chk:
+                        cur = _conn_chk.execute("PRAGMA table_info(users)")
+                        cols = {row[1] for row in cur.fetchall()}
+                        column_exists = 'karma_points' in cols
+                except Exception:
+                    column_exists = False
+            else:
+                # PostgreSQL path
+                try:
+                    import asyncio, asyncpg, os
+                    database_url = os.getenv("DATABASE_URL")
+                    async def _check_pg():
+                        conn_pg = await asyncpg.connect(database_url)
+                        try:
+                            return await conn_pg.fetchval(
+                                "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='karma_points')"
+                            )
+                        finally:
+                            await conn_pg.close()
+                    try:
+                        loop = asyncio.get_running_loop()
+                        import concurrent.futures
+                        with concurrent.futures.ThreadPoolExecutor() as ex:
+                            fut = ex.submit(asyncio.run, _check_pg())
+                            column_exists = bool(fut.result())
+                    except RuntimeError:
+                        column_exists = bool(asyncio.run(_check_pg()))
+                except Exception:
+                    column_exists = False
+
+            if column_exists:
+                # Mark as applied with a no-op to avoid re-attempts
+                self.apply_migration(
+                    "016.1",
+                    "EXPAND: Add karma_points column to users (skipped: exists)",
+                    "SELECT 1;",
+                )
+            else:
+                self.apply_migration(
+                    "016.1",
+                    "EXPAND: Add karma_points column to users",
+                    karma_column_sql,
+                )
+        except Exception:
+            # Do not spam logs on safe-check failures
+            pass
         
         self.apply_migration(
             "016.2",
