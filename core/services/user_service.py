@@ -531,3 +531,79 @@ __all__ = [
     'subtract_karma',
     'add_karma'
 ]
+
+
+# === Role and Language helpers used by help handlers ===
+async def get_user_role(user_id: int) -> str:
+    """Return user's role. Fallback to settings admin as super_admin, else 'user'."""
+    try:
+        conn = await karma_service.get_connection()
+        try:
+            # Try user_roles mapping first (if exists)
+            try:
+                row = await conn.fetchrow(
+                    "SELECT role FROM user_roles WHERE user_id = $1",
+                    user_id,
+                )
+                if row and row.get('role'):
+                    return str(row['role'])
+            except Exception:
+                # Table might not exist; proceed with fallbacks
+                pass
+
+            # Super admin fallback from settings
+            from core.settings import settings
+            admin_id = getattr(settings.bots, 'admin_id', None) or getattr(settings, 'ADMIN_ID', None)
+            if isinstance(admin_id, int) and admin_id == int(user_id):
+                # Best-effort upsert into user_roles
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO user_roles (user_id, role) VALUES ($1, $2)
+                        ON CONFLICT (user_id) DO UPDATE SET role = EXCLUDED.role
+                        """,
+                        user_id, 'super_admin'
+                    )
+                except Exception:
+                    pass
+                return 'super_admin'
+
+            # Default role
+            try:
+                await conn.execute(
+                    """
+                    INSERT INTO user_roles (user_id, role) VALUES ($1, $2)
+                    ON CONFLICT (user_id) DO NOTHING
+                    """,
+                    user_id, 'user'
+                )
+            except Exception:
+                pass
+            return 'user'
+        finally:
+            await conn.close()
+    except Exception as e:
+        logger.warning(f"get_user_role fallback to 'user' due to error: {e}")
+        return 'user'
+
+
+async def get_user_language(user_id: int) -> str:
+    """Return user's language_code from users table, default 'ru'."""
+    try:
+        conn = await karma_service.get_connection()
+        try:
+            row = await conn.fetchrow(
+                "SELECT language_code FROM users WHERE telegram_id = $1",
+                user_id,
+            )
+            lang = (row and row.get('language_code')) or 'ru'
+            return lang or 'ru'
+        finally:
+            await conn.close()
+    except Exception as e:
+        logger.warning(f"get_user_language fallback to 'ru' due to error: {e}")
+        return 'ru'
+
+
+# Re-export helpers
+__all__.extend(['get_user_role', 'get_user_language'])
