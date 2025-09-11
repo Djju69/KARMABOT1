@@ -995,8 +995,42 @@ async def main():
     if redis is not None:
         dp.shutdown.register(make_shutdown_handler(redis))
     
-    # Include routers
+    # Include routers in canonical order: main_menu -> basic -> callback -> categories -> profile -> cabinet -> activity -> partner/moderation -> admin -> ping (last)
+    from core.handlers import (
+        basic_router,
+        callback_router,
+        main_menu_router,
+    )
+    from core.handlers.category_handlers_v2 import get_category_router
+    from core.handlers.profile import get_profile_router
+    from core.handlers.cabinet_router import get_cabinet_router
+    from core.handlers.activity_router import get_activity_router
+    from core.handlers.moderation import get_moderation_router
+    from core.handlers.admin_cabinet import get_admin_cabinet_router
     from core.handlers import ping
+
+    # 1) Main menu first
+    dp.include_router(main_menu_router)
+    # 2) Basic and callback
+    dp.include_router(basic_router)
+    dp.include_router(callback_router)
+    # 3) Categories
+    dp.include_router(get_category_router())
+    # 4) Profile and cabinet
+    prof = get_profile_router()
+    if prof:
+        dp.include_router(prof)
+    dp.include_router(get_cabinet_router())
+    # 5) Activity
+    dp.include_router(get_activity_router())
+    # 6) Partner router
+    from core.handlers.partner import partner_router as partner_router_instance
+    dp.include_router(partner_router_instance)
+    # 7) Moderation and admin (under feature flag if needed)
+    if getattr(settings.features, "moderation", True):
+        dp.include_router(get_moderation_router())
+        dp.include_router(get_admin_cabinet_router())
+    # 8) Ping/catch-alls LAST
     dp.include_router(ping.router)
     
     # Ensure database is ready
