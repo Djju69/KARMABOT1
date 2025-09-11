@@ -597,6 +597,19 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'admin_menu_queue': '📋 Очередь модерации',
         'admin_menu_search': '🔍 Поиск',
         'admin_menu_reports': '📊 Отчёты',
+        
+        # Activity (loyalty) texts
+        'actv_title': '🎯 Активности',
+        'actv_checkin': 'Ежедневный чек‑ин',
+        'actv_profile': 'Заполнить профиль',
+        'actv_bindcard': 'Привязать карту',
+        'actv_geocheckin': 'Чек‑ин по геолокации',
+        'actv_rule_disabled': '🚧 Эта активность временно недоступна.',
+        'actv_cooldown': '⏳ Активность уже выполнена. Попробуйте позже.',
+        'actv_send_location_prompt': '📍 Отправьте геолокацию для чек‑ина поблизости.',
+        'actv_claim_ok': '✅ Активность засчитана! Баллы начислены.',
+        'actv_geo_required': '📍 Нужна геолокация. Отправьте местоположение и повторите.',
+        'actv_out_of_coverage': 'ℹ️ Вы вне зоны действия для этой активности.',
     },
     'en': {
         # v4.2.4 minimal labels
