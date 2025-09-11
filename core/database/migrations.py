@@ -644,6 +644,35 @@ class DatabaseMigrator:
         except Exception as e:
             logger.warning(f"021 migration skipped or failed safely: {e}")
         
+        # 022: Ensure users.policy_accepted column exists (PG/SQLite)
+        try:
+            version = "022"
+            desc = "EXPAND: Add users.policy_accepted column (privacy policy flag)"
+            if not self.is_migration_applied(version):
+                if self._is_memory or not self._is_postgres():
+                    # SQLite path: add column if missing
+                    with self.get_connection() as conn:
+                        try:
+                            cur = conn.execute("PRAGMA table_info(users)")
+                            cols = {row[1] for row in cur.fetchall()}
+                        except Exception:
+                            cols = set()
+                        if 'policy_accepted' not in cols:
+                            conn.execute("ALTER TABLE users ADD COLUMN policy_accepted INTEGER DEFAULT 0")
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                            (version, desc),
+                        )
+                        conn.commit()
+                else:
+                    # PostgreSQL path: use IF NOT EXISTS
+                    sql = """
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS policy_accepted BOOLEAN DEFAULT FALSE;
+                    """
+                    self.apply_migration(version, desc, sql)
+        except Exception as e:
+            logger.warning(f"022 migration skipped or failed safely: {e}")
+        
         logger.info("All migrations completed successfully")
         # Release advisory lock
         if advisory_locked:
