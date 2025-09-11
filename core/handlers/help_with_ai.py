@@ -3,6 +3,8 @@
 """
 import logging
 from aiogram import Router, F
+from typing import Dict
+import time
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -18,6 +20,62 @@ router = Router()
 
 class AIState(StatesGroup):
     waiting_question = State()
+
+# 60-секундное окно AI-сессии без удержания FSM
+SESSION_TTL_SEC = 60
+AI_SESSIONS: Dict[int, int] = {}
+MENU_TEXTS = {
+    "❓ Помощь",
+    "🗂️ Категории",
+    "◀️ Назад",
+    "👤 Личный кабинет",
+    "⭐ Избранные",
+    "👥 Пригласить друзей",
+    "⬅️ К категориям",
+}
+
+def _generate_ai_response_text(q: str) -> str:
+    text = (q or "").strip().lower()
+    if any(k in text for k in ["привет", "здравствуйте", "hi", "hello", "hey", "йоу", "хаи"]):
+        return (
+            "Привет! Я AI агент Karma System. Помогу со скидками, QR и кармой. "
+            "Спросите, например: почему не работает карта лояльности; как начислить баллы; где получить QR."
+        )
+    if ("карта" in text or "лояльн" in text):
+        if any(k in text for k in ["не работает", "сломал", "неактив", "не создается", "не создаётся", "ошиб"]):
+            return (
+                "Проверим карту лояльности: убедитесь, что вы вошли в меню и приняли политику. "
+                "Если карта не создаётся — попробуйте ещё раз через раздел Личный кабинет или /start. "
+                "Сообщите мне точный текст ошибки или пришлите скрин — подскажу дальше."
+            )
+        return (
+            "Карта лояльности генерируется в личном кабинете. "
+            "Откройте раздел и следуйте подсказкам — после создания получите номер и QR. "
+            "Если появится ошибка — напишите её сюда, помогу решить."
+        )
+    if any(k in text for k in ["балл", "очки", "карм", "начисл", "получить балл", "начислить"]):
+        return (
+            "Баллы/карма начисляются за использование QR, приглашения и активности. "
+            "Попросите партнёра отсканировать ваш QR при оплате — система начислит автоматически. "
+            "Если баллы не пришли — уточните время и заведение, проверим начисление."
+        )
+    if any(k in text for k in ["скид", "qr", "куаркод", "кьюар", "код"]):
+        return (
+            "Скидки активируются через QR в партнёрских заведениях. "
+            "Откройте нужную категорию, получите QR и покажите его сотруднику при оплате. "
+            "Каждый QR разовый. Если не сработал — запросите новый и проверьте интернет."
+        )
+    if any(k in text for k in ["партнер", "партнёр", "бизнес", "заведен", "подключ", "владелец"]):
+        return (
+            "Для подключения бизнеса откройте раздел для партнёров и отправьте заявку. "
+            "После модерации получите доступ к аналитике и QR-продаже. "
+            "Если нужна помощь с онбордингом — напишите контакт и город, передам менеджеру."
+        )
+    return (
+        f"Спасибо за вопрос: ‘{q}’. "
+        "Я могу помочь со скидками, QR, кармой и подключением партнёров. "
+        "Опишите задачу чуть конкретнее — дам точный алгоритм."
+    )
 
 
 @router.message(Command("help"))
@@ -186,6 +244,8 @@ async def ai_agent_callback(callback: CallbackQuery, state: FSMContext):
         await callback.message.edit_text(ai_text, reply_markup=kb, parse_mode="HTML")
     elif action == "ask":
         await state.set_state(AIState.waiting_question)
+        # Стартуем 60-секундное окно AI-сессии
+        AI_SESSIONS[user_id] = int(time.time()) + SESSION_TTL_SEC
         kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="◀️ Назад к AI", callback_data="ai_agent:start")]])
         await callback.message.edit_text("💬 Напишите ваш вопрос в чат, и я отвечу!", reply_markup=kb)
     elif action == "find_places":
@@ -280,5 +340,31 @@ async def process_ai_question(message: Message, state: FSMContext):
         ]
     )
     await message.answer(f"🤖 <b>AI Агент отвечает:</b>\n\n{response}", reply_markup=kb, parse_mode="HTML")
-    # Оставляем сессию открытой для следующего вопроса
-    await state.set_state(AIState.waiting_question)
+    # Продлеваем окно и очищаем состояние — меню остаётся полностью рабочим
+    AI_SESSIONS[message.from_user.id] = int(time.time()) + SESSION_TTL_SEC
+    await state.clear()
+
+
+# Follow-up: любые обычные тексты (не команды и не кнопки меню) в окне AI-сессии
+@router.message(F.text)
+async def ai_followup_session(message: Message, state: FSMContext):
+    try:
+        text = (message.text or "")
+        # Отдаём управление обычным хендлерам для команд и главных кнопок меню
+        if text.startswith('/') or text in MENU_TEXTS:
+            return
+        exp = AI_SESSIONS.get(message.from_user.id, 0)
+        if int(time.time()) > int(exp or 0):
+            return  # окно не активно — пусть обрабатывают другие хендлеры
+        response = _generate_ai_response_text(text)
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Задать еще вопрос", callback_data="ai_agent:ask")],
+                [InlineKeyboardButton(text="◀️ Назад к AI", callback_data="ai_agent:start")],
+            ]
+        )
+        await message.answer(f"🤖 <b>AI Агент отвечает:</b>\n\n{response}", reply_markup=kb, parse_mode="HTML")
+        # Продлеваем окно ещё на TTL
+        AI_SESSIONS[message.from_user.id] = int(time.time()) + SESSION_TTL_SEC
+    except Exception as e:
+        logger.error(f"AI follow-up error: {e}", exc_info=True)

@@ -269,11 +269,11 @@ class HelpService:
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
 
 <b>👤 Для пользователей</b>
-• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
 
 <b>💡 Помощь</b>
-• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
 • 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
@@ -284,18 +284,14 @@ class HelpService:
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
 
 <b>👤 Для пользователей</b>
-• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
 
 <b>🤝 Партнёрство</b>
-• 🚀 <a href="https://docs.karma-system.com/partner/become">Как стать партнёром</a>
-• 📍 <a href="https://docs.karma-system.com/partner/create-place">Создание заведений</a>
-• 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
-• 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
-• 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведениями</a>
+• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
 
 <b>💡 Помощь</b>
-• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
 • 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
@@ -306,24 +302,17 @@ class HelpService:
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
 
 <b>👤 Для пользователей</b>
-• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
 
 <b>🤝 Партнёрство</b>
-• 🚀 <a href="https://docs.karma-system.com/partner/become">Как стать партнёром</a>
-• 📍 <a href="https://docs.karma-system.com/partner/create-place">Создание заведений</a>
-• 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
-• 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
-• 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведений</a>
+• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
 
 <b>🛡️ Администраторы</b>
-• 📊 <a href="https://docs.karma-system.com/admin/dashboard">Админская панель</a>
-• ✅ <a href="https://docs.karma-system.com/admin/moderation">Модерация заявок</a>
-• 👥 <a href="https://docs.karma-system.com/admin/users">Управление пользователями</a>
-• ⚙️ <a href="https://docs.karma-system.com/admin/settings">Системные настройки</a>
+• 📊 <a href="/static/docs/help_admin.html">Админская панель и операции</a>
 
 <b>💡 Помощь</b>
-• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
 • 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
@@ -334,29 +323,20 @@ class HelpService:
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
 
 <b>👤 Для пользователей</b>
-• 👤 <a href="https://docs.karma-system.com/user">Инструкция для пользователей</a>
+• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
 
 <b>🤝 Партнёрство</b>
-• 🚀 <a href="https://docs.karma-system.com/partner/become">Как стать партнёром</a>
-• 📍 <a href="https://docs.karma-system.com/partner/create-place">Создание заведений</a>
-• 🏷️ <a href="https://docs.karma-system.com/partner/qr-scan">Сканирование QR-кодов</a>
-• 📈 <a href="https://docs.karma-system.com/partner/analytics">Партнёрская аналитика</a>
-• 🗂️ <a href="https://docs.karma-system.com/partner/manage-places">Управление заведений</a>
+• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
 
 <b>🛡️ Администраторы</b>
-• 📊 <a href="https://docs.karma-system.com/admin/dashboard">Админская панель</a>
-• ✅ <a href="https://docs.karma-system.com/admin/moderation">Модерация заявок</a>
-• 👥 <a href="https://docs.karma-system.com/admin/users">Управление пользователями</a>
-• ⚙️ <a href="https://docs.karma-system.com/admin/settings">Системные настройки</a>
+• 📊 <a href="/static/docs/help_admin.html">Админская панель и операции</a>
 
 <b>👑 Супер-администраторы</b>
-• 🖥️ <a href="https://docs.karma-system.com/superadmin/dashboard">Супер-админ панель</a>
-• 🛡️ <a href="https://docs.karma-system.com/superadmin/admins">Управление администраторами</a>
-• 📊 <a href="https://docs.karma-system.com/superadmin/analytics">Системная аналитика</a>
+• 🖥️ <a href="/static/docs/help_superadmin.html">Супер-админ панель</a>
 
 <b>💡 Помощь</b>
-• ❓ <a href="https://docs.karma-system.com/faq">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="https://docs.karma-system.com/troubleshooting">Решение проблем и типовые ошибки</a>
+• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
+• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
 • 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
