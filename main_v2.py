@@ -366,7 +366,7 @@ from core.handlers.main_menu_router import main_menu_router
 from core.handlers.basic import router as basic_router
 from core.handlers.callback import router as callback_router
 from core.handlers.category_handlers_v2 import get_category_router
-from core.handlers.partner import get_partner_router
+from core.handlers.partner import partner_router as partner_router_instance
 from core.handlers.moderation import get_moderation_router
 from core.handlers.admin_cabinet import get_admin_cabinet_router
 from core.handlers.profile import get_profile_router
@@ -781,8 +781,8 @@ async def setup_routers(dp: Dispatcher):
 
     # 5. Feature-flagged routers
     logger.info("\n🔗 Including partner_router...")
-    from core.handlers.partner import get_partner_router
-    partner_router = get_partner_router()
+    from core.handlers.partner import partner_router as partner_router_instance
+    partner_router = partner_router_instance
     if partner_router:
         logger.info("🔎 will include %r id=%s from %s", partner_router, id(partner_router), "get_partner_router()")
         dp.include_router(partner_router)
