@@ -16,7 +16,8 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
     """
     
     # Разрешенные команды и callback_data
-    ALLOWED_COMMANDS = ['/start', '/help', '/city', '/clear_cache', '/add', '❓ Помощь', '❓ Help', '❓ 도움말', '❓ Trợ giúp']
+    ALLOWED_COMMANDS = ['/start', '/help', '/city', '/clear_cache', '/add', '/webapp', '/policy',
+                        '❓ Помощь', '❓ Help', '❓ 도움말', '❓ Trợ giúp']
     ALLOWED_CALLBACKS = ['lang:', 'policy:', 'accept_policy', 'decline_policy', 'city:', 'pfsm:', 'help:', 'ai_agent:']
     
     async def __call__(
@@ -62,16 +63,19 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
             if not policy_accepted:
                 # Пытаемся проверить в БД (users.policy_accepted)
                 try:
+                    # Используем SQLite-совместимый путь
                     from core.database.db_v2 import db_v2
-                    rows = await db_v2.execute_query(
-                        "SELECT policy_accepted FROM users WHERE telegram_id = $1",
-                        (user_id,)
-                    )
-                    if rows and isinstance(rows, list):
-                        rec = rows[0]
-                        # asyncpg row or dict
-                        value = rec.get('policy_accepted') if isinstance(rec, dict) else rec['policy_accepted']
-                        policy_accepted = bool(value)
+                    conn = db_v2.get_connection()
+                    try:
+                        cur = conn.execute("SELECT policy_accepted FROM users WHERE telegram_id = ?", (int(user_id),))
+                        row = cur.fetchone()
+                        if row is not None:
+                            policy_accepted = bool(row[0] if not isinstance(row, dict) else row.get('policy_accepted'))
+                    finally:
+                        try:
+                            conn.close()
+                        except Exception:
+                            pass
                 except Exception:
                     # В случае ошибки — оставляем предыдущее значение
                     pass

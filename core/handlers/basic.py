@@ -604,8 +604,8 @@ async def handle_accept_policy(callback: CallbackQuery, bot: Bot, state: FSMCont
         # Удаляем сообщение с политикой
         await callback.message.delete()
         
-        # Показываем главное меню
-        await get_start(callback.message, bot, state)
+        # Сообщаем и не дергаем get_start (чтобы не спутать контекст пользователя)
+        await bot.send_message(callback.from_user.id, "✅ Политика принята! Можете пользоваться меню.")
         
     except Exception as e:
         logger.error(f"Error handling policy acceptance: {e}", exc_info=True)
