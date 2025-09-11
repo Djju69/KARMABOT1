@@ -181,15 +181,20 @@ async def handle_main_menu_text(message: Message, bot: Bot, state: FSMContext) -
 @main_menu_router.message(F.text == "🗂️ Категории")
 async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки выбора категории."""
-    logger.debug(f"User {message.from_user.id} chose category selection")
+    logger.warning(f"ДИАГНОСТИКА: Получена команда '🗂️ Категории' от пользователя {message.from_user.id}")
     if not await ensure_policy_accepted(message, bot, state):
+        logger.warning(f"ДИАГНОСТИКА: Политика не принята для пользователя {message.from_user.id}")
         return
-        
+    
+    logger.warning(f"ДИАГНОСТИКА: Политика принята для пользователя {message.from_user.id}, продолжаем обработку")
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
+    logger.warning(f"ДИАГНОСТИКА: Язык пользователя {message.from_user.id}: {lang}")
     
     try:
+        logger.warning(f"ДИАГНОСТИКА: Вызываем show_categories_v2 для пользователя {message.from_user.id}")
         await show_categories_v2(message, bot, lang)
+        logger.warning(f"ДИАГНОСТИКА: show_categories_v2 успешно выполнен для пользователя {message.from_user.id}")
     except Exception as e:
         logger.error(f"Error showing categories: {e}", exc_info=True)
         error_text = translations.get(lang, {}).get(
@@ -197,6 +202,7 @@ async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) 
             'Произошла ошибка при загрузке категорий. Пожалуйста, попробуйте позже.'
         )
         await message.answer(error_text, parse_mode="HTML")
+        logger.warning(f"ДИАГНОСТИКА: Отправлено сообщение об ошибке пользователю {message.from_user.id}")
 
 
 @main_menu_router.message(F.text.in_([

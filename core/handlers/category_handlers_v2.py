@@ -41,20 +41,38 @@ category_router = Router(name="category_router")
 async def show_categories_v2(message: Message, bot: Bot, lang: str):
     """Показывает Reply-клавиатуру с 6 категориями согласно ТЗ."""
     try:
+        logger.warning(f"ДИАГНОСТИКА: Начало show_categories_v2 для пользователя {message.from_user.id}")
         await log_event("categories_menu_shown", user=message.from_user, lang=lang)
         
-        # Просто показываем кнопки категорий без списка
+        # Получаем клавиатуру категорий
+        keyboard = get_categories_keyboard(lang)
+        logger.warning(f"ДИАГНОСТИКА: Получена клавиатура категорий для пользователя {message.from_user.id}")
+        
+        # Получаем текст сообщения
+        text = get_text('choose_category', lang)
+        if not text:
+            text = "Выберите категорию:"  # Дефолтный текст, если перевод отсутствует
+            logger.warning(f"ДИАГНОСТИКА: Не найден перевод 'choose_category' для языка {lang}, используем дефолтный текст")
+        
+        # Отправляем сообщение с клавиатурой
+        logger.warning(f"ДИАГНОСТИКА: Отправляем сообщение с клавиатурой пользователю {message.from_user.id}")
         await message.answer(
-            text=get_text('choose_category', lang),
-            reply_markup=get_categories_keyboard(lang),
+            text=text,
+            reply_markup=keyboard,
             parse_mode="HTML"
         )
+        logger.warning(f"ДИАГНОСТИКА: Сообщение с клавиатурой успешно отправлено пользователю {message.from_user.id}")
     except Exception as e:
-        logger.error(f"Error in show_categories_v2: {e}")
-        await message.answer(
-            get_text('catalog_error', lang),
-            reply_markup=get_return_to_main_menu(lang)
-        )
+        logger.error(f"Error in show_categories_v2: {e}", exc_info=True)  # Добавляем exc_info=True для полного стектрейса
+        try:
+            await message.answer(
+                get_text('catalog_error', lang) or "Произошла ошибка при загрузке категорий. Пожалуйста, попробуйте позже.",
+                reply_markup=get_return_to_main_menu(lang),
+                parse_mode="HTML"
+            )
+            logger.warning(f"ДИАГНОСТИКА: Отправлено сообщение об ошибке пользователю {message.from_user.id}")
+        except Exception as e2:
+            logger.error(f"КРИТИЧЕСКАЯ ОШИБКА: Не удалось отправить сообщение об ошибке: {e2}", exc_info=True)
 
 
 # --- Этап 2: Интеграция с сервисом каталога ---
