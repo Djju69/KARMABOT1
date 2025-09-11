@@ -104,7 +104,7 @@ def get_bot_token_from_env_or_settings(settings):
     
     # Проверяем формат токена (число:буквенно-цифровые_символы)
     if not re.match(r'^\d+:[A-Za-z0-9_-]+$', token):
-        logger.error(f"❌ Invalid bot token format. First 9 chars: {token[:9]!r}...")
+        logging.getLogger(__name__).error(f"❌ Invalid bot token format. First 9 chars: {token[:9]!r}...")
         raise ValueError("Invalid bot token format. Expected format: '123456789:ABCdefGHIJKLMNOPQRSTUVWXYZ'")
     
     return token
@@ -157,7 +157,7 @@ try:
         settings.features = Features()
     # Force-enable required feature flags per production baseline
     settings.features.partner_fsm = True
-    logger.info("✅ Features: %s", settings.features)
+    logging.getLogger(__name__).info("✅ Features: %s", settings.features)
 except Exception as e:
     logging.error("Failed to load settings via get_settings(): %s", str(e))
     raise
