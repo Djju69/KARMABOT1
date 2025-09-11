@@ -23,6 +23,7 @@ from aiogram.client.bot import Bot, DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from core.settings import Settings, get_settings
+from core.config import load_settings
 
 # --- Leader lock settings ---
 LOCK_TTL = 300
