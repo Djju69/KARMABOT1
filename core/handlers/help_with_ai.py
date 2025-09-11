@@ -3,6 +3,7 @@
 """
 import logging
 from aiogram import Router, F
+from aiogram.exceptions import SkipHandler
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -10,6 +11,7 @@ from aiogram.fsm.state import State, StatesGroup
 from core.ui.kb_support_ai import kb_support_ai
 from core.services.user_service import get_user_role
 from core.services.help_service import HelpService
+from core.utils.locales_v2 import get_text
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -208,6 +210,25 @@ async def ai_agent_callback(callback: CallbackQuery, state: FSMContext):
 @router.message(AIState.waiting_question)
 async def process_ai_question(message: Message, state: FSMContext):
     q = (message.text or "").strip()
+
+    # Если пользователь нажал кнопку из основного меню или ввёл команду — выходим из AI-режима
+    try:
+        lang = getattr(getattr(message.from_user, 'language_code', None), 'lower', lambda: 'ru')() or 'ru'
+    except Exception:
+        lang = 'ru'
+
+    main_buttons = {
+        get_text('choose_category', lang),
+        get_text('favorites', lang),
+        get_text('help', lang),
+        get_text('profile', lang),
+        get_text('back_to_main_menu', lang),
+        get_text('back', lang),
+    }
+    if q.startswith('/') or q in main_buttons:
+        await state.clear()
+        # Передаём обработку следующим хендлерам (чтобы сработали обычные кнопки/команды)
+        raise SkipHandler()
 
     # Простые умные ответы (русский), 3-4 предложения максимум
     text = q.lower()
