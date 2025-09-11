@@ -254,14 +254,13 @@ def _get_redis_url() -> str:
     return os.getenv("REDIS_URL") or ""
 
 async def set_commands(bot: Bot) -> None:
-    """Set bot commands"""
-    from aiogram.types import BotCommand, BotCommandScopeDefault
-    
-    cmds = [
-        BotCommand(command="start", description="Старт / меню"),
-        BotCommand(command="help",  description="Помощь"),
-    ]
-    await bot.set_my_commands(cmds, scope=BotCommandScopeDefault())
+    """Delegate commands setup to the centralized commands module."""
+    try:
+        from core.handlers.commands import set_commands as set_core_commands
+        await set_core_commands(bot)
+    except Exception as e:
+        logger.error("set_commands failed: %s", e, exc_info=True)
+        raise
 
 async def main():
     """Main entry point"""
