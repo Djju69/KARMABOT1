@@ -495,16 +495,11 @@ async def handle_invite_earnings(message: Message, bot: Bot, state: FSMContext) 
 # --- Policy consent callbacks ---
 @main_menu_router.callback_query(F.data == "accept_policy")
 async def on_accept_policy(callback: CallbackQuery, bot: Bot, state: FSMContext) -> None:
-    try:
-        await state.update_data(policy_accepted=True)
-        await callback.answer("✅ Принято")
-        try:
-            await callback.message.edit_text("✅ Политика принята. Продолжайте пользоваться ботом.")
-        except Exception:
-            pass
-    except Exception as e:
-        logger.error(f"Error in accept_policy: {e}", exc_info=True)
-        await callback.answer("⚠️ Ошибка", show_alert=True)
+    """Делегируем обработку в канонический хендлер, который пишет флаг в БД.
+    Это устраняет расхождение: после \"✅ Согласен\" меню разблокируется у всех.
+    """
+    from core.handlers.basic import handle_accept_policy as _handle_accept_policy
+    await _handle_accept_policy(callback, bot, state)
 
 
 @main_menu_router.callback_query(F.data == "decline_policy")
