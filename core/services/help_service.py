@@ -256,14 +256,12 @@ class HelpService:
     async def get_help_message(self, user_id: int) -> str:
         """Получить справочное сообщение для пользователя"""
         try:
-            # Определяем роль пользователя
+            # Определяем роль пользователя (нормализуем к строке)
             user_role = await get_user_role(user_id)
-            
-            # Получаем ссылки для роли
-            links = self.help_links.get(user_role, self.help_links[Role.USER])
+            role_name = getattr(user_role, 'name', str(user_role)).lower()
             
             # Формируем сообщение в зависимости от роли пользователя
-            if user_role == Role.USER:
+            if role_name == 'user':
                 message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
 
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
@@ -278,7 +276,7 @@ class HelpService:
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
             
-            elif user_role == Role.PARTNER:
+            elif role_name == 'partner':
                 message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
 
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
@@ -296,7 +294,7 @@ class HelpService:
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
             
-            elif user_role == Role.ADMIN:
+            elif role_name == 'admin':
                 message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
 
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
@@ -317,7 +315,7 @@ class HelpService:
 
 <i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
             
-            else:  # SUPER_ADMIN
+            else:  # super_admin
                 message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
 
 Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
