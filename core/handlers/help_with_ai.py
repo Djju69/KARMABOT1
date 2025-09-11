@@ -89,32 +89,8 @@ async def cmd_help(message: Message, state: FSMContext):
         help_service = HelpService()
         base_text = await help_service.get_help_message(message.from_user.id)
 
-        # Ролевые блоки
-        extra = []
-        if user_role in ["admin", "super_admin"]:
-            extra.append(
-                "\n\n🛡️ <b>Администраторы</b>\n"
-                "• 📊 Админская панель — https://docs.karma-system.com/admin/dashboard\n"
-                "• ✅ Модерация заявок — https://docs.karma-system.com/admin/moderation\n"
-                "• 👥 Управление пользователями — https://docs.karma-system.com/admin/users\n"
-                "• ⚙️ Системные настройки — https://docs.karma-system.com/admin/settings"
-            )
-        if user_role == "super_admin":
-            extra.append(
-                "\n\n👑 <b>Супер-администраторы</b>\n"
-                "• 🖥️ Супер-админ панель — https://docs.karma-system.com/superadmin/dashboard\n"
-                "• 🛡️ Управление администраторами — https://docs.karma-system.com/superadmin/admins\n"
-                "• 📊 Системная аналитика — https://docs.karma-system.com/superadmin/analytics"
-            )
-
-        help_tail = (
-            "\n\n💡 <b>Помощь</b>\n"
-            "• ❓ FAQ — https://docs.karma-system.com/faq\n"
-            "• 🛠️ Решение проблем — https://docs.karma-system.com/troubleshooting\n"
-            "• 🆘 Поддержка — https://t.me/karma_system_official"
-        )
-
-        text = f"{base_text}{''.join(extra)}{help_tail}"
+        # Используем только ролевой текст из HelpService (содержит корректные ссылки /static/docs)
+        text = base_text
 
         # Кнопка AI агента
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]])
@@ -135,32 +111,10 @@ async def txt_help(message: Message, state: FSMContext):
         # Получаем роль пользователя
         user_role = await get_user_role(message.from_user.id)
         
-        # Получаем текст помощи для роли (как выше)
+        # Получаем текст помощи для роли
         help_service = HelpService()
         base_text = await help_service.get_help_message(message.from_user.id)
-        extra = []
-        if user_role in ["admin", "super_admin"]:
-            extra.append(
-                "\n\n🛡️ <b>Администраторы</b>\n"
-                "• 📊 Админская панель — https://docs.karma-system.com/admin/dashboard\n"
-                "• ✅ Модерация заявок — https://docs.karma-system.com/admin/moderation\n"
-                "• 👥 Управление пользователями — https://docs.karma-system.com/admin/users\n"
-                "• ⚙️ Системные настройки — https://docs.karma-system.com/admin/settings"
-            )
-        if user_role == "super_admin":
-            extra.append(
-                "\n\n👑 <b>Супер-администраторы</b>\n"
-                "• 🖥️ Супер-админ панель — https://docs.karma-system.com/superadmin/dashboard\n"
-                "• 🛡️ Управление администраторами — https://docs.karma-system.com/superadmin/admins\n"
-                "• 📊 Системная аналитика — https://docs.karma-system.com/superadmin/analytics"
-            )
-        help_tail = (
-            "\n\n💡 <b>Помощь</b>\n"
-            "• ❓ FAQ — https://docs.karma-system.com/faq\n"
-            "• 🛠️ Решение проблем — https://docs.karma-system.com/troubleshooting\n"
-            "• 🆘 Поддержка — https://t.me/karma_system_official"
-        )
-        text = f"{base_text}{''.join(extra)}{help_tail}"
+        text = base_text
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]])
         await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
         
@@ -182,32 +136,10 @@ async def txt_help_button(message: Message, state: FSMContext):
         user_role = await get_user_role(message.from_user.id)
         logger.info(f"🔍 User role: {user_role}")
         
-        # Получаем текст помощи (как выше)
+        # Получаем текст помощи
         help_service = HelpService()
         base_text = await help_service.get_help_message(message.from_user.id)
-        extra = []
-        if user_role in ["admin", "super_admin"]:
-            extra.append(
-                "\n\n🛡️ <b>Администраторы</b>\n"
-                "• 📊 Админская панель — https://docs.karma-system.com/admin/dashboard\n"
-                "• ✅ Модерация заявок — https://docs.karma-system.com/admin/moderation\n"
-                "• 👥 Управление пользователями — https://docs.karma-system.com/admin/users\n"
-                "• ⚙️ Системные настройки — https://docs.karma-system.com/admin/settings"
-            )
-        if user_role == "super_admin":
-            extra.append(
-                "\n\n👑 <b>Супер-администраторы</b>\n"
-                "• 🖥️ Супер-админ панель — https://docs.karma-system.com/superadmin/dashboard\n"
-                "• 🛡️ Управление администраторами — https://docs.karma-system.com/superadmin/admins\n"
-                "• 📊 Системная аналитика — https://docs.karma-system.com/superadmin/analytics"
-            )
-        help_tail = (
-            "\n\n💡 <b>Помощь</b>\n"
-            "• ❓ FAQ — https://docs.karma-system.com/faq\n"
-            "• 🛠️ Решение проблем — https://docs.karma-system.com/troubleshooting\n"
-            "• 🆘 Поддержка — https://t.me/karma_system_official"
-        )
-        text = f"{base_text}{''.join(extra)}{help_tail}"
+        text = base_text
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]])
         await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
         logger.info("✅ Help message sent successfully")
