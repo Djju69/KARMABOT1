@@ -278,7 +278,13 @@ async def process_ai_question(message: Message, state: FSMContext):
 
 
 # Follow-up: любые обычные тексты (не команды и не кнопки меню) в окне AI-сессии
-@router.message(F.text)
+@router.message(
+F.text,
+lambda message: (
+    AI_SESSIONS.get(message.from_user.id, 0) > int(time.time())
+    and not ((message.text or "").startswith("/") or (message.text or "") in MENU_TEXTS)
+),
+)
 async def ai_followup_session(message: Message, state: FSMContext):
     try:
         text = (message.text or "")

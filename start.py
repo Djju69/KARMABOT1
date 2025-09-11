@@ -144,13 +144,13 @@ async def run_bot():
             logger.error("❌ BOT_TOKEN not found in environment variables!")
             logger.error("💡 Please set BOT_TOKEN in Railway Dashboard -> Variables")
 
-        # Try to import bot from the new structure
-        logger.info("📦 Importing bot module...")
-        from bot.bot import start as start_bot
-        logger.info("✅ Bot module imported successfully")
+        # Запускаем бота через main_v2 (polling-режим, как в рабочей конфигурации)
+        logger.info("📦 Importing main_v2 (legacy stable entrypoint)...")
+        from main_v2 import main as start_bot
+        logger.info("✅ main_v2 imported successfully")
 
-        # Запускаем бота (режим определяется в bot.py)
-        logger.info("🚀 Starting bot...")
+        # Запускаем бота (режим определяется в main_v2.py)
+        logger.info("🚀 Starting bot via main_v2.main()...")
         await start_bot()
 
     except ImportError as e:

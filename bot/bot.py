@@ -157,22 +157,22 @@ try:
         # Список модулей обработчиков (без commands)
         # Обновлено: используем актуальные имена и v2-версии где нужно
         handler_modules = [
-            'help_with_ai',         # ВАЖНО: справка + AI агент должны быть первыми
+            'help_with_ai',         # Справка + AI агент — первыми
+            'callback',             # Колбэки (язык/политика) — до текстовых
+            'language',             # Язык — до главного меню
+            'main_menu_router',     # ГЛАВНОЕ МЕНЮ — раньше остальных, чтобы кнопки не перехватывались
             'basic',
-            'callback',
-            'language',            # было 'lang'
-            'main_menu_router',
             'profile',
             'partner',
             'activity',
             'admin_cabinet',
-            'category_handlers_v2', # было 'category_handlers'
-            'plastic_cards_router', # Добавляем обработчики карм и карт
-            'cabinet_router',       # Добавляем обработчики личного кабинета
-            'partner_fsm_router',    # Добавляем FSM обработчики регистрации партнеров
-            'partner_confirmation_router',  # Добавляем FSM обработчики подтверждения партнеров
-            'broadcast_router',      # Добавляем FSM обработчики рассылки
-            'loyalty_settings_router' # Добавляем FSM обработчики настроек лояльности
+            'category_handlers_v2', # Категории
+            'plastic_cards_router', # Карты
+            'cabinet_router',       # Личный кабинет
+            'partner_fsm_router',   # FSM партнёров
+            'partner_confirmation_router',
+            'broadcast_router',
+            'loyalty_settings_router'
         ]
         
         # Get all available routers
@@ -189,6 +189,14 @@ try:
                     logger.info(f"✅ Successfully included router from {router}")
             except Exception as e:
                 logger.error(f"❌ Failed to include router {router}: {e}", exc_info=True)
+
+        # Diagnostic: log unhandled updates (at the very end)
+        @dp.update()
+        async def _log_unhandled(update: types.Update):
+            try:
+                logger.warning("⚠️ Unhandled update: %s", update)
+            except Exception:
+                pass
         
         # Set up commands directly since commands.py doesn't have a router
         async def setup_commands():
