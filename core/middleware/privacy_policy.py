@@ -100,8 +100,8 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
                     pass
             
             if not policy_accepted:
-                # Добавим диагностический лог
-                logger.warning(f"DIAGNOSTIC: Policy check failed for user {user_id} - FSM value: {user_data.get('policy_accepted')}, DB value: {policy_accepted}")
+                # Проверка не прошла
+                logger.info(f"Policy check failed for user {user_id}")
                 
                 # Блокируем действие и показываем политику
                 await self._block_action(event, user_id)

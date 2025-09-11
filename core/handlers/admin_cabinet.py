@@ -1509,7 +1509,7 @@ async def su_action(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message()
+@router.message(F.text.startswith("su:"))
 async def su_message_prompt_handler(message: Message):
     # Handle only pending superadmin prompts
     st = _su_pop(message.from_user.id)

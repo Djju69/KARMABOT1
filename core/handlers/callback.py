@@ -201,7 +201,7 @@ async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: 
             logger.warning(f"POLICY_ACCEPT: Сохранили policy_accepted=TRUE для пользователя {callback.from_user.id}")
             await bot.send_message(
                 callback.from_user.id, 
-                f"✅ Политика принята! Можете пользоваться меню.\n\nДиагностика: policy_accepted=TRUE сохранено в БД для пользователя {callback.from_user.id}"
+                f"✅ Политика принята! Можете пользоваться меню."
             )
         except Exception as e:
             logger.error(f"Error sending policy acceptance confirmation: {e}")
