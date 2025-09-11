@@ -406,6 +406,13 @@ class DatabaseMigrator:
                 conn.execute("""
                 DO $$
                 BEGIN
+                    -- Ensure legacy categories table has required columns
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns 
+                        WHERE table_name='categories' AND column_name='name'
+                    ) THEN
+                        ALTER TABLE categories ADD COLUMN name TEXT;
+                    END IF;
                     IF NOT EXISTS (
                         SELECT 1 FROM information_schema.columns 
                         WHERE table_name='categories' AND column_name='name_ru'
@@ -422,6 +429,14 @@ class DatabaseMigrator:
                 """)
             else:
                 # SQLite version
+                # Ensure categories table and required columns exist
+                try:
+                    cur0 = conn.execute("PRAGMA table_info(categories)")
+                    cols0 = {row[1] for row in cur0.fetchall()}
+                except sqlite3.OperationalError:
+                    cols0 = set()
+                if 'name' not in cols0:
+                    conn.execute("ALTER TABLE categories ADD COLUMN name TEXT")
                 cursor = conn.execute("PRAGMA table_info(categories)")
                 columns = {row[1] for row in cursor.fetchall()}
                 if 'name_ru' not in columns:
