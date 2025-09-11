@@ -133,20 +133,17 @@ async def handle_language_selection(callback: CallbackQuery, state: FSMContext, 
 # --- Принятие политики ---
 @router.callback_query(F.data == "policy:accept")
 async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: Bot):
-    """Обработчик принятия политики конфиденциальности"""
+    """Обработчик принятия политики конфиденциальности: без вызова get_start от имени бота."""
     try:
-        # Получаем язык из FSM
-        data = await state.get_data()
-        lang = data.get("lang", "ru")
-        
-        # Отмечаем, что пользователь принял политику
+        # Отмечаем принятие в FSM
         await state.update_data(policy_accepted=True)
-        
-        # Показываем главное меню
-        await get_start(callback.message, bot, state)
-        
+        # Короткий ответ на callback, чтобы убрать спиннер
         await callback.answer("✅ Политика принята")
-        
+        # Подтверждение пользователю
+        try:
+            await bot.send_message(callback.from_user.id, "✅ Политика принята! Можете пользоваться меню.")
+        except Exception:
+            pass
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error in policy acceptance: {e}")
