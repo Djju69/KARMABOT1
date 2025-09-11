@@ -33,12 +33,14 @@ LOCK_KEY = f"production:bot:{BOT_ID_STR}:polling:leader"
 INSTANCE = f"{os.environ.get('HOSTNAME','local')}:{os.getpid()}"
 FORCE = os.getenv("LEADER_FORCE", "0") == "1"
 
-# Redis URL from environment (required for Railway)
-REDIS_URL = os.getenv("REDIS_URL")
-if not REDIS_URL:
-    raise ValueError("REDIS_URL environment variable is required")
-    
-redis: aioredis.Redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+# Redis URL from environment (optional; if missing, run without distributed lock)
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+redis: aioredis.Redis | None = None
+if REDIS_URL:
+    try:
+        redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    except Exception as e:
+        logging.warning(f"Redis init failed, continue without lock: {e}")
 
 # --- END: Leader lock settings ---
 
@@ -269,7 +271,7 @@ async def set_commands(bot: Bot) -> None:
 
 async def main():
     """Main entry point"""
-    token = resolve_token(settings)
+    token = resolve_bot_token(settings)
     logger.info("🔑 Environment: %s", settings.environment)
     logger.info("🔑 Using bot token: %s", _mask(token))
 
@@ -989,17 +991,14 @@ async def main():
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
     
-    # Initialize Redis
+    # Initialize Redis (optional)
     redis_url = _get_redis_url()
-    if not redis_url:
-        logger.error("❌ REDIS_URL not configured")
-        return
-        
-    redis = aioredis.from_url(redis_url, decode_responses=True)
+    redis = aioredis.from_url(redis_url, decode_responses=True) if redis_url else None
     
     # Initialize Dispatcher and register shutdown handler
     dp = Dispatcher()
-    dp.shutdown.register(make_shutdown_handler(redis))
+    if redis is not None:
+        dp.shutdown.register(make_shutdown_handler(redis))
     
     # Include routers
     from core.handlers import ping
@@ -1027,18 +1026,20 @@ async def main():
             default=DefaultBotProperties(parse_mode=ParseMode.HTML)
         ) as bot:
             # Test Redis connection
-            try:
-                ok = await redis.ping()
-                logger.info(f"✅ Redis ping: {ok}")
-            except Exception as e:
-                logger.error(f"❌ Redis connection failed: {e}")
-                return
+            if redis is not None:
+                try:
+                    ok = await redis.ping()
+                    logger.info(f"✅ Redis ping: {ok}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Redis connection failed, continue without lock: {e}")
+                    redis = None
             
             # Try to acquire leader lock
-            got_lock = await acquire_leader_lock(redis, lock_key, instance, lock_ttl, retries=12)
-            if not got_lock:
-                logger.error("❌ Failed to acquire leader lock after retries, exiting...")
-                return
+            if redis is not None:
+                got_lock = await acquire_leader_lock(redis, lock_key, instance, lock_ttl, retries=12)
+                if not got_lock:
+                    logger.error("❌ Failed to acquire leader lock after retries, exiting...")
+                    return
             
             # Set bot commands
             try:

@@ -207,12 +207,72 @@ async def ai_agent_callback(callback: CallbackQuery, state: FSMContext):
 
 @router.message(AIState.waiting_question)
 async def process_ai_question(message: Message, state: FSMContext):
-    q = message.text
-    # Простая заглушка ответа
-    ai_response = f"Спасибо за ваш вопрос: ‘{q}’. Я анализирую и скоро дам ответ!"
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Задать еще вопрос", callback_data="ai_agent:ask")],
-        [InlineKeyboardButton(text="◀️ Назад к AI", callback_data="ai_agent:start")],
-    ])
-    await message.answer(f"🤖 <b>AI Агент отвечает:</b>\n\n{ai_response}", reply_markup=kb, parse_mode="HTML")
-    await state.clear()
+    q = (message.text or "").strip()
+
+    # Простые умные ответы (русский), 3-4 предложения максимум
+    text = q.lower()
+    response = None
+
+    # Приветствия
+    if any(k in text for k in ["привет", "здравствуйте", "hi", "hello", "hey", "йоу", "хаи"]):
+        response = (
+            "Привет! Я AI агент Karma System. Помогу со скидками, QR и кармой. "
+            "Спросите, например: почему не работает карта лояльности; как начислить баллы; где получить QR."
+        )
+
+    # Проблемы с картой лояльности
+    if response is None and ("карта" in text or "лояльн" in text):
+        if any(k in text for k in ["не работает", "сломал", "неактив", "не создается", "не создаётся", "ошиб"]):
+            response = (
+                "Проверим карту лояльности: убедитесь, что вы вошли в меню и приняли политику. "
+                "Если карта не создаётся — попробуйте ещё раз через раздел Личный кабинет или /start. "
+                "Сообщите мне точный текст ошибки или пришлите скрин — подскажу дальше."
+            )
+        else:
+            response = (
+                "Карта лояльности генерируется в личном кабинете. "
+                "Откройте раздел и следуйте подсказкам — после создания получите номер и QR. "
+                "Если появится ошибка — напишите её сюда, помогу решить."
+            )
+
+    # Начисление баллов/кармы
+    if response is None and any(k in text for k in ["балл", "очки", "карм", "начисл", "получить балл", "начислить"]):
+        response = (
+            "Баллы/карма начисляются за использование QR, приглашения и активности. "
+            "Попросите партнёра отсканировать ваш QR при оплате — система начислит автоматически. "
+            "Если баллы не пришли — уточните время и заведение, проверим начисление."
+        )
+
+    # Скидки и QR
+    if response is None and any(k in text for k in ["скид", "qr", "куаркод", "кьюар", "код"]):
+        response = (
+            "Скидки активируются через QR в партнёрских заведениях. "
+            "Откройте нужную категорию, получите QR и покажите его сотруднику при оплате. "
+            "Каждый QR разовый. Если не сработал — запросите новый и проверьте интернет."
+        )
+
+    # Партнёрская программа
+    if response is None and any(k in text for k in ["партнер", "партнёр", "бизнес", "заведен", "подключ", "владелец"]):
+        response = (
+            "Для подключения бизнеса откройте раздел для партнёров и отправьте заявку. "
+            "После модерации получите доступ к аналитике и QR-продаже. "
+            "Если нужна помощь с онбордингом — напишите контакт и город, передам менеджеру."
+        )
+
+    # По умолчанию
+    if response is None:
+        response = (
+            f"Спасибо за вопрос: ‘{q}’. "
+            "Я могу помочь со скидками, QR, кармой и подключением партнёров. "
+            "Опишите задачу чуть конкретнее — дам точный алгоритм."
+        )
+
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔄 Задать еще вопрос", callback_data="ai_agent:ask")],
+            [InlineKeyboardButton(text="◀️ Назад к AI", callback_data="ai_agent:start")],
+        ]
+    )
+    await message.answer(f"🤖 <b>AI Агент отвечает:</b>\n\n{response}", reply_markup=kb, parse_mode="HTML")
+    # Оставляем сессию открытой для следующего вопроса
+    await state.set_state(AIState.waiting_question)

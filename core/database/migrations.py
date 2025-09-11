@@ -590,6 +590,45 @@ class DatabaseMigrator:
         # User features (favorites, referrals, karma_log, points_log, achievements)
         self.migrate_010_user_features()
         
+        # 021: Extend qr_codes_v2 for user-scoped QR operations used by db_v2 helpers
+        try:
+            version = "021"
+            desc = "EXPAND: Add user-scoped fields to qr_codes_v2"
+            if not self.is_migration_applied(version):
+                if self._is_memory or not self._is_postgres():
+                    with self.get_connection() as conn:
+                        cur = conn.execute("PRAGMA table_info(qr_codes_v2)")
+                        cols = {row[1] for row in cur.fetchall()}
+                        to_add: list[str] = []
+                        if 'user_id' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN user_id INTEGER")
+                        if 'qr_id' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN qr_id TEXT")
+                        if 'name' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN name TEXT")
+                        if 'discount' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN discount INTEGER DEFAULT 0")
+                        if 'is_active' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN is_active INTEGER DEFAULT 1")
+                        if 'created_at' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
+                        if 'expires_at' not in cols: to_add.append("ALTER TABLE qr_codes_v2 ADD COLUMN expires_at TEXT")
+                        for stmt in to_add:
+                            conn.execute(stmt)
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_qr_codes_v2_user ON qr_codes_v2(user_id)")
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                            (version, desc),
+                        )
+                else:
+                    sql = """
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS user_id BIGINT;
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS qr_id VARCHAR(255);
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS discount INTEGER DEFAULT 0;
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+                    ALTER TABLE qr_codes_v2 ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+                    CREATE INDEX IF NOT EXISTS idx_qr_codes_v2_user ON qr_codes_v2(user_id);
+                    """
+                    self.apply_migration(version, desc, sql)
+        except Exception as e:
+            logger.warning(f"021 migration skipped or failed safely: {e}")
+        
         logger.info("All migrations completed successfully")
         # Release advisory lock
         if advisory_locked:
@@ -755,8 +794,8 @@ class DatabaseMigrator:
         - thanks: User thanks system
         - admin_logs: Admin action logs
         """
-        # Create users table if it doesn't exist
-        users_sql = """
+        # Create users table if it doesn't exist (PostgreSQL version)
+        users_sql_pg = """
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             telegram_id BIGINT UNIQUE NOT NULL,
@@ -767,6 +806,20 @@ class DatabaseMigrator:
             karma_points INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        # SQLite version
+        users_sql_sqlite = """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER UNIQUE NOT NULL,
+            username TEXT,
+            first_name TEXT,
+            last_name TEXT,
+            language_code TEXT DEFAULT 'ru',
+            karma_points INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         """
         
@@ -906,11 +959,18 @@ class DatabaseMigrator:
         """
         
         # Apply all migrations
-        self.apply_migration(
-            "016",
-            "EXPAND: Create karma system and plastic cards tables",
-            users_sql,
-        )
+        if self._is_memory or not self._is_postgres():
+            self.apply_migration(
+                "016",
+                "EXPAND: Create karma system and plastic cards tables (SQLite)",
+                users_sql_sqlite,
+            )
+        else:
+            self.apply_migration(
+                "016",
+                "EXPAND: Create karma system and plastic cards tables (PG)",
+                users_sql_pg,
+            )
         
         # Try to add karma_points column safely: pre-check and mark applied if exists
         try:

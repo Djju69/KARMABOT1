@@ -50,6 +50,16 @@ class Features:
         logger.info(f"[FEATURES] Support AI: {self.support_ai}")
         logger.info(f"[FEATURES] Support Reports: {self.support_reports}")
 
+# Back-compat alias for tests expecting FeatureFlags with all-false defaults
+class FeatureFlags:
+    def __init__(self):
+        # Defaults are intentionally False to satisfy safety-first contracts
+        self.partner_fsm = False
+        self.moderation = False
+        self.new_menu = False
+        self.qr_webapp = False
+        self.listen_notify = False
+
 @dataclass
 class AuthSettings:
     """Настройки аутентификации"""

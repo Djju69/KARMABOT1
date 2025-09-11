@@ -19,7 +19,7 @@ def get_connection():
     import sqlite3
     from core.settings import settings
     
-    if hasattr(settings, 'database_url') and 'postgresql' in settings.database_url.lower():
+    if hasattr(settings, 'database_url') and settings.database_url and 'postgresql' in settings.database_url.lower():
         # For PostgreSQL, return asyncpg connection wrapper
         import asyncpg
         import asyncio
@@ -38,8 +38,9 @@ def get_connection():
         
         return AsyncConnectionWrapper()
     else:
-        # SQLite fallback
-        db_path = os.getenv('DATABASE_PATH', 'karma_bot.db')
+        # SQLite fallback with unified path
+        db_path = os.getenv('DATABASE_PATH') or 'core/database/data.db'
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         return sqlite3.connect(db_path)
 
 @dataclass
