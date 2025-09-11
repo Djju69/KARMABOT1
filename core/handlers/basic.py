@@ -567,33 +567,59 @@ async def handle_accept_policy(callback: CallbackQuery, bot: Bot, state: FSMCont
         await state.update_data(policy_accepted=True)
         # Сохраняем флаг в локальную БД (SQLite), чтобы не терялся между рестартами
         try:
-            from core.database.db_v2 import db_v2
-            conn = db_v2.get_connection()
-            try:
-                # Создаём запись пользователя при необходимости и отмечаем принятие политики
-                conn.execute(
-                    """
-                    INSERT OR IGNORE INTO users(telegram_id, username, first_name, last_name, language_code, policy_accepted)
-                    VALUES(?, ?, ?, ?, ?, 1)
-                    """,
-                    (
-                        int(callback.from_user.id),
-                        (callback.from_user.username or None),
-                        (callback.from_user.first_name or None),
-                        (callback.from_user.last_name or None),
-                        (getattr(callback.from_user, 'language_code', None) or 'ru'),
-                    ),
-                )
-                conn.execute(
-                    "UPDATE users SET policy_accepted = 1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?",
-                    (int(callback.from_user.id),),
-                )
-                conn.commit()
-            finally:
+            import os
+            database_url = os.getenv("DATABASE_URL", "")
+            if database_url and database_url.lower().startswith("postgres"):
+                # PostgreSQL путь (asyncpg)
+                import asyncpg
                 try:
-                    conn.close()
+                    conn_pg = await asyncpg.connect(database_url)
+                    try:
+                        await conn_pg.execute(
+                            """
+                            INSERT INTO users(telegram_id, username, first_name, last_name, language_code, policy_accepted)
+                            VALUES($1,$2,$3,$4,$5, TRUE)
+                            ON CONFLICT (telegram_id) DO UPDATE SET policy_accepted=EXCLUDED.policy_accepted, updated_at=NOW()
+                            """,
+                            int(callback.from_user.id),
+                            (callback.from_user.username or None),
+                            (callback.from_user.first_name or None),
+                            (callback.from_user.last_name or None),
+                            (getattr(callback.from_user, 'language_code', None) or 'ru'),
+                        )
+                    finally:
+                        await conn_pg.close()
                 except Exception:
+                    # fallback не падаем
                     pass
+            else:
+                # SQLite путь
+                from core.database.db_v2 import db_v2
+                conn = db_v2.get_connection()
+                try:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO users(telegram_id, username, first_name, last_name, language_code, policy_accepted)
+                        VALUES(?, ?, ?, ?, ?, 1)
+                        """,
+                        (
+                            int(callback.from_user.id),
+                            (callback.from_user.username or None),
+                            (callback.from_user.first_name or None),
+                            (callback.from_user.last_name or None),
+                            (getattr(callback.from_user, 'language_code', None) or 'ru'),
+                        ),
+                    )
+                    conn.execute(
+                        "UPDATE users SET policy_accepted = 1, updated_at = CURRENT_TIMESTAMP WHERE telegram_id = ?",
+                        (int(callback.from_user.id),),
+                    )
+                    conn.commit()
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
         except Exception:
             # Не ломаем поток при ошибке записи
             pass
