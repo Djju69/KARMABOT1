@@ -15,8 +15,8 @@ async def on_menu(msg: Message):
     """Handle /menu command."""
     await msg.answer("🗂 Главное меню (stub)")
 
-# catch-all — последним!
-@router.message(F.text)
-async def on_any_text(msg: Message):
-    """Handle any text message."""
+# catch-all — ограничен группами, чтобы не перехватывать личные чаты
+@router.message(F.text & F.chat.type.in_({"group", "supergroup"}))
+async def on_any_text_group(msg: Message):
+    """Handle any text message in group chats."""
     await msg.answer("👋 Принял текст. Наберите /menu или /start.")
