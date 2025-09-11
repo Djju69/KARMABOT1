@@ -67,22 +67,24 @@ def register_commands(router):
 
     @router.message(Command("help"))
     async def cmd_help(message: Message):
-        """/help — Новая справочная система"""
+        """/help — Справка с кнопкой запуска AI"""
         try:
-            # Импортируем сервис помощи
             from core.services.help_service import HelpService
+            from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
             help_service = HelpService()
-            
-            # Получаем справочное сообщение
+
             help_message = await help_service.get_help_message(message.from_user.id)
-            
-            # Отправляем сообщение с поддержкой HTML
+
+            # Добавляем кнопку запуска AI агента (идентично help_with_ai)
+            keyboard = InlineKeyboardMarkup(
+                inline_keyboard=[[InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]]
+            )
             await message.answer(
                 help_message,
+                reply_markup=keyboard,
                 parse_mode="HTML",
                 disable_web_page_preview=True
             )
-            
         except Exception as e:
             logger.error(f"Error in cmd_help: {e}", exc_info=True)
             await message.answer("❌ Произошла ошибка при загрузке справочной информации. Попробуйте позже.")
