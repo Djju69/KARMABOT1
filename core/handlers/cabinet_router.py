@@ -29,6 +29,11 @@ def get_cabinet_router() -> Router:
     return router
 
 
+def get_router() -> Router:
+    """Compatibility alias for legacy imports."""
+    return router
+
+
 class CabinetStates(StatesGroup):
     """FSM states for user cabinet interactions."""
     viewing_profile = State()

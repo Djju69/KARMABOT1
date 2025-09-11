@@ -371,7 +371,7 @@ from core.handlers.moderation import get_moderation_router
 from core.handlers.admin_cabinet import get_admin_cabinet_router
 from core.handlers.profile import get_profile_router
 from core.handlers.activity import get_activity_router
-from core.handlers.cabinet_router import get_router as get_cabinet_router
+from core.handlers.cabinet_router import get_cabinet_router
 
 # Services
 from core.services.profile import profile_service
