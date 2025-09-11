@@ -419,6 +419,8 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'commands.help': 'Помощь/FAQ',
         'commands.policy': 'Политика конфиденциальности',
         'commands.clear_cache': 'Очистить кэш (только админ)',
+        # v4.2.5 commands (новые описания)
+        'commands.add_card': 'Добавить партнёра',
         
         # Voice functionality
         'voice.too_long': 'Сообщение длинновато. Запиши, пожалуйста, короче — до 60 секунд 🙏',
