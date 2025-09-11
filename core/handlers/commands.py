@@ -160,7 +160,13 @@ async def cmd_test_help(message: Message):
 
     @router.message(Command("policy"))
     async def cmd_policy(message: Message):
-        await message.answer("📄 Политика конфиденциальности: ссылка будет добавлена позже.")
+        await message.answer(
+            "📄 <b>Политика конфиденциальности</b>\n\n"
+            "Текст политики доступен по ссылке:\n"
+            "<a href=\"/static/docs/policy.html\">/static/docs/policy.html</a>",
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
 
 @router.message(Command("add"))
 async def cmd_add(message: Message, state: FSMContext):

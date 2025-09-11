@@ -292,6 +292,7 @@ async def main():
     from core.handlers.ai_help import ai_help_router
     from core.handlers.settings_router import router as settings_router
     from core.handlers.support_ai import router as support_ai_router
+    from core.handlers.commands import router as commands_router
     
     # AI Support routers (with feature flags) — ПОДКЛЮЧАЕМ ПЕРВЫМИ для приоритета /help и «❓ Помощь»
     from core.settings import settings
@@ -309,6 +310,7 @@ async def main():
         logger.warning("⚠️ AI Support feature is disabled")
 
     # Основные роутеры — после AI, чтобы не перехватывать /help раньше
+    dp.include_router(commands_router)
     dp.include_router(basic_router)
     dp.include_router(callback_router)
     dp.include_router(main_menu_router)
@@ -1228,4 +1230,6 @@ if __name__ == "__main__":
         logger.info("Bot stopped")
     except Exception as e:
         logger.exception("Fatal error in main()")
+        raise
+
         raise
