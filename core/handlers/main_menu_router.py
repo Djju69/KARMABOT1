@@ -202,6 +202,8 @@ async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) 
     t.get('profile', '') for t in translations.values()
 ] + [
     t.get('menu.profile', '') for t in translations.values()
+] + [
+    '👤 Личный кабинет'
 ]))
 async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки профиля пользователя."""
@@ -317,7 +319,11 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         await message.answer(error_text, parse_mode="HTML")
 
 # Favorites (v4.2.5) — real implementation
-@main_menu_router.message(F.text.in_([t.get('menu.favorites', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([
+    t.get('menu.favorites', '') for t in translations.values()
+] + [
+    '⭐ Избранные'
+]))
 async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает список избранных заведений пользователя."""
     logger.debug(f"User {message.from_user.id} opened favorites")
@@ -362,6 +368,8 @@ async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> Non
 # Invite friends (reply menu with 3 items)
 @main_menu_router.message(F.text.in_([
     t.get('menu.invite_friends', '') for t in translations.values()
+] + [
+    '👥 Пригласить друзей'
 ]))
 async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает меню "Пригласить друзей" (3 пункта)."""

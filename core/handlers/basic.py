@@ -508,24 +508,66 @@ async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext) 
         bool: True, если политика принята, иначе False
     """
     try:
+        # 1) Полный обход для супер-админа
+        try:
+            from core.settings import settings as _settings
+            if int(message.from_user.id) == int(getattr(_settings.bots, 'admin_id', 0)):
+                return True
+        except Exception:
+            pass
+
+        # 2) Проверяем флаг в FSM
         user_data = await state.get_data()
-        
-        # Если пользователь уже принял политику, возвращаем True
         if user_data.get('policy_accepted', False):
             return True
-            
-        # Получаем язык пользователя или используем русский по умолчанию
+
+        # 3) Если в FSM нет — читаем из БД и при необходимости устанавливаем в FSM
+        import os
+        database_url = os.getenv("DATABASE_URL", "").lower()
+        try:
+            if database_url.startswith("postgres"):
+                import asyncpg
+                conn_pg = await asyncpg.connect(os.getenv("DATABASE_URL"))
+                try:
+                    val = await conn_pg.fetchval(
+                        "SELECT policy_accepted FROM users WHERE telegram_id = $1",
+                        int(message.from_user.id),
+                    )
+                    if bool(val):
+                        await state.update_data(policy_accepted=True)
+                        return True
+                finally:
+                    await conn_pg.close()
+            else:
+                from core.database.db_v2 import db_v2
+                conn = db_v2.get_connection()
+                try:
+                    cur = conn.execute(
+                        "SELECT policy_accepted FROM users WHERE telegram_id = ?",
+                        (int(message.from_user.id),),
+                    )
+                    row = cur.fetchone()
+                    if row is not None and bool(row[0] if not isinstance(row, dict) else row.get('policy_accepted')):
+                        await state.update_data(policy_accepted=True)
+                        return True
+                finally:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+        except Exception:
+            # Если проверка БД не удалась — продолжаем показом политики
+            pass
+
+        # 4) Политика не принята — показываем экран политики
         lang = user_data.get('lang', 'ru')
-        
-        # Текст политики конфиденциальности
         policy_text = translations.get(lang, {}).get(
             'privacy_policy', 
-            '🔒 <b>Политика конфиденциальности</b>\n\n' 
-            'Пожалуйста, ознакомьтесь с нашей политикой конфиденциальности и примите её, ' 
+            '🔒 <b>Политика конфиденциальности</b>\n\n'
+            'Пожалуйста, ознакомьтесь с нашей политикой конфиденциальности и примите её, '
             'чтобы продолжить использование бота.'
         )
-        
-        # Создаем инлайн-клавиатуру с кнопками принятия/отклонения
+
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
@@ -539,21 +581,18 @@ async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext) 
                 )
             ]
         ])
-        
-        # Отправляем сообщение с политикой
+
         await message.answer(
             text=policy_text,
             reply_markup=keyboard,
             parse_mode='HTML'
         )
-        
-        # Устанавливаем состояние ожидания принятия политики
         await state.set_state("waiting_for_policy_acceptance")
         return False
-        
+
     except Exception as e:
         logger.error(f"Error in ensure_policy_accepted: {e}", exc_info=True)
-        # В случае ошибки разрешаем продолжить, чтобы не блокировать пользователя
+        # В случае ошибки — не блокируем
         return True
     return True
 
