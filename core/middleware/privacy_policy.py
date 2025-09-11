@@ -16,9 +16,9 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
     """
     
     # Разрешенные команды и callback_data
-    ALLOWED_COMMANDS = ['/start', '/help', '/city', '/clear_cache', '/add', '/webapp', '/policy',
-                        '❓ Помощь', '❓ Help', '❓ 도움말', '❓ Trợ giúp']
-    ALLOWED_CALLBACKS = ['lang:', 'policy:', 'accept_policy', 'decline_policy', 'city:', 'pfsm:', 'help:', 'ai_agent:']
+    ALLOWED_COMMANDS = ['/start']
+    # Только язык и политика до принятия
+    ALLOWED_CALLBACKS = ['lang:', 'policy:', 'accept_policy', 'decline_policy']
     
     async def __call__(
         self,
@@ -36,17 +36,9 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
             
             if isinstance(event, Message):
                 user_id = event.from_user.id
-                # Проверяем разрешенные команды
+                # Разрешаем только /start до принятия политики
                 if event.text and any(event.text.startswith(cmd) for cmd in self.ALLOWED_COMMANDS):
                     return await handler(event, data)
-                # Разрешаем сообщения в AI-чате (ожидание вопроса)
-                if state:
-                    try:
-                        current_state = await state.get_state()
-                    except Exception:
-                        current_state = None
-                    if current_state and ('AIState' in current_state or current_state.endswith(':waiting_question')):
-                        return await handler(event, data)
                     
             elif isinstance(event, CallbackQuery):
                 user_id = event.from_user.id
@@ -54,6 +46,15 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
                 if event.data and any(event.data.startswith(cb) for cb in self.ALLOWED_CALLBACKS):
                     return await handler(event, data)
             
+            # Полный bypass для супер-админа
+            try:
+                from core.settings import settings as _settings
+                admin_id = getattr(_settings.bots, 'admin_id', None)
+                if admin_id is not None and user_id is not None and int(user_id) == int(admin_id):
+                    return await handler(event, data)
+            except Exception:
+                pass
+
             if not user_id or not state:
                 return await handler(event, data)
             
