@@ -405,6 +405,10 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'menu.become_partner': '👨‍💼 Стать парнером',
         'menu.help': '❓ Помощь',
         'menu.profile': '👤 Личный кабинет',
+        # Missing keys used by reply keyboards
+        'choose_category': '🗂️ Категории',
+        'favorites': '⭐ Избранные',
+        'keyboard.referral_program': '👥 Пригласить друзей',
         # v4.2.4 invite submenu
         'invite.my_link': '🔗 Моя ссылка',
         'invite.invited': '📋 Приглашённые',
@@ -460,7 +464,12 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'transport_cars': '🚘 Машины',
         'transport_bicycles': '🚲 Велосипеды',
         
-        # Categories
+        # Categories (full set for reply keyboard)
+        'category_restaurants': '🍽️ Рестораны и кафе',
+        'category_spa': '🧖‍♀️ SPA и массаж',
+        'category_transport': '🏍️ Транспорт',
+        'category_hotels': '🏨 Отели',
+        'category_tours': '🚶‍♂️ Экскурсии',
         'category_shops_services': '🛍️ Магазины и услуги',
         
         # Tours
