@@ -63,20 +63,38 @@ class PrivacyPolicyMiddleware(BaseMiddleware):
             policy_accepted = user_data.get('policy_accepted', False)
             if not policy_accepted:
                 # Пытаемся проверить в БД (users.policy_accepted)
+                import os
+                database_url = os.getenv("DATABASE_URL", "").lower()
                 try:
-                    # Используем SQLite-совместимый путь
-                    from core.database.db_v2 import db_v2
-                    conn = db_v2.get_connection()
-                    try:
-                        cur = conn.execute("SELECT policy_accepted FROM users WHERE telegram_id = ?", (int(user_id),))
-                        row = cur.fetchone()
-                        if row is not None:
-                            policy_accepted = bool(row[0] if not isinstance(row, dict) else row.get('policy_accepted'))
-                    finally:
+                    if database_url.startswith("postgres"):
+                        # PostgreSQL путь (asyncpg)
+                        import asyncpg
+                        conn_pg = await asyncpg.connect(os.getenv("DATABASE_URL"))
                         try:
-                            conn.close()
-                        except Exception:
-                            pass
+                            val = await conn_pg.fetchval(
+                                "SELECT policy_accepted FROM users WHERE telegram_id = $1",
+                                int(user_id),
+                            )
+                            policy_accepted = bool(val) if val is not None else False
+                        finally:
+                            await conn_pg.close()
+                    else:
+                        # SQLite путь
+                        from core.database.db_v2 import db_v2
+                        conn = db_v2.get_connection()
+                        try:
+                            cur = conn.execute(
+                                "SELECT policy_accepted FROM users WHERE telegram_id = ?",
+                                (int(user_id),),
+                            )
+                            row = cur.fetchone()
+                            if row is not None:
+                                policy_accepted = bool(row[0] if not isinstance(row, dict) else row.get('policy_accepted'))
+                        finally:
+                            try:
+                                conn.close()
+                            except Exception:
+                                pass
                 except Exception:
                     # В случае ошибки — оставляем предыдущее значение
                     pass
