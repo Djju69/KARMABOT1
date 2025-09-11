@@ -293,26 +293,26 @@ async def main():
     from core.handlers.settings_router import router as settings_router
     from core.handlers.support_ai import router as support_ai_router
     
-    # Include routers with proper order
-    dp.include_router(basic_router)
-    dp.include_router(callback_router)
-    dp.include_router(main_menu_router)
-    dp.include_router(language_router)
-    
-    # AI Support routers (with feature flags) - подключаем ПЕРВЫМИ для приоритета
+    # AI Support routers (with feature flags) — ПОДКЛЮЧАЕМ ПЕРВЫМИ для приоритета /help и «❓ Помощь»
     from core.settings import settings
     logger.info(f"🔍 Support AI feature flag: {settings.features.support_ai}")
     if settings.features.support_ai:
         try:
-            dp.include_router(help_with_ai_router)  # ПЕРВЫМ для перехвата /help
-            dp.include_router(ai_help_router)  # AI Help menu router
+            dp.include_router(help_with_ai_router)  # перехват /help и '❓ Помощь'
+            dp.include_router(ai_help_router)
             dp.include_router(settings_router)
             dp.include_router(support_ai_router)
-            logger.info("✅ AI Support routers included")
+            logger.info("✅ AI Support routers included (before main routers)")
         except Exception as e:
             logger.error(f"❌ Error including AI routers: {e}")
     else:
         logger.warning("⚠️ AI Support feature is disabled")
+
+    # Основные роутеры — после AI, чтобы не перехватывать /help раньше
+    dp.include_router(basic_router)
+    dp.include_router(callback_router)
+    dp.include_router(main_menu_router)
+    dp.include_router(language_router)
     
     # Set up bot commands
     await set_commands(bot)
