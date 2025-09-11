@@ -24,7 +24,7 @@ async def set_commands(bot: Bot) -> None:
     # v4.2.5 commands (exact list, no extras)
     base = [
         ("start", "commands.start"),
-        ("add", "commands.add_partner"),  # /add partner — Telegram не поддерживает пробелы
+        ("add_card", "commands.add_card"),
         ("webapp", "commands.webapp"),
         ("city", "commands.city"),
         ("help", "commands.help"),
@@ -168,48 +168,7 @@ async def cmd_test_help(message: Message):
             disable_web_page_preview=True,
         )
 
-@router.message(Command("add"))
-async def cmd_add(message: Message, state: FSMContext):
-    """/add - команда для добавления партнеров и карточек товаров"""
-    try:
-        # Проверяем, не является ли пользователь уже партнером
-        from core.database.db_v2 import get_connection
-        
-        with get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT id, status FROM partners WHERE contact_telegram = ?",
-                (message.from_user.id,)
-            )
-            existing_partner = cursor.fetchone()
-        
-        if existing_partner:
-            status_text = {
-                'pending': '⏳ Ожидает рассмотрения',
-                'approved': '✅ Одобрен',
-                'rejected': '❌ Отклонен',
-                'suspended': '⏸️ Приостановлен'
-            }.get(existing_partner[1], '❓ Неизвестный статус')
-            
-            await message.answer(
-                f"🤝 <b>Статус партнерства</b>\n\n"
-                f"📋 Ваша заявка на партнерство уже подана.\n"
-                f"📊 Статус: {status_text}\n\n"
-                f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
-                parse_mode='HTML'
-            )
-            return
-        
-        # Начинаем процесс регистрации партнера
-        await message.answer(
-            "🤝 <b>Регистрация партнера</b>\n\n"
-            "Для регистрации в качестве партнера используйте кнопку '➕ Стать партнером' в главном меню.\n\n"
-            "💡 Это позволит вам добавлять свои заведения и управлять системой лояльности.",
-            parse_mode='HTML'
-        )
-            
-    except Exception as e:
-        logger.error(f"Error in cmd_add: {e}")
-        await message.answer("❌ Ошибка при запуске регистрации партнера. Попробуйте позже.")
+# Удалено: обработчик /add не используется. Используйте /add_card (см. partner_router).
 
 @router.message(Command("create_test_data"))
 async def cmd_create_test_data(message: Message, state: FSMContext):

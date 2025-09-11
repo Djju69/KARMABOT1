@@ -1,9 +1,10 @@
 """
 Сервис справочной системы для бота
-Обеспечивает ролевой доступ к документации
+Обеспечивает ролевой доступ к документации и формирует полное сообщение /help
 """
 
 import logging
+import os
 from typing import Dict, List
 from core.security.roles import get_user_role, Role
 
@@ -13,40 +14,47 @@ class HelpService:
     """Сервис справочной системы"""
     
     def __init__(self):
-        # Базовый URL документации (постоянный домен)
-        self.base_url = "https://docs.karma-system.com"
-        
-        # Ссылки для каждой роли
+        # Корневой домен для абсолютных ссылок на статику Railway
+        railway_host = os.getenv("RAILWAY_STATIC_URL", "").strip()
+        if railway_host and not railway_host.startswith("http"):
+            railway_host = f"https://{railway_host}"
+        self.web_root = railway_host or ""
+
+        # Быстрые ссылки (внутренние статические страницы)
+        def sdoc(name: str) -> str:
+            return f"{self.web_root}/static/docs/{name}" if self.web_root else f"/static/docs/{name}"
+
+        # Ссылки для каждой роли (используются в тестах/вспомогательных сценариях)
         self.help_links = {
             Role.USER: [
                 {
                     "title": "Инструкция для пользователей",
-                    "url": f"{self.base_url}/user",
+                    "url": sdoc("help_user.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Как стать партнёром",
-                    "url": f"{self.base_url}/partner/become",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Создание заведений",
-                    "url": f"{self.base_url}/partner/create-place",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Сканирование QR",
-                    "url": f"{self.base_url}/partner/qr-scan",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Частые вопросы (FAQ)",
-                    "url": f"{self.base_url}/faq",
+                    "url": sdoc("help_faq.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Решение проблем",
-                    "url": f"{self.base_url}/troubleshooting",
+                    "url": sdoc("help_troubleshooting.html"),
                     "emoji": "🔹"
                 },
                 {
@@ -58,42 +66,42 @@ class HelpService:
             Role.PARTNER: [
                 {
                     "title": "Инструкция для пользователей",
-                    "url": f"{self.base_url}/user",
+                    "url": sdoc("help_user.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Как стать партнёром",
-                    "url": f"{self.base_url}/partner/become",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Создание заведений",
-                    "url": f"{self.base_url}/partner/create-place",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Сканирование QR-кодов",
-                    "url": f"{self.base_url}/partner/qr-scan",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Партнёрская аналитика",
-                    "url": f"{self.base_url}/partner/analytics",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление заведениями",
-                    "url": f"{self.base_url}/partner/manage-places",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Часто задаваемые вопросы (FAQ)",
-                    "url": f"{self.base_url}/faq",
+                    "url": sdoc("help_faq.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Решение проблем и типовые ошибки",
-                    "url": f"{self.base_url}/troubleshooting",
+                    "url": sdoc("help_troubleshooting.html"),
                     "emoji": "🔹"
                 },
                 {
@@ -105,62 +113,62 @@ class HelpService:
             Role.ADMIN: [
                 {
                     "title": "Инструкция для пользователей",
-                    "url": f"{self.base_url}/user",
+                    "url": sdoc("help_user.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Как стать партнёром",
-                    "url": f"{self.base_url}/partner/become",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Создание заведений",
-                    "url": f"{self.base_url}/partner/create-place",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Сканирование QR-кодов",
-                    "url": f"{self.base_url}/partner/qr-scan",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Партнёрская аналитика",
-                    "url": f"{self.base_url}/partner/analytics",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление заведениями",
-                    "url": f"{self.base_url}/partner/manage-places",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Админская панель",
-                    "url": f"{self.base_url}/admin/dashboard",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Модерация заявок",
-                    "url": f"{self.base_url}/admin/moderation",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление пользователями",
-                    "url": f"{self.base_url}/admin/users",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Системные настройки",
-                    "url": f"{self.base_url}/admin/settings",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Часто задаваемые вопросы (FAQ)",
-                    "url": f"{self.base_url}/faq",
+                    "url": sdoc("help_faq.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Решение проблем и типовые ошибки",
-                    "url": f"{self.base_url}/troubleshooting",
+                    "url": sdoc("help_troubleshooting.html"),
                     "emoji": "🔹"
                 },
                 {
@@ -172,77 +180,77 @@ class HelpService:
             Role.SUPER_ADMIN: [
                 {
                     "title": "Инструкция для пользователей",
-                    "url": f"{self.base_url}/user",
+                    "url": sdoc("help_user.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Как стать партнёром",
-                    "url": f"{self.base_url}/partner/become",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Создание заведений",
-                    "url": f"{self.base_url}/partner/create-place",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Сканирование QR-кодов",
-                    "url": f"{self.base_url}/partner/qr-scan",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Партнёрская аналитика",
-                    "url": f"{self.base_url}/partner/analytics",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление заведениями",
-                    "url": f"{self.base_url}/partner/manage-places",
+                    "url": sdoc("help_partner.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Админская панель",
-                    "url": f"{self.base_url}/admin/dashboard",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Модерация заявок",
-                    "url": f"{self.base_url}/admin/moderation",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление пользователями",
-                    "url": f"{self.base_url}/admin/users",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Системные настройки",
-                    "url": f"{self.base_url}/admin/settings",
+                    "url": sdoc("help_admin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Супер-админ панель",
-                    "url": f"{self.base_url}/superadmin/dashboard",
+                    "url": sdoc("help_superadmin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Управление администраторами",
-                    "url": f"{self.base_url}/superadmin/admins",
+                    "url": sdoc("help_superadmin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Системная аналитика",
-                    "url": f"{self.base_url}/superadmin/analytics",
+                    "url": sdoc("help_superadmin.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Часто задаваемые вопросы (FAQ)",
-                    "url": f"{self.base_url}/faq",
+                    "url": sdoc("help_faq.html"),
                     "emoji": "🔹"
                 },
                 {
                     "title": "Решение проблем и типовые ошибки",
-                    "url": f"{self.base_url}/troubleshooting",
+                    "url": sdoc("help_troubleshooting.html"),
                     "emoji": "🔹"
                 },
                 {
@@ -260,84 +268,92 @@ class HelpService:
             user_role = await get_user_role(user_id)
             role_name = getattr(user_role, 'name', str(user_role)).lower()
             
-            # Формируем сообщение в зависимости от роли пользователя
+            # Утилита статических ссылок
+            def sdoc(name: str) -> str:
+                return f"{self.web_root}/static/docs/{name}" if self.web_root else f"/static/docs/{name}"
+
+            # Формируем сообщение в зависимости от роли пользователя: полноценные разделы
             if role_name == 'user':
-                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
-
-Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
-
-<b>👤 Для пользователей</b>
-• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
-
-<b>💡 Помощь</b>
-• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
-• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
-
-<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+                message = (
+                    "✨ Привет! Это <b>Справочный центр Karma System</b> 🧭\n\n"
+                    "<b>🆘 Быстрая помощь</b>\n"
+                    "• /start — главное меню\n"
+                    "• /help — справка и инструкции\n"
+                    "• /webapp — открыть WebApp\n\n"
+                    "<b>🔗 Полезные ссылки</b>\n"
+                    f"• 📄 <a href=\"{sdoc('policy.html')}\">Политика конфиденциальности</a>\n"
+                    f"• ❓ <a href=\"{sdoc('help_faq.html')}\">FAQ</a>\n"
+                    f"• 🛠️ <a href=\"{sdoc('help_troubleshooting.html')}\">Решение проблем</a>\n\n"
+                    "<b>📖 Инструкции</b>\n"
+                    f"• 👤 <a href=\"{sdoc('help_user.html')}\">Инструкция для пользователей</a>\n\n"
+                    "<b>📞 Контакты поддержки</b>\n"
+                    "• Telegram: <a href=\"https://t.me/karma_system_official\">@karma_system_official</a>\n\n"
+                    "<b>🌐 Смена языка</b>\nИспользуйте меню выбора языка в настройках бота.\n\n"
+                    "<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"
+                )
             
             elif role_name == 'partner':
-                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
-
-Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
-
-<b>👤 Для пользователей</b>
-• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
-
-<b>🤝 Партнёрство</b>
-• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
-
-<b>💡 Помощь</b>
-• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
-• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
-
-<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+                message = (
+                    "✨ Привет! Это <b>Справочный центр Karma System</b> 🧭\n\n"
+                    "<b>🆘 Быстрая помощь</b>\n"
+                    "• /start — главное меню\n"
+                    "• /help — справка и инструкции\n"
+                    "• /webapp — открыть WebApp\n\n"
+                    "<b>🔗 Полезные ссылки</b>\n"
+                    f"• 📄 <a href=\"{sdoc('policy.html')}\">Политика конфиденциальности</a>\n"
+                    f"• ❓ <a href=\"{sdoc('help_faq.html')}\">FAQ</a>\n"
+                    f"• 🛠️ <a href=\"{sdoc('help_troubleshooting.html')}\">Решение проблем</a>\n\n"
+                    "<b>📖 Инструкции</b>\n"
+                    f"• 👤 <a href=\"{sdoc('help_user.html')}\">Для пользователей</a>\n"
+                    f"• 🤝 <a href=\"{sdoc('help_partner.html')}\">Как стать партнёром и управление заведениями</a>\n\n"
+                    "<b>📞 Контакты поддержки</b>\n"
+                    "• Telegram: <a href=\"https://t.me/karma_system_official\">@karma_system_official</a>\n\n"
+                    "<b>🌐 Смена языка</b>\nИспользуйте меню выбора языка в настройках бота.\n\n"
+                    "<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"
+                )
             
             elif role_name == 'admin':
-                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
-
-Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
-
-<b>👤 Для пользователей</b>
-• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
-
-<b>🤝 Партнёрство</b>
-• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
-
-<b>🛡️ Администраторы</b>
-• 📊 <a href="/static/docs/help_admin.html">Админская панель и операции</a>
-
-<b>💡 Помощь</b>
-• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
-• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
-
-<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+                message = (
+                    "✨ Привет! Это <b>Справочный центр Karma System</b> 🧭\n\n"
+                    "<b>🆘 Быстрая помощь</b>\n"
+                    "• /start — главное меню\n"
+                    "• /help — справка и инструкции\n"
+                    "• /webapp — открыть WebApp\n\n"
+                    "<b>🔗 Полезные ссылки</b>\n"
+                    f"• 📄 <a href=\"{sdoc('policy.html')}\">Политика конфиденциальности</a>\n"
+                    f"• ❓ <a href=\"{sdoc('help_faq.html')}\">FAQ</a>\n"
+                    f"• 🛠️ <a href=\"{sdoc('help_troubleshooting.html')}\">Решение проблем</a>\n\n"
+                    "<b>📖 Инструкции</b>\n"
+                    f"• 👤 <a href=\"{sdoc('help_user.html')}\">Для пользователей</a>\n"
+                    f"• 🤝 <a href=\"{sdoc('help_partner.html')}\">Для партнёров</a>\n"
+                    f"• 🛡️ <a href=\"{sdoc('help_admin.html')}\">Админская панель и операции</a>\n\n"
+                    "<b>📞 Контакты поддержки</b>\n"
+                    "• Telegram: <a href=\"https://t.me/karma_system_official\">@karma_system_official</a>\n\n"
+                    "<b>🌐 Смена языка</b>\nИспользуйте меню выбора языка в настройках бота.\n\n"
+                    "<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"
+                )
             
             else:  # super_admin
-                message = """✨ Привет! Это <b>Справочный центр Karma System</b> 🧭
-
-Здесь всё, что нужно, чтобы быстро разобраться и работать без лишних вопросов👇
-
-<b>👤 Для пользователей</b>
-• 👤 <a href="/static/docs/help_user.html">Инструкция для пользователей</a>
-
-<b>🤝 Партнёрство</b>
-• 🚀 <a href="/static/docs/help_partner.html">Как стать партнёром и управление заведениями</a>
-
-<b>🛡️ Администраторы</b>
-• 📊 <a href="/static/docs/help_admin.html">Админская панель и операции</a>
-
-<b>👑 Супер-администраторы</b>
-• 🖥️ <a href="/static/docs/help_superadmin.html">Супер-админ панель</a>
-
-<b>💡 Помощь</b>
-• ❓ <a href="/static/docs/help_faq.html">Часто задаваемые вопросы (FAQ)</a>
-• 🛠️ <a href="/static/docs/help_troubleshooting.html">Решение проблем и типовые ошибки</a>
-• 🆘 <a href="https://t.me/karma_system_official">Связаться с поддержкой</a>
-
-<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"""
+                message = (
+                    "✨ Привет! Это <b>Справочный центр Karma System</b> 🧭\n\n"
+                    "<b>🆘 Быстрая помощь</b>\n"
+                    "• /start — главное меню\n"
+                    "• /help — справка и инструкции\n"
+                    "• /webapp — открыть WebApp\n\n"
+                    "<b>🔗 Полезные ссылки</b>\n"
+                    f"• 📄 <a href=\"{sdoc('policy.html')}\">Политика конфиденциальности</a>\n"
+                    f"• ❓ <a href=\"{sdoc('help_faq.html')}\">FAQ</a>\n"
+                    f"• 🛠️ <a href=\"{sdoc('help_troubleshooting.html')}\">Решение проблем</a>\n\n"
+                    "<b>📖 Инструкции</b>\n"
+                    f"• 👤 <a href=\"{sdoc('help_user.html')}\">Для пользователей</a>\n"
+                    f"• 🤝 <a href=\"{sdoc('help_partner.html')}\">Для партнёров</a>\n"
+                    f"• 🛡️ <a href=\"{sdoc('help_admin.html')}\">Админская панель и операции</a>\n"
+                    f"• 👑 <a href=\"{sdoc('help_superadmin.html')}\">Супер-админ панель</a>\n\n"
+                    "<b>📞 Контакты поддержки</b>\n"
+                    "• Telegram: <a href=\"https://t.me/karma_system_official\">@karma_system_official</a>\n\n"
+                    "<b>🌐 Смена языка</b>\nИспользуйте меню выбора языка в настройках бота.\n\n"
+                    "<i>Мы рядом, если что — пиши. Приятного пользования! ✨</i>"
+                )
             
             return message
             
@@ -360,13 +376,8 @@ class HelpService:
         return self.help_links.get(role, self.help_links[Role.USER])
     
     def update_base_url(self, new_url: str):
-        """Обновить базовый URL документации"""
-        self.base_url = new_url
-        # Обновляем все ссылки
-        for role_links in self.help_links.values():
-            for link in role_links:
-                if link['url'].startswith('https://docs.karma-system.com'):
-                    link['url'] = link['url'].replace('https://docs.karma-system.com', new_url)
+        """Обновить базовый URL (не используется для /static/docs, оставлено для совместимости)"""
+        self.web_root = new_url
     
     def test_help_message(self) -> str:
         """Тестовая функция для проверки ссылок"""

@@ -655,46 +655,17 @@ async def language_handler(message: Message, state: FSMContext):
         )
 
 
-@router.message(F.text.in_(["🤝 Стать партнером", "🤝 Become Partner"]))
+@router.message(F.text.in_( ["🤝 Стать партнером", "🤝 Become Partner"]))
 async def become_partner_handler(message: Message, state: FSMContext):
-    """Handle become partner functionality."""
+    """Запускает тот же мастер, что и /add_card: регистрацию карточки партнёра."""
     try:
-        # Проверяем, не является ли пользователь уже партнером
-        from core.database.db_v2 import get_connection
-        
-        with get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT id, status FROM partners WHERE contact_telegram = ?",
-                (message.from_user.id,)
-            )
-            existing_partner = cursor.fetchone()
-        
-        if existing_partner:
-            status_text = {
-                'pending': '⏳ Ожидает рассмотрения',
-                'approved': '✅ Одобрен',
-                'rejected': '❌ Отклонен',
-                'suspended': '⏸️ Приостановлен'
-            }.get(existing_partner[1], '❓ Неизвестный статус')
-            
-            await message.answer(
-                f"🤝 <b>Статус партнерства</b>\n\n"
-                f"📋 Ваша заявка на партнерство уже подана.\n"
-                f"📊 Статус: {status_text}\n\n"
-                f"💡 Если у вас есть вопросы, обратитесь в поддержку.",
-                reply_markup=get_user_cabinet_keyboard(),
-                parse_mode='HTML'
-            )
-            return
-        
-        # Начинаем процесс регистрации с подтверждением через код
-        from core.fsm.partner_confirmation import start_partner_confirmation
-        await start_partner_confirmation(message, state)
-        
+        # Запускаем единый мастер добавления карточки партнёра
+        from core.handlers.partner import start_add_card
+        await start_add_card(message, state)
     except Exception as e:
         logger.error(f"Error in become_partner_handler: {str(e)}", exc_info=True)
         await message.answer(
-            "❌ Не удалось загрузить информацию о партнерстве. Пожалуйста, попробуйте позже.",
+            "❌ Не удалось запустить регистрацию карточки партнёра. Пожалуйста, попробуйте позже.",
             reply_markup=get_user_cabinet_keyboard()
         )
 
