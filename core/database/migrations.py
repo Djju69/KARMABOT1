@@ -2072,6 +2072,41 @@ class DatabaseMigrator:
             print(f"❌ Error in migration 020 (SQLite): {e}")
             raise
 
+    def migrate_022_add_policy_accepted_to_users(self):
+        """Add policy_accepted column to users table"""
+        try:
+            conn = self.get_connection()
+            
+            # Check if we're using SQLite or PostgreSQL
+            is_postgres = hasattr(conn, 'execute') and callable(getattr(conn, 'execute'))
+            
+            if is_postgres:
+                # PostgreSQL approach
+                conn.execute("""
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns 
+                            WHERE table_name = 'users' AND column_name = 'policy_accepted'
+                        ) THEN
+                            ALTER TABLE users ADD COLUMN policy_accepted BOOLEAN DEFAULT FALSE;
+                        END IF;
+                    END
+                    $$;
+                """)
+            else:
+                # SQLite approach
+                cursor = conn.cursor()
+                if not _col_exists(conn, "users", "policy_accepted"):
+                    cursor.execute("ALTER TABLE users ADD COLUMN policy_accepted BOOLEAN DEFAULT 0;")
+            
+            conn.commit()
+            logger.info("Applied migration 022: Added policy_accepted column to users table")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply migration 022: {e}")
+            raise
+            
     def migrate_010_user_features(self):
         """Migration 010: User features tables"""
         try:

@@ -178,6 +178,7 @@ async def handle_main_menu_text(message: Message, bot: Bot, state: FSMContext) -
 ] + [
     'КАТЕГОРИИ', 'Категории', 'CATEGORIES', 'Categories', '🗂️ Категории'
 ]))
+@main_menu_router.message(F.text == "🗂️ Категории")
 async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки выбора категории."""
     logger.debug(f"User {message.from_user.id} chose category selection")
@@ -205,6 +206,7 @@ async def handle_choose_category(message: Message, bot: Bot, state: FSMContext) 
 ] + [
     '👤 Личный кабинет'
 ]))
+@main_menu_router.message(F.text == "👤 Личный кабинет")
 async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки профиля пользователя."""
     logger.debug(f"User {message.from_user.id} opened profile")
@@ -324,6 +326,7 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
 ] + [
     '⭐ Избранные'
 ]))
+@main_menu_router.message(F.text == "⭐ Избранные")
 async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает список избранных заведений пользователя."""
     logger.debug(f"User {message.from_user.id} opened favorites")
@@ -371,6 +374,7 @@ async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> Non
 ] + [
     '👥 Пригласить друзей'
 ]))
+@main_menu_router.message(F.text == "👥 Пригласить друзей")
 async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает меню "Пригласить друзей" (3 пункта)."""
     user_data = await state.get_data()

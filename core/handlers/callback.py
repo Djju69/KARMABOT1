@@ -194,11 +194,17 @@ async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: 
             pass
         # Короткий ответ на callback, чтобы убрать спиннер
         await callback.answer("✅ Политика принята")
-        # Подтверждение пользователю
+        # Подтверждение пользователю с диагностикой
         try:
-            await bot.send_message(callback.from_user.id, "✅ Политика принята! Можете пользоваться меню.")
-        except Exception:
-            pass
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"POLICY_ACCEPT: Сохранили policy_accepted=TRUE для пользователя {callback.from_user.id}")
+            await bot.send_message(
+                callback.from_user.id, 
+                f"✅ Политика принята! Можете пользоваться меню.\n\nДиагностика: policy_accepted=TRUE сохранено в БД для пользователя {callback.from_user.id}"
+            )
+        except Exception as e:
+            logger.error(f"Error sending policy acceptance confirmation: {e}")
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error in policy acceptance: {e}")
