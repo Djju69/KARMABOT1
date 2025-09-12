@@ -149,11 +149,11 @@ def _valid_len(text: str, min_len: int = 0, max_len: int | None = None) -> bool:
     return True
 
 def _validate_title(text: str) -> tuple[bool, str | None]:
-    """Validate title: required, 3..100 symbols."""
-    if not _valid_len(text, 3, 100):
-        if not text or len(text.strip()) < 3:
-            return False, "❌ Название слишком короткое. Минимум 3 символа."
-        return False, "❌ Название слишком длинное. Максимум 100 символов."
+    """Validate title: required, 2..60 symbols."""
+    if not _valid_len(text, 2, 60):
+        if not text or len(text.strip()) < 2:
+            return False, "❌ Название слишком короткое. Минимум 2 символа."
+        return False, "❌ Название слишком длинное. Максимум 60 символов."
     return True, None
 
 def _validate_optional_max_len(text: str | None, max_len: int, too_long_msg: str) -> tuple[bool, str | None]:
@@ -846,7 +846,7 @@ async def enter_contact(message: Message, state: FSMContext):
 # Address input
 @partner_router.message(AddCardStates.enter_address, F.text)
 async def enter_address(message: Message, state: FSMContext):
-    """Handle address input (требуется)."""
+    """Handle address input (требуется текст); геолокация поддерживается отдельным хендлером ниже."""
     if _is_cancel_text(message.text):
         await cancel_add_card(message, state)
         return
@@ -865,6 +865,28 @@ async def enter_address(message: Message, state: FSMContext):
         "🗺️ Вставьте ссылку Google Maps (местоположение заведения):",
         reply_markup=get_cancel_keyboard()
     )
+
+@partner_router.message(AddCardStates.enter_address, F.location)
+async def enter_address_location(message: Message, state: FSMContext):
+    """Поддержка адреса через геолокацию: сохраняем координаты и предлагаем ссылку GMaps."""
+    try:
+        lat = getattr(message.location, 'latitude', None)
+        lon = getattr(message.location, 'longitude', None)
+    except Exception:
+        lat = lon = None
+    if lat is None or lon is None:
+        await message.answer("❌ Не удалось распознать геолокацию. Пришлите адрес текстом.")
+        return
+    # Сохраняем координаты и автоссылку на GMaps
+    gmaps_url = f"https://maps.google.com/?q={lat},{lon}"
+    await state.update_data(address=f"geo: {lat},{lon}", google_maps_url=gmaps_url)
+    # Переходим сразу к шагу фото, т.к. ссылка уже известна
+    await state.set_state(AddCardStates.upload_photo)
+    await message.answer(
+        "📸 Загрузите фото заведения:\n*(интерьер, блюда, фасад)*",
+        reply_markup=get_photos_reply_keyboard(0, 6)
+    )
+    await message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
 
 # Google Maps link input
 @partner_router.message(AddCardStates.enter_gmaps, F.text)
@@ -970,11 +992,10 @@ async def skip_photo(message: Message, state: FSMContext):
             pass
         await state.set_state(AddCardStates.enter_discount)
         await message.answer(
-            f"🎫 Введите информацию о скидке:\n"
+            f"🎫 Введите информацию о скидке (обязательно):\n"
             f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
             reply_markup=get_cancel_keyboard(),
         )
-        await message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
         return
 
     if message.text == "⏭️ Пропустить":
@@ -1063,15 +1084,8 @@ async def skip_contact_cb(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
     except Exception:
         pass
-    # Очистить контакт при пропуске
-    await state.update_data(contact=None)
-    await state.set_state(AddCardStates.enter_address)
-    await callback.message.answer(
-        f"📍 Введите адрес заведения:\n"
-        f"*(улица, район, ориентиры)*",
-        reply_markup=get_cancel_keyboard()
-    )
-    await callback.message.answer("Можно пропустить адрес:", reply_markup=get_inline_skip_keyboard())
+    # Контакт обязателен — запретим пропуск
+    await callback.message.answer("❗ Контакт обязателен. Пожалуйста, введите номер телефона.")
 
 @partner_router.callback_query(AddCardStates.enter_address, F.data == "partner_skip")
 async def skip_address_cb(callback: CallbackQuery, state: FSMContext):
@@ -1079,15 +1093,8 @@ async def skip_address_cb(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
     except Exception:
         pass
-    # Очистить адрес при пропуске
-    await state.update_data(address=None)
-    await state.set_state(AddCardStates.upload_photo)
-    await callback.message.answer(
-        f"📸 Загрузите фото заведения:\n"
-        f"*(интерьер, блюда, фасад)*",
-        reply_markup=get_photos_reply_keyboard(0, 6)
-    )
-    await callback.message.answer("Загрузка фото:", reply_markup=get_photos_control_inline(0))
+    # Адрес обязателен — запретим пропуск (либо пришлите геолокацию)
+    await callback.message.answer("❗ Адрес обязателен. Пришлите текстовый адрес или геолокацию.")
 
 @partner_router.callback_query(AddCardStates.upload_photo, F.data == "partner_skip")
 async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
@@ -1099,11 +1106,10 @@ async def skip_photo_cb(callback: CallbackQuery, state: FSMContext):
     await state.update_data(photos=[], photo_file_id=None)
     await state.set_state(AddCardStates.enter_discount)
     await callback.message.answer(
-        f"🎫 Введите информацию о скидке:\n"
+        f"🎫 Введите информацию о скидке (обязательно):\n"
         f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
         reply_markup=get_cancel_keyboard()
     )
-    await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
 def get_photos_control_inline(current_count: int) -> InlineKeyboardMarkup:
     """Inline-клавиатура управления фото на шаге загрузки (без кнопок Готово/Отменить)."""
@@ -1171,11 +1177,10 @@ async def on_photos_done(callback: CallbackQuery, state: FSMContext):
         pass
     await state.set_state(AddCardStates.enter_discount)
     await callback.message.answer(
-        f"🎫 Введите информацию о скидке:\n"
+        f"🎫 Введите информацию о скидке (обязательно):\n"
         f"*(например: \"10% на все меню\", \"Скидка 15% по QR-коду\")*",
         reply_markup=get_cancel_keyboard(),
     )
-    await callback.message.answer("Можно пропустить скидку:", reply_markup=get_inline_skip_keyboard())
 
 @partner_router.message(AddCardStates.upload_photo, F.document)
 async def upload_photo_document(message: Message, state: FSMContext):
