@@ -55,21 +55,7 @@ AREAS_BY_CITY: dict[int, list[tuple[str, int]]] = {
 
 # Subcategories per category slug. Use small numeric codes.
 SUBCATS_BY_CATEGORY: dict[str, list[tuple[str, int]]] = {
-    "restaurants": [
-        ("🥢 Азия", 1101), ("🍝 Европа", 1102), ("🌭 Стритфуд", 1103), ("🥗 Вегетарианское", 1104)
-    ],
-    "transport": [
-        ("🏍 Мото/Байк", 1201), ("🚗 Авто", 1202), ("🚲 Велосипед", 1203)
-    ],
-    "hotels": [
-        ("🏨 Отель", 1301), ("🏡 Гестхаус", 1302), ("🏘 Апартаменты", 1303)
-    ],
-    "tours": [
-        ("🤿 Снорк/Дайв", 1401), ("🚤 Морские", 1402), ("🚌 Наземные", 1403)
-    ],
-    "spa": [
-        ("💆‍♀️ Массаж", 1501), ("🧖‍♀️ Спа-комплекс", 1502)
-    ],
+    # Реальные подкатегории используются только для разрешённых категорий ниже в get_subcategories_inline.
 }
 
 def get_areas_inline(city_id: int, active_id: int | None = None) -> InlineKeyboardMarkup:
@@ -83,10 +69,12 @@ def get_areas_inline(city_id: int, active_id: int | None = None) -> InlineKeyboa
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 def get_subcategories_inline(category_slug: str, active_id: int | None = None, *, lang: str = "ru") -> InlineKeyboardMarkup | None:
-    """Inline подкатегории.
-    Для restaurants — используем те же i18n-ключи, что и в reply-меню:
-    filter_asia, filter_europe, filter_street, filter_vege.
-    Это гарантирует совпадение текстов/эмодзи.
+    """Inline подкатегории — строго по канону.
+    Разрешены:
+      - restaurants: filter_asia/europe/street/vege
+      - hotels: hotels_hotels / hotels_apartments
+      - tours: tours_group / tours_private
+    Остальные категории — без подкатегорий.
     """
     if category_slug == "restaurants":
         items = [
@@ -95,10 +83,18 @@ def get_subcategories_inline(category_slug: str, active_id: int | None = None, *
             (get_text("filter_street", lang), 1103),
             (get_text("filter_vege", lang), 1104),
         ]
+    elif category_slug == "hotels":
+        items = [
+            (get_text("hotels_hotels", lang), 1301),
+            (get_text("hotels_apartments", lang), 1302),
+        ]
+    elif category_slug == "tours":
+        items = [
+            (get_text("tours_group", lang), 1401),
+            (get_text("tours_private", lang), 1402),
+        ]
     else:
-        items = SUBCATS_BY_CATEGORY.get(category_slug)
-        if not items:
-            return None
+        return None
     rows: list[list[InlineKeyboardButton]] = []
     for title, scid in items:
         label = ("✅ " if active_id == scid else "") + title
@@ -960,8 +956,9 @@ async def skip_photo(message: Message, state: FSMContext):
         await cancel_add_card(message, state)
         return
 
-    # Обработка reply-кнопки "Готово (X/6)"
-    if (message.text or "").strip().startswith("✅ Готово"):
+    # Обработка reply-кнопки "Готово (X/6)" — допускаем разные варианты текста
+    _txt = (message.text or "").strip()
+    if _txt.startswith("✅ Готово") or "Готово" in _txt or _txt.lower().startswith("done"):
         try:
             cur = await state.get_data()
             logger.info(
@@ -1344,13 +1341,24 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                         InlineKeyboardButton(text="📋 Открыть очередь", callback_data="adm:q:page:0")
                     ]
                 ])
-                text = (
-                    "🆕 <b>Новая карточка на модерацию</b>\n\n"
-                    f"ID: #{card_id}\n"
-                    f"Партнёр: {callback.from_user.full_name}\n"
-                    f"Категория: {data.get('category_name')}\n"
-                    f"Название: {data['title']}"
-                )
+                # Расширенное уведомление для модератора
+                text_lines = [
+                    "🆕 <b>Новая карточка на модерацию</b>",
+                    "",
+                    f"ID: #{card_id}",
+                    f"Партнёр: {callback.from_user.full_name}",
+                    f"Категория: {data.get('category_name')}",
+                    f"Название: {data['title']}",
+                ]
+                if (data.get('address')):
+                    text_lines.append(f"Адрес: {data.get('address')}")
+                if (data.get('contact')):
+                    text_lines.append(f"Контакт: {data.get('contact')}")
+                if (data.get('discount_text')):
+                    text_lines.append(f"Скидка: {data.get('discount_text')}")
+                if (data.get('google_maps_url')):
+                    text_lines.append(f"GMaps: {data.get('google_maps_url')}")
+                text = "\n".join(text_lines)
                 # Если есть фото — отправим как фото, иначе текст
                 first_photo = None
                 try:
@@ -1373,8 +1381,23 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
         # After successful submission, restore partner cabinet reply keyboard so UI doesn't disappear.
         try:
             lang = await profile_service.get_lang(callback.from_user.id)
-            # ЛК партнёра — показываем партнёрскую клавиатуру с верхней кнопкой QR
-            kb = get_partner_keyboard(lang, show_qr=True)
+            # Показывать кнопку "Сканировать QR" только если есть одобренные/опубликованные карточки
+            try:
+                with db_v2.get_connection() as conn:
+                    cur = conn.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM cards_v2 c
+                        JOIN partners_v2 p ON p.id = c.partner_id
+                        WHERE p.tg_user_id = ? AND c.status IN ('approved','published')
+                        """,
+                        (int(callback.from_user.id),),
+                    )
+                    visible_count = int(cur.fetchone()[0])
+                show_qr = visible_count > 0
+            except Exception:
+                show_qr = False
+            kb = get_partner_keyboard(lang, show_qr=show_qr)
             await callback.message.answer(
                 "🏪 Вы в личном кабинете партнёра",
                 reply_markup=kb,

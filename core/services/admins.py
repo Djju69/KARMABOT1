@@ -6,6 +6,7 @@ from typing import Optional, Set, List, Any
 import time
 import os
 import logging
+from core.settings import settings
 
 try:
     from redis.asyncio import Redis as AsyncRedis  # type: ignore
