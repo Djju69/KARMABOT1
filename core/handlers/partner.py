@@ -82,10 +82,23 @@ def get_areas_inline(city_id: int, active_id: int | None = None) -> InlineKeyboa
     rows.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
-def get_subcategories_inline(category_slug: str, active_id: int | None = None) -> InlineKeyboardMarkup | None:
-    items = SUBCATS_BY_CATEGORY.get(category_slug)
-    if not items:
-        return None
+def get_subcategories_inline(category_slug: str, active_id: int | None = None, *, lang: str = "ru") -> InlineKeyboardMarkup | None:
+    """Inline подкатегории.
+    Для restaurants — используем те же i18n-ключи, что и в reply-меню:
+    filter_asia, filter_europe, filter_street, filter_vege.
+    Это гарантирует совпадение текстов/эмодзи.
+    """
+    if category_slug == "restaurants":
+        items = [
+            (get_text("filter_asia", lang), 1101),
+            (get_text("filter_europe", lang), 1102),
+            (get_text("filter_street", lang), 1103),
+            (get_text("filter_vege", lang), 1104),
+        ]
+    else:
+        items = SUBCATS_BY_CATEGORY.get(category_slug)
+        if not items:
+            return None
     rows: list[list[InlineKeyboardButton]] = []
     for title, scid in items:
         label = ("✅ " if active_id == scid else "") + title
@@ -688,7 +701,11 @@ async def select_category(callback: CallbackQuery, state: FSMContext):
         category_name=category.name
     )
     # Если есть подкатегории для данной категории — спросим их сначала
-    subcat_kb = get_subcategories_inline(category.slug)
+    try:
+        lang = await profile_service.get_lang(callback.from_user.id)
+    except Exception:
+        lang = "ru"
+    subcat_kb = get_subcategories_inline(category.slug, lang=lang)
     if subcat_kb is not None:
         await state.set_state(AddCardStates.choose_subcategory)
         await callback.message.edit_text(
