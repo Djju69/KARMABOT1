@@ -306,14 +306,17 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         from ..services.help_service import HelpService
         help_service = HelpService()
         
-        # Получаем справочное сообщение
+        # Получаем справочное сообщение и добавляем ссылку на поддержку
         help_message = await help_service.get_help_message(message.from_user.id)
+        help_message = (
+            help_message.rstrip() +
+            "\n\n❓ Нужна помощь? Поддержка: t.me/karma_system_official"
+        )
         
         # Inline-кнопки для вызова AI и возврата в главное меню
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")],
-            [InlineKeyboardButton(text="◀️ Главное меню", callback_data="main_menu")]
+            [InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]
         ])
         
         # Отправляем сообщение с поддержкой HTML и inline-кнопками
