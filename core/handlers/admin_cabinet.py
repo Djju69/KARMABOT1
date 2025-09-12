@@ -318,23 +318,26 @@ async def handle_users_management(message: Message, state: FSMContext):
 
 @router.message(F.text == "🤝 Партнёры")
 async def handle_partners_management(message: Message, state: FSMContext):
-    """Handle partners management."""
+    """Быстрый список партнёров (минимальный вывод вместо пустого сообщения)."""
     try:
-        await message.answer(
-            "🤝 <b>Управление партнёрами</b>\n\n"
-            "Доступные действия:\n\n"
-            "• 🔍 Поиск партнёра\n"
-            "• 👤 Просмотр профиля партнёра\n"
-            "• ✅ Одобрить заявку\n"
-            "• ❌ Отклонить заявку\n"
-            "• 🚫 Заблокировать партнёра\n"
-            "• 📊 Статистика партнёра\n\n"
-            "🚧 <i>Функция управления партнёрами будет реализована в следующих обновлениях.</i>",
-            parse_mode='HTML'
-        )
+        from core.database.db_v2 import db_v2
+        with db_v2.get_connection() as conn:
+            rows = conn.execute(
+                "SELECT id, tg_user_id, name FROM partners_v2 ORDER BY id DESC LIMIT 10"
+            ).fetchall()
+        if not rows:
+            await message.answer("🤝 Партнёров пока нет.")
+            return
+        lines = ["🤝 <b>Последние партнёры</b>\n"]
+        for r in rows:
+            pid = r[0]
+            uid = r[1]
+            pname = r[2] or "(без имени)"
+            lines.append(f"#{pid} — {pname} (tg:{uid})")
+        await message.answer("\n".join(lines), parse_mode='HTML')
     except Exception as e:
         logger.error(f"Error in handle_partners_management: {str(e)}", exc_info=True)
-        await message.answer("❌ Ошибка при загрузке управления партнёрами.")
+        await message.answer("❌ Ошибка при загрузке партнёров.")
 
 
 @router.message(F.text == "🧾 Карты")

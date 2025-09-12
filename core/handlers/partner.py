@@ -1566,7 +1566,10 @@ async def partner_language_handler(message: Message, state: FSMContext):
             reply_markup=get_partner_cabinet_keyboard()
         )
 
-@partner_router.message(F.text.in_(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"]))
+@partner_router.message(
+    F.text.in_(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"]) &
+    ~F.chat.type.in_(["supergroup", "group"])  # ограничим личными чатами
+)
 @partner_router.callback_query(F.data.startswith("partner:stats"))
 async def partner_statistics_handler(update: Union[Message, CallbackQuery], state: FSMContext = None):
     """
@@ -1585,13 +1588,10 @@ async def partner_statistics_handler(update: Union[Message, CallbackQuery], stat
             user_id = message.from_user.id
             lang = message.from_user.language_code or 'ru'
         
-        # Get partner data
+        # Get partner data; не перехватывать админов/не-партнёров
         partner = await db_v2.get_partner(user_id)
         if not partner:
-            await message.answer(
-                get_text("partner.not_partner", lang),
-                reply_markup=get_return_to_main_menu()
-            )
+            # не партнёр — игнорируем, чтобы не пересекаться с админской статистикой
             return
         
         # Get period from callback or default to 7 days

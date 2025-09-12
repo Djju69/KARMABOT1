@@ -4,6 +4,8 @@ Behind FEATURE_MODERATION flag for safe deployment
 """
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from core.keyboards.reply_v2 import get_partner_keyboard
+from core.services.profile import profile_service
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.filters import Command
@@ -168,13 +170,27 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
                 
                 if row:
                     bot = callback.bot
+                    # Уведомление
                     await bot.send_message(
-                        row['tg_user_id'],
+                        row['tg_user_id'], 
                         f"✅ **Ваша карточка одобрена!**\n\n"
                         f"📝 Название: {row['title']}\n"
                         f"📋 ID: #{card_id}\n\n"
                         f"🎉 Карточка теперь видна пользователям в каталоге!"
                     )
+                    # Партнёрский кабинет после одобрения
+                    try:
+                        lang = await profile_service.get_lang(int(row['tg_user_id']))
+                    except Exception:
+                        lang = 'ru'
+                    try:
+                        await bot.send_message(
+                            row['tg_user_id'],
+                            "🏪 Вы в личном кабинете партнёра",
+                            reply_markup=get_partner_keyboard(lang, show_qr=True)
+                        )
+                    except Exception:
+                        pass
         except Exception as e:
             logger.error(f"Failed to notify partner: {e}")
         
