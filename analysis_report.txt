@@ -1,0 +1,227 @@
+﻿=== FILE TREE ===
+=== MAIN_V2.PY HEAD ===
+"""
+KARMABOT1 - Main entry point with aiogram v3 compatibility
+"""
+from __future__ import annotations
+import os
+import asyncio
+import logging
+import logging.handlers
+import secrets
+import socket
+import aiohttp
+import re
+import inspect
+from pathlib import Path
+from typing import Optional, Dict, Any, List, Union, Callable, Awaitable
+
+import redis.asyncio as aioredis
+from aiogram import Dispatcher, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import CommandStart, Command
+from aiogram.exceptions import TelegramUnauthorizedError
+from aiogram.client.bot import Bot, DefaultBotProperties
+from aiogram.enums import ParseMode
+
+from core.settings import Settings, get_settings, Features
+
+# --- Leader lock settings ---
+LOCK_TTL = 300
+# Get BOT_ID from environment or extract from BOT_TOKEN
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+BOT_ID_STR = os.getenv("BOT_ID", BOT_TOKEN.split(":")[0] if BOT_TOKEN and ":" in BOT_TOKEN else "0")
+LOCK_KEY = f"production:bot:{BOT_ID_STR}:polling:leader"
+INSTANCE = f"{os.environ.get('HOSTNAME','local')}:{os.getpid()}"
+FORCE = os.getenv("LEADER_FORCE", "0") == "1"
+
+# Redis URL from environment (optional; if missing, run without distributed lock)
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+redis: aioredis.Redis | None = None
+if REDIS_URL:
+    try:
+        redis = aioredis.from_url(REDIS_URL, decode_responses=True)
+    except Exception as e:
+        logging.warning(f"Redis init failed, continue without lock: {e}")
+
+# --- END: Leader lock settings ---
+
+# Validate bot token
+if not BOT_TOKEN or ":" not in BOT_TOKEN:
+    raise SystemExit("❌ BOT_TOKEN is empty or contains spaces/newlines - fix in Variables")
+
+async def acquire_leader_lock(redis: aioredis.Redis, key: str, instance: str, ttl: int, retries: int = 12):
+    """Acquire leader lock with retries and force option."""
+    for i in range(retries):
+        if FORCE:
+            await redis.set(key, instance, ex=ttl)
+            logging.warning(f"⚠️ Forced leader lock acquired (key={key}, holder={instance})")
+            return True
+        ok = await redis.set(key, instance, nx=True, ex=ttl)
+        if ok:
+            logging.info(f"✅ Polling leader lock acquired (key={key}, holder={instance})")
+            return True
+        holder = await redis.get(key)
+        remain = await redis.ttl(key)
+        logging.error(f"❌ Lock held by {holder}, ttl={remain}; retry {i+1}/{retries}")
+        await asyncio.sleep(max(3, min(10, (remain or 5)//3)))
+    return False
+
+def make_shutdown_handler(redis: aioredis.Redis):
+    """Create a shutdown handler that releases the leader lock."""
+    async def _shutdown_handler(event):
+        try:
+            cur = await redis.get(LOCK_KEY)
+            if cur == INSTANCE:
+                await redis.delete(LOCK_KEY)
+                logging.info(f"🔓 Leader lock released (key={LOCK_KEY})")
+        finally:
+            # Close Redis connection properly
+            if hasattr(redis, "aclose"):
+                await redis.aclose()
+            else:
+                try:
+                    redis.close()
+                except Exception:
+                    pass
+    return _shutdown_handler
+# --- END: Token and lock configuration ---
+
+def get_bot_token_from_env_or_settings(settings):
+    """
+    ЕДИНЫЙ источник токена: BOTS__BOT_TOKEN > BOT_TOKEN > settings.bots.bot_token
+    Возвращает очищенный токен без пробельных символов.
+    """
+    import re
+    
+    # Получаем токен из любого источника
+    raw_token = os.getenv("BOTS__BOT_TOKEN") or os.getenv("BOT_TOKEN") \
+               or getattr(getattr(settings, "bots", None), "bot_token", None)
+    
+    if not raw_token:
+        raise RuntimeError("BOT token is not set (BOTS__BOT_TOKEN / BOT_TOKEN / settings.bots.bot_token).")
+    
+    # Удаляем все пробельные символы (пробелы, переносы строк, табы)
+    token = re.sub(r'\s+', '', str(raw_token))
+    
+    # Проверяем формат токена (число:буквенно-цифровые_символы)
+    if not re.match(r'^\d+:[A-Za-z0-9_-]+$', token):
+        logging.getLogger(__name__).error(f"❌ Invalid bot token format. First 9 chars: {token[:9]!r}...")
+        raise ValueError("Invalid bot token format. Expected format: '123456789:ABCdefGHIJKLMNOPQRSTUVWXYZ'")
+    
+    return token
+
+def make_lock_key(token: str) -> str:
+    """
+    Генерирует безопасный ключ для блокировки на основе окружения и префикса токена.
+    Пример: production:bot:83635304:polling:leader
+    
+    Args:
+        token: Токен бота в формате '123456789:ABCdef...'
+    """
+    # Безопасно извлекаем первую часть токена (до двоеточия)
+    try:
+        token_id = token.split(':', 1)[0]
+    except (AttributeError, IndexError):
+        token_id = 'invalid'
+    
+    # Очищаем ID от недопустимых символов
+    import re
+    token_id = re.sub(r'[^a-zA-Z0-9_-]', '', token_id)
+    
+    env = os.getenv("ENV", "production")
+    # Убедимся, что в ключе нет переносов строк
+    lock_key = f"{env}:bot:{token_id}:polling:leader".replace('\n', '').replace('\r', '')
+    
+    logger.debug(f"Generated lock key: {lock_key}")
+    return lock_key
+
+def _mask(t: str|None) -> str:
+    """Mask sensitive information in logs."""
+    if not t:
+        return "<none>"
+    return f"{t[:8]}…{t[-6:]}" if len(t) > 14 else "***"
+
+def resolve_bot_token(settings):
+    """Resolve and validate bot token from settings or environment."""
+    try:
+        # Используем нашу улучшенную функцию, которая уже делает санитизацию
+        return get_bot_token_from_env_or_settings(settings)
+    except Exception as e:
+        logger.error(f"❌ Failed to resolve bot token: {e}")
+        return None
+
+# Load settings after environment is set up (use core.settings.get_settings)
+try:
+    settings = get_settings()
+    # Ensure features exist
+    if not hasattr(settings, "features") or settings.features is None:
+        settings.features = Features()
+    # Force-enable required feature flags per production baseline
+    settings.features.partner_fsm = True
+    logging.getLogger(__name__).info("✅ Features: %s", settings.features)
+except Exception as e:
+    logging.error("Failed to load settings via get_settings(): %s", str(e))
+    raise
+
+def setup_logging(level=logging.INFO, retention_days: int = 7):
+    """Configure logging with file and console handlers.
+    
+    Args:
+        level: Logging level
+        retention_days: Number of days to keep log files
+    """
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Set up file handler with rotation
+    log_file = logs_dir / "bot.log"
+    file_handler = logging.handlers.TimedRotatingFileHandler(
+        log_file, when="midnight", backupCount=retention_days, encoding="utf-8"
+    )
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S"
+        )
+    )
+    
+    # Set up console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%H:%M:%S"
+        )
+    )
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=level,
+        handlers=[file_handler, console_handler],
+=== HANDLERS LIST ===
+=== KEYBOARDS LIST ===
+=== SERVICES LIST ===
+=== COMMANDS IN CODE ===
+=== BUTTONS IN CODE ===
+DB path: core\database\data.db
+Tables: ['categories', 'sqlite_sequence', 'places', 'loyalty_wallets', 'loyalty_transactions']
+--- categories ---
+COLUMNS: ['id', 'name', 'emoji']
+ERR categories 'charmap' codec can't encode character '\U0001f35c' in position 41: character maps to <undefined>
+--- sqlite_sequence ---
+COLUMNS: ['name', 'seq']
+{'name': 'categories', 'seq': 4}
+{'name': 'places', 'seq': 1}
+{'name': 'loyalty_transactions', 'seq': 4}
+--- places ---
+COLUMNS: ['id', 'name', 'category_id', 'address', 'discount', 'link', 'qr_code']
+ERR places 'charmap' codec can't encode character '\u1ea3' in position 20: character maps to <undefined>
+--- loyalty_wallets ---
+COLUMNS: ['user_id', 'balance_pts', 'updated_at']
+{'user_id': 1005, 'balance_pts': -1000, 'updated_at': '2025-08-31 00:31:08'}
+--- loyalty_transactions ---
+COLUMNS: ['id', 'user_id', 'kind', 'delta_pts', 'balance_after', 'ref', 'note', 'created_at']
+{'id': 3, 'user_id': 1005, 'kind': 'adjust', 'delta_pts': 0, 'balance_after': 0, 'ref': None, 'note': 'Test invalid points', 'created_at': '2025-08-31 00:30:42'}
+{'id': 4, 'user_id': 1005, 'kind': 'redeem', 'delta_pts': -1000, 'balance_after': -1000, 'ref': None, 'note': 'Test invalid points', 'created_at': '2025-08-31 00:31:08'}

@@ -80,6 +80,60 @@ class LoyaltyService:
         """Инициализация сервиса - загрузка правил из БД."""
         await self._load_activity_rules()
         await self._load_referral_program()
+
+    # --- Backward-compatibility helpers used by cabinet_router and handlers ---
+    async def get_user_points_balance(self, user_id: int) -> int:
+        """Возвращает баланс баллов пользователя (SQLite/PG совместимо).
+        Ищет по users.points_balance, fallback к 0 при отсутствии колонки/записи.
+        """
+        try:
+            # Try by telegram_id first (most code paths use Telegram ID)
+            result = await self.db.execute(
+                text("SELECT points_balance FROM users WHERE telegram_id = :uid"),
+                {"uid": int(user_id)}
+            )
+            row = result.mappings().first()
+            if row and row.get("points_balance") is not None:
+                return int(row["points_balance"])  # type: ignore[index]
+            # Fallback by internal id
+            result2 = await self.db.execute(
+                text("SELECT points_balance FROM users WHERE id = :uid"),
+                {"uid": int(user_id)}
+            )
+            row2 = result2.mappings().first()
+            if row2 and row2.get("points_balance") is not None:
+                return int(row2["points_balance"])  # type: ignore[index]
+        except Exception:
+            # Silent fallback; detailed logs are not critical here
+            pass
+        return 0
+
+    async def get_points_history(self, user_id: int, limit: int = 20) -> List[Dict[str, Any]]:
+        """Возвращает историю операций с баллами (последние limit записей)."""
+        try:
+            res = await self.db.execute(
+                text(
+                    """
+                    SELECT change_amount, reason, transaction_type, created_at
+                    FROM points_history
+                    WHERE user_id = :uid
+                    ORDER BY created_at DESC
+                    LIMIT :lim
+                    """
+                ),
+                {"uid": int(user_id), "lim": int(limit)},
+            )
+            items: List[Dict[str, Any]] = []
+            for row in res.mappings().all():
+                items.append({
+                    "change_amount": row.get("change_amount", 0),
+                    "reason": row.get("reason", ""),
+                    "transaction_type": row.get("transaction_type", ""),
+                    "created_at": row.get("created_at")
+                })
+            return items
+        except Exception:
+            return []
     
     async def _load_activity_rules(self):
         """Загрузка правил начисления баллов из БД."""

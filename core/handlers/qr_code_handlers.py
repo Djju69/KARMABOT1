@@ -15,7 +15,14 @@ import json
 from core.services.qr_code_service import QRCodeService
 from core.database import get_db
 from core.logger import get_logger
-from core.keyboards.inline import get_back_to_main_menu_keyboard
+def _back_to_main_menu_keyboard():
+    # Inline back button to main menu (existing handler listens to callback_data="main_menu").
+    try:
+        return InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text="🏠 Главное меню", callback_data="main_menu")]]
+        )
+    except Exception:
+        return None
 
 logger = get_logger(__name__)
 
@@ -59,7 +66,7 @@ async def show_qr_codes_menu(message: Message, state: FSMContext):
         logger.error(f"Error showing QR codes menu: {e}")
         await message.answer(
             "❌ Произошла ошибка при загрузке меню QR-кодов. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -123,7 +130,7 @@ async def show_my_qr_codes(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error showing user QR codes: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при загрузке QR-кодов. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -151,7 +158,7 @@ async def start_qr_creation(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error starting QR creation: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при создании QR-кода. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -189,7 +196,7 @@ async def select_discount_type(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error selecting discount type: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при выборе типа скидки. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -231,7 +238,7 @@ async def process_discount_value(message: Message, state: FSMContext):
         logger.error(f"Error processing discount value: {e}")
         await message.answer(
             "❌ Ошибка при обработке значения скидки. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -257,7 +264,7 @@ async def select_expiration(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error selecting expiration: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при выборе срока действия. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -321,7 +328,7 @@ async def process_description(message: Message, state: FSMContext):
         logger.error(f"Error creating QR code: {e}")
         await message.answer(
             "❌ Ошибка при создании QR-кода. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -360,7 +367,7 @@ async def show_qr_stats(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error showing QR stats: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при загрузке статистики. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )
 
 
@@ -402,5 +409,5 @@ async def show_qr_help(callback: CallbackQuery, state: FSMContext):
         logger.error(f"Error showing QR help: {e}")
         await callback.message.edit_text(
             "❌ Ошибка при загрузке справки. Попробуйте позже.",
-            reply_markup=get_back_to_main_menu_keyboard()
+            reply_markup=_back_to_main_menu_keyboard()
         )

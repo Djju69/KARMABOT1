@@ -1488,7 +1488,19 @@ async def handle_shops_submenu_typed(message: Message, bot: Bot, state: FSMConte
         await message.answer(error_text, parse_mode="HTML")
 
 
- 
+@main_menu_router.message(F.text.in_([t.get('ai_assistant', '') for t in translations.values() if t.get('ai_assistant')]))
+async def handle_ai_assistant_entry(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Entry point for AI assistant from admin main menu."""
+    try:
+        from ..services.help_service import HelpService
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        help_service = HelpService()
+        base_text = await help_service.get_help_message(message.from_user.id)
+        kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")]])
+        await message.answer(base_text, reply_markup=kb, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Error opening AI assistant: {e}", exc_info=True)
+        await message.answer("❌ Не удалось открыть AI помощника. Попробуйте позже.")
 
 
 # --- Navigation Handlers ---
@@ -1592,9 +1604,6 @@ async def handle_back_to_main_menu(callback_query: CallbackQuery, bot: Bot, stat
 
 
 # --- Command Handlers ---
- 
-
-
  
 
 

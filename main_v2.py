@@ -306,6 +306,18 @@ async def main():
     dp.include_router(commands_router)
     dp.include_router(basic_router)
     dp.include_router(callback_router)
+    # QR handlers (explicit router for /qr_codes and qr_* callbacks)
+    try:
+        from core.handlers.qr_code_handlers import router as qr_code_router
+        dp.include_router(qr_code_router)
+    except Exception as e:
+        logger.warning("QR router not included: %s", e)
+    # Referral handlers
+    try:
+        from core.handlers.referral_handlers import router as referral_router
+        dp.include_router(referral_router)
+    except Exception as e:
+        logger.warning("Referral router not included: %s", e)
     dp.include_router(main_menu_router)
     dp.include_router(language_router)
     

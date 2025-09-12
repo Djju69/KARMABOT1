@@ -231,6 +231,12 @@ translations_v2 = {
         # Existing keys
         'back_to_main_menu': '◀️ Quay lại',
         'back_to_categories': '⬅️ Về danh mục',
+        'ai_assistant': '🤖 Trợ lý AI',
+        'dashboard_admin': '📊 Bảng điều khiển: Duyệt(0) | Thông báo(0)',
+        'dashboard_superadmin': '📊 Bảng điều khiển: Duyệt(0) | Thông báo(0) | Hệ thống(OK)',
+        'partners': '🤝 Đối tác',
+        'newsletter': '📧 Bản tin',
+        'btn.partner.add_card': '➕ Thêm thẻ',
         
         # Admin menu buttons
         'admin_menu_queue': '📋 Hàng đợi kiểm duyệt',
@@ -517,6 +523,13 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'settings': '⚙️ Настройки',
         'notifications': '🔔 Уведомления',
         'achievements': '🏆 Достижения',
+        'cabinet.karma_and_achievements': '📈 Карма и достижения',
+        'ai_assistant': '🤖 ИИ Помощник',
+        'dashboard_admin': '📊 Дашборд: Модерация(0) | Уведомления(0)',
+        'dashboard_superadmin': '📊 Дашборд: Модерация(0) | Уведомления(0) | Система(OK)',
+        'partners': '🤝 Партнёры',
+        'newsletter': '📧 Рассылка',
+        'btn.partner.add_card': '➕ Добавить карточку',
         'detailed_statistics': '📊 <b>Детальная статистика</b>\n\n💎 <b>QR-коды:</b>\n• Всего создано: {total_qr}\n• Активных: {active_qr}\n• Использовано: {used_qr}\n\n📍 <b>Посещения:</b>\n• Всего заведений: 0\n• Любимая категория: {favorite_category}\n• Последнее посещение: Не было\n\n🎯 <b>Активность:</b>\n• Дней в системе: 1\n• Средний рейтинг: 4.5/5\n• Уровень: Новичок\n\n🏆 <b>Достижения:</b>\n• 🎉 Первый QR-код\n• 📱 Активный пользователь\n• 🎯 Исследователь',
         'settings_menu': '⚙️ <b>Настройки профиля</b>\n\n🌐 <b>Язык:</b> {lang}\n🔔 <b>Уведомления:</b> Включены\n📍 <b>Геолокация:</b> Разрешена\n📱 <b>QR-коды:</b> Автогенерация включена\n\n💡 <b>Доступные настройки:</b>\n• Смена языка\n• Настройки уведомлений\n• Приватность\n• Удаление аккаунта',
         'achievements_list': '🏆 <b>Достижения</b>\n\n✅ <b>Полученные:</b>\n• 🎉 Первый QR-код - Создайте свой первый QR-код\n• 📱 Активный пользователь - Используйте бота 7 дней подряд\n• 🎯 Исследователь - Посетите 5 разных заведений\n\n🔒 <b>Заблокированные:</b>\n• 💎 Мастер скидок - Получите скидку 10 раз\n• 🌟 VIP-клиент - Потратьте 100,000 VND\n• 🎖️ Легенда - Используйте бота 30 дней\n\n💡 <b>Прогресс:</b>\n• QR-коды: 1/1 ✅\n• Дни активности: 1/7\n• Заведения: 0/5',
@@ -561,7 +574,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
 По вопросам обработки персональных данных обращайтесь к администратору бота.
 
 <i>Дата последнего обновления: 07.09.2025</i>''',
-        'policy_message': '''🔒 Политика конфиденциальности\n\nПожалуйста, согласитесь с политикой конфиденциальности перед использованием сервиса.\n\nПродолжение означает согласие с политикой конфиденциальности.''',
+        'policy_message': '''🔒 Политика конфиденциальности\n\nПожалуйста, согласитесь с политикой конфиденциальности перед использованием сервиса.\n\nПродолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
         'policy_accept': '✅ Согласен',
         'policy_decline': '❌ Отклонить',
         'policy_view': '📄 Политика обработки персональных данных',
@@ -588,15 +601,14 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
 Продолжая пользоваться ботом вы соглашаетесь с политикой обработки персональных данных.''',
         
         # Navigation
-        'back_to_main': '🏠 Главное меню',
-        'back_to_main_menu': '◀️ Назад',
-        'back_to_categories': '⬅️ К категориям',
-        'back': '◀️ Назад',
-        
-        # Admin menu buttons
-        'admin_menu_queue': '📋 Очередь модерации',
-        'admin_menu_search': '🔍 Поиск',
-        'admin_menu_reports': '📊 Отчёты',
+        'back_to_main_menu': '◀️ Back',
+        'back_to_categories': '⬅️ To categories',
+        'ai_assistant': '🤖 AI Assistant',
+        'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
+        'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',
+        'partners': '🤝 Partners',
+        'newsletter': '📧 Newsletter',
+        'btn.partner.add_card': '➕ Add card',
         
         # Activity (loyalty) texts
         'actv_title': '🎯 Активности',
@@ -741,11 +753,12 @@ For questions about personal data processing, contact the bot administrator.
         # Navigation
         'back_to_main_menu': '◀️ Back',
         'back_to_categories': '⬅️ To categories',
-        
-        # Admin menu buttons
-        'admin_menu_queue': '📋 Moderation queue',
-        'admin_menu_search': '🔍 Search',
-        'admin_menu_reports': '📊 Reports',
+        'ai_assistant': '🤖 AI Assistant',
+        'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
+        'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',
+        'partners': '🤝 Partners',
+        'newsletter': '📧 Newsletter',
+        'btn.partner.add_card': '➕ Add card',
         
         # Menu keys
         'menu.invite_friends': '👥 Invite friends',

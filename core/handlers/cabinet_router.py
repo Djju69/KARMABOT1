@@ -329,6 +329,27 @@ async def view_karma_handler(message: Message, state: FSMContext):
         text += f"• Используйте QR-код для оплаты\n"
         text += f"• Получайте баллы за покупки\n"
         
+        # Объединённый блок достижений
+        achievements = await user_cabinet_service.get_user_achievements(user_id, limit=5)
+        text += "\n🏆 <b>Достижения</b>\n\n"
+        if achievements:
+            for a in achievements:
+                a_type = a.get('achievement_type')
+                a_data = a.get('achievement_data', {})
+                if a_type == 'level_up':
+                    lvl = a_data.get('level', '?')
+                    text += f"• ⭐ Достигнут {lvl} уровень\n"
+                elif a_type == 'karma_milestone':
+                    km = a_data.get('karma', '?')
+                    text += f"• 💎 {km} кармы\n"
+                elif a_type == 'first_card':
+                    text += "• 🎉 Первая карта\n"
+                elif a_type == 'card_collector':
+                    cnt = a_data.get('card_count', '?')
+                    text += f"• 🏆 Коллекционер ({cnt} карт)\n"
+                else:
+                    text += f"• 🏅 {a_type}\n"
+        
         await message.answer(
             text,
             reply_markup=get_user_cabinet_keyboard(),
@@ -695,16 +716,16 @@ async def back_to_profile_handler(message: Message, state: FSMContext):
 
 # Register all handlers with correct button texts according to new menu
 router.message.register(user_cabinet_handler, F.text == "👤 Личный кабинет")
-router.message.register(view_karma_handler, F.text == "📊 Моя карма")
+router.message.register(view_karma_handler, F.text == "📈 Карма и достижения")
 router.message.register(view_cards_handler, F.text == "💳 Мои карты")
 router.message.register(view_karma_handler, F.text == "💎 Мои баллы")
-router.message.register(view_catalog_handler, F.text == "🏪 Каталог мест")
+router.message.register(view_karma_handler, F.text == "📊 Моя карма")
 router.message.register(view_achievements_handler, F.text == "🏆 Достижения")
 router.message.register(view_history_handler, F.text == "📋 История")
 router.message.register(view_notifications_handler, F.text == "🔔 Уведомления")
 router.message.register(language_handler, F.text == "🌐 Язык")
-router.message.register(become_partner_handler, F.text == "🤝 Стать партнером")
 # help_handler removed - handled by help_with_ai_router
+router.message.register(become_partner_handler, F.text == "🤝 Стать партнером")
 router.message.register(back_to_profile_handler, F.text == "◀️ Назад")
 
 # For backward compatibility

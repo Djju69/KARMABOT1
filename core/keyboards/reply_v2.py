@@ -43,8 +43,10 @@ def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     t = get_all_texts(lang)
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=t['admin_menu_queue'])],
-            [KeyboardButton(text=t['admin_menu_search']), KeyboardButton(text=t['admin_menu_reports'])],
+            [KeyboardButton(text=t['admin_menu_queue']), KeyboardButton(text=t['admin_menu_search'])],
+            [KeyboardButton(text=t['admin_menu_reports']), KeyboardButton(text='👥 Пользователи')],
+            [KeyboardButton(text=get_text('partners', lang)), KeyboardButton(text=get_text('newsletter', lang))],
+            [KeyboardButton(text=get_text('settings', lang)), KeyboardButton(text=get_text('help', lang))],
             [KeyboardButton(text=t['back_to_main_menu'])]
         ],
         resize_keyboard=True,
@@ -73,25 +75,26 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
     """
     admin_btn_text = "👑 Админ кабинет" if is_superadmin else "Админ кабинет"
 
-    rows: list[list[KeyboardButton]] = [
-        [
-            KeyboardButton(text=get_text('choose_category', lang)),
-            KeyboardButton(text=get_text('show_nearest', lang)),
-        ],
-    ]
+    rows: list[list[KeyboardButton]] = []
 
-    # Для супер-админа добавляем визуальный дашборд вместо языка
+    # Ряд 1: Категории | ИИ Помощник
+    rows.append([
+        KeyboardButton(text=get_text('choose_category', lang)),
+        KeyboardButton(text=get_text('ai_assistant', lang)),
+    ])
+
+    # Ряд 2: Дашборд (admin/superadmin)
     if is_superadmin:
-        rows.append([KeyboardButton(text="📊 Дашборд: Модерация(0) | Уведомления(0) | Система(OK)")])
+        rows.append([KeyboardButton(text=get_text('dashboard_superadmin', lang))])
     else:
-        rows.append([KeyboardButton(text=get_text('choose_language', lang))])
+        rows.append([KeyboardButton(text=get_text('dashboard_admin', lang))])
 
-    # У обычных админов остаётся «Личный кабинет» и «Помощь»
-    if not is_superadmin:
-        rows.append([KeyboardButton(text=get_text('profile', lang))])
-        rows.append([KeyboardButton(text=get_text('help', lang))])
+    # Ряд 3: Личный кабинет
+    rows.append([KeyboardButton(text=get_text('profile', lang))])
+    # Ряд 4: Помощь
+    rows.append([KeyboardButton(text=get_text('help', lang))])
 
-    # Всегда добавляем «Админ кабинет» (с короной для супер-админа)
+    # Ряд 5: Админ кабинет (с короной для супер-админа)
     rows.append([KeyboardButton(text=admin_btn_text)])
 
     return ReplyKeyboardMarkup(
@@ -168,7 +171,7 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('category_shops_services', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back_to_main_menu', lang)),
+                KeyboardButton(text=get_text('back', lang)),
             ]
         ],
         resize_keyboard=True,
@@ -372,11 +375,10 @@ def get_main_menu_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 def get_user_cabinet_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
     """Клавиатура личного кабинета пользователя"""
     buttons = [
-        [KeyboardButton(text="📊 Моя карма"), KeyboardButton(text="💳 Мои карты")],
-        [KeyboardButton(text="💎 Мои баллы"), KeyboardButton(text="🏪 Каталог мест")],
-        [KeyboardButton(text="🏆 Достижения"), KeyboardButton(text="📋 История")],
-        [KeyboardButton(text="⚙️ Настройки")],
-        [KeyboardButton(text="🤝 Стать партнером"), KeyboardButton(text="❓ Помощь")],
+        [KeyboardButton(text="💳 Мои карты"), KeyboardButton(text="💎 Мои баллы")],
+        [KeyboardButton(text="📈 Карма и достижения"), KeyboardButton(text="🤝 Стать партнером")],
+        [KeyboardButton(text="📋 История"), KeyboardButton(text="⚙️ Настройки")],
+        [KeyboardButton(text="❓ Помощь")],
         [KeyboardButton(text="◀️ Назад")]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
@@ -411,9 +413,9 @@ def get_partner_cabinet_keyboard(lang: str = "ru", has_cards: bool = False) -> R
         buttons.append([KeyboardButton("🧾 Сканировать QR")])
     
     buttons.extend([
-        [KeyboardButton("🗂 Мои карточки"), KeyboardButton("📊 Отчёт")],
-        [KeyboardButton("📈 Статистика"), KeyboardButton("⚙️ Настройки")],
-        [KeyboardButton("🌐 Язык"), KeyboardButton("❓ Помощь")],
+        [KeyboardButton("🗂 Мои карточки"), KeyboardButton(get_text('btn.partner.add_card', lang))],
+        [KeyboardButton("📊 Отчёт"), KeyboardButton("📈 Статистика")],
+        [KeyboardButton("⚙️ Настройки"), KeyboardButton("❓ Помощь")],
         [KeyboardButton("◀️ Назад")]
     ])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
