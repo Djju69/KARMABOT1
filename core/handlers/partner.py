@@ -1330,19 +1330,41 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             reply_markup=None
         )
         
-        # Notify admin about new card
+        # Notify admin about new card (with inline approve/reject buttons)
         if settings.features.moderation:
             try:
                 bot = callback.bot
-                await bot.send_message(
-                    settings.bots.admin_id,
-                    f"🆕 **Новая карточка на модерацию**\n\n"
+                from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="✅ Одобрить", callback_data=f"mod_approve:{card_id}"),
+                        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"mod_reject:{card_id}")
+                    ],
+                    [
+                        InlineKeyboardButton(text="📋 Открыть очередь", callback_data="adm:q:page:0")
+                    ]
+                ])
+                text = (
+                    "🆕 <b>Новая карточка на модерацию</b>\n\n"
                     f"ID: #{card_id}\n"
-                    f"Партнер: {callback.from_user.full_name}\n"
+                    f"Партнёр: {callback.from_user.full_name}\n"
                     f"Категория: {data.get('category_name')}\n"
-                    f"Название: {data['title']}\n\n"
-                    f"Используйте /moderate для просмотра."
+                    f"Название: {data['title']}"
                 )
+                # Если есть фото — отправим как фото, иначе текст
+                first_photo = None
+                try:
+                    photos = list((data.get('photos') or []))
+                    if photos:
+                        first_photo = photos[0]
+                    elif data.get('photo_file_id'):
+                        first_photo = data.get('photo_file_id')
+                except Exception:
+                    first_photo = None
+                if first_photo:
+                    await bot.send_photo(settings.bots.admin_id, first_photo, caption=text, reply_markup=kb)
+                else:
+                    await bot.send_message(settings.bots.admin_id, text, reply_markup=kb)
             except Exception as e:
                 logger.error(f"Failed to notify admin: {e}")
         
