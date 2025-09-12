@@ -946,7 +946,8 @@ async def upload_photo(message: Message, state: FSMContext):
         
     else:
         photos.append(photo_file_id)
-        await state.update_data(photos=photos)
+        # также сохраняем первое фото в отдельный ключ для обратной совместимости
+        await state.update_data(photos=photos, photo_file_id=photos[0] if photos else None)
         try:
             logger.info(
                 "partner.upload_photo: user_id=%s appended fid, new_count=%s",

@@ -53,6 +53,7 @@ translations_v2 = {
         'keyboard.back': '◀️ 뒤로',
         'keyboard.my_cards': '📋 내 카드',
         'keyboard.scan_qr': '📱 QR 스캔',
+        'menu_scan_qr': '🧾 QR 스캔',
         'keyboard.statistics': '📈 통계',
         'keyboard.support': '🆘 지원',
         'keyboard.confirm': '✅ 확인',
@@ -286,6 +287,7 @@ translations_v2 = {
         'keyboard.back': '◀️ Quay lại',
         'keyboard.my_cards': '📋 Thẻ của tôi',
         'keyboard.scan_qr': '📱 Quét QR',
+        'menu_scan_qr': '🧾 Quét QR',
         'keyboard.statistics': '📈 Thống kê',
         'keyboard.support': '🆘 Hỗ trợ',
         'keyboard.confirm': '✅ Xác nhận',
@@ -448,6 +450,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'categories.hotels': '🏨 Отели',
         'categories.tours': '🚶‍♂️ Экскурсии',
         'categories.shops': '🛍️ Магазины и услуги',
+        'menu_scan_qr': '🧾 Сканировать QR',
         
         # Restaurant filters
         'restaurants_choose_cuisine': '🍽️ Выберите тип кухни:',

@@ -170,14 +170,28 @@ async def approve_card(callback: CallbackQuery, state: FSMContext):
                 
                 if row:
                     bot = callback.bot
-                    # Уведомление
-                    await bot.send_message(
-                        row['tg_user_id'], 
-                        f"✅ **Ваша карточка одобрена!**\n\n"
+                    # Уведомление с фото, если есть хотя бы одно
+                    first_photo = None
+                    try:
+                        pcur = conn.execute("SELECT file_id FROM card_photos WHERE card_id = ? ORDER BY position ASC LIMIT 1", (card_id,))
+                        prow = pcur.fetchone()
+                        if prow:
+                            first_photo = prow[0]
+                    except Exception:
+                        first_photo = None
+                    text = (
+                        f"✅ <b>Ваша карточка одобрена!</b>\n\n"
                         f"📝 Название: {row['title']}\n"
                         f"📋 ID: #{card_id}\n\n"
                         f"🎉 Карточка теперь видна пользователям в каталоге!"
                     )
+                    if first_photo:
+                        try:
+                            await bot.send_photo(row['tg_user_id'], first_photo, caption=text)
+                        except Exception:
+                            await bot.send_message(row['tg_user_id'], text)
+                    else:
+                        await bot.send_message(row['tg_user_id'], text)
                     # Партнёрский кабинет после одобрения
                     try:
                         lang = await profile_service.get_lang(int(row['tg_user_id']))
