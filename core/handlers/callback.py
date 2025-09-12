@@ -242,13 +242,26 @@ async def main_menu_callback(callback: CallbackQuery, bot: Bot, state: FSMContex
     await callback.answer()
 
 
-# --- Catch-all: лог и быстрый ответ на любые callback_query ---
-@router.callback_query()
+# --- Catch-all (SAFE): не перехватывает неймспейсы бизнес-логики ---
+@router.callback_query(
+    ~F.data.startswith("pfsm:") &
+    ~F.data.startswith("pc:") &
+    ~F.data.startswith("partner_cat:") &
+    ~F.data.startswith("partner:") &
+    ~F.data.startswith("act:") &
+    ~F.data.startswith("adm:") &
+    ~F.data.startswith("pg:") &
+    ~F.data.startswith("filt:") &
+    ~F.data.startswith("ai_agent:") &
+    ~F.data.startswith("lang:set:") &
+    ~F.data.startswith("policy:") &
+    ~F.data.startswith("city:set:")
+)
 async def handle_any_callback(callback: CallbackQuery):
-    """Диагностический обработчик всех callback_query, чтобы убедиться, что события доходят."""
+    """Диагностический обработчик прочих callback_query, не относящихся к основным потокам."""
     try:
         import logging
-        logging.getLogger(__name__).info("[CB] Received callback_query: %s from user %s", callback.data, callback.from_user.id)
+        logging.getLogger(__name__).info("[CB] Received callback_query (fallback): %s from user %s", callback.data, callback.from_user.id)
     except Exception:
         pass
     await callback.answer("✅ Получен callback")
