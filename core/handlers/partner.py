@@ -38,7 +38,7 @@ from ..keyboards.reply_v2 import (
     get_main_menu_reply,
     get_profile_keyboard,
 )
-from ..keyboards.inline_v2 import get_cities_inline
+from ..keyboards.inline_v2 import get_cities_inline, CATEGORY_SLUGS
 from ..database.db_v2 import db_v2, Card
 from ..utils.locales_v2 import translations, get_text
 
@@ -211,43 +211,14 @@ def get_skip_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True
     )
 
-def get_categories_keyboard() -> InlineKeyboardMarkup:
-    """Inline keyboard with categories"""
-    # Основной путь: новый метод
-    try:
-        categories = db_v2.get_categories()  # список Category
-        items = []
-        for c in categories:
-            items.append({
-                'slug': getattr(c, 'slug', None),
-                'name': getattr(c, 'name', None),
-                'emoji': getattr(c, 'emoji', '') or ''
-            })
-    except AttributeError:
-        # Фоллбэк для старого билда: читаем напрямую из БД, чтобы не падать
-        items = []
-        try:
-            with db_v2.get_connection() as conn:
-                cur = conn.execute(
-                    """
-                    SELECT slug, name, COALESCE(emoji, '') AS emoji
-                    FROM categories_v2
-                    WHERE is_active = 1
-                    ORDER BY priority_level DESC, name ASC
-                    """
-                )
-                items = [dict(r) for r in cur.fetchall()]
-        except Exception:
-            items = []
-
+def get_categories_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Inline keyboard with categories aligned to main menu labels/emojis.
+    Uses the shared CATEGORY_SLUGS and locales to keep UI contract identical.
+    """
     buttons: list[list[InlineKeyboardButton]] = []
-    for item in items:
-        slug = item.get('slug')
-        name = item.get('name') or ''
-        emoji = item.get('emoji') or ''
-        if not slug or not name:
-            continue
-        label = f"{emoji} {name}".strip()
+    for slug, emoji in CATEGORY_SLUGS:
+        key = "category_shops_services" if slug == "shops" else f"category_{slug}"
+        label = f"{emoji} {get_text(key, lang)}"
         buttons.append([InlineKeyboardButton(text=label, callback_data=f"partner_cat:{slug}")])
 
     buttons.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
