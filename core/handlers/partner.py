@@ -438,10 +438,21 @@ async def on_city_selected(callback: CallbackQuery, state: FSMContext):
     await state.update_data(city_id=city_id)
     # После города — выбор района
     await state.set_state(AddCardStates.choose_area)
-    await callback.message.edit_text(
-        "Выберите район:",
-        reply_markup=get_areas_inline(city_id)
-    )
+    try:
+        await callback.message.edit_text(
+            "Выберите район:",
+            reply_markup=get_areas_inline(city_id)
+        )
+    except Exception as e:
+        try:
+            logger.error("partner.on_city_selected: edit_text failed: %s", e)
+        except Exception:
+            pass
+        # Fallback: отправим новое сообщение с клавиатурой выбора района
+        await callback.message.answer(
+            "Выберите район:",
+            reply_markup=get_areas_inline(city_id)
+        )
 
 @partner_router.callback_query(F.data.startswith("pfsm:area:"))
 async def on_area_selected(callback: CallbackQuery, state: FSMContext):
@@ -456,10 +467,21 @@ async def on_area_selected(callback: CallbackQuery, state: FSMContext):
     else:
         await state.update_data(area_id=None)
     await state.set_state(AddCardStates.choose_category)
-    await callback.message.edit_text(
-        "Выберите категорию для вашего заведения:",
-        reply_markup=get_categories_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            "Выберите категорию для вашего заведения:",
+            reply_markup=get_categories_keyboard()
+        )
+    except Exception as e:
+        try:
+            logger.error("partner.on_area_selected: edit_text failed: %s", e)
+        except Exception:
+            pass
+        # Fallback: отправим новое сообщение с клавиатурой выбора категории
+        await callback.message.answer(
+            "Выберите категорию для вашего заведения:",
+            reply_markup=get_categories_keyboard()
+        )
 
 
 @partner_router.message(F.text.startswith("📂"))
