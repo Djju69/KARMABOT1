@@ -309,11 +309,19 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
         # Получаем справочное сообщение
         help_message = await help_service.get_help_message(message.from_user.id)
         
-        # Отправляем сообщение с поддержкой HTML
+        # Inline-кнопки для вызова AI и возврата в главное меню
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🤖 Спросить AI агента", callback_data="ai_agent:start")],
+            [InlineKeyboardButton(text="◀️ Главное меню", callback_data="main_menu")]
+        ])
+        
+        # Отправляем сообщение с поддержкой HTML и inline-кнопками
         await message.answer(
             help_message,
             parse_mode="HTML",
-            disable_web_page_preview=True
+            disable_web_page_preview=True,
+            reply_markup=kb
         )
         
     except Exception as e:
