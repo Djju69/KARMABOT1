@@ -216,9 +216,9 @@ def get_categories_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
     Uses the shared CATEGORY_SLUGS and locales to keep UI contract identical.
     """
     buttons: list[list[InlineKeyboardButton]] = []
-    for slug, emoji in CATEGORY_SLUGS:
+    for slug, _emoji in CATEGORY_SLUGS:
         key = "category_shops_services" if slug == "shops" else f"category_{slug}"
-        label = f"{emoji} {get_text(key, lang)}"
+        label = get_text(key, lang)
         buttons.append([InlineKeyboardButton(text=label, callback_data=f"partner_cat:{slug}")])
 
     buttons.append([InlineKeyboardButton(text="❌ Отменить", callback_data="partner_cancel")])
