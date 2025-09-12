@@ -248,6 +248,7 @@ async def main_menu_callback(callback: CallbackQuery, bot: Bot, state: FSMContex
     ~F.data.startswith("pc:") &
     ~F.data.startswith("partner_cat:") &
     ~F.data.startswith("partner:") &
+    ~F.data.startswith("partner") &
     ~F.data.startswith("act:") &
     ~F.data.startswith("adm:") &
     ~F.data.startswith("pg:") &
