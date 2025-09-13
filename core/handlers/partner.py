@@ -1485,7 +1485,22 @@ async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
         lang = await profile_service.get_lang(callback.from_user.id)
     except Exception:
         lang = 'ru'
-    await callback.message.answer("🏠 Главное меню:", reply_markup=get_main_menu_reply(lang))
+    # Роль‑зависимый возврат: не сбрасываем админ/суперадмин в юзер‑меню
+    try:
+        from ..services.admins import admins_service
+        is_admin = await admins_service.is_admin(callback.from_user.id)
+    except Exception:
+        is_admin = False
+    if is_admin:
+        from ..keyboards.reply_v2 import get_main_menu_reply_admin
+        try:
+            is_superadmin = (int(callback.from_user.id) == int(settings.bots.admin_id))
+        except Exception:
+            is_superadmin = False
+        kb = get_main_menu_reply_admin(lang, is_superadmin)
+    else:
+        kb = get_main_menu_reply(lang)
+    await callback.message.answer("🏠 Главное меню:", reply_markup=kb)
 
 # --- Entry points to open Partner Cabinet ---
 @partner_router.message(Command("partner"))

@@ -823,11 +823,10 @@ async def admin_back(callback: CallbackQuery):
     """Обработчик кнопки 'Назад' в админ-меню."""
     try:
         lang = await profile_service.get_lang(callback.from_user.id)
-        await callback.message.edit_text(get_text('main_menu_title', lang))
-        await callback.message.answer(
-            get_text('main_menu_title', lang), 
-            reply_markup=get_main_menu_reply(lang)
-        )
+        # Роль‑зависимый возврат: админ/суперадмин → admin меню, не юзерское
+        is_superadmin = (int(callback.from_user.id) == int(settings.bots.admin_id))
+        kb = get_main_menu_reply_admin(lang, is_superadmin)
+        await callback.message.answer(get_text('admin_cabinet_title', lang), reply_markup=kb)
         await callback.answer()
     except Exception as e:
         logger.error(f"Error in admin_back: {e}", exc_info=True)
