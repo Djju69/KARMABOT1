@@ -89,12 +89,10 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
     else:
         rows.append([KeyboardButton(text=get_text('dashboard_admin', lang))])
 
-    # Ряд 3: Личный кабинет
-    rows.append([KeyboardButton(text=get_text('profile', lang))])
-    # Ряд 4: Помощь
+    # Ряд 3: Помощь
     rows.append([KeyboardButton(text=get_text('help', lang))])
 
-    # Ряд 5: Админ кабинет (с короной для супер-админа)
+    # Ряд 4: Админ кабинет (с короной для супер-админа)
     rows.append([KeyboardButton(text=admin_btn_text)])
 
     return ReplyKeyboardMarkup(

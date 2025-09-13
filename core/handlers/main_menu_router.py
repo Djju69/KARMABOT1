@@ -220,9 +220,20 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
         return
         
     try:
-        # Используем обработчик кабинета напрямую
-        from core.handlers.cabinet_router import user_cabinet_handler
-        await user_cabinet_handler(message, state)
+        # Роль-зависимый вход: админ/суперадмин → админ-кабинет; иначе → пользовательский кабинет
+        from core.settings import settings
+        from core.services.admins import admins_service
+        # Суперадмин по admin_id
+        is_superadmin = int(message.from_user.id) == int(settings.bots.admin_id)
+        # Админ по сервису (если не суперадмин)
+        is_admin = False if is_superadmin else await admins_service.is_admin(message.from_user.id)
+
+        if is_superadmin or is_admin:
+            from core.handlers.admin_cabinet import admin_cabinet_handler
+            await admin_cabinet_handler(message, state)
+        else:
+            from core.handlers.cabinet_router import user_cabinet_handler
+            await user_cabinet_handler(message, state)
     except Exception as e:
         logger.error(f"Error in profile handling: {e}", exc_info=True)
         
