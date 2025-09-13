@@ -1860,12 +1860,26 @@ async def cancel_add_card(message: Message, state: FSMContext):
     """Cancel adding card via message"""
     await message.answer("❌ Добавление карточки отменено.")
     await state.clear()
-    # Вернём пользователя в главное меню
+    # Вернём пользователя в главное меню (роль‑зависимо)
     try:
         lang = await profile_service.get_lang(message.from_user.id)
     except Exception:
         lang = 'ru'
-    await message.answer("🏠 Главное меню:", reply_markup=get_main_menu_reply(lang))
+    try:
+        from ..services.admins import admins_service
+        is_admin = await admins_service.is_admin(message.from_user.id)
+    except Exception:
+        is_admin = False
+    if is_admin:
+        from ..keyboards.reply_v2 import get_main_menu_reply_admin
+        try:
+            is_superadmin = (int(message.from_user.id) == int(settings.bots.admin_id))
+        except Exception:
+            is_superadmin = False
+        kb = get_main_menu_reply_admin(lang, is_superadmin)
+    else:
+        kb = get_main_menu_reply(lang)
+    await message.answer("🏠 Главное меню:", reply_markup=kb)
 
 # Global cancel handler (non-breaking): reacts to '❌ Отменить' only if user is inside AddCardStates
 @partner_router.message(F.text.in_(["❌ Отменить", "⛔ Отменить"]))

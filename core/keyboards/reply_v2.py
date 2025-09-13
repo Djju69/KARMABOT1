@@ -47,7 +47,7 @@ def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
             [KeyboardButton(text=t['admin_menu_reports']), KeyboardButton(text='👥 Пользователи')],
             [KeyboardButton(text=get_text('partners', lang)), KeyboardButton(text=get_text('newsletter', lang))],
             [KeyboardButton(text=get_text('settings', lang)), KeyboardButton(text=get_text('help', lang))],
-            [KeyboardButton(text=t['back_to_main_menu'])]
+            [KeyboardButton(text=get_text('back_admin', lang))]
         ],
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
@@ -61,7 +61,7 @@ def get_superadmin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
             [KeyboardButton(text=t['admin_menu_queue'])],
             [KeyboardButton(text=t['admin_menu_search']), KeyboardButton(text=t['admin_menu_reports'])],
             # extra superadmin-specific entries can be added here later
-            [KeyboardButton(text=t['back_to_main_menu'])]
+            [KeyboardButton(text=get_text('back_admin', lang))]
         ],
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
@@ -312,7 +312,7 @@ def get_partner_keyboard(lang: str = 'ru', show_qr: bool = False) -> ReplyKeyboa
     rows.extend([
         [KeyboardButton(text=t['add_card']), KeyboardButton(text=t['my_cards'])],
         [KeyboardButton(text=t['profile_stats']), KeyboardButton(text=t['profile_settings'])],
-        [KeyboardButton(text=t['back_to_main_menu'])],
+        [KeyboardButton(text=get_text('back_partner', lang))],
     ])
 
     return ReplyKeyboardMarkup(
