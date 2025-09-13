@@ -1579,7 +1579,8 @@ async def open_partner_cabinet_cmd(message: Message):
         # If partner, show partner cabinet (force partner keyboard)
         lang = message.from_user.language_code or 'ru'
         try:
-            approved_cards = await db_v2.get_partner_cards(message.from_user.id, status="approved")
+            # Use partner.id and include approved/published for cabinet counters
+            approved_cards = db_v2.get_partner_cards(partner.id, statuses=["approved", "published"])  # sync call
         except Exception:
             approved_cards = []
         has_approved_cards = len(approved_cards) > 0
@@ -1621,8 +1622,8 @@ async def partner_cabinet_handler(message: Message):
             await message.answer(get_text("partner.not_partner", lang), reply_markup=get_main_menu_reply(lang))
             return
             
-        # Get partner's approved cards count
-        approved_cards = await db_v2.get_partner_cards(user_id, status="approved")
+        # Get partner's approved/published cards count using partner.id
+        approved_cards = db_v2.get_partner_cards(partner.id, statuses=["approved", "published"])  # sync call
         has_approved_cards = len(approved_cards) > 0
         
         # Partner keyboard (QR if there are approved cards)
@@ -1961,7 +1962,8 @@ async def back_to_partner_menu(message: Message, state: FSMContext) -> None:
     # Покажем QR, если есть хотя бы одна карточка (pending/approved/published)
     show_qr = False
     try:
-        cards = await db_v2.get_partner_cards(message.from_user.id)
+        partner = db_v2.get_or_create_partner(message.from_user.id, message.from_user.full_name)
+        cards = db_v2.get_partner_cards(partner.id)
         for c in cards or []:
             if str(c.get('status')) in ('pending', 'approved', 'published'):
                 show_qr = True
