@@ -1294,6 +1294,36 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
     except Exception:
         pass
     data = await state.get_data()
+    # Basic validation according to TZ (no UI change)
+    try:
+        title_raw = (data.get('title') or '').strip()
+        if not (2 <= len(title_raw) <= 60):
+            await callback.message.answer("❌ Название должно быть от 2 до 60 символов.")
+            return
+        desc_raw = (data.get('description') or '')
+        if len(desc_raw) > 600:
+            await callback.message.answer("❌ Описание не должно превышать 600 символов.")
+            return
+        contact_raw = (data.get('contact') or '').strip()
+        if contact_raw:
+            import re
+            if not re.fullmatch(r"[+\d][\d\s().-]{5,20}", contact_raw):
+                await callback.message.answer("❌ Неверный формат телефона.")
+                return
+        # Enforce max 6 unique photos if present
+        if data.get('photos'):
+            uniq = []
+            seen = set()
+            for fid in data.get('photos'):
+                s = str(fid)
+                if s not in seen:
+                    seen.add(s)
+                    uniq.append(s)
+                if len(uniq) >= 6:
+                    break
+            await state.update_data(photos=uniq)
+    except Exception:
+        pass
     
     try:
         # Create card
@@ -1301,9 +1331,9 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             id=None,
             partner_id=data['partner_id'],
             category_id=data['category_id'],
-            title=data['title'],
-            description=data.get('description'),
-            contact=data.get('contact'),
+            title=title_raw,
+            description=desc_raw,
+            contact=contact_raw,
             address=data.get('address'),
             google_maps_url=data.get('google_maps_url'),
             # Первое фото сохраняем в карточку для обратной совместимости
