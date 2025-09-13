@@ -36,6 +36,33 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Odoo helpers (pure functions, no side effects)
+def _map_slug_to_odoo_category(slug: str) -> str:
+    m = {
+        'restaurants': 'restaurant',
+        'spa': 'spa',
+        'transport': 'transport',
+        'hotels': 'hotel',
+        'tours': 'tours',
+        'shops': 'retail',
+    }
+    return m.get(slug, 'retail')
+
+def _merge_cards_without_duplicates(local_cards: list[dict], remote_cards: list[dict]) -> list[dict]:
+    seen: set[tuple[str, str]] = set()
+    merged: list[dict] = []
+    for c in local_cards:
+        key = (str(c.get('title') or '').strip().lower(), str(c.get('address') or '').strip().lower())
+        seen.add(key)
+        merged.append(c)
+    for c in remote_cards:
+        key = (str(c.get('title') or '').strip().lower(), str(c.get('address') or '').strip().lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(c)
+    return merged
+
 # Router for category handlers
 category_router = Router(name="category_router")
 
@@ -115,6 +142,33 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         # 1. Получение данных и фильтрация
         await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+
+        # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
+        if sub_slug == "all":
+            try:
+                from core.services import odoo_api
+                if odoo_api.is_configured:
+                    od = await odoo_api.get_cards_by_category(category=_map_slug_to_odoo_category(slug))
+                    if od.get('success') and isinstance(od.get('cards'), list):
+                        odoo_cards_raw = od['cards']
+                        odoo_cards: list[dict] = []
+                        for c in odoo_cards_raw:
+                            try:
+                                odoo_cards.append({
+                                    'title': c.get('name') or 'Без названия',
+                                    'description': c.get('description') or '',
+                                    'address': c.get('address') or '',
+                                    'contact': c.get('phone') or '',
+                                    'discount_text': (f"Cashback {c.get('cashback_percent')}%" if c.get('cashback_percent') is not None else None),
+                                    'photos_count': len(c.get('photos') or []),
+                                })
+                            except Exception:
+                                continue
+                        if odoo_cards:
+                            all_cards = _merge_cards_without_duplicates(all_cards, odoo_cards)
+            except Exception:
+                # Do not fail catalog rendering if Odoo is unreachable
+                pass
         if city_id is not None and all_cards and 'city_id' in all_cards[0]:
             all_cards = [c for c in all_cards if c.get('city_id') == city_id]
         if sub_slug != "all" and all_cards and 'sub_slug' in all_cards[0]:

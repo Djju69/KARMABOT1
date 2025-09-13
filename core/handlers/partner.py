@@ -1341,6 +1341,52 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             f"💡 Вы получите уведомление, когда модератор рассмотрит вашу карточку.",
             reply_markup=None
         )
+
+        # Best-effort: register partner in Odoo (no UI changes, silent on errors)
+        try:
+            from core.services import odoo_api
+            if odoo_api.is_configured:
+                # Determine business_category by local category or fallback
+                business_category: str | None = None
+                try:
+                    with db_v2.get_connection() as _conn:
+                        row = _conn.execute(
+                            "SELECT slug, name FROM categories_v2 WHERE id = ?",
+                            (int(data.get('category_id')),),
+                        ).fetchone()
+                        if row:
+                            # Prefer slug, fallback by name
+                            slug = (row[0] if 'slug' in row.keys() else row[0]) if row[0] is not None else None
+                            name = (row[1] if 'name' in row.keys() else row[1]) if row[1] is not None else None
+                            business_category = (slug or '').strip() or None
+                            if not business_category and name:
+                                nm = str(name)
+                                if 'Ресторан' in nm or 'Restaurants' in nm or 'Рестораны' in nm:
+                                    business_category = 'restaurant'
+                                elif 'SPA' in nm or 'СПА' in nm or 'massage' in nm or 'Массаж' in nm:
+                                    business_category = 'spa'
+                                elif 'Отель' in nm or 'Hotel' in nm:
+                                    business_category = 'hotel'
+                                elif 'Экскурс' in nm or 'Tours' in nm:
+                                    business_category = 'tours'
+                                elif 'Транспорт' in nm or 'Transport' in nm:
+                                    business_category = 'transport'
+                                elif 'Магазин' in nm or 'услуги' in nm or 'Retail' in nm:
+                                    business_category = 'retail'
+                except Exception:
+                    business_category = None
+
+                contact = (data.get('contact') or '').strip()
+                await odoo_api.register_partner(
+                    telegram_chat_id=str(callback.from_user.id),
+                    telegram_username=(callback.from_user.username or None),
+                    business_name=title,
+                    business_category=(business_category or 'retail'),
+                    phone=contact,
+                )
+        except Exception:
+            # Do not fail flow on Odoo errors
+            pass
         
         # Notify admin about new card (with inline approve/reject buttons)
         if settings.features.moderation:

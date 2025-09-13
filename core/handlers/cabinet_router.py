@@ -55,6 +55,17 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         
+        # Best-effort: register loyalty user in Odoo (no UI change, silent on errors)
+        try:
+            from core.services import odoo_api
+            if odoo_api.is_configured:
+                await odoo_api.register_loyalty_user(
+                    telegram_user_id=str(user_id),
+                    telegram_username=message.from_user.username or None,
+                )
+        except Exception:
+            pass
+
         # Get detailed user statistics
         from core.database.db_v2 import db_v2
         
@@ -287,9 +298,18 @@ async def view_karma_handler(message: Message, state: FSMContext):
         level = profile.get('level', 1)
         level_progress = profile.get('level_progress', {})
         
-        # Получаем баллы лояльности
+        # Получаем баллы лояльности (локально) и пытаемся дополнить из Odoo
         from core.services.loyalty_service import loyalty_service
         loyalty_points = await loyalty_service.get_user_points_balance(user_id)
+        try:
+            from core.services import odoo_api
+            if odoo_api.is_configured:
+                od = await odoo_api.get_user_points(telegram_user_id=str(user_id))
+                if od.get('success'):
+                    # Если в Odoo больше — показываем значение Odoo
+                    loyalty_points = max(loyalty_points, int(od.get('available_points', loyalty_points) or 0))
+        except Exception:
+            pass
         
         # Получаем историю баллов
         points_history = await loyalty_service.get_points_history(user_id, limit=5)
