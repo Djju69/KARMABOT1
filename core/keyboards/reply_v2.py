@@ -387,7 +387,7 @@ def get_admin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="📋 Модерация"), KeyboardButton(text="🔍 Поиск")],
         [KeyboardButton(text="📊 Статистика"), KeyboardButton(text="👥 Пользователи")],
         [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="❓ Помощь")],
-        [KeyboardButton(text="◀️ Назад")]
+        [KeyboardButton(text=get_text('back_admin', lang))]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
@@ -400,7 +400,7 @@ def get_superadmin_keyboard(lang: str = "ru") -> ReplyKeyboardMarkup:
         [KeyboardButton(text="🧾 Карты"), KeyboardButton(text="📧 Рассылка")],
         [KeyboardButton(text="⚙️ Настройки лояльности"), KeyboardButton(text="🗑️ Удаление")],
         [KeyboardButton(text="⚙️ Настройки"), KeyboardButton(text="❓ Помощь")],
-        [KeyboardButton(text="◀️ Назад")]
+        [KeyboardButton(text=get_text('back_admin', lang))]
     ]
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 

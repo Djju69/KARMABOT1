@@ -20,7 +20,7 @@ from aiogram.filters import Command, StateFilter
 from core.settings import settings
 from core.keyboards.reply_v2 import get_reply_keyboard
 from core.database import db
-from core.utils.locales_v2 import get_text as _
+from core.utils.locales_v2 import get_text as _, get_text, translations
 
 logger = logging.getLogger(__name__)
 
@@ -1530,15 +1530,37 @@ async def open_partner_cabinet_cmd(message: Message):
             )
             return
             
-        # If partner, show partner cabinet
-        await show_partner_cabinet(message, partner)
+        # If partner, show partner cabinet (force partner keyboard)
+        lang = message.from_user.language_code or 'ru'
+        try:
+            approved_cards = await db_v2.get_partner_cards(message.from_user.id, status="approved")
+        except Exception:
+            approved_cards = []
+        has_approved_cards = len(approved_cards) > 0
+        kb = get_partner_keyboard(lang, show_qr=has_approved_cards)
+        partner_info = get_text("cabinet.partner_profile", lang).format(
+            approved_cards=len(approved_cards),
+            total_views=sum(card.get('views', 0) for card in approved_cards),
+            total_scans=sum(card.get('scans', 0) for card in approved_cards)
+        )
+        await message.answer(partner_info, reply_markup=kb)
         
     except Exception as e:
         logger.error(f"Error in open_partner_cabinet_cmd: {e}", exc_info=True)
-        await message.answer(
-            get_text("error.general", message.from_user.language_code or 'ru'),
-            reply_markup=get_return_to_main_menu()
-        )
+        # Роль‑зависимый возврат при ошибке
+        lang = message.from_user.language_code or 'ru'
+        try:
+            from ..services.admins import admins_service
+            is_admin = await admins_service.is_admin(message.from_user.id)
+        except Exception:
+            is_admin = False
+        if is_admin:
+            from ..keyboards.reply_v2 import get_main_menu_reply_admin
+            is_superadmin = int(message.from_user.id) == int(settings.bots.admin_id)
+            kb = get_main_menu_reply_admin(lang, is_superadmin)
+        else:
+            kb = get_main_menu_reply(lang)
+        await message.answer(get_text("error.general", lang), reply_markup=kb)
 
 @partner_router.message(F.text.in_(["👤 Кабинет партнера", "👤 Partner Cabinet", "👤 Trang đối tác", "👤 파트너 센тер"]))
 async def partner_cabinet_handler(message: Message):
@@ -1549,21 +1571,16 @@ async def partner_cabinet_handler(message: Message):
         partner = await db_v2.get_partner(user_id)
         
         if not partner:
-            await message.answer(
-                get_text("partner.not_partner", message.from_user.language_code or 'ru'),
-                reply_markup=get_return_to_main_menu()
-            )
+            lang = message.from_user.language_code or 'ru'
+            await message.answer(get_text("partner.not_partner", lang), reply_markup=get_main_menu_reply(lang))
             return
             
         # Get partner's approved cards count
         approved_cards = await db_v2.get_partner_cards(user_id, status="approved")
         has_approved_cards = len(approved_cards) > 0
         
-        # Get partner profile keyboard
-        keyboard = get_partner_profile_keyboard(
-            {"lang": message.from_user.language_code or 'ru'},
-            has_approved_cards
-        )
+        # Partner keyboard (QR if there are approved cards)
+        keyboard = get_partner_keyboard(message.from_user.language_code or 'ru', show_qr=has_approved_cards)
         
         # Format partner info
         partner_info = get_text("cabinet.partner_profile", message.from_user.language_code or 'ru').format(
@@ -1576,10 +1593,8 @@ async def partner_cabinet_handler(message: Message):
         
     except Exception as e:
         logger.error(f"Error in partner_cabinet_handler: {e}", exc_info=True)
-        await message.answer(
-            get_text("error.general", message.from_user.language_code or 'ru'),
-            reply_markup=get_return_to_main_menu()
-        )
+        lang = message.from_user.language_code or 'ru'
+        await message.answer(get_text("error.general", lang), reply_markup=get_main_menu_reply(lang))
 
 
 @partner_router.message(F.text.in_(["🌐 Язык", "🌐 Language", "🌐 Ngôn ngữ", "🌐 언어"]))
@@ -1594,10 +1609,7 @@ async def partner_language_handler(message: Message, state: FSMContext):
         )
     except Exception as e:
         logger.error(f"Error in partner_language_handler: {str(e)}", exc_info=True)
-        await message.answer(
-            "❌ Не удалось загрузить выбор языка. Попробуйте позже.",
-            reply_markup=get_partner_cabinet_keyboard()
-        )
+        await message.answer("❌ Не удалось загрузить выбор языка. Попробуйте позже.")
 
 @partner_router.message(
     F.text.in_(["📊 Статистика", "📊 Statistics", "📊 Thống kê", "📊 통계"]) &
@@ -1687,8 +1699,9 @@ async def partner_statistics_handler(update: Union[Message, CallbackQuery], stat
         if stats.get('top_cards'):
             stats_text += f"*{get_text('partner.top_cards', lang)}*\n"
             for i, card in enumerate(stats['top_cards'], 1):
+                title = str(card.get('title') or '').replace('*', '').replace('_', '')
                 stats_text += (
-                    f"{i}. *{escape_markdown(card['title'])}*\n"
+                    f"{i}. *{title}*\n"
                     f"   👁 {card['views']} {get_text('partner.views', lang)} • "
                     f"📱 {card['scans']} {get_text('partner.scans', lang)}\n"
                 )
@@ -1889,4 +1902,26 @@ async def cancel_anywhere(message: Message, state: FSMContext):
     # Act only if FSM is currently within AddCardStates to avoid breaking other flows
     if cur and cur.startswith(AddCardStates.__name__ + ":"):
         await cancel_add_card(message, state)
+
+
+# Явный обработчик кнопки «◀️ Назад в меню партнёра»
+@partner_router.message(F.text.in_([t.get('back_partner', '') for t in translations.values() if t.get('back_partner')]))
+async def back_to_partner_menu(message: Message, state: FSMContext) -> None:
+    try:
+        lang = await profile_service.get_lang(message.from_user.id)
+    except Exception:
+        lang = 'ru'
+    # Показать партнёрское главное меню
+    # Покажем QR, если есть хотя бы одна карточка (pending/approved/published)
+    show_qr = False
+    try:
+        cards = await db_v2.get_partner_cards(message.from_user.id)
+        for c in cards or []:
+            if str(c.get('status')) in ('pending', 'approved', 'published'):
+                show_qr = True
+                break
+    except Exception:
+        show_qr = False
+    kb = get_partner_keyboard(lang, show_qr=show_qr)
+    await message.answer("🏪 Меню партнёра:", reply_markup=kb)
 
