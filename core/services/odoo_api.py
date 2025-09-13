@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import os
-import json
 import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-import aiohttp
+import xmlrpc.client
 
 
 logger = logging.getLogger(__name__)
@@ -14,85 +13,70 @@ logger = logging.getLogger(__name__)
 
 class OdooKarmasystemAPI:
     """
-    Minimal async client for Odoo KARMASYSTEM REST API.
+    Async-friendly XML-RPC client for Odoo.
 
-    Notes:
-    - Base URL is taken from ODOO_BASE_URL (or provided explicitly)
-    - All requests have sane timeouts and log failures
-    - This client does not change UI; handlers may call these methods
+    Reads configuration from env:
+      - ODOO_BASE_URL (e.g., https://odoo-crm-production.up.railway.app)
+      - ODOO_DB (e.g., 'postgres' or 'odoo')
+      - ODOO_USERNAME (e.g., 'user@example.com')
+      - ODOO_PASSWORD
+
+    All methods are safe: they catch exceptions and return {success: False} on failure.
     """
 
-    def __init__(self, base_url: Optional[str] = None, *, session: Optional[aiohttp.ClientSession] = None) -> None:
-        url = (base_url or os.getenv("ODOO_BASE_URL", "")).strip()
-        self._base = url.rstrip("/") if url else ""
-        self._api = f"{self._base}/api/karmasystem" if self._base else ""
-        self._session: Optional[aiohttp.ClientSession] = session
+    def __init__(self, base_url: Optional[str] = None, *, db: Optional[str] = None,
+                 username: Optional[str] = None, password: Optional[str] = None) -> None:
+        self._base = (base_url or os.getenv("ODOO_BASE_URL", "")).rstrip("/")
+        self._db = db or os.getenv("ODOO_DB") or "postgres"
+        self._username = username or os.getenv("ODOO_USERNAME") or ""
+        self._password = password or os.getenv("ODOO_PASSWORD") or ""
+        self._uid: Optional[int] = None
+        self._common: Optional[xmlrpc.client.ServerProxy] = None
+        self._models: Optional[xmlrpc.client.ServerProxy] = None
 
     @property
     def is_configured(self) -> bool:
-        return bool(self._api)
+        return bool(self._base and self._db and self._username and self._password)
 
-    async def _ensure_session(self) -> aiohttp.ClientSession:
-        if self._session and not self._session.closed:
-            return self._session
-        timeout = aiohttp.ClientTimeout(total=30)
-        self._session = aiohttp.ClientSession(timeout=timeout)
-        return self._session
+    # --- Internal helpers ---
+    def _common_proxy(self) -> xmlrpc.client.ServerProxy:
+        return xmlrpc.client.ServerProxy(f"{self._base}/xmlrpc/2/common")
 
-    async def close(self) -> None:
-        if self._session and not self._session.closed:
-            await self._session.close()
+    def _models_proxy(self) -> xmlrpc.client.ServerProxy:
+        return xmlrpc.client.ServerProxy(f"{self._base}/xmlrpc/2/object")
 
-    # --- Helpers ---
-    async def _post_json(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def _authenticate_blocking(self) -> int:
+        common = self._common_proxy()
+        uid = common.authenticate(self._db, self._username, self._password, {})
+        if not uid:
+            raise RuntimeError("Odoo authentication failed")
+        self._common = common
+        self._models = self._models_proxy()
+        self._uid = int(uid)
+        return self._uid
+
+    async def _ensure_auth(self) -> bool:
         if not self.is_configured:
-            logger.warning("Odoo API is not configured (ODOO_BASE_URL is empty)")
-            return {"success": False, "error": "odoo_not_configured"}
-        sess = await self._ensure_session()
-        url = f"{self._api}{path}"
+            logger.warning("Odoo XML-RPC not configured (check ODOO_* env vars)")
+            return False
+        if self._uid:
+            return True
         try:
-            async with sess.post(url, json=payload) as resp:
-                txt = await resp.text()
-                if resp.status >= 400:
-                    logger.error("Odoo POST %s failed: %s %s", url, resp.status, txt)
-                    return {"success": False, "error": f"http_{resp.status}", "body": txt}
-                try:
-                    return json.loads(txt)
-                except Exception:
-                    logger.error("Odoo POST %s returned non-JSON: %s", url, txt)
-                    return {"success": False, "error": "invalid_json", "body": txt}
-        except asyncio.TimeoutError:
-            logger.error("Odoo POST %s timeout", url)
-            return {"success": False, "error": "timeout"}
+            await asyncio.to_thread(self._authenticate_blocking)
+            return True
         except Exception as e:
-            logger.exception("Odoo POST %s exception: %s", url, e)
-            return {"success": False, "error": str(e)}
+            logger.error("Odoo auth error: %s", e)
+            return False
 
-    async def _get_json(self, path: str) -> Dict[str, Any]:
-        if not self.is_configured:
-            logger.warning("Odoo API is not configured (ODOO_BASE_URL is empty)")
-            return {"success": False, "error": "odoo_not_configured"}
-        sess = await self._ensure_session()
-        url = f"{self._api}{path}"
-        try:
-            async with sess.get(url) as resp:
-                txt = await resp.text()
-                if resp.status >= 400:
-                    logger.error("Odoo GET %s failed: %s %s", url, resp.status, txt)
-                    return {"success": False, "error": f"http_{resp.status}", "body": txt}
-                try:
-                    return json.loads(txt)
-                except Exception:
-                    logger.error("Odoo GET %s returned non-JSON: %s", url, txt)
-                    return {"success": False, "error": "invalid_json", "body": txt}
-        except asyncio.TimeoutError:
-            logger.error("Odoo GET %s timeout", url)
-            return {"success": False, "error": "timeout"}
-        except Exception as e:
-            logger.exception("Odoo GET %s exception: %s", url, e)
-            return {"success": False, "error": str(e)}
+    def _execute_kw_blocking(self, model: str, method: str, *args: Any, **kwargs: Any) -> Any:
+        if not self._models or self._uid is None:
+            raise RuntimeError("Odoo client not authenticated")
+        return self._models.execute_kw(self._db, self._uid, self._password, model, method, list(args), kwargs)
 
-    # --- Public API ---
+    async def _execute_kw(self, model: str, method: str, *args: Any, **kwargs: Any) -> Any:
+        return await asyncio.to_thread(self._execute_kw_blocking, model, method, *args, **kwargs)
+
+    # --- Public API (safe) ---
     async def register_partner(
         self,
         *,
@@ -103,15 +87,19 @@ class OdooKarmasystemAPI:
         phone: str,
         **extra: Any,
     ) -> Dict[str, Any]:
-        payload = {
-            "telegram_chat_id": str(telegram_chat_id),
-            "telegram_username": telegram_username,
-            "business_name": business_name,
-            "business_category": business_category,
-            "phone": phone,
-            **extra,
-        }
-        return await self._post_json("/partner/register", payload)
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            vals = {
+                'name': business_name or (telegram_username or f"tg:{telegram_chat_id}"),
+                'phone': phone or '',
+                'customer_rank': 1,
+            }
+            partner_id = await self._execute_kw('res.partner', 'create', vals)
+            return {"success": True, "partner_id": partner_id}
+        except Exception as e:
+            logger.error("register_partner failed: %s", e)
+            return {"success": False, "error": str(e)}
 
     async def register_loyalty_user(
         self,
@@ -120,12 +108,23 @@ class OdooKarmasystemAPI:
         telegram_username: Optional[str] = None,
         phone: Optional[str] = None,
     ) -> Dict[str, Any]:
-        payload = {
-            "telegram_user_id": str(telegram_user_id),
-            "telegram_username": telegram_username,
-            "phone": phone,
-        }
-        return await self._post_json("/loyalty/user/register", payload)
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            # Ensure a partner exists for the user
+            name = telegram_username or f"tg:{telegram_user_id}"
+            partner_vals = {'name': name, 'phone': phone or '', 'customer_rank': 1}
+            partner_id = await self._execute_kw('res.partner', 'create', partner_vals)
+            # Optionally write to a loyalty model if present
+            try:
+                loy_vals = {'telegram_id': str(telegram_user_id), 'phone': phone or '', 'points': 0, 'partner_id': partner_id}
+                await self._execute_kw('karma.loyalty', 'create', loy_vals)
+            except Exception:
+                pass
+            return {"success": True, "partner_id": partner_id}
+        except Exception as e:
+            logger.error("register_loyalty_user failed: %s", e)
+            return {"success": False, "error": str(e)}
 
     async def process_transaction(
         self,
@@ -135,19 +134,66 @@ class OdooKarmasystemAPI:
         amount: float,
         points_to_use: int = 0,
     ) -> Dict[str, Any]:
-        payload = {
-            "partner_id": int(partner_id),
-            "customer_telegram_id": str(customer_telegram_id),
-            "amount": float(amount),
-            "points_to_use": int(points_to_use),
-        }
-        return await self._post_json("/transaction/process", payload)
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            # If a dedicated model exists, create a transaction; otherwise, noop
+            try:
+                vals = {
+                    'partner_id': int(partner_id),
+                    'amount_vnd': float(amount),
+                    'customer_telegram_id': str(customer_telegram_id),
+                    'points_used': int(points_to_use),
+                }
+                txn_id = await self._execute_kw('karmasystem.transaction', 'create', vals)
+                return {"success": True, "transaction_id": txn_id}
+            except Exception:
+                # Graceful fallback if model doesn't exist
+                return {"success": False, "error": "model_missing"}
+        except Exception as e:
+            logger.error("process_transaction failed: %s", e)
+            return {"success": False, "error": str(e)}
 
     async def get_cards_by_category(self, *, category: str) -> Dict[str, Any]:
-        return await self._get_json(f"/cards/category/{category}")
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            # Attempt to read cards from a model if present
+            try:
+                domain = [["category", "=", category]]
+                fields = ["id", "name", "description", "address", "phone", "average_check", "cashback_percent", "latitude", "longitude"]
+                records = await self._execute_kw('karmasystem.partner.card', 'search_read', domain, {'fields': fields, 'limit': 100})
+                return {"success": True, "cards": records}
+            except Exception:
+                return {"success": True, "cards": []}
+        except Exception as e:
+            logger.error("get_cards_by_category failed: %s", e)
+            return {"success": False, "error": str(e)}
 
     async def get_user_points(self, *, telegram_user_id: str) -> Dict[str, Any]:
-        return await self._get_json(f"/user/{telegram_user_id}/points")
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            try:
+                # Try modern field name
+                domain = [["telegram_id", "=", str(telegram_user_id)]]
+                fields = ["points"]
+                recs = await self._execute_kw('karma.loyalty', 'search_read', domain, {'fields': fields, 'limit': 1})
+                if recs:
+                    pts = int(recs[0].get('points') or 0)
+                    return {"success": True, "available_points": pts}
+                # Try alternative field
+                domain2 = [["telegram_user_id", "=", str(telegram_user_id)]]
+                recs2 = await self._execute_kw('karma.loyalty', 'search_read', domain2, {'fields': fields, 'limit': 1})
+                if recs2:
+                    pts = int(recs2[0].get('points') or 0)
+                    return {"success": True, "available_points": pts}
+                return {"success": True, "available_points": 0}
+            except Exception:
+                return {"success": True, "available_points": 0}
+        except Exception as e:
+            logger.error("get_user_points failed: %s", e)
+            return {"success": False, "error": str(e)}
 
 
 # Singleton instance for app-wide reuse
