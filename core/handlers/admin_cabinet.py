@@ -705,11 +705,14 @@ def _build_card_view_text(card: dict) -> str:
 
 def _build_card_view_kb(card_id: int, page: int):
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    # Набор для модерации: [✅ Одобрить] [❌ Отклонить] [✏️ На доработку] / [📜 История изменений] [📷 Медиа] [ℹ️ Подробнее]
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Одобрить", callback_data=f"adm:q:approve:{card_id}:{page}"),
-         InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm:q:reject:{card_id}:{page}")],
-        [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"adm:q:del:{card_id}:{page}"),
-         InlineKeyboardButton(text="↩️ К списку", callback_data=f"adm:q:page:{page}")],
+         InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm:q:reject:{card_id}:{page}"),
+         InlineKeyboardButton(text="✏️ На доработку", callback_data=f"adm:q:revise:{card_id}:{page}")],
+        [InlineKeyboardButton(text="📜 История изменений", callback_data=f"adm:q:hist:{card_id}:{page}"),
+         InlineKeyboardButton(text="📷 Медиа", callback_data=f"gallery:{card_id}"),
+         InlineKeyboardButton(text="ℹ️ Подробнее", callback_data=f"adm:q:view:{card_id}:{page}")],
     ])
 
 def _format_cards_rows(rows) -> str:
@@ -1089,6 +1092,85 @@ async def admin_queue_view(callback: CallbackQuery) -> None:
             "❌ Произошла ошибка при одобрении карточки. Пожалуйста, попробуйте ещё раз.", 
             show_alert=True
         )
+
+
+@router.callback_query(F.data.startswith("adm:q:approve:"))
+async def admin_queue_approve(callback: CallbackQuery) -> None:
+    """Одобрение карточки: adm:q:approve:<card_id>:<page>."""
+    try:
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+        parts = callback.data.split(":")
+        if len(parts) < 5:
+            await callback.answer("❌ Неверный запрос", show_alert=True)
+            return
+        card_id = int(parts[3]); page = int(parts[4])
+        ok = db_v2.update_card_status(card_id, 'published')
+        await callback.answer("✅ Одобрено" if ok else "⚠️ Не удалось")
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_approve failed: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+
+@router.callback_query(F.data.startswith("adm:q:reject:"))
+async def admin_queue_reject(callback: CallbackQuery) -> None:
+    """Отклонение карточки: adm:q:reject:<card_id>:<page>."""
+    try:
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+        parts = callback.data.split(":")
+        if len(parts) < 5:
+            await callback.answer("❌ Неверный запрос", show_alert=True)
+            return
+        card_id = int(parts[3]); page = int(parts[4])
+        ok = db_v2.update_card_status(card_id, 'rejected')
+        await callback.answer("🛑 Отклонено" if ok else "⚠️ Не удалось")
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_reject failed: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+
+@router.callback_query(F.data.startswith("adm:q:revise:"))
+async def admin_queue_revise(callback: CallbackQuery) -> None:
+    """На доработку: вернуть в pending и обновить очередь."""
+    try:
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+        parts = callback.data.split(":")
+        if len(parts) < 5:
+            await callback.answer("❌ Неверный запрос", show_alert=True)
+            return
+        card_id = int(parts[3]); page = int(parts[4])
+        ok = db_v2.update_card_status(card_id, 'pending')
+        await callback.answer("✏️ На доработку" if ok else "⚠️ Не удалось")
+        await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
+    except Exception as e:
+        logger.exception("admin_queue_revise failed: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
+
+
+@router.callback_query(F.data.startswith("adm:q:hist:"))
+async def admin_queue_history(callback: CallbackQuery) -> None:
+    """История изменений карточки (заглушка)."""
+    try:
+        if not await admins_service.is_admin(callback.from_user.id):
+            await callback.answer("❌ Доступ запрещён")
+            return
+        parts = callback.data.split(":")
+        if len(parts) < 5:
+            await callback.answer("❌ Неверный запрос", show_alert=True)
+            return
+        card_id = int(parts[3]); page = int(parts[4])
+        await callback.message.answer(f"📜 История изменений карточки #{card_id}: пока пусто")
+        await callback.answer()
+    except Exception as e:
+        logger.exception("admin_queue_history failed: %s", e)
+        await callback.answer("❌ Ошибка", show_alert=False)
 
 
 async def _notify_partner_about_approval(bot: Bot, card_id: int) -> None:

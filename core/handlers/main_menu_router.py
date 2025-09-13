@@ -1081,9 +1081,19 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         return
         
     try:
-        # Импортируем get_start из basic.py
-        from core.handlers.basic import get_start
-        await get_start(message, bot, state)
+        # Роль-зависимый возврат (без падения в юзерское меню)
+        from core.settings import settings
+        from core.services.admins import admins_service
+        from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
+        user_id = message.from_user.id
+        lang = await profile_service.get_lang(user_id)
+        is_superadmin = int(user_id) == int(settings.bots.admin_id)
+        is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
+        if is_superadmin or is_admin:
+            kb = get_main_menu_reply_admin(lang, is_superadmin)
+        else:
+            kb = get_main_menu_reply(lang)
+        await message.answer("🏠 Главное меню:", reply_markup=kb)
     except Exception as e:
         logger.error(f"Error returning to main menu: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -1260,9 +1270,19 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         return
         
     try:
-        # Возвращаемся в главное меню
-        from core.handlers.basic import get_start
-        await get_start(message, bot, state)
+        # Возвращаемся в роль-зависимое главное меню
+        from core.settings import settings
+        from core.services.admins import admins_service
+        from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
+        user_id = message.from_user.id
+        lang = await profile_service.get_lang(user_id)
+        is_superadmin = int(user_id) == int(settings.bots.admin_id)
+        is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
+        if is_superadmin or is_admin:
+            kb = get_main_menu_reply_admin(lang, is_superadmin)
+        else:
+            kb = get_main_menu_reply(lang)
+        await message.answer("🏠 Главное меню:", reply_markup=kb)
     except Exception as e:
         logger.error(f"Error returning to main menu: {e}", exc_info=True)
         user_data = await state.get_data()

@@ -3,7 +3,7 @@ Enhanced category handlers with unified card rendering
 Backward compatible with existing functionality
 """
 from aiogram import Router, F, Bot as AioBot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot
 import logging
@@ -26,6 +26,7 @@ from ..keyboards.inline_v2 import (
     get_catalog_item_row,
     get_restaurant_filters_inline,
     get_categories_inline,
+    get_catalog_card_actions,
 )
 from ..utils.locales_v2 import get_text, get_all_texts
 from ..utils.telemetry import log_event
@@ -140,9 +141,12 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             kb_rows = inline_rows + pagination_row
             kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
 
-        # 5. Отправка или редактирование сообщения
+        # 5. Отправка или редактирование сообщения (каталог: 5 позиций на страницу, далее детальный просмотр act:view)
         if message_id:
-            await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
+            try:
+                await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
+            except Exception:
+                await bot.send_message(chat_id, text, reply_markup=kb)
         else:
             await bot.send_message(chat_id, text, reply_markup=kb)
         await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
@@ -601,16 +605,41 @@ async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
         except Exception:
             card = None
 
+        # Доставим первый снимок (если есть) как фото с подписью и инлайн‑кнопками
         if card:
-            text = card_service.render_card(card if isinstance(card, dict) else dict(card), lang)
+            card_dict = card if isinstance(card, dict) else dict(card)
+            text = card_service.render_card(card_dict, lang)
+            # Получим фото (multi‑photo aware)
+            from ..database.db_v2 import db_v2 as _db
+            try:
+                photos = _db.get_card_photos(listing_id)
+            except Exception:
+                photos = []
+            # Попробуем отрисовать фото + подпись, иначе просто текст
+            try:
+                if photos:
+                    fid = photos[0].get('file_id') if isinstance(photos[0], dict) else getattr(photos[0], 'file_id', None)
+                    if fid:
+                        # Предпочтительно отправить новым сообщением, чтобы не зависеть от предыстории сообщения
+                        try:
+                            await callback.message.delete()
+                        except Exception:
+                            pass
+                        await callback.message.answer_photo(
+                            photo=fid,
+                            caption=text,
+                            reply_markup=get_catalog_card_actions(listing_id, lang)
+                        )
+                    else:
+                        raise RuntimeError("empty fid")
+                else:
+                    raise RuntimeError("no photos")
+            except Exception:
+                # fallback: редактируем текст
+                await callback.message.edit_text(text=text, reply_markup=get_catalog_card_actions(listing_id, lang))
         else:
             text = get_text('card_soon_available', lang).format(card_id=str(listing_id))
-
-        # Кнопки действия: карта/контакты, если есть данные
-        gmaps = card.get('google_maps_url') if isinstance(card, dict) else getattr(card, 'google_maps_url', None) if card else None
-        kb = [get_catalog_item_row(listing_id, gmaps, lang)]
-
-        await callback.message.edit_text(text=text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+            await callback.message.edit_text(text=text, reply_markup=get_catalog_card_actions(listing_id, lang))
         await callback.answer()
     except Exception as e:
         logger.error(f"on_card_view error: {e}")
@@ -645,3 +674,72 @@ __all__ = [
     , 'on_spa_submenu', 'on_hotels_submenu',
     'on_shops', 'on_shops_submenu'
 ]
+
+
+@category_router.callback_query(F.data.regexp(r"^gallery:[0-9]+$"))
+async def on_card_gallery(callback: CallbackQuery):
+    """Показ галереи фото карточки (до 6 шт.) — формат: gallery:<id>."""
+    try:
+        _, id_str = callback.data.split(":", 1)
+        card_id = int(id_str)
+    except Exception:
+        await callback.answer()
+        return
+    try:
+        from ..database.db_v2 import db_v2 as _db
+        photos = _db.get_card_photos(card_id)
+    except Exception:
+        photos = []
+    if not photos:
+        await callback.answer("📭 Фото пока нет", show_alert=False)
+        return
+    media: list[InputMediaPhoto] = []
+    for idx, p in enumerate(photos[:6]):
+        fid = p.get('file_id') if isinstance(p, dict) else getattr(p, 'file_id', None)
+        if not fid:
+            continue
+        if idx == 0:
+            media.append(InputMediaPhoto(media=fid, caption="📷 Галерея"))
+        else:
+            media.append(InputMediaPhoto(media=fid))
+    try:
+        await callback.message.answer_media_group(media)
+    except Exception:
+        pass
+    await callback.answer()
+
+
+@category_router.callback_query(F.data == "catalog:back")
+async def on_catalog_back(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
+    """Возврат к списку каталога с параметрами из FSM: category/sub_slug/page."""
+    try:
+        data = await state.get_data()
+        slug = str(data.get('category') or 'restaurants')
+        sub_slug = str(data.get('sub_slug') or 'all')
+        page = int(data.get('page') or 1)
+    except Exception:
+        slug, sub_slug, page = 'restaurants', 'all', 1
+    try:
+        # Попробуем редактировать; если это фото-сообщение — отправим новое
+        header_only = False
+        await show_catalog_page(
+            bot=bot,
+            chat_id=callback.message.chat.id,
+            lang=lang,
+            slug=slug,
+            sub_slug=sub_slug,
+            page=page,
+            city_id=city_id,
+            message_id=callback.message.message_id,
+        )
+    except Exception:
+        await show_catalog_page(
+            bot=bot,
+            chat_id=callback.message.chat.id,
+            lang=lang,
+            slug=slug,
+            sub_slug=sub_slug,
+            page=page,
+            city_id=city_id,
+        )
+    await callback.answer()

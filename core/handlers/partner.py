@@ -550,14 +550,23 @@ async def partner_card_view(callback: CallbackQuery):
             f"📍 Адрес: {address}\n"
             f"📞 Контакт: {contact}"
         )
-        # Кнопки действий
-        act_rows: list[list[InlineKeyboardButton]] = []
-        if status in ("published", "approved", "archived"):
-            toggle_label = "👁️ Скрыть" if status == "published" else "👁️ Показать"
-            act_rows.append([InlineKeyboardButton(text=toggle_label, callback_data=f"pc:toggle:{card_id}:{page}")])
-        act_rows.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"pc:del:{card_id}:{page}")])
-        act_rows.append([InlineKeyboardButton(text="↩️ К списку", callback_data=f"pc:page:{page}")])
-        kb = InlineKeyboardMarkup(inline_keyboard=act_rows)
+        # Инлайн‑кнопки партнёрской карточки (кабинет):
+        # [ℹ️ Инфо] [✏️ Редактировать] / [🗺 Карта] [🎫 QR] / [⋮ Ещё] [◀️ Назад]
+        rows: list[list[InlineKeyboardButton]] = []
+        rows.append([
+            InlineKeyboardButton(text="ℹ️ Инфо", callback_data=f"pc:view:{card_id}:{page}"),
+            InlineKeyboardButton(text="✏️ Редактировать", callback_data="partner_edit"),
+        ])
+        rows.append([
+            InlineKeyboardButton(text="🗺 Карта", callback_data="noop"),
+            InlineKeyboardButton(text="🎫 QR", callback_data="qr_create"),
+        ])
+        # Доп. действия: оставляем заглушку "Ещё" и возврат в список
+        rows.append([
+            InlineKeyboardButton(text="⋮ Ещё", callback_data="noop"),
+            InlineKeyboardButton(text="◀️ Назад", callback_data=f"pc:page:{page}"),
+        ])
+        kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
         # Попробуем получить все фото карточки и отправить медиагруппу
         try:
@@ -1356,14 +1365,17 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                     f"Категория: {data.get('category_name')}",
                     f"Название: {data['title']}",
                 ]
-                if (data.get('address')):
-                    text_lines.append(f"Адрес: {data.get('address')}")
+                # Адрес с кликабельной ссылкой
+                addr = (data.get('address') or '').strip()
+                gmaps = (data.get('google_maps_url') or '').strip()
+                if gmaps:
+                    text_lines.append(f"📍 <a href=\"{gmaps}\">Адрес</a>{((': ' + addr) if addr else '')}")
+                elif addr:
+                    text_lines.append(f"📍 Адрес: {addr}")
                 if (data.get('contact')):
                     text_lines.append(f"Контакт: {data.get('contact')}")
                 if (data.get('discount_text')):
                     text_lines.append(f"Скидка: {data.get('discount_text')}")
-                if (data.get('google_maps_url')):
-                    text_lines.append(f"GMaps: {data.get('google_maps_url')}")
                 text = "\n".join(text_lines)
                 # Если есть фото — отправим как фото, иначе текст
                 first_photo = None
@@ -1376,9 +1388,9 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                 except Exception:
                     first_photo = None
                 if first_photo:
-                    await bot.send_photo(settings.bots.admin_id, first_photo, caption=text, reply_markup=kb)
+                    await bot.send_photo(settings.bots.admin_id, first_photo, caption=text, reply_markup=kb, parse_mode='HTML')
                 else:
-                    await bot.send_message(settings.bots.admin_id, text, reply_markup=kb)
+                    await bot.send_message(settings.bots.admin_id, text, reply_markup=kb, parse_mode='HTML')
             except Exception as e:
                 logger.error(f"Failed to notify admin: {e}")
         

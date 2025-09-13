@@ -152,6 +152,35 @@ def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") 
     return buttons
 
 
+def get_catalog_card_actions(card_id: int, lang: str = "ru") -> InlineKeyboardMarkup:
+    """Inline-кнопки для детального вида карточки каталога.
+    Ряды:
+      [📱 Создать QR‑код] [📑 Меню/Прайс]
+      [💬 Отзывы] [📷 Галерея]
+      [◀️ Назад]
+
+    Примечания:
+    - QR: используем существующий поток создания QR (callback "qr_create").
+    - Меню/Прайс, Отзывы: заглушки (callback "noop") до подключения фактических хендлеров.
+    - Галерея: gallery:<id>
+    - Назад: catalog:back (возврат к списку из state)
+    """
+    back_text = get_text("back", lang) or "◀️ Назад"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text=get_text("create_qr_code", lang) or "📱 Создать QR-код", callback_data="qr_create"),
+                InlineKeyboardButton(text="📑 Меню/Прайс", callback_data="noop"),
+            ],
+            [
+                InlineKeyboardButton(text="💬 Отзывы", callback_data="noop"),
+                InlineKeyboardButton(text="📷 Галерея", callback_data=f"gallery:{card_id}"),
+            ],
+            [InlineKeyboardButton(text=back_text, callback_data="catalog:back")],
+        ]
+    )
+
+
 def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     """
     Language selection inline keyboard with flags in 2 rows.
