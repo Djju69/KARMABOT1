@@ -567,6 +567,19 @@ class DatabaseServiceV2:
                 logger.error(f"Error creating QR code: {e}")
                 return False
 
+    def deactivate_user_qr_code(self, user_id: int, qr_id: str) -> bool:
+        """Deactivate a user QR by id (mark is_active=0)."""
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                """
+                UPDATE qr_codes_v2
+                SET is_active = 0
+                WHERE user_id = ? AND qr_id = ? AND is_active = 1
+                """,
+                (int(user_id), str(qr_id))
+            )
+            return (cur.rowcount or 0) > 0
+
     def get_legacy_categories(self) -> List[Dict]:
         """Get categories in legacy format for backward compatibility"""
         categories = self.get_categories()

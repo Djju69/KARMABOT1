@@ -1860,9 +1860,16 @@ async def export_partner_statistics(callback: CallbackQuery):
         # Get partner data
         partner = await db_v2.get_partner(user_id)
         if not partner:
+            from ..keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
+            try:
+                from ..services.admins import admins_service
+                is_admin = await admins_service.is_admin(user_id)
+            except Exception:
+                is_admin = False
+            kb = get_main_menu_reply_admin(lang, int(user_id) == int(settings.bots.admin_id)) if is_admin else get_main_menu_reply(lang)
             await callback.message.answer(
                 get_text("partner.not_partner", lang),
-                reply_markup=get_return_to_main_menu()
+                reply_markup=kb
             )
             return
         

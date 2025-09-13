@@ -554,11 +554,8 @@ async def scan_qr_handler(message: Message, state: FSMContext):
     try:
         await message.answer(
             "📱 <b>Сканирование QR-кода</b>\n\n"
-            "Для сканирования QR-кода:\n"
-            "1. Наведите камеру на QR-код\n"
-            "2. Или отправьте фото с QR-кодом\n"
-            "3. Или введите код карты вручную\n\n"
-            "💡 QR-коды можно найти на пластиковых картах или в приложении партнеров.",
+            "Пришлите содержимое QR (текст), либо фото с QR.\n"
+            "Если есть код, отправьте строку формата: KARMA_QR:<...>",
             reply_markup=get_user_cabinet_keyboard(),
             parse_mode='HTML'
         )

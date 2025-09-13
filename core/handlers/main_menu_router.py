@@ -1034,13 +1034,18 @@ async def handle_create_qr_code(message: Message, bot: Bot, state: FSMContext) -
         import io
         from aiogram.types import InputFile
         
-        # Создаем уникальный код
-        import uuid
+        # Создаем уникальный код и подпись
+        import uuid, time, hmac, hashlib, os
         qr_id = str(uuid.uuid4())[:8]
+        exp_ts = int(time.time()) + 30*24*60*60  # 30 дней
+        secret = os.getenv('SECRET_KEY', 'karmasystem-secret')
+        sig_payload = f"{qr_id}:{message.from_user.id}:{exp_ts}".encode()
+        sig = hmac.new(secret.encode(), sig_payload, hashlib.sha256).hexdigest()
         
         # Создаем QR-код
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(f"KARMA_QR:{qr_id}:{message.from_user.id}")
+        # Формат: KARMA_QR:<qr_id>:<user_id>:<exp_ts>:<hmac>
+        qr.add_data(f"KARMA_QR:{qr_id}:{message.from_user.id}:{exp_ts}:{sig}")
         qr.make(fit=True)
         
         # Создаем изображение
@@ -1085,6 +1090,39 @@ async def handle_create_qr_code(message: Message, bot: Bot, state: FSMContext) -
             '❌ Ошибка создания QR-кода. Попробуйте позже.'
         )
         await message.answer(error_text)
+
+
+@main_menu_router.message(F.text.startswith("KARMA_QR:"))
+async def handle_qr_text_redeem(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Redeem QR from text payload with HMAC+TTL check; deactivate stored user QR if matches."""
+    try:
+        text = (message.text or "").strip()
+        parts = text.split(":")
+        # Expected: KARMA_QR:<qr_id>:<user_id>:<exp_ts>:<hmac>
+        if len(parts) != 5:
+            await message.answer("❌ Неверный формат QR.")
+            return
+        _, qr_id, owner_id, exp_ts, sig = parts
+        import hmac, hashlib, os, time
+        secret = os.getenv('SECRET_KEY', 'karmasystem-secret')
+        payload = f"{qr_id}:{owner_id}:{exp_ts}".encode()
+        calc = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calc, sig):
+            await message.answer("❌ Неверная подпись QR.")
+            return
+        if int(exp_ts) < int(time.time()):
+            await message.answer("⌛ QR истёк.")
+            return
+        # Deactivate user's stored QR if present (best-effort)
+        from core.database.db_v2 import db_v2
+        try:
+            db_v2.deactivate_user_qr_code(int(owner_id), str(qr_id))
+        except Exception:
+            pass
+        await message.answer("✅ QR принят. Скидка применена (демо).")
+    except Exception as e:
+        logger.error(f"Error redeeming QR: {e}", exc_info=True)
+        await message.answer("❌ Ошибка обработки QR.")
 
 @main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
 async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:
