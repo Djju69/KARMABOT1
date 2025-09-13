@@ -1111,7 +1111,7 @@ async def admin_queue_view(callback: CallbackQuery) -> None:
 
 
 @router.callback_query(F.data.startswith("adm:q:approve:"))
-async def admin_queue_approve(callback: CallbackQuery) -> None:
+async def admin_queue_approve(callback: CallbackQuery, bot: Bot) -> None:
     """Одобрение карточки: adm:q:approve:<card_id>:<page>."""
     try:
         if not await admins_service.is_admin(callback.from_user.id):
@@ -1124,6 +1124,12 @@ async def admin_queue_approve(callback: CallbackQuery) -> None:
         card_id = int(parts[3]); page = int(parts[4])
         ok = db_v2.update_card_status(card_id, 'published')
         await callback.answer("✅ Одобрено" if ok else "⚠️ Не удалось")
+        if ok:
+            # Уведомим партнёра об одобрении (best-effort)
+            try:
+                await _notify_partner_about_approval(bot, card_id)
+            except Exception:
+                pass
         await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
     except Exception as e:
         logger.exception("admin_queue_approve failed: %s", e)
