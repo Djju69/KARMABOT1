@@ -12,7 +12,8 @@ from aiogram.fsm.context import FSMContext
 
 from core.settings import settings
 from core.utils.locales_v2 import get_text, translations
-from core.services import admins_service, profile_service
+from core.services import admins_service
+from core.services.profile import profile_service
 from core.keyboards.inline_v2 import (
     get_admin_cabinet_inline, 
     get_superadmin_inline, 
