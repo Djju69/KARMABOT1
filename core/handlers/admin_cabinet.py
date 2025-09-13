@@ -942,10 +942,17 @@ async def admin_menu_back_to_main(message: Message, bot: Bot, state: FSMContext)
     """
     try:
         lang = await profile_service.get_lang(message.from_user.id)
-        await message.answer(
-            get_text('main_menu_title', lang), 
-            reply_markup=get_main_menu_reply(lang)
-        )
+        # Роль‑зависимый возврат: суперадмин/админ → админское главное меню
+        from core.settings import settings
+        from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
+        is_superadmin = int(message.from_user.id) == int(settings.bots.admin_id)
+        if is_superadmin:
+            kb = get_main_menu_reply_admin(lang, True)
+        else:
+            from core.services.admins import admins_service
+            is_admin = await admins_service.is_admin(message.from_user.id)
+            kb = get_main_menu_reply_admin(lang, False) if is_admin else get_main_menu_reply(lang)
+        await message.answer(get_text('admin_cabinet_title', lang), reply_markup=kb)
     except Exception as e:
         logger.error(f"Error in admin_menu_back_to_main: {e}", exc_info=True)
         await message.answer("❌ Произошла ошибка при возврате в главное меню. Пожалуйста, попробуйте ещё раз.")

@@ -1485,7 +1485,7 @@ async def cancel_add_card_callback(callback: CallbackQuery, state: FSMContext):
         reply_markup=None
     )
     await state.clear()
-    # Вернём пользователя в главное меню
+    # Вернём пользователя в главное меню (роль‑зависимо)
     try:
         lang = await profile_service.get_lang(callback.from_user.id)
     except Exception:
