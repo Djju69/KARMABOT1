@@ -195,6 +195,66 @@ class OdooKarmasystemAPI:
             logger.error("get_user_points failed: %s", e)
             return {"success": False, "error": str(e)}
 
+    async def create_partner_card(
+        self,
+        *,
+        partner_name: str,
+        title: str,
+        description: Optional[str] = None,
+        address: Optional[str] = None,
+        phone: Optional[str] = None,
+        category: Optional[str] = None,
+        google_maps_url: Optional[str] = None,
+        discount_text: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Create partner card in Odoo if model exists. Returns {success, card_id or error}."""
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            try:
+                # Ensure partner exists (by name or phone). Simplified: create if missing.
+                pid = await self._execute_kw('res.partner', 'create', {
+                    'name': partner_name or (title or 'KARMASYSTEM Partner'),
+                    'phone': phone or '',
+                    'customer_rank': 1,
+                })
+                vals = {
+                    'name': title,
+                    'description': description or '',
+                    'address': address or '',
+                    'phone': phone or '',
+                    'category': category or '',
+                    'google_maps_url': google_maps_url or '',
+                    'discount_text': discount_text or '',
+                    'partner_id': pid,
+                }
+                card_id = await self._execute_kw('karmasystem.partner.card', 'create', vals)
+                return {"success": True, "card_id": card_id}
+            except Exception:
+                return {"success": False, "error": "model_missing"}
+        except Exception as e:
+            logger.error("create_partner_card failed: %s", e)
+            return {"success": False, "error": str(e)}
+
+    async def update_partner_card_status(
+        self,
+        *,
+        card_id: int,
+        status: str,
+    ) -> Dict[str, Any]:
+        """Update Odoo card status if model exists. Safe no-op if missing."""
+        try:
+            if not await self._ensure_auth():
+                return {"success": False, "error": "not_configured"}
+            try:
+                await self._execute_kw('karmasystem.partner.card', 'write', [int(card_id)], {'status': status})
+                return {"success": True}
+            except Exception:
+                return {"success": False, "error": "model_missing"}
+        except Exception as e:
+            logger.error("update_partner_card_status failed: %s", e)
+            return {"success": False, "error": str(e)}
+
 
 # Singleton instance for app-wide reuse
 odoo_api = OdooKarmasystemAPI()

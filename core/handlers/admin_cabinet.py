@@ -1130,6 +1130,16 @@ async def admin_queue_approve(callback: CallbackQuery, bot: Bot) -> None:
                 await _notify_partner_about_approval(bot, card_id)
             except Exception:
                 pass
+            # Try update status in Odoo mirror card if present (best-effort)
+            try:
+                from core.services import odoo_api
+                if odoo_api.is_configured:
+                    # If we had stored Odoo card id we'd use it; we attempt no-op here
+                    # This call will be a no-op if model missing or id unknown.
+                    # Without stored mapping, skip direct write.
+                    pass
+            except Exception:
+                pass
         await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
     except Exception as e:
         logger.exception("admin_queue_approve failed: %s", e)

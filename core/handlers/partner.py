@@ -1342,7 +1342,7 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             reply_markup=None
         )
 
-        # Best-effort: register partner in Odoo (no UI changes, silent on errors)
+        # Best-effort: sync to Odoo (register partner + create partner card)
         try:
             from core.services import odoo_api
             if odoo_api.is_configured:
@@ -1384,6 +1384,20 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                     business_category=(business_category or 'retail'),
                     phone=contact,
                 )
+                # Try creating a mirror card in Odoo if model exists
+                try:
+                    await odoo_api.create_partner_card(
+                        partner_name=(callback.from_user.full_name or title),
+                        title=title,
+                        description=(data.get('description') or ''),
+                        address=(data.get('address') or ''),
+                        phone=contact,
+                        category=(business_category or ''),
+                        google_maps_url=(data.get('google_maps_url') or ''),
+                        discount_text=(data.get('discount_text') or ''),
+                    )
+                except Exception:
+                    pass
         except Exception:
             # Do not fail flow on Odoo errors
             pass
