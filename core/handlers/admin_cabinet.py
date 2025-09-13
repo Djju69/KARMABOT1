@@ -1134,10 +1134,10 @@ async def admin_queue_approve(callback: CallbackQuery, bot: Bot) -> None:
             try:
                 from core.services import odoo_api
                 if odoo_api.is_configured:
-                    # If we had stored Odoo card id we'd use it; we attempt no-op here
-                    # This call will be a no-op if model missing or id unknown.
-                    # Without stored mapping, skip direct write.
-                    pass
+                    card = db_v2.get_card_by_id(card_id)
+                    ocid = int(card.get('odoo_card_id') or 0) if card else 0
+                    if ocid:
+                        await odoo_api.update_partner_card_status(card_id=ocid, status='published')
             except Exception:
                 pass
         await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
@@ -1160,6 +1160,17 @@ async def admin_queue_reject(callback: CallbackQuery) -> None:
         card_id = int(parts[3]); page = int(parts[4])
         ok = db_v2.update_card_status(card_id, 'rejected')
         await callback.answer("🛑 Отклонено" if ok else "⚠️ Не удалось")
+        if ok:
+            # Best-effort sync to Odoo
+            try:
+                from core.services import odoo_api
+                if odoo_api.is_configured:
+                    card = db_v2.get_card_by_id(card_id)
+                    ocid = int(card.get('odoo_card_id') or 0) if card else 0
+                    if ocid:
+                        await odoo_api.update_partner_card_status(card_id=ocid, status='rejected')
+            except Exception:
+                pass
         await _render_queue_page(callback.message, callback.from_user.id, page=page, edit=True)
     except Exception as e:
         logger.exception("admin_queue_reject failed: %s", e)

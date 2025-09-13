@@ -694,6 +694,29 @@ class DatabaseMigrator:
                 logger.info("🔓 Released PG advisory lock for migrations")
             except Exception as e:
                 logger.warning(f"⚠️ Could not release advisory lock: {e}")
+        # 023: Add odoo_card_id to cards_v2 for mapping
+        try:
+            version = "023"
+            desc = "EXPAND: Add odoo_card_id column to cards_v2 for Odoo mapping"
+            if not self.is_migration_applied(version):
+                if self._is_memory or not self._is_postgres():
+                    with self.get_connection() as conn:
+                        cur = conn.execute("PRAGMA table_info(cards_v2)")
+                        cols = {row[1] for row in cur.fetchall()}
+                        if 'odoo_card_id' not in cols:
+                            conn.execute("ALTER TABLE cards_v2 ADD COLUMN odoo_card_id INTEGER")
+                        conn.execute(
+                            "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                            (version, desc),
+                        )
+                        conn.commit()
+                else:
+                    sql = """
+                    ALTER TABLE cards_v2 ADD COLUMN IF NOT EXISTS odoo_card_id BIGINT;
+                    """
+                    self.apply_migration(version, desc, sql)
+        except Exception as e:
+            logger.warning(f"023 migration skipped or failed safely: {e}")
 
     def migrate_001_1_add_categories_created_at(self):
         """

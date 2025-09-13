@@ -178,6 +178,15 @@ class DatabaseServiceV2:
                 card.subcategory_id, card.city_id, card.area_id
             ))
             return cursor.lastrowid
+
+    def update_card_odoo_id(self, card_id: int, odoo_card_id: int) -> bool:
+        """Store Odoo card id mapping for a bot card."""
+        with self.get_connection() as conn:
+            cur = conn.execute(
+                "UPDATE cards_v2 SET odoo_card_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (int(odoo_card_id), int(card_id)),
+            )
+            return (cur.rowcount or 0) > 0
     
     def update_card_status(self, card_id: int, status: str, moderator_id: int = None, comment: str = None) -> bool:
         """Update card status with moderation log"""

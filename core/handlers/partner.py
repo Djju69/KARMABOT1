@@ -1386,7 +1386,7 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                 )
                 # Try creating a mirror card in Odoo if model exists
                 try:
-                    await odoo_api.create_partner_card(
+                    od = await odoo_api.create_partner_card(
                         partner_name=(callback.from_user.full_name or title),
                         title=title,
                         description=(data.get('description') or ''),
@@ -1396,6 +1396,11 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
                         google_maps_url=(data.get('google_maps_url') or ''),
                         discount_text=(data.get('discount_text') or ''),
                     )
+                    try:
+                        if od and od.get('success') and od.get('card_id'):
+                            db_v2.update_card_odoo_id(card_id, int(od['card_id']))
+                    except Exception:
+                        pass
                 except Exception:
                     pass
         except Exception:
