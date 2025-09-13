@@ -18,6 +18,7 @@ from core.keyboards.inline_v2 import (
     get_superadmin_inline, 
     get_superadmin_delete_inline
 )
+from core.utils.locales_v2 import translations, get_text
 from ..keyboards.reply_v2 import get_main_menu_reply, get_admin_keyboard, get_superadmin_keyboard
 from ..database.db_v2 import db_v2
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Dict, List, Optional, Union, cast
 
 from aiogram import Bot, F, Router, html
@@ -16,6 +17,7 @@ from .basic import (
     on_language_select, open_cabinet, user_regional_rest
 )
 from .user_profile import show_profile
+from ..settings import settings
 
 # Импорт функций из category_handlers_v2
 from .category_handlers_v2 import (
@@ -1543,6 +1545,22 @@ async def handle_ai_assistant_entry(message: Message, bot: Bot, state: FSMContex
     except Exception as e:
         logger.error(f"Error opening AI assistant: {e}", exc_info=True)
         await message.answer("❌ Не удалось открыть AI помощника. Попробуйте позже.")
+
+
+@main_menu_router.message(Command("odoo"))
+async def handle_odoo_links(message: Message, bot: Bot, state: FSMContext) -> None:
+    """Отдать ссылки на портал Odoo из ODOO_BASE_URL. Если переменная пуста — подсказка."""
+    base = os.getenv("ODOO_BASE_URL")
+    if not base:
+        await message.answer("ℹ️ Портал ещё не подключён. Установите ODOO_BASE_URL в переменных окружения.")
+        return
+    base = base.rstrip("/")
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Портал партнёра", url=f"{base}/my")],
+        [InlineKeyboardButton(text="Мои счета", url=f"{base}/my/invoices")],
+    ])
+    await message.answer("ODoo портал:", reply_markup=kb)
 
 
 # --- Navigation Handlers ---

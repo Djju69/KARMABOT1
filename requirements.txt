@@ -33,6 +33,7 @@ pyotp==2.9.0
 qrcode[pil]==7.4.2
 pydantic[email]>=2.0.0
 pydantic-settings>=2.0.0
+psycopg2-binary>=2.9.9
 
 # Дополнительные зависимости
 python-dateutil>=2.8.2
