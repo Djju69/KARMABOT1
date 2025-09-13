@@ -1347,13 +1347,18 @@ async def submit_card(callback: CallbackQuery, state: FSMContext):
             try:
                 bot = callback.bot
                 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+                # Полный набор кнопок модерации, как в админской карточке
+                page = 0
                 kb = InlineKeyboardMarkup(inline_keyboard=[
                     [
-                        InlineKeyboardButton(text="✅ Одобрить", callback_data=f"mod_approve:{card_id}"),
-                        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"mod_reject:{card_id}")
+                        InlineKeyboardButton(text="✅ Одобрить", callback_data=f"adm:q:approve:{card_id}:{page}"),
+                        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"adm:q:reject:{card_id}:{page}"),
+                        InlineKeyboardButton(text="✏️ На доработку", callback_data=f"adm:q:revise:{card_id}:{page}")
                     ],
                     [
-                        InlineKeyboardButton(text="📋 Открыть очередь", callback_data="adm:q:page:0")
+                        InlineKeyboardButton(text="📜 История изменений", callback_data=f"adm:q:hist:{card_id}:{page}"),
+                        InlineKeyboardButton(text="📷 Медиа", callback_data=f"gallery:{card_id}"),
+                        InlineKeyboardButton(text="ℹ️ Подробнее", callback_data=f"adm:q:view:{card_id}:{page}")
                     ]
                 ])
                 # Расширенное уведомление для модератора
