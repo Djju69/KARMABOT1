@@ -24,6 +24,8 @@ class Features:
     support_ai: bool = field(default=True)  # AI-ассистент
     support_reports: bool = field(default=True)  # Отчёты через AI
     webapp_url: str = field(default="https://web-production-d51c7.up.railway.app/webapp")
+    # Verbose admin back labels (SuperAdmin-approved; off by default, behind feature flag)
+    verbose_admin_back: bool = field(default=False)
     
     def __post_init__(self):
         """Initialize feature flags from environment variables"""
@@ -38,6 +40,7 @@ class Features:
         self.support_voice = env.bool('FEATURE_SUPPORT_VOICE', self.support_voice)
         self.support_ai = env.bool('FEATURE_SUPPORT_AI', self.support_ai)
         self.support_reports = env.bool('FEATURE_SUPPORT_REPORTS', self.support_reports)
+        self.verbose_admin_back = env.bool('FEATURE_VERBOSE_ADMIN_BACK', self.verbose_admin_back)
         
         # Log current feature flags
         logger = logging.getLogger(__name__)
@@ -49,6 +52,7 @@ class Features:
         logger.info(f"[FEATURES] Support Voice: {self.support_voice}")
         logger.info(f"[FEATURES] Support AI: {self.support_ai}")
         logger.info(f"[FEATURES] Support Reports: {self.support_reports}")
+        logger.info(f"[FEATURES] Verbose Admin Back: {self.verbose_admin_back}")
 
 # Back-compat alias for tests expecting FeatureFlags with all-false defaults
 class FeatureFlags:

@@ -41,13 +41,18 @@ def get_main_menu_reply(lang: str = 'ru', user_id: int | None = None) -> ReplyKe
 def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Admin cabinet keyboard."""
     t = get_all_texts(lang)
+    back_label = (
+        get_text('back_admin_verbose', lang)
+        if getattr(settings.features, 'verbose_admin_back', False)
+        else get_text('back_admin', lang)
+    )
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=t['admin_menu_queue']), KeyboardButton(text=t['admin_menu_search'])],
             [KeyboardButton(text=t['admin_menu_reports']), KeyboardButton(text='👥 Пользователи')],
             [KeyboardButton(text=get_text('partners', lang)), KeyboardButton(text=get_text('newsletter', lang))],
             [KeyboardButton(text=get_text('settings', lang)), KeyboardButton(text=get_text('help', lang))],
-            [KeyboardButton(text=get_text('back_admin', lang))]
+            [KeyboardButton(text=back_label)]
         ],
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
@@ -56,12 +61,17 @@ def get_admin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 def get_superadmin_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Super-admin cabinet keyboard (can be extended with extra rows)."""
     t = get_all_texts(lang)
+    back_label = (
+        get_text('back_superadmin_verbose', lang)
+        if getattr(settings.features, 'verbose_admin_back', False)
+        else get_text('back_admin', lang)
+    )
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=t['admin_menu_queue'])],
             [KeyboardButton(text=t['admin_menu_search']), KeyboardButton(text=t['admin_menu_reports'])],
             # extra superadmin-specific entries can be added here later
-            [KeyboardButton(text=get_text('back_admin', lang))]
+            [KeyboardButton(text=back_label)]
         ],
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)

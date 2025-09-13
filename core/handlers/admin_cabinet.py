@@ -932,9 +932,15 @@ async def admin_menu_reports_entry(message: Message, bot: Bot, state: FSMContext
         logger.error(f"Error in admin_menu_reports_entry: {e}", exc_info=True)
         await message.answer("❌ Произошла ошибка при загрузке отчёта. Пожалуйста, попробуйте позже.")
 
-@router.message(F.text.in_([
-    t.get('back_admin', '') for t in translations.values() if t.get('back_admin')
-]))
+@router.message(F.text.in_(
+    [
+        t.get('back_admin', '') for t in translations.values() if t.get('back_admin')
+    ] + [
+        t.get('back_admin_verbose', '') for t in translations.values() if t.get('back_admin_verbose')
+    ] + [
+        t.get('back_superadmin_verbose', '') for t in translations.values() if t.get('back_superadmin_verbose')
+    ]
+))
 async def admin_menu_back_to_main(message: Message, bot: Bot, state: FSMContext) -> None:
     """
     Возвращает пользователя в главное меню из админ-панели.
