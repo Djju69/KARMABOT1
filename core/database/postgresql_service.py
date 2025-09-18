@@ -59,8 +59,8 @@ class PostgreSQLService:
             self._pool = None
             logger.info("✅ PostgreSQL connection pool closed")
     
-    async def get_connection(self):
-        """Get connection from pool"""
+    async def get_pool(self):
+        """Get connection pool"""
         if not self._pool:
             await self.init_pool()
         return self._pool
@@ -95,7 +95,7 @@ class PostgreSQLService:
     # Partner methods
     async def get_partner_by_tg_id(self, tg_user_id: int) -> Optional[Partner]:
         """Get partner by Telegram user ID"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM partners_v2 WHERE tg_user_id = $1",
@@ -117,7 +117,7 @@ class PostgreSQLService:
     
     async def create_partner(self, partner: Partner) -> int:
         """Create new partner, return ID"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -151,7 +151,7 @@ class PostgreSQLService:
     # Card methods
     async def create_card(self, card: Card) -> int:
         """Create new card, return ID"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """
@@ -166,7 +166,7 @@ class PostgreSQLService:
     
     async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
         """Get cards by category with pagination"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 """
@@ -189,7 +189,7 @@ class PostgreSQLService:
     
     async def get_categories(self) -> List[Dict]:
         """Get all active categories"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM categories_v2 WHERE is_active = true ORDER BY priority_level DESC, name"
@@ -198,14 +198,14 @@ class PostgreSQLService:
     
     async def get_cards_count(self) -> int:
         """Get total number of cards"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT COUNT(*) FROM cards_v2")
             return row[0]
     
     async def get_partners_count(self) -> int:
         """Get total number of partners"""
-        pool = await self.get_connection()
+        pool = await self.get_pool()
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT COUNT(*) FROM partners_v2")
             return row[0]
