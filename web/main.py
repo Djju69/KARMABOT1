@@ -311,6 +311,13 @@ async def webhook_handler(request: Request):
         logging.error(f"Webhook error: {e}")
         return {"ok": False, "error": str(e)}
 
+# WebApp root endpoint
+@app.get("/")
+async def root_webapp():
+    """Serve WebApp on root path"""
+    from fastapi.responses import FileResponse
+    return FileResponse("webapp/user-cabinet.html")
+
 # Fallback webhook endpoint for root path (compatibility)
 @app.post("/")
 async def root_webhook_handler(request: Request):
