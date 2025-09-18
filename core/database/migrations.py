@@ -2325,14 +2325,24 @@ class DatabaseMigrator:
             logger.error(f"Failed to apply migration {version}: {e}")
             raise
 
-# Global migrator instance
-migrator = DatabaseMigrator()
+# Global migrator instance - use PostgreSQL in production
+import os
+db_path = os.getenv("DATABASE_URL", "core/database/data.db")
+if db_path.startswith("postgresql://"):
+    # Skip SQLite migrations in production with PostgreSQL
+    db_path = None
+migrator = DatabaseMigrator(db_path) if db_path else None
 
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
     # Only run migrations if APPLY_MIGRATIONS=1
     if os.getenv("APPLY_MIGRATIONS", "0") != "1":
         logger.info("Skipping database migrations (APPLY_MIGRATIONS != 1)")
+        return
+    
+    # Skip SQLite migrations if using PostgreSQL
+    if migrator is None:
+        logger.info("Skipping SQLite migrations (using PostgreSQL)")
         return
         
     try:
