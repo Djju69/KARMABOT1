@@ -5,6 +5,7 @@ import os
 import asyncio
 import asyncpg
 import logging
+import threading
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
@@ -43,6 +44,7 @@ class PostgreSQLService:
     def __init__(self, database_url: str):
         self.database_url = database_url
         self._pool = None
+        self._lock = threading.Lock()
     
     async def init_pool(self):
         """Initialize connection pool"""
@@ -62,6 +64,33 @@ class PostgreSQLService:
         if not self._pool:
             await self.init_pool()
         return self._pool
+    
+    def _run_async(self, coro):
+        """Run async coroutine in sync context"""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If we're in an async context, run in separate thread
+                result = [None]
+                exception = [None]
+                
+                def target():
+                    try:
+                        result[0] = asyncio.run(coro)
+                    except Exception as e:
+                        exception[0] = e
+                
+                thread = threading.Thread(target=target)
+                thread.start()
+                thread.join()
+                
+                if exception[0]:
+                    raise exception[0]
+                return result[0]
+            else:
+                return loop.run_until_complete(coro)
+        except RuntimeError:
+            return asyncio.run(coro)
     
     # Partner methods
     async def get_partner_by_tg_id(self, tg_user_id: int) -> Optional[Partner]:
@@ -180,6 +209,39 @@ class PostgreSQLService:
         async with pool.acquire() as conn:
             row = await conn.fetchrow("SELECT COUNT(*) FROM partners_v2")
             return row[0]
+    
+    # Synchronous methods for compatibility
+    def get_categories_sync(self) -> List[Dict]:
+        """Get all active categories (sync)"""
+        return self._run_async(self.get_categories())
+    
+    def get_cards_by_category_sync(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
+        """Get cards by category (sync)"""
+        return self._run_async(self.get_cards_by_category(category_slug, status, limit))
+    
+    def get_partner_by_tg_id_sync(self, tg_user_id: int) -> Optional[Partner]:
+        """Get partner by Telegram user ID (sync)"""
+        return self._run_async(self.get_partner_by_tg_id(tg_user_id))
+    
+    def create_partner_sync(self, partner: Partner) -> int:
+        """Create new partner (sync)"""
+        return self._run_async(self.create_partner(partner))
+    
+    def get_or_create_partner_sync(self, tg_user_id: int, display_name: str) -> Partner:
+        """Get existing partner or create new one (sync)"""
+        return self._run_async(self.get_or_create_partner(tg_user_id, display_name))
+    
+    def create_card_sync(self, card: Card) -> int:
+        """Create new card (sync)"""
+        return self._run_async(self.create_card(card))
+    
+    def get_cards_count_sync(self) -> int:
+        """Get total number of cards (sync)"""
+        return self._run_async(self.get_cards_count())
+    
+    def get_partners_count_sync(self) -> int:
+        """Get total number of partners (sync)"""
+        return self._run_async(self.get_partners_count())
 
 # Global instance
 _postgresql_service = None

@@ -668,7 +668,7 @@ class DatabaseServiceV2:
             return cursor.fetchone()[0]
 
 # Global database service instance - use adapter instead
-# db_v2 = DatabaseServiceV2()  # Moved to db_adapter.py
+from .db_adapter import db_v2
 
 def get_db():
     """
