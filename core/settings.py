@@ -44,8 +44,8 @@ class Features:
         self.support_reports = env.bool('FEATURE_SUPPORT_REPORTS', self.support_reports)
         self.verbose_admin_back = env.bool('FEATURE_VERBOSE_ADMIN_BACK', self.verbose_admin_back)
         
-        # Force use bot's own domain for WebApp
-        self.webapp_url = "https://karmabot-production.up.railway.app/webapp"
+        # Force use working domain for WebApp
+        self.webapp_url = "https://webbot-production-42fe.up.railway.app/webapp"
         
         # Log current feature flags
         logger = logging.getLogger(__name__)
