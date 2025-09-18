@@ -1,13 +1,21 @@
-[build]
-builder = "nixpacks"
+[[services]]
+name = "bot"
+source = "."
 
-[deploy] 
+[services.build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
 startCommand = "python main_v2.py"
 
-[environments.production.services.WebBot]
-build.builder = "nixpacks"
-deploy.startCommand = "python main_v2.py"
+[[services]]
+name = "odoo"
+source = "."
 
-[environments.production.services.Odoo]
-build.builder = "dockerfile"
-build.dockerfilePath = "Dockerfile"
+[services.build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
+# Пустой блок - Odoo запускается автоматически
