@@ -1,12 +1,12 @@
 [build]
-builder = "nixpacks"
+builder = "dockerfile"
 
 [deploy]
 startCommand = "python main_v2.py"
 
 [environments.production.services.bot]
-build.builder = "nixpacks"
-deploy.startCommand = "python main_v2.py"
+build.builder = "dockerfile"
+build.dockerfilePath = "Dockerfile"
 
 [environments.production.services.odoo]
 build.builder = "dockerfile"
