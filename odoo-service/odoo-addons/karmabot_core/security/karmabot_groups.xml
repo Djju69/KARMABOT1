@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- KarmaBot User Group -->
+        <record id="group_karmabot_user" model="res.groups">
+            <field name="name">KarmaBot User</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="comment">Regular KarmaBot users with basic access</field>
+            <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+        </record>
+        
+        <!-- KarmaBot Partner Group -->
+        <record id="group_karmabot_partner" model="res.groups">
+            <field name="name">KarmaBot Partner</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="comment">KarmaBot partners who can create and manage cards</field>
+            <field name="implied_ids" eval="[(4, ref('group_karmabot_user'))]"/>
+        </record>
+        
+        <!-- KarmaBot Admin Group -->
+        <record id="group_karmabot_admin" model="res.groups">
+            <field name="name">KarmaBot Admin</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="comment">KarmaBot administrators with moderation rights</field>
+            <field name="implied_ids" eval="[(4, ref('group_karmabot_partner'))]"/>
+        </record>
+        
+        <!-- KarmaBot Super Admin Group -->
+        <record id="group_karmabot_super_admin" model="res.groups">
+            <field name="name">KarmaBot Super Admin</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="comment">KarmaBot super administrators with full system access</field>
+            <field name="implied_ids" eval="[(4, ref('group_karmabot_admin'))]"/>
+        </record>
+        
+        <!-- KarmaBot Manager Group -->
+        <record id="group_karmabot_manager" model="res.groups">
+            <field name="name">KarmaBot Manager</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="comment">KarmaBot managers with access to reports and analytics</field>
+            <field name="implied_ids" eval="[(4, ref('group_karmabot_admin'))]"/>
+        </record>
+        
+    </data>
+</odoo>

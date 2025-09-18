@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        
+        <!-- Demo Partner Cards -->
+        <record id="demo_card_1" model="karmabot.partner.card">
+            <field name="name">Pizza Palace</field>
+            <field name="partner_id" ref="karmabot_core.demo_user_2"/>
+            <field name="category_id" ref="karmabot_core.category_restaurant"/>
+            <field name="description">Best pizza in town with fresh ingredients and fast delivery</field>
+            <field name="address">123 Main Street, City Center</field>
+            <field name="phone">+1-555-0123</field>
+            <field name="email">info@pizzapalace.com</field>
+            <field name="website">https://pizzapalace.com</field>
+            <field name="discount_percent">15.0</field>
+            <field name="special_offers">Free delivery on orders over $20</field>
+            <field name="status">published</field>
+            <field name="views_count">150</field>
+            <field name="scans_count">45</field>
+        </record>
+        
+        <record id="demo_card_2" model="karmabot.partner.card">
+            <field name="name">Coffee Corner</field>
+            <field name="partner_id" ref="karmabot_core.demo_user_2"/>
+            <field name="category_id" ref="karmabot_core.category_restaurant"/>
+            <field name="description">Cozy coffee shop with artisanal blends and homemade pastries</field>
+            <field name="address">456 Oak Avenue, Downtown</field>
+            <field name="phone">+1-555-0456</field>
+            <field name="email">hello@coffeecorner.com</field>
+            <field name="website">https://coffeecorner.com</field>
+            <field name="discount_percent">10.0</field>
+            <field name="special_offers">Buy 2 get 1 free on pastries</field>
+            <field name="status">pending</field>
+            <field name="views_count">75</field>
+            <field name="scans_count">20</field>
+        </record>
+        
+        <record id="demo_card_3" model="karmabot.partner.card">
+            <field name="name">Fitness First</field>
+            <field name="partner_id" ref="karmabot_core.demo_user_2"/>
+            <field name="category_id" ref="karmabot_core.category_fitness"/>
+            <field name="description">Modern gym with state-of-the-art equipment and personal trainers</field>
+            <field name="address">789 Fitness Lane, Sports District</field>
+            <field name="phone">+1-555-0789</field>
+            <field name="email">info@fitnessfirst.com</field>
+            <field name="website">https://fitnessfirst.com</field>
+            <field name="discount_percent">20.0</field>
+            <field name="special_offers">Free trial week for new members</field>
+            <field name="status">approved</field>
+            <field name="views_count">200</field>
+            <field name="scans_count">60</field>
+        </record>
+        
+        <!-- Demo QR Codes -->
+        <record id="demo_qr_1" model="karmabot.qr_code">
+            <field name="partner_card_id" ref="demo_card_1"/>
+            <field name="qr_data">KARMA_CARD:pizza-palace-001</field>
+            <field name="qr_type">card</field>
+            <field name="is_active">True</field>
+            <field name="scans_count">45</field>
+            <field name="unique_scans_count">35</field>
+        </record>
+        
+        <record id="demo_qr_2" model="karmabot.qr_code">
+            <field name="partner_card_id" ref="demo_card_2"/>
+            <field name="qr_data">KARMA_CARD:coffee-corner-002</field>
+            <field name="qr_type">card</field>
+            <field name="is_active">True</field>
+            <field name="scans_count">20</field>
+            <field name="unique_scans_count">18</field>
+        </record>
+        
+        <record id="demo_qr_3" model="karmabot.qr_code">
+            <field name="partner_card_id" ref="demo_card_3"/>
+            <field name="qr_data">KARMA_CARD:fitness-first-003</field>
+            <field name="qr_type">card</field>
+            <field name="is_active">True</field>
+            <field name="scans_count">60</field>
+            <field name="unique_scans_count">45</field>
+        </record>
+        
+    </data>
+</odoo>

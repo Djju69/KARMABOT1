@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Admin Dashboard Template -->
+    <template id="admin_dashboard" name="KarmaBot Admin Dashboard">
+        <t t-call="web.layout">
+            <t t-set="title">KarmaBot - Admin Dashboard</t>
+            <div class="container-fluid mt-4">
+                <!-- Header -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h2 class="mb-1">
+                                            <i class="fa fa-shield-alt"></i> 
+                                            Admin Dashboard
+                                        </h2>
+                                        <p class="mb-0">
+                                            Welcome, <t t-esc="user.name"/> (<t t-esc="user.role.title()"/>)
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <button class="btn btn-light btn-sm" onclick="refreshDashboard()">
+                                            <i class="fa fa-sync-alt"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Metrics -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-primary">
+                                    <t t-esc="dashboard_data.user_stats.total_users"/>
+                                </h4>
+                                <p class="mb-0">Total Users</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-success">
+                                    <t t-esc="dashboard_data.user_stats.active_users"/>
+                                </h4>
+                                <p class="mb-0">Active Users</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-warning">
+                                    <t t-esc="dashboard_data.card_stats.pending_cards"/>
+                                </h4>
+                                <p class="mb-0">Pending Cards</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                                <h4 class="text-info">
+                                    <t t-esc="dashboard_data.card_stats.published_cards"/>
+                                </h4>
+                                <p class="mb-0">Published Cards</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fa fa-bolt"></i> Quick Actions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <button class="btn btn-warning btn-block" onclick="moderateCards()">
+                                            <i class="fa fa-gavel"></i> Moderate Cards
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-info btn-block" onclick="manageUsers()">
+                                            <i class="fa fa-users"></i> Manage Users
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-success btn-block" onclick="viewAnalytics()">
+                                            <i class="fa fa-chart-bar"></i> View Analytics
+                                        </button>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button class="btn btn-secondary btn-block" onclick="systemSettings()">
+                                            <i class="fa fa-cog"></i> System Settings
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fa fa-clock"></i> Recent Cards</h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="dashboard_data.recent_activity.recent_cards">
+                                    <div class="list-group">
+                                        <t t-foreach="dashboard_data.recent_activity.recent_cards" t-as="card">
+                                            <div class="list-group-item">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1"><t t-esc="card.name"/></h6>
+                                                    <small><t t-esc="card.created_at"/></small>
+                                                </div>
+                                                <p class="mb-1">
+                                                    Partner: <t t-esc="card.partner"/>
+                                                    <br/>
+                                                    Category: <t t-esc="card.category"/>
+                                                </p>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-success btn-sm" onclick="approveCard(<t t-esc="card.id"/>)">
+                                                        <i class="fa fa-check"></i> Approve
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm" onclick="rejectCard(<t t-esc="card.id"/>)">
+                                                        <i class="fa fa-times"></i> Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-clock fa-3x mb-3"></i>
+                                        <p>No recent cards</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fa fa-user-plus"></i> Recent Users</h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="dashboard_data.recent_activity.recent_users">
+                                    <div class="list-group">
+                                        <t t-foreach="dashboard_data.recent_activity.recent_users" t-as="user">
+                                            <div class="list-group-item">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <h6 class="mb-1"><t t-esc="user.name"/></h6>
+                                                    <small><t t-esc="user.created_at"/></small>
+                                                </div>
+                                                <p class="mb-1">
+                                                    Username: @<t t-esc="user.username or 'No username'"/>
+                                                    <br/>
+                                                    Role: <span class="badge badge-info"><t t-esc="user.role.title()"/></span>
+                                                </p>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-info btn-sm" onclick="viewUser(<t t-esc="user.id"/>)">
+                                                        <i class="fa fa-eye"></i> View
+                                                    </button>
+                                                    <button class="btn btn-warning btn-sm" onclick="manageUser(<t t-esc="user.id"/>)">
+                                                        <i class="fa fa-cog"></i> Manage
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-user-plus fa-3x mb-3"></i>
+                                        <p>No recent users</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="row mt-4">
+                    <div class="col-12 text-center">
+                        <small class="text-muted">
+                            <i class="fa fa-shield-alt"></i> 
+                            Admin Dashboard - Secured with SSO
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                const ssoToken = '<t t-esc="sso_token"/>';
+                
+                function refreshDashboard() {
+                    fetch('/admin/api/dashboard-data', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            sso_token: ssoToken
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload();
+                        } else {
+                            alert('Error refreshing dashboard: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error refreshing dashboard');
+                    });
+                }
+                
+                function moderateCards() {
+                    window.location.href = '/web#menu_id=karmabot_cards.action_karmabot_partner_card&sso=' + ssoToken;
+                }
+                
+                function manageUsers() {
+                    window.location.href = '/web#menu_id=karmabot_core.action_karmabot_user&sso=' + ssoToken;
+                }
+                
+                function viewAnalytics() {
+                    window.location.href = '/web#menu_id=karmabot_loyalty.action_karmabot_loyalty_transaction&sso=' + ssoToken;
+                }
+                
+                function systemSettings() {
+                    window.location.href = '/web#menu_id=karmabot_core.menu_karmabot_config&sso=' + ssoToken;
+                }
+                
+                function approveCard(cardId) {
+                    if (confirm('Are you sure you want to approve this card?')) {
+                        moderateCard(cardId, 'approve');
+                    }
+                }
+                
+                function rejectCard(cardId) {
+                    const reason = prompt('Please enter rejection reason:');
+                    if (reason) {
+                        moderateCard(cardId, 'reject', reason);
+                    }
+                }
+                
+                function moderateCard(cardId, action, reason = '') {
+                    fetch('/admin/api/moderate-card', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            sso_token: ssoToken,
+                            card_id: cardId,
+                            action: action,
+                            reason: reason
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            refreshDashboard();
+                        } else {
+                            alert('Error: ' + data.error);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error moderating card');
+                    });
+                }
+                
+                function viewUser(userId) {
+                    window.location.href = '/web#id=' + userId + '&model=karmabot.user&view_type=form&sso=' + ssoToken;
+                }
+                
+                function manageUser(userId) {
+                    // Open user management modal or redirect
+                    window.location.href = '/web#id=' + userId + '&model=karmabot.user&view_type=form&sso=' + ssoToken;
+                }
+                
+                // Auto-refresh every 30 seconds
+                setInterval(refreshDashboard, 30000);
+            </script>
+        </t>
+    </template>
+    
+</odoo>

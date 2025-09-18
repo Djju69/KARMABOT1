@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- KarmaBot Category Tree View -->
+    <record id="view_karmabot_category_tree" model="ir.ui.view">
+        <field name="name">karmabot.category.tree</field>
+        <field name="model">karmabot.category</field>
+        <field name="arch" type="xml">
+            <tree string="KarmaBot Categories" decoration-info="not is_active">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="icon"/>
+                <field name="color" widget="color"/>
+                <field name="cards_count"/>
+                <field name="is_active"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- KarmaBot Category Form View -->
+    <record id="view_karmabot_category_form" model="ir.ui.view">
+        <field name="name">karmabot.category.form</field>
+        <field name="model">karmabot.category</field>
+        <field name="arch" type="xml">
+            <form string="KarmaBot Category">
+                <header>
+                    <button name="action_view_cards" string="View Cards" type="object" class="btn-primary"/>
+                    <field name="is_active" widget="statusbar" statusbar_visible="active"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_cards" type="object" class="oe_stat_button" icon="fa-credit-card">
+                            <field name="cards_count" widget="statinfo" string="Cards"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Category Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="icon"/>
+                            <field name="color" widget="color"/>
+                            <field name="sequence"/>
+                            <field name="is_active"/>
+                        </group>
+                        <group>
+                            <field name="name_ru"/>
+                            <field name="name_en"/>
+                            <field name="name_vi"/>
+                            <field name="name_ko"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- KarmaBot Category Search View -->
+    <record id="view_karmabot_category_search" model="ir.ui.view">
+        <field name="name">karmabot.category.search</field>
+        <field name="model">karmabot.category</field>
+        <field name="arch" type="xml">
+            <search string="Search Categories">
+                <field name="name"/>
+                <field name="icon"/>
+                <separator/>
+                <filter string="Active Categories" name="active" domain="[('is_active', '=', True)]"/>
+                <filter string="Categories with Cards" name="with_cards" domain="[('cards_count', '>', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Active Status" name="group_active" context="{'group_by': 'is_active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- KarmaBot Category Action -->
+    <record id="action_karmabot_category" model="ir.actions.act_window">
+        <field name="name">KarmaBot Categories</field>
+        <field name="res_model">karmabot.category</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_karmabot_category_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+    
+</odoo>

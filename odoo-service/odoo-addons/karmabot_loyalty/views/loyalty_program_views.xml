@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Loyalty Program Tree View -->
+    <record id="view_karmabot_loyalty_program_tree" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.program.tree</field>
+        <field name="model">karmabot.loyalty.program</field>
+        <field name="arch" type="xml">
+            <tree string="Loyalty Programs" decoration-info="not is_active">
+                <field name="name"/>
+                <field name="program_code"/>
+                <field name="is_active"/>
+                <field name="points_per_scan"/>
+                <field name="referral_bonus"/>
+                <field name="total_users"/>
+                <field name="active_users"/>
+                <field name="total_points_earned"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Loyalty Program Form View -->
+    <record id="view_karmabot_loyalty_program_form" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.program.form</field>
+        <field name="model">karmabot.loyalty.program</field>
+        <field name="arch" type="xml">
+            <form string="Loyalty Program">
+                <header>
+                    <button name="action_export_statistics" string="Export Statistics" type="object" class="btn-primary"/>
+                    <field name="is_active" widget="statusbar" statusbar_visible="active"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_users" type="object" class="oe_stat_button" icon="fa-users">
+                            <field name="total_users" widget="statinfo" string="Total Users"/>
+                        </button>
+                        <button name="action_view_active_users" type="object" class="oe_stat_button" icon="fa-user-check">
+                            <field name="active_users" widget="statinfo" string="Active Users"/>
+                        </button>
+                        <button name="action_view_transactions" type="object" class="oe_stat_button" icon="fa-list">
+                            <field name="total_points_earned" widget="statinfo" string="Points Earned"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Program Name"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="program_code"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="is_active"/>
+                        </group>
+                        <group>
+                            <field name="points_per_scan"/>
+                            <field name="referral_bonus"/>
+                            <field name="welcome_bonus"/>
+                            <field name="daily_login_bonus"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="max_points_per_day"/>
+                            <field name="max_scans_per_place"/>
+                            <field name="min_redeem_points"/>
+                            <field name="points_expiry_days"/>
+                        </group>
+                        <group>
+                            <field name="redemption_rate"/>
+                            <field name="max_redemption_per_day"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Level System" name="levels">
+                            <group>
+                                <group>
+                                    <field name="level_system_enabled"/>
+                                    <field name="level_thresholds"/>
+                                    <field name="level_names"/>
+                                </group>
+                                <group>
+                                    <field name="level_multiplier"/>
+                                    <field name="max_level_multiplier"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Anti-Fraud" name="fraud">
+                            <group>
+                                <group>
+                                    <field name="fraud_check_enabled"/>
+                                    <field name="fraud_score_threshold"/>
+                                    <field name="geolocation_check"/>
+                                    <field name="max_distance_km"/>
+                                </group>
+                                <group>
+                                    <field name="enable_ip_check"/>
+                                    <field name="enable_device_fingerprint"/>
+                                    <field name="fraud_cooldown_minutes"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Features" name="features">
+                            <group>
+                                <group>
+                                    <field name="enable_achievements"/>
+                                    <field name="enable_levels"/>
+                                    <field name="enable_referrals"/>
+                                    <field name="enable_daily_bonus"/>
+                                </group>
+                                <group>
+                                    <field name="referral_expiry_days"/>
+                                    <field name="max_referrals_per_user"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Analytics" name="analytics">
+                            <group>
+                                <group>
+                                    <field name="total_users"/>
+                                    <field name="active_users"/>
+                                    <field name="total_points_earned"/>
+                                    <field name="total_points_spent"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Loyalty Program Search View -->
+    <record id="view_karmabot_loyalty_program_search" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.program.search</field>
+        <field name="model">karmabot.loyalty.program</field>
+        <field name="arch" type="xml">
+            <search string="Search Loyalty Programs">
+                <field name="name"/>
+                <field name="program_code"/>
+                <separator/>
+                <filter string="Active Programs" name="active" domain="[('is_active', '=', True)]"/>
+                <filter string="Programs with Users" name="with_users" domain="[('total_users', '>', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Active Status" name="group_active" context="{'group_by': 'is_active'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Loyalty Program Action -->
+    <record id="action_karmabot_loyalty_program" model="ir.actions.act_window">
+        <field name="name">Loyalty Programs</field>
+        <field name="res_model">karmabot.loyalty.program</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_karmabot_loyalty_program_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+    
+</odoo>

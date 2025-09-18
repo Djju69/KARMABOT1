@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Default Loyalty Program -->
+        <record id="loyalty_program_default" model="karmabot.loyalty.program">
+            <field name="name">KarmaBot Default Program</field>
+            <field name="is_active">True</field>
+            
+            <!-- Points Configuration -->
+            <field name="points_per_scan">10</field>
+            <field name="referral_bonus">50</field>
+            <field name="welcome_bonus">25</field>
+            <field name="daily_login_bonus">5</field>
+            
+            <!-- Limits and Restrictions -->
+            <field name="max_points_per_day">100</field>
+            <field name="max_scans_per_place">3</field>
+            <field name="min_redeem_points">100</field>
+            <field name="points_expiry_days">365</field>
+            
+            <!-- Redemption Configuration -->
+            <field name="redemption_rate">0.01</field>
+            <field name="max_redemption_per_day">1000</field>
+            
+            <!-- Anti-Fraud Settings -->
+            <field name="fraud_check_enabled">True</field>
+            <field name="fraud_score_threshold">0.7</field>
+            <field name="geolocation_check">True</field>
+            <field name="max_distance_km">1.0</field>
+            
+            <!-- Level System -->
+            <field name="level_system_enabled">True</field>
+            <field name="level_thresholds">[100, 300, 600, 1000, 1500, 2500, 4000, 6000, 10000]</field>
+            <field name="level_names">["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Grandmaster", "Legend", "Mythic"]</field>
+        </record>
+        
+    </data>
+</odoo>

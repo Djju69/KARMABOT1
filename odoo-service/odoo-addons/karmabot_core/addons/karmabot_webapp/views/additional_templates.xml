@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Шаблон для бонусов -->
+    <template id="user_bonuses" name="KarmaBot User Bonuses">
+        <t t-call="web.layout">
+            <t t-set="title">Бонусы и скидки - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>🎁 Бонусы и скидки</h1>
+                    <p>Доступные предложения</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <div class="menu-card">
+                        <div class="menu-icon">💎</div>
+                        <div class="menu-title">Потратить баллы</div>
+                        <div class="menu-desc">100 баллов = 50₽ скидка</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🎂</div>
+                        <div class="menu-title">День рождения</div>
+                        <div class="menu-desc">25% скидка в день рождения</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">👥</div>
+                        <div class="menu-title">Приведи друга</div>
+                        <div class="menu-desc">100 баллов за каждого друга</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🎉</div>
+                        <div class="menu-title">Первая покупка</div>
+                        <div class="menu-desc">20% скидка на первую покупку</div>
+                    </div>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <!-- Шаблон для настроек -->
+    <template id="user_settings" name="KarmaBot User Settings">
+        <t t-call="web.layout">
+            <t t-set="title">Настройки - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>⚙️ Настройки</h1>
+                    <p>Персональные данные</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <div class="menu-card">
+                        <div class="menu-icon">👤</div>
+                        <div class="menu-title">Профиль</div>
+                        <div class="menu-desc">Имя, телефон, email</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🔔</div>
+                        <div class="menu-title">Уведомления</div>
+                        <div class="menu-desc">Настройки уведомлений</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🌍</div>
+                        <div class="menu-title">Язык</div>
+                        <div class="menu-desc">Русский, English, 한국어</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🔒</div>
+                        <div class="menu-title">Безопасность</div>
+                        <div class="menu-desc">Пароль, двухфакторная аутентификация</div>
+                    </div>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <!-- Шаблон для поддержки -->
+    <template id="user_support" name="KarmaBot User Support">
+        <t t-call="web.layout">
+            <t t-set="title">Поддержка - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>📞 Поддержка</h1>
+                    <p>Помощь и контакты</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <div class="menu-card">
+                        <div class="menu-icon">❓</div>
+                        <div class="menu-title">Частые вопросы</div>
+                        <div class="menu-desc">FAQ и ответы</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">💬</div>
+                        <div class="menu-title">Онлайн чат</div>
+                        <div class="menu-desc">Связаться с поддержкой</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">📧</div>
+                        <div class="menu-title">Email поддержка</div>
+                        <div class="menu-desc">support@karmabot.ru</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">📱</div>
+                        <div class="menu-title">Telegram</div>
+                        <div class="menu-desc">@karmabot_support</div>
+                    </div>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <!-- Шаблон для статистики -->
+    <template id="user_statistics" name="KarmaBot User Statistics">
+        <t t-call="web.layout">
+            <t t-set="title">Статистика - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>📊 Статистика</h1>
+                    <p>Аналитика и отчеты</p>
+                </div>
+                
+                <div class="karmabot-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-value">
+                            <t t-if="stats">
+                                <t t-esc="stats.get('total_points', 0)"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Всего баллов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">💎</div>
+                        <div class="stat-value">
+                            <t t-if="stats">
+                                <t t-esc="stats.get('available_points', 0)"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Доступно баллов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-value">
+                            <t t-if="stats">
+                                <t t-esc="stats.get('total_scans', 0)"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Всего сканов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value">
+                            <t t-if="stats">
+                                <t t-esc="stats.get('total_referrals', 0)"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Рефералов</div>
+                    </div>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <div class="menu-card">
+                        <div class="menu-icon">📈</div>
+                        <div class="menu-title">График активности</div>
+                        <div class="menu-desc">Динамика по месяцам</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">🏆</div>
+                        <div class="menu-title">Достижения</div>
+                        <div class="menu-desc">Ваши награды</div>
+                    </div>
+                    
+                    <div class="menu-card">
+                        <div class="menu-icon">📤</div>
+                        <div class="menu-title">Экспорт данных</div>
+                        <div class="menu-desc">Скачать отчеты</div>
+                    </div>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>
