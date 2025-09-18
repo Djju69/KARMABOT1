@@ -229,11 +229,23 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
         # Создать URL WebApp с параметрами авторизации
         from core.services.webapp_integration import webapp_integration
         
-        webapp_url = webapp_integration.create_webapp_url(
-            telegram_id=message.from_user.id,
-            role=user_role,
-            webapp_path='/webapp'
-        )
+        # Определить путь кабинета в зависимости от роли
+        cabinet_paths = {
+            'user': '/user-cabinet.html',
+            'partner': '/partner-cabinet.html', 
+            'admin': '/admin-cabinet.html',
+            'super_admin': '/admin-cabinet.html'
+        }
+        
+        cabinet_path = cabinet_paths.get(user_role, '/user-cabinet.html')
+        
+        # Получить базовый URL из настроек
+        from core.settings import settings
+        webapp_base_url = settings.features.webapp_url.replace('/webapp', '')
+        
+        webapp_url = f"{webapp_base_url}{cabinet_path}"
+        
+        logger.info(f"WebApp URL created for user {message.from_user.id} ({user_role}): {webapp_url}")
         
         # Создаем кнопку WebApp
         from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
@@ -293,11 +305,13 @@ async def handle_admin_cabinet_button(message: Message, bot: Bot, state: FSMCont
         # Создать URL WebApp с параметрами авторизации для админов
         from core.services.webapp_integration import webapp_integration
         
-        webapp_url = webapp_integration.create_webapp_url(
-            telegram_id=message.from_user.id,
-            role=user_role,
-            webapp_path='/webapp'
-        )
+        # Получить базовый URL из настроек
+        from core.settings import settings
+        webapp_base_url = settings.features.webapp_url.replace('/webapp', '')
+        
+        webapp_url = f"{webapp_base_url}/admin-cabinet.html"
+        
+        logger.info(f"Admin WebApp URL created for user {message.from_user.id} ({role_name}): {webapp_url}")
         
         # Создаем кнопку WebApp
         from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo

@@ -44,6 +44,11 @@ class Features:
         self.support_reports = env.bool('FEATURE_SUPPORT_REPORTS', self.support_reports)
         self.verbose_admin_back = env.bool('FEATURE_VERBOSE_ADMIN_BACK', self.verbose_admin_back)
         
+        # Load webapp_url from WEBAPP_BASE_URL environment variable
+        webapp_base_url = env.str('WEBAPP_BASE_URL', '')
+        if webapp_base_url:
+            self.webapp_url = f"{webapp_base_url}/webapp"
+        
         # Log current feature flags
         logger = logging.getLogger(__name__)
         logger.info(f"[FEATURES] New Menu: {self.new_menu}")
