@@ -275,7 +275,7 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
 
 @main_menu_router.message(F.text.in_(["👑 Админ кабинет", "Админ кабинет"]))
 async def handle_admin_cabinet_button(message: Message, bot: Bot, state: FSMContext) -> None:
-    """Обработчик кнопки админ-кабинета."""
+    """Обработчик кнопки админ-кабинета - открывает WebApp."""
     logger.debug(f"User {message.from_user.id} opened admin cabinet")
     if not await ensure_policy_accepted(message, bot, state):
         return
@@ -290,13 +290,49 @@ async def handle_admin_cabinet_button(message: Message, bot: Bot, state: FSMCont
             await message.answer("⛔ Недостаточно прав для доступа к админ-кабинету")
             return
         
-        # Импортируем и вызываем админ-кабинет
-        from core.handlers.admin_cabinet import admin_cabinet_handler
-        await admin_cabinet_handler(message, state)
+        # Создать URL WebApp с параметрами авторизации для админов
+        from core.services.webapp_integration import webapp_integration
+        
+        webapp_url = webapp_integration.create_webapp_url(
+            telegram_id=message.from_user.id,
+            role=user_role,
+            webapp_path='/webapp'
+        )
+        
+        # Создаем кнопку WebApp
+        from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
+        
+        webapp_keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(
+                    text="🌐 Открыть Админ кабинет",
+                    web_app=WebAppInfo(url=webapp_url)
+                )],
+                [KeyboardButton(text="◀️ Назад в главное меню")]
+            ],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+        
+        # Текст в зависимости от роли админа
+        if role_name == "super_admin":
+            description = "• ⚙️ Системные настройки\n• 🔧 Управление модулями\n• 📊 Полная аналитика\n• 👥 Управление пользователями"
+            title = "👑 Супер-админ кабинет WebApp"
+        else:
+            description = "• 📋 Модерация карточек\n• 👥 Управление пользователями\n• 📊 Системная аналитика"
+            title = "🛡️ Админ кабинет WebApp"
+        
+        await message.answer(
+            f"🌐 <b>{title}</b>\n\n"
+            f"Откройте полноценный админ-кабинет в браузере с удобным интерфейсом:\n\n"
+            f"{description}",
+            reply_markup=webapp_keyboard,
+            parse_mode="HTML"
+        )
         
     except Exception as e:
-        logger.error(f"Error in admin cabinet handling: {e}", exc_info=True)
-        await message.answer("❌ Произошла ошибка при открытии админ-кабинета. Пожалуйста, попробуйте позже.")
+        logger.error(f"Error in admin cabinet WebApp handling: {e}", exc_info=True)
+        await message.answer("❌ WebApp временно недоступен. Попробуйте позже.")
 
 
 @main_menu_router.message(F.text.in_([
