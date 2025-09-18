@@ -1062,8 +1062,8 @@ async def main():
     # 8) Ping/catch-alls LAST
     dp.include_router(ping.router)
     
-    # Ensure database is ready
-    ensure_database_ready()
+    # Ensure database is ready (temporarily disabled for Railway)
+    # ensure_database_ready()
     
     # Log environment info
     env = settings.environment or "production"
