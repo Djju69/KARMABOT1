@@ -1285,11 +1285,23 @@ async def main():
 
 if __name__ == "__main__":
     try:
+        # Start web server in background thread
+        import threading
+        from web.main import app
+        import uvicorn
+        
+        def start_web_server():
+            port = int(os.getenv("PORT", 8080))
+            uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+        
+        web_thread = threading.Thread(target=start_web_server)
+        web_thread.daemon = True
+        web_thread.start()
+        
+        # Start bot
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped")
     except Exception as e:
         logger.exception("Fatal error in main()")
-        raise
-
         raise
