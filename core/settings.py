@@ -48,6 +48,9 @@ class Features:
         webapp_base_url = env.str('WEBAPP_BASE_URL', '')
         if webapp_base_url:
             self.webapp_url = f"{webapp_base_url}/webapp"
+        else:
+            # Fallback to bot's own domain
+            self.webapp_url = "https://karmabot-production.up.railway.app/webapp"
         
         # Log current feature flags
         logger = logging.getLogger(__name__)
