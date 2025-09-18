@@ -1,14 +1,43 @@
-# Исключить всё
-**
-# Но включить кастомные модули
-!odoo-addons/
-!odoo-addons/**
-# Включить конфигурацию
-!odoo.conf
-# Можно исключить мусор
+# Исключить мусор
 **__pycache__**/
 *.pyc
 *.pyo
 *.log
 *.sqlite
 .env
+.git
+.github
+docs/
+tests/
+*.md
+*.txt
+!requirements.txt
+!main_v2.py
+!core/
+!bot/
+!api/
+!migrations/
+!locales/
+!templates/
+!web/
+!webapp/
+!scripts/
+!tools/
+!monitoring/
+!grafana/
+!karma-docs/
+!karmabot_backup/
+!karmabot_webapp/
+!karmabot-odoo-module/
+!odoo-addons/
+!odoo.conf
+!docker-entrypoint.sh
+!Dockerfile*
+!*.py
+!*.json
+!*.yaml
+!*.yml
+!*.sh
+!*.ps1
+!*.bat
+!*.cmd
