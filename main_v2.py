@@ -337,6 +337,14 @@ async def main():
     dp.include_router(main_menu_router)
     dp.include_router(language_router)
     
+    # WebApp router for handling WebApp data
+    try:
+        from core.handlers.webapp_handler import webapp_router
+        dp.include_router(webapp_router)
+        logger.info("✅ WebApp router included")
+    except Exception as e:
+        logger.warning("WebApp router not included: %s", e)
+    
     # Set up bot commands
     await set_commands(bot)
     logger.info("✅ Bot commands set")

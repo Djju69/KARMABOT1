@@ -238,23 +238,46 @@
         }
         
         function showFeature(feature) {
-            const messages = {
-                karma: '📊 Функция "Моя карма" в разработке',
-                cards: '💳 Функция "Мои карты" в разработке',
-                points: '💎 Функция "Мои баллы" в разработке',
-                catalog: '🏪 Функция "Каталог мест" в разработке',
-                achievements: '🏆 Функция "Достижения" в разработке',
-                history: '📋 Функция "История" в разработке',
-                notifications: '🔔 Функция "Уведомления" в разработке',
-                language: '🌐 Функция "Язык" в разработке',
-                partner: '🤝 Функция "Стать партнёром" в разработке',
-                help: '❓ Функция "Помощь" в разработке'
-            };
-            
+            // Отправляем команду боту через WebApp
             if (window.Telegram && window.Telegram.WebApp) {
-                window.Telegram.WebApp.showAlert(messages[feature]);
+                const tg = window.Telegram.WebApp;
+                
+                switch(feature) {
+                    case 'cards':
+                        tg.sendData(JSON.stringify({action: 'my_cards'}));
+                        break;
+                    case 'points':
+                        tg.sendData(JSON.stringify({action: 'my_points'}));
+                        break;
+                    case 'catalog':
+                        tg.sendData(JSON.stringify({action: 'catalog'}));
+                        break;
+                    case 'partner':
+                        tg.sendData(JSON.stringify({action: 'become_partner'}));
+                        break;
+                    case 'karma':
+                        tg.sendData(JSON.stringify({action: 'my_karma'}));
+                        break;
+                    case 'achievements':
+                        tg.sendData(JSON.stringify({action: 'achievements'}));
+                        break;
+                    case 'history':
+                        tg.sendData(JSON.stringify({action: 'history'}));
+                        break;
+                    case 'notifications':
+                        tg.sendData(JSON.stringify({action: 'notifications'}));
+                        break;
+                    case 'language':
+                        tg.sendData(JSON.stringify({action: 'language'}));
+                        break;
+                    case 'help':
+                        tg.sendData(JSON.stringify({action: 'help'}));
+                        break;
+                    default:
+                        tg.showAlert('Функция в разработке');
+                }
             } else {
-                alert(messages[feature]);
+                alert('Функция в разработке');
             }
         }
         
