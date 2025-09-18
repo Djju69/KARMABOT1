@@ -1,17 +1,13 @@
-[[services]]
-name = "bot"
-source = "."
-
-[services.build]
+[build]
 builder = "nixpacks"
 
-[services.deploy]
+[deploy]
 startCommand = "python main_v2.py"
 
-[[services]]
-name = "odoo"
-source = "."
+[environments.production.services.bot]
+build.builder = "nixpacks"
+deploy.startCommand = "python main_v2.py"
 
-[services.build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+[environments.production.services.odoo]
+build.builder = "dockerfile"
+build.dockerfilePath = "Dockerfile"
