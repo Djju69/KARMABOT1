@@ -15,6 +15,3 @@ source = "."
 [services.build]
 builder = "dockerfile"
 dockerfilePath = "Dockerfile"
-
-[services.deploy]
-# Пустой блок - Odoo запускается автоматически
