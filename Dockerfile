@@ -1,8 +1,6 @@
-﻿FROM odoo:17.0
-USER root
-COPY odoo-addons/ /mnt/extra-addons/
-COPY odoo.conf /etc/odoo/
-RUN chown -R odoo:odoo /mnt/extra-addons/
-RUN chown odoo:odoo /etc/odoo/odoo.conf
-USER odoo
-EXPOSE 8069
+﻿FROM python:3.11-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+CMD ["python", "main_v2.py"]
