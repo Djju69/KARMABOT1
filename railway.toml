@@ -1,7 +1,0 @@
-[[services]]
-name = "bot"
-source = "./bot-service"
-
-[[services]]
-name = "odoo"
-source = "./odoo-service"

@@ -1,7 +1,0 @@
-id,name,model_id:id,domain_force,groups,perm_read,perm_write,perm_create,perm_unlink
-rule_karmabot_user_user,karmabot.user.user,karmabot.model_karmabot_user,[('id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,1,1,0
-rule_karmabot_user_partner,karmabot.user.partner,karmabot.model_karmabot_user,[('id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,1,1,0
-rule_karmabot_user_card_user,karmabot.user.card.user,karmabot.model_karmabot_user_card,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,1,1,0
-rule_karmabot_user_card_partner,karmabot.user.card.partner,karmabot.model_karmabot_user_card,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,1,1,0
-rule_karmabot_loyalty_transaction_user,karmabot.loyalty.transaction.user,karmabot.model_karmabot_loyalty_transaction,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,0,0,0
-rule_karmabot_loyalty_transaction_partner,karmabot.loyalty.transaction.partner,karmabot.model_karmabot_loyalty_transaction,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,0,0,0

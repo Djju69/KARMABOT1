@@ -1,5 +1,0 @@
-id,name,model_id:id,domain_force,groups,perm_read,perm_write,perm_create,perm_unlink
-rule_karmabot_partner_card_partner,karmabot.partner.card.partner,karmabot_cards.model_karmabot_partner_card,[('partner_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,1,1,0
-rule_karmabot_qr_code_partner,karmabot.qr.code.partner,karmabot_cards.model_karmabot_qr_code,[('partner_card_id.partner_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,1,1,0
-rule_karmabot_qr_scan_user,karmabot.qr.scan.user,karmabot_cards.model_karmabot_qr_scan,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,0,0,0
-rule_karmabot_qr_scan_partner,karmabot.qr.scan.partner,karmabot_cards.model_karmabot_qr_scan,[('qr_code_id.partner_card_id.partner_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,0,0,0
