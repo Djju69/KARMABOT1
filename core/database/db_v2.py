@@ -82,17 +82,8 @@ class Category:
 
 class DatabaseServiceV2:
     def __init__(self, db_path: str = "core/database/data.db"):
-        # Check if we should use PostgreSQL (only in production)
-        database_url = os.getenv('DATABASE_URL', '')
-        is_production = os.getenv('APP_ENV') == 'production' or os.getenv('RAILWAY_ENVIRONMENT') == 'production'
-        
-        if database_url.startswith('postgresql://') and is_production:
-            self.use_postgresql = True
-            self.database_url = database_url
-            logger.info(f"🗄️ Используется PostgreSQL: {database_url[:50]}...")
-            return
-        
-        # SQLite fallback
+        # DatabaseServiceV2 is now SQLite-only
+        # PostgreSQL is handled by PostgreSQLService via DatabaseAdapter
         self.use_postgresql = False
         self._is_memory = db_path == ":memory:" or str(db_path).startswith("file::memory:")
         if self._is_memory:
