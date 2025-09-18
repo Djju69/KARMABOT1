@@ -602,6 +602,8 @@ class DatabaseMigrator:
             self.migrate_019_fix_users_table()
         # Loyalty system expansion
         self.migrate_020_loyalty_expansion()
+        # Create partners_v2 table for PostgreSQL
+        self.migrate_021_create_partners_v2()
         # User features (favorites, referrals, karma_log, points_log, achievements)
         self.migrate_010_user_features()
         # User roles and 2FA system
@@ -2095,6 +2097,46 @@ class DatabaseMigrator:
             
         except Exception as e:
             print(f"❌ Error in migration 020 (SQLite): {e}")
+            raise
+
+    def migrate_021_create_partners_v2(self):
+        """Migration 021: Create partners_v2 table for PostgreSQL"""
+        version = "021"
+        desc = "CREATE: Create partners_v2, categories_v2, cards_v2 tables"
+        
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+            
+        try:
+            database_url = os.getenv('DATABASE_URL', '')
+            
+            if database_url and database_url.startswith("postgresql"):
+                # PostgreSQL migration
+                self._migrate_021_postgresql()
+            else:
+                # SQLite migration - skip for now
+                logger.info(f"Migration {version} skipped for SQLite")
+                return
+                
+            self.mark_migration_applied(version, desc)
+            logger.info(f"Applied migration {version}: {desc}")
+            
+        except Exception as e:
+            logger.error(f"Error in migration {version}: {e}")
+            raise
+
+    def _migrate_021_postgresql(self):
+        """PostgreSQL-specific migration for partners_v2 table"""
+        try:
+            import asyncio
+            from migrations.migration_021_create_partners_v2 import upgrade_021
+            
+            # Run async migration
+            asyncio.run(self._run_postgresql_migration(upgrade_021))
+            
+        except Exception as e:
+            logger.error(f"Error in PostgreSQL migration 021: {e}")
             raise
 
     def migrate_022_add_policy_accepted_to_users(self):
