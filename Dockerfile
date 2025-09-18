@@ -1,5 +1,8 @@
-FROM python:3.11-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-CMD ["python", "main_v2.py"]
+FROM odoo:17.0
+USER root
+COPY docker-entrypoint.sh /usr/local/bin/
+COPY odoo-addons/ /mnt/extra-addons/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chown -R odoo:odoo /mnt/extra-addons/
+USER odoo
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
