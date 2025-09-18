@@ -3,8 +3,7 @@ name = "bot"
 source = "."
 
 [services.build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+builder = "nixpacks"
 
 [services.deploy]
 startCommand = "python main_v2.py"
