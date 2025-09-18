@@ -1285,14 +1285,17 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        # Start web server in background thread
+        # Start simple web server in background thread
         import threading
-        from web.main import app
-        import uvicorn
+        from http.server import HTTPServer, SimpleHTTPRequestHandler
+        import os
         
         def start_web_server():
             port = int(os.getenv("PORT", 8080))
-            uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+            os.chdir("webapp")  # Serve files from webapp directory
+            httpd = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
+            logger.info(f"Web server started on port {port}")
+            httpd.serve_forever()
         
         web_thread = threading.Thread(target=start_web_server)
         web_thread.daemon = True
