@@ -1,0 +1,86 @@
+# Prometheus configuration for KARMABOT1
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'karmabot1'
+    environment: 'production'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # KARMABOT1 FastAPI application
+  - job_name: 'karmabot1-web'
+    static_configs:
+      - targets: ['web:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # KARMABOT1 Bot application
+  - job_name: 'karmabot1-bot'
+    static_configs:
+      - targets: ['bot:8081']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # PostgreSQL database
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    scrape_interval: 30s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    scrape_interval: 30s
+
+  # Node exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Nginx metrics (if using nginx)
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    scrape_interval: 30s
+
+# Recording rules for common queries
+recording_rules:
+  - name: karmabot1.rules
+    rules:
+      # HTTP request rate
+      - record: karmabot1:http_requests_per_second
+        expr: rate(http_requests_total[5m])
+      
+      # HTTP error rate
+      - record: karmabot1:http_errors_per_second
+        expr: rate(http_requests_total{status=~"5.."}[5m])
+      
+      # Bot messages per second
+      - record: karmabot1:bot_messages_per_second
+        expr: rate(telegram_messages_total[5m])
+      
+      # Database connections
+      - record: karmabot1:db_connections_active
+        expr: pg_stat_database_numbackends
+      
+      # Redis memory usage
+      - record: karmabot1:redis_memory_usage_bytes
+        expr: redis_memory_used_bytes

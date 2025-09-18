@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Restaurant Category -->
+        <record id="category_restaurant" model="karmabot.category">
+            <field name="name">Restaurant</field>
+            <field name="name_ru">Ресторан</field>
+            <field name="name_en">Restaurant</field>
+            <field name="name_vi">Nhà hàng</field>
+            <field name="name_ko">레스토랑</field>
+            <field name="description">Restaurants and cafes</field>
+            <field name="icon">🍽️</field>
+            <field name="color">#ff6b6b</field>
+            <field name="sequence">10</field>
+        </record>
+        
+        <!-- Shopping Category -->
+        <record id="category_shopping" model="karmabot.category">
+            <field name="name">Shopping</field>
+            <field name="name_ru">Магазины</field>
+            <field name="name_en">Shopping</field>
+            <field name="name_vi">Mua sắm</field>
+            <field name="name_ko">쇼핑</field>
+            <field name="description">Shops and retail stores</field>
+            <field name="icon">🛍️</field>
+            <field name="color">#4ecdc4</field>
+            <field name="sequence">20</field>
+        </record>
+        
+        <!-- Entertainment Category -->
+        <record id="category_entertainment" model="karmabot.category">
+            <field name="name">Entertainment</field>
+            <field name="name_ru">Развлечения</field>
+            <field name="name_en">Entertainment</field>
+            <field name="name_vi">Giải trí</field>
+            <field name="name_ko">엔터테인먼트</field>
+            <field name="description">Cinemas, theaters, and entertainment venues</field>
+            <field name="icon">🎬</field>
+            <field name="color">#45b7d1</field>
+            <field name="sequence">30</field>
+        </record>
+        
+        <!-- Beauty Category -->
+        <record id="category_beauty" model="karmabot.category">
+            <field name="name">Beauty & Wellness</field>
+            <field name="name_ru">Красота и здоровье</field>
+            <field name="name_en">Beauty & Wellness</field>
+            <field name="name_vi">Làm đẹp & Sức khỏe</field>
+            <field name="name_ko">뷰티 & 웰니스</field>
+            <field name="description">Beauty salons, spas, and wellness centers</field>
+            <field name="icon">💄</field>
+            <field name="color">#f9ca24</field>
+            <field name="sequence">40</field>
+        </record>
+        
+        <!-- Fitness Category -->
+        <record id="category_fitness" model="karmabot.category">
+            <field name="name">Fitness & Sports</field>
+            <field name="name_ru">Фитнес и спорт</field>
+            <field name="name_en">Fitness & Sports</field>
+            <field name="name_vi">Thể dục & Thể thao</field>
+            <field name="name_ko">피트니스 & 스포츠</field>
+            <field name="description">Gyms, sports clubs, and fitness centers</field>
+            <field name="icon">💪</field>
+            <field name="color">#6c5ce7</field>
+            <field name="sequence">50</field>
+        </record>
+        
+        <!-- Health Category -->
+        <record id="category_health" model="karmabot.category">
+            <field name="name">Health & Medical</field>
+            <field name="name_ru">Здоровье и медицина</field>
+            <field name="name_en">Health & Medical</field>
+            <field name="name_vi">Sức khỏe & Y tế</field>
+            <field name="name_ko">건강 & 의료</field>
+            <field name="description">Medical clinics, pharmacies, and health services</field>
+            <field name="icon">🏥</field>
+            <field name="color">#a29bfe</field>
+            <field name="sequence">60</field>
+        </record>
+        
+        <!-- Education Category -->
+        <record id="category_education" model="karmabot.category">
+            <field name="name">Education</field>
+            <field name="name_ru">Образование</field>
+            <field name="name_en">Education</field>
+            <field name="name_vi">Giáo dục</field>
+            <field name="name_ko">교육</field>
+            <field name="description">Schools, courses, and educational services</field>
+            <field name="icon">📚</field>
+            <field name="color">#fd79a8</field>
+            <field name="sequence">70</field>
+        </record>
+        
+        <!-- Services Category -->
+        <record id="category_services" model="karmabot.category">
+            <field name="name">Services</field>
+            <field name="name_ru">Услуги</field>
+            <field name="name_en">Services</field>
+            <field name="name_vi">Dịch vụ</field>
+            <field name="name_ko">서비스</field>
+            <field name="description">Various services and professional services</field>
+            <field name="icon">🔧</field>
+            <field name="color">#e17055</field>
+            <field name="sequence">80</field>
+        </record>
+        
+        <!-- Other Category -->
+        <record id="category_other" model="karmabot.category">
+            <field name="name">Other</field>
+            <field name="name_ru">Другое</field>
+            <field name="name_en">Other</field>
+            <field name="name_vi">Khác</field>
+            <field name="name_ko">기타</field>
+            <field name="description">Other businesses and services</field>
+            <field name="icon">📦</field>
+            <field name="color">#636e72</field>
+            <field name="sequence">90</field>
+        </record>
+        
+    </data>
+</odoo>

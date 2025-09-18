@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- Loyalty Transaction Tree View -->
+    <record id="view_karmabot_loyalty_transaction_tree" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.transaction.tree</field>
+        <field name="model">karmabot.loyalty.transaction</field>
+        <field name="arch" type="xml">
+            <tree string="Loyalty Transactions" decoration-success="status == 'approved'" decoration-info="status == 'pending'" decoration-muted="status == 'rejected'">
+                <field name="user_id"/>
+                <field name="transaction_type"/>
+                <field name="points"/>
+                <field name="description"/>
+                <field name="status"/>
+                <field name="transaction_date"/>
+                <field name="fraud_check_passed"/>
+                <field name="is_level_up"/>
+            </tree>
+        </field>
+    </record>
+    
+    <!-- Loyalty Transaction Form View -->
+    <record id="view_karmabot_loyalty_transaction_form" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.transaction.form</field>
+        <field name="model">karmabot.loyalty.transaction</field>
+        <field name="arch" type="xml">
+            <form string="Loyalty Transaction">
+                <header>
+                    <button name="action_approve" string="Approve" type="object" class="btn-success" groups="karmabot.group_karmabot_admin" attrs="{'invisible': [('status', '!=', 'pending')]}"/>
+                    <button name="action_reject" string="Reject" type="object" class="btn-warning" groups="karmabot.group_karmabot_admin" attrs="{'invisible': [('status', '!=', 'pending')]}"/>
+                    <button name="action_cancel" string="Cancel" type="object" class="btn-secondary" groups="karmabot.group_karmabot_admin" attrs="{'invisible': [('status', 'not in', ['pending', 'approved'])]}"/>
+                    <field name="status" widget="statusbar" statusbar_visible="pending,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="transaction_type" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id"/>
+                            <field name="partner_card_id"/>
+                            <field name="achievement_id"/>
+                            <field name="referral_user_id"/>
+                            <field name="points"/>
+                            <field name="transaction_type"/>
+                        </group>
+                        <group>
+                            <field name="status"/>
+                            <field name="transaction_date"/>
+                            <field name="expiry_date"/>
+                            <field name="fraud_check_passed"/>
+                            <field name="fraud_score"/>
+                            <field name="is_level_up"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="points_before"/>
+                            <field name="points_after"/>
+                        </group>
+                        <group>
+                            <field name="level_before"/>
+                            <field name="level_after"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                            <field name="location_accuracy"/>
+                        </group>
+                        <group>
+                            <field name="ip_address"/>
+                            <field name="device_fingerprint"/>
+                            <field name="user_agent"/>
+                            <field name="source"/>
+                            <field name="session_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Loyalty Transaction Search View -->
+    <record id="view_karmabot_loyalty_transaction_search" model="ir.ui.view">
+        <field name="name">karmabot.loyalty.transaction.search</field>
+        <field name="model">karmabot.loyalty.transaction</field>
+        <field name="arch" type="xml">
+            <search string="Search Loyalty Transactions">
+                <field name="user_id"/>
+                <field name="transaction_type"/>
+                <field name="description"/>
+                <separator/>
+                <filter string="Pending" name="pending" domain="[('status', '=', 'pending')]"/>
+                <filter string="Approved" name="approved" domain="[('status', '=', 'approved')]"/>
+                <filter string="Rejected" name="rejected" domain="[('status', '=', 'rejected')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('status', '=', 'cancelled')]"/>
+                <separator/>
+                <filter string="QR Scans" name="qr_scans" domain="[('transaction_type', '=', 'qr_scan')]"/>
+                <filter string="Referrals" name="referrals" domain="[('transaction_type', '=', 'referral')]"/>
+                <filter string="Achievements" name="achievements" domain="[('transaction_type', '=', 'achievement_reward')]"/>
+                <filter string="Level Ups" name="level_ups" domain="[('is_level_up', '=', True)]"/>
+                <separator/>
+                <filter string="Fraud Detected" name="fraud" domain="[('fraud_check_passed', '=', False)]"/>
+                <filter string="High Points" name="high_points" domain="[('points', '>=', 100)]"/>
+                <filter string="Recent" name="recent" domain="[('transaction_date', '>=', (context_today() - datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="Transaction Type" name="group_type" context="{'group_by': 'transaction_type'}"/>
+                    <filter string="User" name="group_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Date" name="group_date" context="{'group_by': 'transaction_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    
+    <!-- Loyalty Transaction Action -->
+    <record id="action_karmabot_loyalty_transaction" model="ir.actions.act_window">
+        <field name="name">Loyalty Transactions</field>
+        <field name="res_model">karmabot.loyalty.transaction</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_karmabot_loyalty_transaction_search"/>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+    
+</odoo>

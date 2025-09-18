@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    
+    <!-- User Cabinet Login Template -->
+    <template id="user_cabinet_login" name="KarmaBot User Cabinet Login">
+        <t t-call="web.layout">
+            <t t-set="title">KarmaBot - User Cabinet</t>
+            <div class="container mt-4">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="text-center">🔐 KarmaBot User Cabinet</h3>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="error">
+                                    <div class="alert alert-danger" role="alert">
+                                        <strong>Error:</strong> <t t-esc="error"/>
+                                    </div>
+                                </t>
+                                <div class="text-center">
+                                    <p class="mb-4">Please access your cabinet through the Telegram bot.</p>
+                                    <a href="https://t.me/your_bot_username" class="btn btn-primary btn-lg">
+                                        <i class="fa fa-telegram"></i> Open Telegram Bot
+                                    </a>
+                                </div>
+                                <hr/>
+                                <div class="text-center">
+                                    <small class="text-muted">
+                                        Don't have a KarmaBot account? 
+                                        <a href="https://t.me/your_bot_username">Start here</a>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <!-- User Cabinet Main Template -->
+    <template id="user_cabinet" name="KarmaBot User Cabinet">
+        <t t-call="web.layout">
+            <t t-set="title">KarmaBot - My Profile</t>
+            <div class="container mt-4">
+                <!-- Header -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h2 class="mb-1">
+                                            <i class="fa fa-user"></i> 
+                                            <t t-esc="user.name"/>
+                                        </h2>
+                                        <p class="mb-0">
+                                            <i class="fa fa-telegram"></i> 
+                                            @<t t-esc="user.telegram_username or 'No username'"/>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <h3 class="mb-1">
+                                            <t t-esc="stats.total_points"/>
+                                            <small>points</small>
+                                        </h3>
+                                        <p class="mb-0">
+                                            Level <t t-esc="stats.level"/> - 
+                                            <t t-esc="stats.level_name"/>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-success">
+                                    <t t-esc="stats.available_points"/>
+                                </h4>
+                                <p class="mb-0">Available Points</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-info">
+                                    <t t-esc="stats.total_scans"/>
+                                </h4>
+                                <p class="mb-0">QR Scans</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-warning">
+                                    <t t-esc="stats.total_referrals"/>
+                                </h4>
+                                <p class="mb-0">Referrals</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h4 class="text-primary">
+                                    <t t-esc="stats.monthly_points"/>
+                                </h4>
+                                <p class="mb-0">This Month</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <t t-if="stats.points_to_next > 0">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5>Progress to Next Level</h5>
+                                    <div class="progress">
+                                        <div class="progress-bar" role="progressbar" 
+                                             t-att-style="'width: ' + str((stats.total_points / stats.next_level_points) * 100) + '%'">
+                                            <t t-esc="stats.total_points"/> / <t t-esc="stats.next_level_points"/>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        <t t-esc="stats.points_to_next"/> points to next level
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+                
+                <!-- Linked Cards -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fa fa-credit-card"></i> My Cards</h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="linked_cards">
+                                    <div class="row">
+                                        <t t-foreach="linked_cards" t-as="card">
+                                            <div class="col-md-4 mb-3">
+                                                <div class="card border-primary">
+                                                    <div class="card-body text-center">
+                                                        <h6><t t-esc="card.card_number"/></h6>
+                                                        <small class="text-muted">
+                                                            <t t-esc="card.card_type.title()"/> Card
+                                                        </small>
+                                                        <br/>
+                                                        <small class="text-muted">
+                                                            Used <t t-esc="card.usage_count"/> times
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </t>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-credit-card fa-3x mb-3"></i>
+                                        <p>No cards linked yet</p>
+                                        <p class="small">Link your cards through the Telegram bot</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Transactions -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fa fa-history"></i> Recent Transactions</h5>
+                            </div>
+                            <div class="card-body">
+                                <t t-if="recent_transactions">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Type</th>
+                                                    <th>Points</th>
+                                                    <th>Description</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <t t-foreach="recent_transactions" t-as="transaction">
+                                                    <tr>
+                                                        <td>
+                                                            <t t-esc="transaction.transaction_date.strftime('%Y-%m-%d %H:%M')"/>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge badge-info">
+                                                                <t t-esc="transaction.transaction_type.replace('_', ' ').title()"/>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span t-att-class="'text-success' if transaction.points > 0 else 'text-danger'">
+                                                                <t t-if="transaction.points > 0">+</t>
+                                                                <t t-esc="transaction.points"/>
+                                                            </span>
+                                                        </td>
+                                                        <td><t t-esc="transaction.description"/></td>
+                                                    </tr>
+                                                </t>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </t>
+                                <t t-else="">
+                                    <div class="text-center text-muted">
+                                        <i class="fa fa-history fa-3x mb-3"></i>
+                                        <p>No transactions yet</p>
+                                        <p class="small">Start scanning QR codes to earn points!</p>
+                                    </div>
+                                </t>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="row mt-4">
+                    <div class="col-12 text-center">
+                        <small class="text-muted">
+                            <i class="fa fa-shield-alt"></i> 
+                            Secured with SSO authentication
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+</odoo>

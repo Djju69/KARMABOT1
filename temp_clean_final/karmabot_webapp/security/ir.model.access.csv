@@ -1,0 +1,11 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_karmabot_sso_token_user,karmabot.sso.token.user,karmabot_webapp.model_karmabot_sso_token,group_karmabot_user,1,0,0,0
+access_karmabot_sso_token_partner,karmabot.sso.token.partner,karmabot_webapp.model_karmabot_sso_token,group_karmabot_partner,1,0,0,0
+access_karmabot_sso_token_admin,karmabot.sso.token.admin,karmabot_webapp.model_karmabot_sso_token,group_karmabot_admin,1,1,1,1
+access_karmabot_sso_token_super_admin,karmabot.sso.token.super_admin,karmabot_webapp.model_karmabot_sso_token,group_karmabot_super_admin,1,1,1,1
+access_karmabot_sso_token_manager,karmabot.sso.token.manager,karmabot_webapp.model_karmabot_sso_token,group_karmabot_manager,1,1,1,1
+access_karmabot_webapp_session_user,karmabot.webapp.session.user,karmabot_webapp.model_karmabot_webapp_session,group_karmabot_user,1,0,0,0
+access_karmabot_webapp_session_partner,karmabot.webapp.session.partner,karmabot_webapp.model_karmabot_webapp_session,group_karmabot_partner,1,0,0,0
+access_karmabot_webapp_session_admin,karmabot.webapp.session.admin,karmabot_webapp.model_karmabot_webapp_session,group_karmabot_admin,1,1,1,1
+access_karmabot_webapp_session_super_admin,karmabot.webapp.session.super_admin,karmabot_webapp.model_karmabot_webapp_session,group_karmabot_super_admin,1,1,1,1
+access_karmabot_webapp_session_manager,karmabot.webapp.session.manager,karmabot_webapp.model_karmabot_webapp_session,group_karmabot_manager,1,1,1,1

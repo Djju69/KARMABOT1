@@ -1,0 +1,5 @@
+id,name,model_id:id,domain_force,groups,perm_read,perm_write,perm_create,perm_unlink
+rule_karmabot_sso_token_user,karmabot.sso.token.user,karmabot_webapp.model_karmabot_sso_token,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,0,0,0
+rule_karmabot_sso_token_partner,karmabot.sso.token.partner,karmabot_webapp.model_karmabot_sso_token,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,0,0,0
+rule_karmabot_webapp_session_user,karmabot.webapp.session.user,karmabot_webapp.model_karmabot_webapp_session,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_user,1,0,0,0
+rule_karmabot_webapp_session_partner,karmabot.webapp.session.partner,karmabot_webapp.model_karmabot_webapp_session,[('user_id', '=', user.karmabot_user_id.id)],group_karmabot_partner,1,0,0,0

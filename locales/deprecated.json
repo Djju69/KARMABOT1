@@ -1,0 +1,9 @@
+{
+  "_comment": "Deprecated i18n keys - kept for backward compatibility",
+  "_deprecated_keys": {
+    "back_to_main": "Use 'back_to_main_menu' instead",
+    "profile_settings": "Duplicate key - use specific context keys"
+  },
+  "back_to_main": "Вернуться в главное меню🏘",
+  "profile_settings": "⚙️ Настройки"
+}

@@ -1,0 +1,11 @@
+FROM odoo:17.0
+
+# Копировать модуль
+COPY odoo-addons/ /mnt/extra-addons/
+
+# Проверить что модуль скопировался
+RUN ls -la /mnt/extra-addons/ && \
+    ls -la /mnt/extra-addons/karmabot_webapp/
+
+# Запустить Odoo
+CMD ["odoo"]

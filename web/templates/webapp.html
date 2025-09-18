@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARMABOT1 - Веб-кабинет</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--tg-theme-bg-color, #f5f5f5);
+            color: var(--tg-theme-text-color, #000);
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: var(--tg-theme-secondary-bg-color, white);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        .status.ok {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, white);
+        }
+        .user-info {
+            background: var(--tg-theme-section-bg-color, #f8f9fa);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 KARMABOT1</h1>
+            <p>Веб-кабинет системы лояльности</p>
+        </div>
+        
+        <div class="user-info">
+            <div><strong>Пользователь:</strong> <span id="username">Загрузка...</span></div>
+            <div><strong>ID:</strong> <span id="user-id">-</span></div>
+        </div>
+        
+        <div id="odoo-status" class="status">
+            Проверка статуса Odoo...
+        </div>
+        
+        <button class="btn" onclick="openOdooCabinet()">
+            🏢 Odoo Кабинет
+        </button>
+        
+        <button class="btn" onclick="showUserData()">
+            👤 Мои данные
+        </button>
+        
+        <button class="btn" onclick="goBack()">
+            ← Назад в бот
+        </button>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        // Получить параметры из URL
+        const params = new URLSearchParams(window.location.search);
+        const userId = params.get('user_id');
+        const username = params.get('username');
+        const odooStatus = params.get('odoo_status');
+        
+        // Заполнить данные пользователя
+        document.getElementById('user-id').textContent = userId || 'Unknown';
+        document.getElementById('username').textContent = username || 'Unknown';
+        
+        // Показать статус Odoo
+        const statusDiv = document.getElementById('odoo-status');
+        if (odooStatus === 'ok') {
+            statusDiv.className = 'status ok';
+            statusDiv.textContent = '✅ Odoo подключен - полный функционал доступен';
+        } else {
+            statusDiv.className = 'status error';
+            statusDiv.textContent = '⚠️ Odoo недоступен - работаем в базовом режиме';
+        }
+        
+        function openOdooCabinet() {
+            if (odooStatus === 'ok') {
+                // Открываем кастомный личный кабинет вместо стандартного Odoo
+                const userId = document.getElementById('user-id').textContent;
+                const cabinetUrl = `https://odoo-crm-production.up.railway.app/karmabot/webapp?user_id=${userId}`;
+                window.open(cabinetUrl, '_blank');
+            } else {
+                alert('Odoo временно недоступен');
+            }
+        }
+        
+        function showUserData() {
+            alert(`Ваши данные:\nID: ${userId}\nИмя: ${username}\nOdoo: ${odooStatus}`);
+        }
+        
+        function goBack() {
+            tg.close();
+        }
+    </script>
+</body>
+</html>

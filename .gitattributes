@@ -1,0 +1,4 @@
+# Ensure correct line endings for Linux runtime
+*.sh text eol=lf
+Procfile text eol=lf
+railway.toml text eol=lf

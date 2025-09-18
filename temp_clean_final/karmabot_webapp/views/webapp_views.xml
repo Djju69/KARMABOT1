@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Основные представления для WebApp -->
+    <template id="webapp_main" name="KarmaBot WebApp Main">
+        <t t-call="web.layout">
+            <t t-set="title">KarmaBot WebApp</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>🎯 KarmaBot</h1>
+                    <p>Добро пожаловать в WebApp</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <a href="/karmabot/webapp/register" class="menu-card">
+                        <div class="menu-icon">📝</div>
+                        <div class="menu-title">Регистрация</div>
+                        <div class="menu-desc">Создать аккаунт</div>
+                    </a>
+                    
+                    <a href="/karmabot/webapp/login" class="menu-card">
+                        <div class="menu-icon">🔑</div>
+                        <div class="menu-title">Вход</div>
+                        <div class="menu-desc">Войти в систему</div>
+                    </a>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

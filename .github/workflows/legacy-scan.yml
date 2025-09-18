@@ -1,0 +1,34 @@
+name: legacy-scan
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install --upgrade pip
+      - run: python tools/scan_legacy.py --json > legacy_report.json || true
+      - name: Fail if legacy found
+        run: |
+          python - <<'PY'
+          import json, sys
+          r = json.load(open('legacy_report.json'))
+          has_legacy = bool(r.get("legacy_files_found") or r.get("legacy_imports_found"))
+          if has_legacy:
+              print("Legacy detected. See legacy_report.json")
+              sys.exit(1)
+          print("No legacy detected.")
+          PY
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: legacy-report
+          path: legacy_report.json
+
+

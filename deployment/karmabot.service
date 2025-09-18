@@ -1,0 +1,43 @@
+[Unit]
+Description=KarmaBot Production Service
+After=network.target postgresql.service redis.service
+Requires=network.target
+
+[Service]
+User=appuser
+Group=appuser
+WorkingDirectory=/opt/karmabot
+EnvironmentFile=/opt/karmabot/.env.prod
+
+# Virtual Environment
+Environment="PATH=/opt/karmabot/venv/bin"
+
+# Main service
+ExecStart=/opt/karmabot/venv/bin/uvicorn \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --workers 4 \
+    --log-level info \
+    --no-access-log \
+    web.main:app
+
+# Process management
+Restart=always
+RestartSec=5
+KillMode=process
+TimeoutStopSec=30
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/karmabot/data
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=karmabot
+
+[Install]
+WantedBy=multi-user.target

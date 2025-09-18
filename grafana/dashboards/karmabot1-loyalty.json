@@ -1,0 +1,156 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "KARMABOT1 - Loyalty System",
+    "tags": ["karmabot1", "loyalty"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Loyalty Points Awarded",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(loyalty_points_awarded_total[5m])",
+            "legendFormat": "{{activity_type}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Loyalty Points Spent",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(loyalty_points_spent_total[5m])",
+            "legendFormat": "Points Spent"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Total Active Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "loyalty_active_users_total",
+            "legendFormat": "Active Users"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Total Points in Circulation",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "loyalty_total_points_circulation",
+            "legendFormat": "Total Points"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 8,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Average Points per User",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "loyalty_avg_points_per_user",
+            "legendFormat": "Avg Points"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 16,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Activity Types Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (activity_type) (loyalty_points_awarded_total)",
+            "legendFormat": "{{activity_type}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        }
+      },
+      {
+        "id": 7,
+        "title": "User Levels Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (level) (loyalty_user_levels_total)",
+            "legendFormat": "Level {{level}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+}

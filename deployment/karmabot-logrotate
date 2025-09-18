@@ -1,0 +1,14 @@
+# Log rotation for KarmaBot
+/var/log/karmabot/*.log {
+    daily
+    missingok
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 0640 appuser appuser
+    sharedscripts
+    postrotate
+        systemctl reload karmabot >/dev/null 2>&1 || true
+    endscript
+}

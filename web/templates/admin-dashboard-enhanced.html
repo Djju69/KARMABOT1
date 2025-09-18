@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Админ-панель - KARMABOT1</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .container {
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-change {
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .stat-change.positive {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .stat-change.negative {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .dashboard-sections {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .dashboard-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 200px;
+            margin-top: 15px;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-btn {
+            padding: 12px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: #fff;
+        }
+        
+        .action-btn.primary {
+            background: #22c55e;
+            color: #000;
+        }
+        
+        .action-btn.primary:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+        }
+        
+        .action-btn.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .action-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .action-btn.danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        
+        .action-btn.danger:hover {
+            background: #dc2626;
+        }
+        
+        .recent-activity {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .activity-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        .activity-icon.user {
+            background: rgba(59, 130, 246, 0.2);
+            color: #3b82f6;
+        }
+        
+        .activity-icon.card {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+        }
+        
+        .activity-icon.transaction {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        
+        .activity-icon.moderation {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+        
+        .activity-content {
+            flex: 1;
+        }
+        
+        .activity-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .activity-time {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #60a5fa;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .alert.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+        
+        .alert.warning {
+            background: rgba(251, 191, 36, 0.2);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fbbf24;
+        }
+        
+        .alert.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+        
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .status-indicator.warning {
+            background: #fbbf24;
+        }
+        
+        .status-indicator.error {
+            background: #ef4444;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom-color: #60a5fa;
+            color: #60a5fa;
+        }
+        
+        .tab:hover {
+            color: #60a5fa;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ Админ-панель</h1>
+        <p>Управление системой KARMABOT1</p>
+    </div>
+    
+    <div class="container">
+        <!-- System Status -->
+        <div class="system-status">
+            <div class="status-indicator" id="systemStatus"></div>
+            <span id="systemStatusText">Система работает нормально</span>
+        </div>
+        
+        <!-- Statistics Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalUsers">-</div>
+                <div class="stat-label">Всего пользователей</div>
+                <div class="stat-change positive" id="usersChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="activePartners">-</div>
+                <div class="stat-label">Активные партнеры</div>
+                <div class="stat-change positive" id="partnersChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pendingModeration">-</div>
+                <div class="stat-label">Ожидают модерации</div>
+                <div class="stat-change warning" id="moderationChange">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="todayTransactions">-</div>
+                <div class="stat-label">Транзакции сегодня</div>
+                <div class="stat-change positive" id="transactionsChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalRevenue">-</div>
+                <div class="stat-label">Общая выручка</div>
+                <div class="stat-change positive" id="revenueChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="systemUptime">-</div>
+                <div class="stat-label">Время работы</div>
+                <div class="stat-change positive" id="uptimeChange">99.9%</div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Sections -->
+        <div class="dashboard-sections">
+            <!-- Analytics Chart -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    📊 Аналитика
+                </div>
+                <div class="tabs">
+                    <button class="tab active" data-tab="users">Пользователи</button>
+                    <button class="tab" data-tab="transactions">Транзакции</button>
+                    <button class="tab" data-tab="revenue">Выручка</button>
+                </div>
+                <div class="tab-content active" id="users-tab">
+                    <div class="chart-container">
+                        <canvas id="usersChart"></canvas>
+                    </div>
+                </div>
+                <div class="tab-content" id="transactions-tab">
+                    <div class="chart-container">
+                        <canvas id="transactionsChart"></canvas>
+                    </div>
+                </div>
+                <div class="tab-content" id="revenue-tab">
+                    <div class="chart-container">
+                        <canvas id="revenueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    ⚡ Быстрые действия
+                </div>
+                <div class="quick-actions">
+                    <button class="action-btn primary" onclick="admin.openModeration()">
+                        🛡️ Модерация
+                    </button>
+                    <button class="action-btn secondary" onclick="admin.openUsers()">
+                        👥 Пользователи
+                    </button>
+                    <button class="action-btn secondary" onclick="admin.openPartners()">
+                        🏪 Партнеры
+                    </button>
+                    <button class="action-btn secondary" onclick="admin.openAnalytics()">
+                        📊 Аналитика
+                    </button>
+                    <button class="action-btn secondary" onclick="admin.openTransactions()">
+                        💰 Транзакции
+                    </button>
+                    <button class="action-btn secondary" onclick="admin.openSettings()">
+                        ⚙️ Настройки
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    🔄 Последняя активность
+                </div>
+                <div class="recent-activity" id="recentActivity">
+                    <div class="loading"></div>
+                    <p style="text-align: center; margin-top: 10px;">Загрузка...</p>
+                </div>
+            </div>
+            
+            <!-- System Alerts -->
+            <div class="dashboard-section">
+                <div class="section-title">
+                    🚨 Системные уведомления
+                </div>
+                <div id="systemAlerts">
+                    <div class="alert success">
+                        ✅ Система работает стабильно
+                    </div>
+                    <div class="alert warning">
+                        ⚠️ Ожидают модерации: <span id="pendingCount">0</span> карточек
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdminDashboard {
+            constructor() {
+                this.charts = {};
+                this.currentTab = 'users';
+                this.init();
+            }
+            
+            async init() {
+                // Initialize Telegram WebApp
+                this.initTelegramWebApp();
+                
+                // Load initial data
+                await this.loadDashboardData();
+                await this.loadRecentActivity();
+                
+                // Setup charts
+                this.setupCharts();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Start auto-refresh
+                this.startAutoRefresh();
+            }
+            
+            initTelegramWebApp() {
+                try {
+                    if (window.Telegram && Telegram.WebApp) {
+                        Telegram.WebApp.ready();
+                        Telegram.WebApp.expand();
+                    }
+                } catch (e) {
+                    console.warn('Telegram WebApp not available:', e);
+                }
+            }
+            
+            async loadDashboardData() {
+                try {
+                    const response = await fetch('/api/admin/dashboard');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.updateStats(data);
+                    }
+                } catch (e) {
+                    console.error('Failed to load dashboard data:', e);
+                    this.showError('Ошибка загрузки данных дашборда');
+                }
+            }
+            
+            async loadRecentActivity() {
+                try {
+                    const response = await fetch('/api/admin/activity');
+                    if (response.ok) {
+                        const activities = await response.json();
+                        this.updateRecentActivity(activities);
+                    }
+                } catch (e) {
+                    console.error('Failed to load recent activity:', e);
+                }
+            }
+            
+            updateStats(data) {
+                document.getElementById('totalUsers').textContent = data.total_users || 0;
+                document.getElementById('activePartners').textContent = data.active_partners || 0;
+                document.getElementById('pendingModeration').textContent = data.pending_moderation || 0;
+                document.getElementById('todayTransactions').textContent = data.today_transactions || 0;
+                document.getElementById('totalRevenue').textContent = this.formatCurrency(data.total_revenue || 0);
+                document.getElementById('systemUptime').textContent = data.system_uptime || '99.9%';
+                
+                // Update changes
+                document.getElementById('usersChange').textContent = `+${data.users_change || 0}%`;
+                document.getElementById('partnersChange').textContent = `+${data.partners_change || 0}%`;
+                document.getElementById('moderationChange').textContent = data.pending_moderation || 0;
+                document.getElementById('transactionsChange').textContent = `+${data.transactions_change || 0}%`;
+                document.getElementById('revenueChange').textContent = `+${data.revenue_change || 0}%`;
+                
+                // Update pending count in alerts
+                document.getElementById('pendingCount').textContent = data.pending_moderation || 0;
+            }
+            
+            updateRecentActivity(activities) {
+                const container = document.getElementById('recentActivity');
+                
+                if (!activities || activities.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Нет недавней активности</p>';
+                    return;
+                }
+                
+                container.innerHTML = activities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-icon ${activity.type}">
+                            ${this.getActivityIcon(activity.type)}
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-title">${activity.title}</div>
+                            <div class="activity-time">${this.formatTime(activity.created_at)}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            getActivityIcon(type) {
+                const icons = {
+                    'user': '👤',
+                    'card': '📄',
+                    'transaction': '💰',
+                    'moderation': '🛡️',
+                    'system': '⚙️'
+                };
+                return icons[type] || '📝';
+            }
+            
+            formatTime(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diff = now - date;
+                
+                if (diff < 60000) return 'только что';
+                if (diff < 3600000) return `${Math.floor(diff / 60000)} мин назад`;
+                if (diff < 86400000) return `${Math.floor(diff / 3600000)} ч назад`;
+                return date.toLocaleDateString('ru-RU');
+            }
+            
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('ru-RU', {
+                    style: 'currency',
+                    currency: 'RUB',
+                    minimumFractionDigits: 0
+                }).format(amount);
+            }
+            
+            setupCharts() {
+                // Users chart
+                const usersCtx = document.getElementById('usersChart').getContext('2d');
+                this.charts.users = new Chart(usersCtx, {
+                    type: 'line',
+                    data: {
+                        labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                        datasets: [{
+                            label: 'Новые пользователи',
+                            data: [12, 19, 3, 5, 2, 3, 8],
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Transactions chart
+                const transactionsCtx = document.getElementById('transactionsChart').getContext('2d');
+                this.charts.transactions = new Chart(transactionsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+                        datasets: [{
+                            label: 'Транзакции',
+                            data: [65, 59, 80, 81, 56, 55, 40],
+                            backgroundColor: 'rgba(34, 197, 94, 0.8)',
+                            borderColor: '#22c55e',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                // Revenue chart
+                const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+                this.charts.revenue = new Chart(revenueCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Партнеры', 'Комиссия', 'Реклама'],
+                        datasets: [{
+                            data: [60, 25, 15],
+                            backgroundColor: [
+                                '#22c55e',
+                                '#60a5fa',
+                                '#fbbf24'
+                            ],
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#fff'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            setupEventListeners() {
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', (e) => {
+                        const tabName = e.target.dataset.tab;
+                        this.switchTab(tabName);
+                    });
+                });
+            }
+            
+            switchTab(tabName) {
+                // Update tab buttons
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.classList.remove('active');
+                });
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabName}-tab`).classList.add('active');
+                
+                this.currentTab = tabName;
+            }
+            
+            startAutoRefresh() {
+                // Refresh data every 30 seconds
+                setInterval(() => {
+                    this.loadDashboardData();
+                    this.loadRecentActivity();
+                }, 30000);
+            }
+            
+            // Action methods
+            openModeration() {
+                window.open('/api/moderation/dashboard', '_blank');
+            }
+            
+            openUsers() {
+                window.open('/api/admin/users', '_blank');
+            }
+            
+            openPartners() {
+                window.open('/api/admin/partners', '_blank');
+            }
+            
+            openAnalytics() {
+                window.open('/api/admin/analytics', '_blank');
+            }
+            
+            openTransactions() {
+                window.open('/api/admin/transactions', '_blank');
+            }
+            
+            openSettings() {
+                window.open('/api/admin/settings', '_blank');
+            }
+            
+            showError(message) {
+                const alert = document.createElement('div');
+                alert.className = 'alert error';
+                alert.textContent = message;
+                document.querySelector('.container').insertBefore(alert, document.querySelector('.stats-grid'));
+                
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
+            }
+        }
+        
+        // Initialize dashboard when page loads
+        let admin;
+        document.addEventListener('DOMContentLoaded', () => {
+            admin = new AdminDashboard();
+        });
+    </script>
+</body>
+</html>

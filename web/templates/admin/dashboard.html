@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KarmaSystem - Админ-панель</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/static/admin/admin.css">
+    <link rel="icon" type="image/x-icon" href="/static/admin/favicon.ico">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar bg-indigo-800 text-white w-64 flex-shrink-0 h-full overflow-y-auto">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-8">
+                    <h1 class="text-2xl font-bold">KarmaSystem</h1>
+                    <button id="toggleSidebar" class="text-white focus:outline-none">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                
+                <nav>
+                    <div class="mb-6">
+                        <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">Главная</h3>
+                        <a href="/admin/dashboard" class="flex items-center px-3 py-2 text-sm font-medium rounded-md bg-indigo-900 text-white">
+                            <i class="fas fa-tachometer-alt mr-3"></i>
+                            Дашборд
+                        </a>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">Контент</h3>
+                        <a href="/admin/partners" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-store mr-3"></i>
+                            Партнёры
+                        </a>
+                        <a href="/admin/categories" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-tags mr-3"></i>
+                            Категории
+                        </a>
+                        <a href="/admin/reviews" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-comment-alt mr-3"></i>
+                            Отзывы
+                        </a>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">Финансы</h3>
+                        <a href="/admin/transactions" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-exchange-alt mr-3"></i>
+                            Транзакции
+                        </a>
+                        <a href="/admin/payouts" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-credit-card mr-3"></i>
+                            Выплаты
+                        </a>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h3 class="text-xs font-semibold text-indigo-300 uppercase tracking-wider mb-2">Настройки</h3>
+                        <a href="/admin/users" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-users mr-3"></i>
+                            Пользователи
+                        </a>
+                        <a href="/admin/roles" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-user-shield mr-3"></i>
+                            Роли и права
+                        </a>
+                        <a href="/admin/settings" class="flex items-center px-3 py-2 text-sm font-medium rounded-md text-indigo-200 hover:bg-indigo-700">
+                            <i class="fas fa-cog mr-3"></i>
+                            Настройки системы
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div id="main-content" class="main-content flex-1 flex flex-col overflow-hidden">
+            <!-- Top navigation -->
+            <header class="bg-white shadow-sm">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <div class="flex items-center">
+                        <button id="mobileMenuButton" class="text-gray-500 hover:text-gray-600 focus:outline-none lg:hidden">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h2 class="ml-4 text-xl font-semibold text-gray-800">Дашборд</h2>
+                    </div>
+                    
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <button id="notificationsButton" class="p-2 text-gray-500 hover:text-gray-600 focus:outline-none relative">
+                                <i class="far fa-bell text-xl"></i>
+                                <span id="notificationBadge" class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center hidden">3</span>
+                            </button>
+                            
+                            <!-- Notifications dropdown -->
+                            <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg overflow-hidden z-10">
+                                <div class="p-4 border-b border-gray-200">
+                                    <div class="flex justify-between items-center">
+                                        <h3 class="text-lg font-medium text-gray-900">Уведомления</h3>
+                                        <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800">Пометить все как прочитанные</a>
+                                    </div>
+                                </div>
+                                <div class="max-h-96 overflow-y-auto">
+                                    <div id="alertsList" class="divide-y divide-gray-200">
+                                        <!-- Alerts will be loaded here -->
+                                    </div>
+                                </div>
+                                <div class="p-4 border-t border-gray-200 text-center">
+                                    <a href="/admin/notifications" class="text-sm font-medium text-indigo-600 hover:text-indigo-800">Просмотреть все уведомления</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- User dropdown -->
+                        <div class="relative">
+                            <button id="userMenuButton" class="flex items-center space-x-2 focus:outline-none">
+                                <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold">
+                                    <span id="userInitials">A</span>
+                                </div>
+                                <span class="hidden md:inline-block text-sm font-medium text-gray-700">Администратор</span>
+                                <i class="fas fa-chevron-down text-xs text-gray-500"></i>
+                            </button>
+                            
+                            <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                <a href="/admin/profile" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-user-circle mr-2"></i> Профиль
+                                </a>
+                                <a href="/admin/settings" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-cog mr-2"></i> Настройки
+                                </a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="/admin/logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Выйти
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Quick actions -->
+                <div class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-medium text-gray-900">Быстрые действия</h2>
+                    </div>
+                    <div id="quickActions" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Quick action buttons will be loaded here -->
+                        <div class="p-4 bg-white rounded-lg shadow-md border-l-4 border-indigo-500 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats overview -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- Stat cards will be loaded here -->
+                    <div class="bg-white rounded-lg shadow p-6 animate-pulse">
+                        <div class="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div class="h-8 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Activity chart -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Активность</h3>
+                            <div class="flex space-x-2">
+                                <button data-period="day" class="period-btn px-3 py-1 text-sm rounded-md bg-indigo-100 text-indigo-700">День</button>
+                                <button data-period="week" class="period-btn px-3 py-1 text-sm rounded-md text-gray-600 hover:bg-gray-100">Неделя</button>
+                                <button data-period="month" class="period-btn px-3 py-1 text-sm rounded-md text-gray-600 hover:bg-gray-100">Месяц</button>
+                            </div>
+                        </div>
+                        <div class="h-80">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent activity -->
+                    <div class="bg-white p-6 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">Последние действия</h3>
+                            <a href="/admin/activity" class="text-sm text-indigo-600 hover:text-indigo-800">Просмотреть все</a>
+                        </div>
+                        <div id="recentActivity" class="space-y-4">
+                            <!-- Recent activity items will be loaded here -->
+                            <div class="animate-pulse">
+                                <div class="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                                <div class="h-3 bg-gray-200 rounded w-3/4"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alerts -->
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-medium text-gray-900">Последние уведомления</h3>
+                            <a href="/admin/alerts" class="text-sm text-indigo-600 hover:text-indigo-800">Просмотреть все</a>
+                        </div>
+                    </div>
+                    <div id="alertsContainer" class="divide-y divide-gray-200">
+                        <!-- Alerts will be loaded here -->
+                        <div class="p-4 animate-pulse">
+                            <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                            <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Footer -->
+            <footer class="bg-white border-t border-gray-200 py-4 px-6">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <p class="text-sm text-gray-500">© 2025 KarmaSystem. Все права защищены.</p>
+                    <div class="flex space-x-4 mt-2 md:mt-0">
+                        <a href="#" class="text-sm text-gray-500 hover:text-gray-700">Помощь</a>
+                        <a href="#" class="text-sm text-gray-500 hover:text-gray-700">Документация</a>
+                        <a href="#" class="text-sm text-gray-500 hover:text-gray-700">О системе</a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // Toggle sidebar on mobile
+        document.getElementById('mobileMenuButton').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        });
+
+        // Toggle sidebar collapse on desktop
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+            document.getElementById('main-content').classList.toggle('lg:ml-64');
+        });
+
+        // Toggle notifications dropdown
+        document.getElementById('notificationsButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('notificationsDropdown').classList.toggle('hidden');
+            document.getElementById('userDropdown').classList.add('hidden');
+        });
+
+        // Toggle user dropdown
+        document.getElementById('userMenuButton').addEventListener('click', function(e) {
+            e.stopPropagation();
+            document.getElementById('userDropdown').classList.toggle('hidden');
+            document.getElementById('notificationsDropdown').classList.add('hidden');
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function() {
+            document.getElementById('notificationsDropdown').classList.add('hidden');
+            document.getElementById('userDropdown').classList.add('hidden');
+        });
+
+        // Prevent dropdown from closing when clicking inside
+        const dropdowns = document.querySelectorAll('.dropdown-content');
+        dropdowns.forEach(dropdown => {
+            dropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+        });
+
+        // Load dashboard data
+        async function loadDashboardData() {
+            try {
+                // Load stats
+                const response = await fetch('/admin/dashboard');
+                const data = await response.json();
+                
+                // Update quick actions
+                const quickActions = document.getElementById('quickActions');
+                quickActions.innerHTML = '';
+                
+                data.quick_actions.forEach(action => {
+                    const actionElement = document.createElement('a');
+                    actionElement.href = action.url;
+                    actionElement.className = 'flex items-center p-4 bg-white rounded-lg shadow-md border-l-4 border-indigo-500 hover:shadow-lg transition-shadow';
+                    actionElement.innerHTML = `
+                        <div class="p-3 rounded-full bg-indigo-100 text-indigo-600 mr-4">
+                            <i class="${action.icon} text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-medium text-gray-900">${action.title}</h3>
+                            <p class="text-sm text-gray-500">Быстрое действие</p>
+                        </div>
+                    `;
+                    quickActions.appendChild(actionElement);
+                });
+                
+                // Update stats cards
+                const statsContainer = document.querySelector('.grid-cols-4');
+                statsContainer.innerHTML = '';
+                
+                const stats = [
+                    { title: 'Всего пользователей', value: data.stats.total_users, change: '+12%', isUp: true, icon: 'users' },
+                    { title: 'Активных партнёров', value: data.stats.active_partners, change: '+5%', isUp: true, icon: 'store' },
+                    { title: 'Транзакций за день', value: data.stats.today_transactions, change: '+8%', isUp: true, icon: 'exchange-alt' },
+                    { title: 'Доход за день', value: `$${data.stats.today_revenue.toLocaleString()}`, change: '+15%', isUp: true, icon: 'dollar-sign' }
+                ];
+                
+                stats.forEach(stat => {
+                    const statElement = document.createElement('div');
+                    statElement.className = 'stat-card';
+                    statElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-gray-500 text-sm">${stat.title}</p>
+                                <p class="text-2xl font-bold text-gray-800">${stat.value}</p>
+                            </div>
+                            <div class="p-2 rounded-full bg-indigo-100 text-indigo-600">
+                                <i class="fas fa-${stat.icon}"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-sm">
+                            <span class="${stat.isUp ? 'text-green-500' : 'text-red-500'} font-medium">
+                                ${stat.isUp ? '▲' : '▼'} ${stat.change}
+                            </span>
+                            <span class="text-gray-500 ml-2">за последние 7 дней</span>
+                        </div>
+                    `;
+                    statsContainer.appendChild(statElement);
+                });
+                
+                // Load and render chart
+                await loadChartData('day');
+                
+                // Load recent activity
+                await loadRecentActivity();
+                
+                // Load alerts
+                await loadAlerts();
+                
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+            }
+        }
+        
+        // Load chart data
+        async function loadChartData(period) {
+            try {
+                const response = await fetch(`/admin/dashboard/stats?period=${period}`);
+                const data = await response.json();
+                
+                // Update active button
+                document.querySelectorAll('.period-btn').forEach(btn => {
+                    if (btn.dataset.period === period) {
+                        btn.classList.add('bg-indigo-100', 'text-indigo-700');
+                        btn.classList.remove('text-gray-600', 'hover:bg-gray-100');
+                    } else {
+                        btn.classList.remove('bg-indigo-100', 'text-indigo-700');
+                        btn.classList.add('text-gray-600', 'hover:bg-gray-100');
+                    }
+                });
+                
+                // Render or update chart
+                renderChart(data);
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+            }
+        }
+        
+        // Chart instance
+        let activityChart = null;
+        
+        // Render chart
+        function renderChart(data) {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+            
+            // Destroy previous chart if exists
+            if (activityChart) {
+                activityChart.destroy();
+            }
+            
+            activityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: data.datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toLocaleString();
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load recent activity
+        async function loadRecentActivity() {
+            try {
+                const response = await fetch('/admin/activity?limit=5');
+                const data = await response.json();
+                
+                const activityContainer = document.getElementById('recentActivity');
+                activityContainer.innerHTML = '';
+                
+                // Mock data for now - replace with actual data from API
+                const activities = [
+                    { id: 1, user: 'Иван Иванов', action: 'добавил нового партнёра', entity: 'Ресторан "Восток"', time: '5 минут назад' },
+                    { id: 2, user: 'Петр Петров', action: 'одобрил отзыв', entity: 'Спа "Рай"', time: '15 минут назад' },
+                    { id: 3, user: 'Анна Сидорова', action: 'обновила настройки', entity: 'Системные настройки', time: '1 час назад' },
+                    { id: 4, user: 'Сергей Николаев', action: 'создал промокод', entity: 'SUMMER2023', time: '2 часа назад' },
+                    { id: 5, user: 'Мария Иванова', action: 'заблокировала пользователя', entity: 'user123', time: '5 часов назад' }
+                ];
+                
+                activities.forEach(activity => {
+                    const activityElement = document.createElement('div');
+                    activityElement.className = 'flex items-start';
+                    activityElement.innerHTML = `
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold">
+                            ${activity.user.split(' ').map(n => n[0]).join('')}
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-900">
+                                <span class="font-semibold">${activity.user}</span> ${activity.action} <a href="#" class="text-indigo-600 hover:underline">${activity.entity}</a>
+                            </p>
+                            <p class="text-sm text-gray-500">${activity.time}</p>
+                        </div>
+                    `;
+                    activityContainer.appendChild(activityElement);
+                });
+                
+            } catch (error) {
+                console.error('Error loading recent activity:', error);
+            }
+        }
+        
+        // Load alerts
+        async function loadAlerts() {
+            try {
+                const response = await fetch('/admin/dashboard/alerts');
+                const data = await response.json();
+                
+                const alertsContainer = document.getElementById('alertsContainer');
+                const alertsList = document.getElementById('alertsList');
+                
+                // Clear loading state
+                alertsContainer.innerHTML = '';
+                alertsList.innerHTML = '';
+                
+                if (data.items && data.items.length > 0) {
+                    // Show notification badge
+                    document.getElementById('notificationBadge').classList.remove('hidden');
+                    document.getElementById('notificationBadge').textContent = data.items.length > 9 ? '9+' : data.items.length;
+                    
+                    // Add alerts to dropdown
+                    data.items.forEach(alert => {
+                        const alertElement = document.createElement('a');
+                        alertElement.href = '#';
+                        alertElement.className = `block px-4 py-3 hover:bg-gray-50`;
+                        alertElement.innerHTML = `
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 pt-0.5">
+                                    ${alert.type === 'error' ? '\n                                        <i class="fas fa-exclamation-circle text-red-500"></i>\n                                    ' : alert.type === 'warning' ? '\n                                        <i class="fas fa-exclamation-triangle text-yellow-500"></i>\n                                    ' : '\n                                        <i class="fas fa-info-circle text-blue-500"></i>\n                                    '}
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">${alert.message}</p>
+                                    <p class="text-xs text-gray-500 mt-1">${alert.time}</p>
+                                </div>
+                            </div>
+                        `;
+                        alertsList.appendChild(alertElement);
+                    });
+                    
+                    // Add alerts to main container
+                    data.items.forEach(alert => {
+                        const alertElement = document.createElement('div');
+                        alertElement.className = `alert-${alert.type} p-4`;
+                        alertElement.innerHTML = `
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    ${alert.type === 'error' ? '\n                                        <i class="fas fa-exclamation-circle text-red-400"></i>\n                                    ' : alert.type === 'warning' ? '\n                                        <i class="fas fa-exclamation-triangle text-yellow-400"></i>\n                                    ' : '\n                                        <i class="fas fa-info-circle text-blue-400"></i>\n                                    '}
+                                </div>
+                                <div class="ml-3">
+                                    <p class="text-sm text-gray-700">
+                                        ${alert.message}
+                                        <span class="text-xs text-gray-500 ml-2">${alert.time}</span>
+                                    </p>
+                                </div>
+                                <div class="ml-auto pl-3">
+                                    <div class="-mx-1.5 -my-1.5">
+                                        <button type="button" class="inline-flex rounded-md p-1.5 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            <span class="sr-only">Закрыть</span>
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        alertsContainer.appendChild(alertElement);
+                    });
+                } else {
+                    const noAlertsElement = document.createElement('div');
+                    noAlertsElement.className = 'p-6 text-center text-gray-500';
+                    noAlertsElement.textContent = 'Нет уведомлений';
+                    alertsContainer.appendChild(noAlertsElement);
+                }
+                
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+                
+                const errorElement = document.createElement('div');
+                errorElement.className = 'p-6 text-center text-red-500';
+                errorElement.textContent = 'Ошибка при загрузке уведомлений';
+                document.getElementById('alertsContainer').appendChild(errorElement);
+            }
+        }
+        
+        // Event listeners for period buttons
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const period = this.dataset.period;
+                loadChartData(period);
+            });
+        });
+        
+        // Initialize dashboard when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set user initials
+            const userName = 'Администратор';
+            const initials = userName.split(' ').map(n => n[0]).join('');
+            document.getElementById('userInitials').textContent = initials;
+            
+            // Load dashboard data
+            loadDashboardData();
+            
+            // Set up auto-refresh every 5 minutes
+            setInterval(loadDashboardData, 5 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>

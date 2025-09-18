@@ -1,0 +1,59 @@
+﻿# --- Secrets ---
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.json.key
+*service-account*.json
+*credentials*.json
+*secret*.json
+mythic-brook-*.json
+*.p12
+
+# --- Databases ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.dist-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage*
+.coverage
+htmlcov/
+
+# --- Node/Web ---
+node_modules/
+.npm-cache/
+web/node_modules/
+web/.next/
+web/.nuxt/
+web/.turbo/
+web/.vercel/
+web/.cache/
+web/dist/
+dist/
+build/
+
+# --- OS/IDE ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Logs & temp ---
+logs/
+*.log
+tmp/
+cache/

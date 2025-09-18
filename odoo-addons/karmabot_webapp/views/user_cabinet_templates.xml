@@ -1,0 +1,499 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="user_cabinet" name="KarmaBot User Cabinet">
+        <t t-call="web.layout">
+            <t t-set="title">Личный кабинет KarmaBot</t>
+            
+            <!-- Стили для простого интерфейса -->
+            <style>
+                .karmabot-container {
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                }
+                
+                .karmabot-header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 30px;
+                    border-radius: 15px;
+                    text-align: center;
+                    margin-bottom: 30px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                }
+                
+                .karmabot-stats {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                
+                .stat-card {
+                    background: white;
+                    padding: 25px;
+                    border-radius: 15px;
+                    text-align: center;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+                    border: 1px solid #f0f0f0;
+                }
+                
+                .stat-icon {
+                    font-size: 2.5em;
+                    margin-bottom: 15px;
+                }
+                
+                .stat-value {
+                    font-size: 2em;
+                    font-weight: bold;
+                    color: #333;
+                    margin-bottom: 5px;
+                }
+                
+                .stat-label {
+                    color: #666;
+                    font-size: 0.9em;
+                }
+                
+                .karmabot-menu {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 30px;
+                }
+                
+                .menu-card {
+                    background: white;
+                    padding: 25px;
+                    border-radius: 15px;
+                    text-align: center;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+                    border: 1px solid #f0f0f0;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-decoration: none;
+                    color: inherit;
+                }
+                
+                .menu-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+                    text-decoration: none;
+                    color: inherit;
+                }
+                
+                .menu-icon {
+                    font-size: 3em;
+                    margin-bottom: 15px;
+                }
+                
+                .menu-title {
+                    font-size: 1.2em;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                    color: #333;
+                }
+                
+                .menu-desc {
+                    color: #666;
+                    font-size: 0.9em;
+                }
+                
+                .karmabot-footer {
+                    text-align: center;
+                    margin-top: 30px;
+                }
+                
+                .btn-back {
+                    background: #6c757d;
+                    color: white;
+                    padding: 15px 30px;
+                    border: none;
+                    border-radius: 25px;
+                    font-size: 1.1em;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                
+                .btn-back:hover {
+                    background: #5a6268;
+                    transform: translateY(-2px);
+                }
+                
+                .level-badge {
+                    background: linear-gradient(45deg, #ffd700, #ffed4e);
+                    color: #333;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    display: inline-block;
+                    margin-top: 10px;
+                }
+                
+                @media (max-width: 768px) {
+                    .karmabot-container {
+                        padding: 10px;
+                    }
+                    
+                    .karmabot-stats {
+                        grid-template-columns: repeat(2, 1fr);
+                    }
+                    
+                    .karmabot-menu {
+                        grid-template-columns: 1fr;
+                    }
+                }
+            </style>
+            
+            <div class="karmabot-container">
+                <!-- Заголовок -->
+                <div class="karmabot-header">
+                    <h1>🎯 KarmaBot</h1>
+                    <h2>Личный кабинет</h2>
+                    <div class="level-badge">
+                        <t t-if="user">
+                            <t t-if="user.role == 'user'">👤 Пользователь</t>
+                            <t t-elif="user.role == 'partner'">🏪 Партнер</t>
+                            <t t-elif="user.role == 'admin'">👑 Администратор</t>
+                            <t t-else="user.role == 'super_admin'">⭐ Супер-админ</t>
+                        </t>
+                    </div>
+                </div>
+                
+                <!-- Статистика -->
+                <div class="karmabot-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">💎</div>
+                        <div class="stat-value">
+                            <t t-if="user">
+                                <t t-esc="user.available_points or 0"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Баллов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-value">
+                            <t t-if="user">
+                                <t t-esc="user.total_scans or 0"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Сканов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-value">
+                            <t t-if="user">
+                                <t t-esc="user.total_referrals or 0"/>
+                            </t>
+                            <t t-else="">0</t>
+                        </div>
+                        <div class="stat-label">Рефералов</div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">📅</div>
+                        <div class="stat-value">
+                            <t t-if="user and user.registration_date">
+                                <t t-esc="user.registration_date.strftime('%d.%m')"/>
+                            </t>
+                            <t t-else="">-</t>
+                        </div>
+                        <div class="stat-label">Регистрация</div>
+                    </div>
+                </div>
+                
+                <!-- Меню по ролям -->
+                <div class="karmabot-menu">
+                    <!-- ПОЛЬЗОВАТЕЛЬ (USER) -->
+                    <t t-if="user and user.role == 'user'">
+                        <a href="/karmabot/webapp/cards" class="menu-card">
+                            <div class="menu-icon">💳</div>
+                            <div class="menu-title">Мои карты</div>
+                            <div class="menu-desc">Управление картами лояльности</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/points" class="menu-card">
+                            <div class="menu-icon">💎</div>
+                            <div class="menu-title">Мои баллы</div>
+                            <div class="menu-desc">Просмотр и списание баллов</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/history" class="menu-card">
+                            <div class="menu-icon">📋</div>
+                            <div class="menu-title">История операций</div>
+                            <div class="menu-desc">Все ваши транзакции</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/settings" class="menu-card">
+                            <div class="menu-icon">🌐</div>
+                            <div class="menu-title">Настройки профиля</div>
+                            <div class="menu-desc">Персональные данные</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/referrals" class="menu-card">
+                            <div class="menu-icon">👥</div>
+                            <div class="menu-title">Пригласить друзей</div>
+                            <div class="menu-desc">Реферальная программа</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/support" class="menu-card">
+                            <div class="menu-icon">📞</div>
+                            <div class="menu-title">Поддержка</div>
+                            <div class="menu-desc">Помощь и контакты</div>
+                        </a>
+                    </t>
+                    
+                    <!-- ПАРТНЕР (PARTNER) -->
+                    <t t-elif="user and user.role == 'partner'">
+                        <a href="/karmabot/webapp/partner/cards" class="menu-card">
+                            <div class="menu-icon">🏪</div>
+                            <div class="menu-title">Управление карточками</div>
+                            <div class="menu-desc">Карточки заведений</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/partner/analytics" class="menu-card">
+                            <div class="menu-icon">📊</div>
+                            <div class="menu-title">Аналитика и статистика</div>
+                            <div class="menu-desc">Отчеты по заведению</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/partner/points" class="menu-card">
+                            <div class="menu-icon">💳</div>
+                            <div class="menu-title">Управление картами</div>
+                            <div class="menu-desc">Карты и баллы</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/partner/qr" class="menu-card">
+                            <div class="menu-icon">📱</div>
+                            <div class="menu-title">QR-коды</div>
+                            <div class="menu-desc">Генерация и управление</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/partner/clients" class="menu-card">
+                            <div class="menu-icon">👥</div>
+                            <div class="menu-title">Клиенты</div>
+                            <div class="menu-desc">База клиентов</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/support" class="menu-card">
+                            <div class="menu-icon">📞</div>
+                            <div class="menu-title">Поддержка</div>
+                            <div class="menu-desc">Помощь и контакты</div>
+                        </a>
+                    </t>
+                    
+                    <!-- АДМИН (ADMIN) -->
+                    <t t-elif="user and user.role == 'admin'">
+                        <a href="/karmabot/webapp/admin/moderation" class="menu-card">
+                            <div class="menu-icon">📋</div>
+                            <div class="menu-title">Модерация карточек</div>
+                            <div class="menu-desc">Проверка и одобрение</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/admin/users" class="menu-card">
+                            <div class="menu-icon">👥</div>
+                            <div class="menu-title">Управление пользователями</div>
+                            <div class="menu-desc">Пользователи и партнеры</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/admin/analytics" class="menu-card">
+                            <div class="menu-icon">📊</div>
+                            <div class="menu-title">Системная аналитика</div>
+                            <div class="menu-desc">Отчеты и статистика</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/admin/notifications" class="menu-card">
+                            <div class="menu-icon">🔔</div>
+                            <div class="menu-title">Уведомления</div>
+                            <div class="menu-desc">Системные уведомления</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/support" class="menu-card">
+                            <div class="menu-icon">📞</div>
+                            <div class="menu-title">Поддержка</div>
+                            <div class="menu-desc">Помощь и контакты</div>
+                        </a>
+                    </t>
+                    
+                    <!-- СУПЕР-АДМИН (SUPER_ADMIN) -->
+                    <t t-elif="user and user.role == 'super_admin'">
+                        <a href="/karmabot/webapp/superadmin/settings" class="menu-card">
+                            <div class="menu-icon">⚙️</div>
+                            <div class="menu-title">Системные настройки</div>
+                            <div class="menu-desc">Конфигурация системы</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/superadmin/modules" class="menu-card">
+                            <div class="menu-icon">🔧</div>
+                            <div class="menu-title">Управление модулями</div>
+                            <div class="menu-desc">Установка и настройка</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/superadmin/analytics" class="menu-card">
+                            <div class="menu-icon">📊</div>
+                            <div class="menu-title">Полная аналитика</div>
+                            <div class="menu-desc">Все отчеты системы</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/superadmin/admins" class="menu-card">
+                            <div class="menu-icon">👥</div>
+                            <div class="menu-title">Управление админами</div>
+                            <div class="menu-desc">Администраторы системы</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/superadmin/security" class="menu-card">
+                            <div class="menu-icon">🔒</div>
+                            <div class="menu-title">Безопасность</div>
+                            <div class="menu-desc">Настройки безопасности</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/support" class="menu-card">
+                            <div class="menu-icon">📞</div>
+                            <div class="menu-title">Поддержка</div>
+                            <div class="menu-desc">Помощь и контакты</div>
+                        </a>
+                    </t>
+                    
+                    <!-- ПО УМОЛЧАНИЮ (если роль не определена) -->
+                    <t t-else="">
+                        <a href="/karmabot/webapp/cards" class="menu-card">
+                            <div class="menu-icon">💳</div>
+                            <div class="menu-title">Мои карты</div>
+                            <div class="menu-desc">Управление картами лояльности</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/history" class="menu-card">
+                            <div class="menu-icon">📋</div>
+                            <div class="menu-title">История операций</div>
+                            <div class="menu-desc">Все ваши транзакции</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/settings" class="menu-card">
+                            <div class="menu-icon">⚙️</div>
+                            <div class="menu-title">Настройки</div>
+                            <div class="menu-desc">Персональные данные</div>
+                        </a>
+                        
+                        <a href="/karmabot/webapp/support" class="menu-card">
+                            <div class="menu-icon">📞</div>
+                            <div class="menu-title">Поддержка</div>
+                            <div class="menu-desc">Помощь и контакты</div>
+                        </a>
+                    </t>
+                </div>
+                
+                <!-- Футер -->
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в Telegram
+                    </button>
+                </div>
+            </div>
+            
+            <script>
+                function goBack() {
+                    if (window.Telegram && window.Telegram.WebApp) {
+                        window.Telegram.WebApp.close();
+                    } else {
+                        window.close();
+                    }
+                }
+                
+                // Анимация загрузки
+                document.addEventListener('DOMContentLoaded', function() {
+                    const cards = document.querySelectorAll('.menu-card, .stat-card');
+                    cards.forEach((card, index) => {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        
+                        setTimeout(() => {
+                            card.style.transition = 'all 0.5s ease';
+                            card.style.opacity = '1';
+                            card.style.transform = 'translateY(0)';
+                        }, index * 100);
+                    });
+                });
+            </script>
+        </t>
+    </template>
+    
+    <!-- Шаблон для карт -->
+    <template id="user_cards" name="KarmaBot User Cards">
+        <t t-call="web.layout">
+            <t t-set="title">Мои карты - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>💳 Мои карты</h1>
+                    <p>Управление картами лояльности</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <a href="/karmabot/webapp/cards/add" class="menu-card">
+                        <div class="menu-icon">➕</div>
+                        <div class="menu-title">Добавить карту</div>
+                        <div class="menu-desc">Новая карта лояльности</div>
+                    </a>
+                    
+                    <a href="/karmabot/webapp/cards/search" class="menu-card">
+                        <div class="menu-icon">🔍</div>
+                        <div class="menu-title">Поиск заведений</div>
+                        <div class="menu-desc">Найти партнеров</div>
+                    </a>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+    
+    <!-- Шаблон для истории -->
+    <template id="user_history" name="KarmaBot User History">
+        <t t-call="web.layout">
+            <t t-set="title">История операций - KarmaBot</t>
+            
+            <div class="karmabot-container">
+                <div class="karmabot-header">
+                    <h1>📋 История операций</h1>
+                    <p>Все ваши транзакции</p>
+                </div>
+                
+                <div class="karmabot-menu">
+                    <a href="/karmabot/webapp/history/transactions" class="menu-card">
+                        <div class="menu-icon">💰</div>
+                        <div class="menu-title">Транзакции</div>
+                        <div class="menu-desc">Покупки и начисления</div>
+                    </a>
+                    
+                    <a href="/karmabot/webapp/history/points" class="menu-card">
+                        <div class="menu-icon">💎</div>
+                        <div class="menu-title">Движение баллов</div>
+                        <div class="menu-desc">Начисления и списания</div>
+                    </a>
+                    
+                    <a href="/karmabot/webapp/history/export" class="menu-card">
+                        <div class="menu-icon">📤</div>
+                        <div class="menu-title">Экспорт данных</div>
+                        <div class="menu-desc">Скачать отчеты</div>
+                    </a>
+                </div>
+                
+                <div class="karmabot-footer">
+                    <button class="btn-back" onclick="goBack()">
+                        ← Назад в кабинет
+                    </button>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

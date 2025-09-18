@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Конфигурация WebApp -->
+        <record id="webapp_config" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.enabled</field>
+            <field name="value">True</field>
+        </record>
+        
+        <record id="webapp_base_url" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.base_url</field>
+            <field name="value">https://karmabot-production.up.railway.app</field>
+        </record>
+        
+        <record id="webapp_secret_key" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.secret_key</field>
+            <field name="value">karmabot_secret_key_2024</field>
+        </record>
+        
+        <record id="webapp_jwt_ttl" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.jwt_ttl</field>
+            <field name="value">3600</field>
+        </record>
+        
+        <!-- Настройки безопасности -->
+        <record id="webapp_rate_limit" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.rate_limit</field>
+            <field name="value">100</field>
+        </record>
+        
+        <record id="webapp_max_attempts" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.max_attempts</field>
+            <field name="value">5</field>
+        </record>
+        
+        <!-- Настройки уведомлений -->
+        <record id="webapp_notifications_enabled" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.notifications_enabled</field>
+            <field name="value">True</field>
+        </record>
+        
+        <record id="webapp_email_notifications" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.email_notifications</field>
+            <field name="value">True</field>
+        </record>
+        
+        <!-- Настройки аналитики -->
+        <record id="webapp_analytics_enabled" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.analytics_enabled</field>
+            <field name="value">True</field>
+        </record>
+        
+        <record id="webapp_log_retention_days" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.log_retention_days</field>
+            <field name="value">30</field>
+        </record>
+        
+        <!-- Настройки интеграции с Telegram -->
+        <record id="webapp_telegram_bot_token" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.telegram_bot_token</field>
+            <field name="value">YOUR_TELEGRAM_BOT_TOKEN</field>
+        </record>
+        
+        <record id="webapp_telegram_webhook_url" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.telegram_webhook_url</field>
+            <field name="value">https://karmabot-production.up.railway.app/webhook</field>
+        </record>
+        
+        <!-- Настройки ролей -->
+        <record id="webapp_default_role" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.default_role</field>
+            <field name="value">user</field>
+        </record>
+        
+        <record id="webapp_admin_roles" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.admin_roles</field>
+            <field name="value">admin,super_admin</field>
+        </record>
+        
+        <!-- Настройки баллов -->
+        <record id="webapp_default_points_per_scan" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.default_points_per_scan</field>
+            <field name="value">10</field>
+        </record>
+        
+        <record id="webapp_referral_bonus" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.referral_bonus</field>
+            <field name="value">100</field>
+        </record>
+        
+        <record id="webapp_welcome_bonus" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.welcome_bonus</field>
+            <field name="value">50</field>
+        </record>
+        
+        <!-- Настройки QR-кодов -->
+        <record id="webapp_qr_expiry_hours" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.qr_expiry_hours</field>
+            <field name="value">24</field>
+        </record>
+        
+        <record id="webapp_qr_max_scans" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.qr_max_scans</field>
+            <field name="value">1000</field>
+        </record>
+        
+        <!-- Настройки модерации -->
+        <record id="webapp_moderation_enabled" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.moderation_enabled</field>
+            <field name="value">True</field>
+        </record>
+        
+        <record id="webapp_auto_approve_partners" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.auto_approve_partners</field>
+            <field name="value">False</field>
+        </record>
+        
+        <!-- Настройки локализации -->
+        <record id="webapp_default_language" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.default_language</field>
+            <field name="value">ru</field>
+        </record>
+        
+        <record id="webapp_supported_languages" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.supported_languages</field>
+            <field name="value">ru,en,ko,vi</field>
+        </record>
+        
+        <!-- Настройки производительности -->
+        <record id="webapp_cache_ttl" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.cache_ttl</field>
+            <field name="value">300</field>
+        </record>
+        
+        <record id="webapp_max_file_size" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.max_file_size</field>
+            <field name="value">10485760</field>
+        </record>
+        
+        <!-- Настройки отладки -->
+        <record id="webapp_debug_mode" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.debug_mode</field>
+            <field name="value">False</field>
+        </record>
+        
+        <record id="webapp_log_level" model="ir.config_parameter">
+            <field name="key">karmabot.webapp.log_level</field>
+            <field name="value">INFO</field>
+        </record>
+    </data>
+</odoo>

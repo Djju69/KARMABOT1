@@ -1,0 +1,38 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/web/health"
+healthcheckTimeout = 300
+
+[env]
+# Odoo Configuration
+HOST = "0.0.0.0"
+PORT = "8069"
+WORKERS = "2"
+
+# Database Configuration (Railway provided)
+PGHOST = "${PGHOST}"
+PGPORT = "${PGPORT}"
+PGDATABASE = "${PGDATABASE}"
+PGUSER = "${PGUSER}"
+PGPASSWORD = "${PGPASSWORD}"
+
+# Odoo Database Settings
+ODOO_DATABASE_HOST = "${PGHOST}"
+ODOO_DATABASE_PORT = "${PGPORT}"
+ODOO_DATABASE_NAME = "${PGDATABASE}"
+ODOO_DATABASE_USER = "${PGUSER}"
+ODOO_DATABASE_PASSWORD = "${PGPASSWORD}"
+
+# Odoo Initialization
+ODOO_INIT = "base,web,karmabot_webapp"
+ODOO_FORCE_RECREATE = "true"
+
+# Email Configuration
+ODOO_EMAIL_FROM = "Odoo <admin@karmabot.com>"
+ODOO_SMTP_HOST = "smtp.gmail.com"
+ODOO_SMTP_PORT_NUMBER = "587"
+ODOO_SMTP_USER = "admin@karmabot.com"
+ODOO_SMTP_PASSWORD = "${SMTP_PASSWORD}"

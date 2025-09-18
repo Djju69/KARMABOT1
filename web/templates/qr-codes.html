@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR-коды - KARMABOT1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heart text-danger"></i> KARMABOT1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/catalog">
+                            <i class="fas fa-store"></i> Каталог
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/qr-codes">
+                            <i class="fas fa-qrcode"></i> QR-коды
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/referrals">
+                            <i class="fas fa-users"></i> Рефералы
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <span id="userName">Пользователь</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="fas fa-user-circle"></i> Профиль
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1><i class="fas fa-qrcode text-primary"></i> QR-коды и скидки</h1>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createQRModal">
+                        <i class="fas fa-plus"></i> Создать QR-код
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Статистика QR-кодов</h5>
+                        <div class="row" id="qrStatsContainer">
+                            <!-- Stats will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR Codes List -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Ваши QR-коды</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="qrCodesContainer">
+                            <!-- QR codes will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create QR Code Modal -->
+    <div class="modal fade" id="createQRModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Создать QR-код</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="qrCodeForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="discountType" class="form-label">Тип скидки</label>
+                            <select class="form-select" id="discountType" name="discount_type" required>
+                                <option value="loyalty_points">Баллы лояльности</option>
+                                <option value="percentage">Процент скидки</option>
+                                <option value="fixed_amount">Фиксированная сумма</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="discountValue" class="form-label">Значение скидки</label>
+                            <input type="number" class="form-control" id="discountValue" name="discount_value" 
+                                   min="1" max="10000" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="expiresInHours" class="form-label">Срок действия (часы)</label>
+                            <select class="form-select" id="expiresInHours" name="expires_in_hours" required>
+                                <option value="1">1 час</option>
+                                <option value="6">6 часов</option>
+                                <option value="24" selected>24 часа</option>
+                                <option value="72">3 дня</option>
+                                <option value="168">7 дней</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание</label>
+                            <input type="text" class="form-control" id="description" name="description" 
+                                   placeholder="Например: Скидка 10% на кофе" maxlength="200" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-qrcode"></i> Создать QR-код
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Display Modal -->
+    <div class="modal fade" id="qrDisplayModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ваш QR-код</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="qrCodeDisplay">
+                        <!-- QR code will be displayed here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-primary" onclick="app.downloadQRCode()">
+                        <i class="fas fa-download"></i> Скачать
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>KARMABOT1</h5>
+                    <p>Система лояльности и скидок для вашего города</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 KARMABOT1. Все права защищены.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // QR Code specific functionality
+        class QRCodeManager extends KarmaBotApp {
+            constructor() {
+                super();
+                this.currentQRCode = null;
+            }
+
+            async loadQRStats() {
+                try {
+                    const response = await this.apiCall('/qr/stats');
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.displayQRStats(data);
+                    }
+                } catch (error) {
+                    console.error('Error loading QR stats:', error);
+                }
+            }
+
+            displayQRStats(stats) {
+                const container = document.getElementById('qrStatsContainer');
+                if (!container) return;
+
+                container.innerHTML = `
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-primary">${stats.total_codes}</div>
+                            <div class="text-muted">Всего создано</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-success">${stats.used_codes}</div>
+                            <div class="text-muted">Использовано</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-info">${stats.active_codes}</div>
+                            <div class="text-muted">Активных</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h3 text-warning">${stats.usage_rate.toFixed(1)}%</div>
+                            <div class="text-muted">Процент использования</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            async createQRCode(data) {
+                try {
+                    const response = await this.apiCall('/qr/codes/generate', {
+                        method: 'POST',
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        this.currentQRCode = result;
+                        this.showQRCode(result);
+                        this.showSuccess('QR-код успешно создан!');
+                        this.loadQRCodes();
+                        this.loadQRStats();
+                        return result;
+                    } else {
+                        const error = await response.json();
+                        this.showError(error.detail || 'Ошибка создания QR-кода');
+                    }
+                } catch (error) {
+                    console.error('Error creating QR code:', error);
+                    this.showError('Ошибка создания QR-кода');
+                }
+            }
+
+            showQRCode(qrCode) {
+                const container = document.getElementById('qrCodeDisplay');
+                container.innerHTML = `
+                    <div class="qr-code-container">
+                        <img src="${qrCode.qr_image}" class="qr-code-image mb-3" alt="QR Code">
+                        <h5>${qrCode.description}</h5>
+                        <p class="text-muted">
+                            Скидка: ${qrCode.discount_value} ${qrCode.discount_type}
+                        </p>
+                        <p class="text-muted">
+                            Действует до: ${this.formatDate(qrCode.expires_at)}
+                        </p>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-primary me-2" onclick="app.copyQRCodeData('${qrCode.qr_id}')">
+                                <i class="fas fa-copy"></i> Копировать ID
+                            </button>
+                            <button class="btn btn-outline-success" onclick="app.shareQRCode()">
+                                <i class="fas fa-share"></i> Поделиться
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                const modal = new bootstrap.Modal(document.getElementById('qrDisplayModal'));
+                modal.show();
+            }
+
+            async copyQRCodeData(qrId) {
+                await this.copyToClipboard(qrId);
+                this.showSuccess('ID QR-кода скопирован!');
+            }
+
+            shareQRCode() {
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Мой QR-код для скидки',
+                        text: 'Покажите этот QR-код для получения скидки',
+                        url: window.location.href
+                    });
+                } else {
+                    this.copyToClipboard(window.location.href);
+                    this.showSuccess('Ссылка скопирована в буфер обмена!');
+                }
+            }
+
+            downloadQRCode() {
+                if (this.currentQRCode) {
+                    const link = document.createElement('a');
+                    link.href = this.currentQRCode.qr_image;
+                    link.download = `qr-code-${this.currentQRCode.qr_id}.png`;
+                    link.click();
+                }
+            }
+
+            setupEventListeners() {
+                super.setupEventListeners();
+
+                // QR Code form submission
+                const qrForm = document.getElementById('qrCodeForm');
+                if (qrForm) {
+                    qrForm.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const formData = new FormData(qrForm);
+                        const data = Object.fromEntries(formData);
+                        
+                        // Convert string values to appropriate types
+                        data.discount_value = parseInt(data.discount_value);
+                        data.expires_in_hours = parseInt(data.expires_in_hours);
+                        
+                        const result = await this.createQRCode(data);
+                        if (result) {
+                            // Close the modal
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('createQRModal'));
+                            modal.hide();
+                            
+                            // Reset the form
+                            qrForm.reset();
+                        }
+                    });
+                }
+            }
+
+            init() {
+                super.init();
+                this.loadQRCodes();
+                this.loadQRStats();
+            }
+        }
+
+        // Initialize the QR Code manager
+        const qrManager = new QRCodeManager();
+        window.app = qrManager;
+    </script>
+</body>
+</html>

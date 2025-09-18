@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Каталог - KARMABOT1</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-heart text-danger"></i> KARMABOT1
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/catalog">
+                            <i class="fas fa-store"></i> Каталог
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/qr-codes">
+                            <i class="fas fa-qrcode"></i> QR-коды
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/referrals">
+                            <i class="fas fa-users"></i> Рефералы
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <span id="userName">Пользователь</span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="fas fa-user-circle"></i> Профиль
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="fas fa-cog"></i> Настройки
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Выйти
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1><i class="fas fa-store text-primary"></i> Каталог заведений</h1>
+                <p class="lead">Найдите лучшие заведения в вашем городе</p>
+            </div>
+        </div>
+
+        <!-- Search and Filters -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="searchInput" placeholder="Поиск заведений...">
+                                    <button class="btn btn-outline-primary" onclick="app.searchPlaces()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="categoryFilter">
+                                    <option value="">Все категории</option>
+                                    <option value="restaurant">Рестораны</option>
+                                    <option value="cafe">Кафе</option>
+                                    <option value="spa">СПА</option>
+                                    <option value="hotel">Отели</option>
+                                    <option value="tour">Туры</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="sortFilter">
+                                    <option value="distance">По расстоянию</option>
+                                    <option value="rating">По рейтингу</option>
+                                    <option value="name">По названию</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <button class="btn btn-outline-success me-2" onclick="app.findNearby()">
+                                    <i class="fas fa-map-marker-alt"></i> Рядом со мной
+                                </button>
+                                <button class="btn btn-outline-info" onclick="app.showMap()">
+                                    <i class="fas fa-map"></i> Показать на карте
+                                </button>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <span class="text-muted" id="resultsCount">Загрузка...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Places Grid -->
+        <div class="row" id="placesContainer">
+            <!-- Places will be loaded here -->
+        </div>
+
+        <!-- Pagination -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <nav aria-label="Places pagination">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- Pagination will be loaded here -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </main>
+
+    <!-- Place Details Modal -->
+    <div class="modal fade" id="placeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="placeModalTitle">Название заведения</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="placeModalBody">
+                    <!-- Place details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="button" class="btn btn-primary" onclick="app.getDirections()">
+                        <i class="fas fa-route"></i> Маршрут
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white mt-5 py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>KARMABOT1</h5>
+                    <p>Система лояльности и скидок для вашего города</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p>&copy; 2025 KARMABOT1. Все права защищены.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Catalog specific functionality
+        class CatalogManager extends KarmaBotApp {
+            constructor() {
+                super();
+                this.currentPlaces = [];
+                this.currentPage = 1;
+                this.totalPages = 1;
+                this.currentPlace = null;
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Search input
+                document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.searchPlaces();
+                    }
+                });
+
+                // Category filter
+                document.getElementById('categoryFilter').addEventListener('change', () => {
+                    this.loadPlaces();
+                });
+
+                // Sort filter
+                document.getElementById('sortFilter').addEventListener('change', () => {
+                    this.loadPlaces();
+                });
+            }
+
+            async loadPlaces() {
+                try {
+                    const category = document.getElementById('categoryFilter').value;
+                    const sort = document.getElementById('sortFilter').value;
+                    const search = document.getElementById('searchInput').value;
+
+                    const params = new URLSearchParams({
+                        page: this.currentPage,
+                        limit: 12
+                    });
+
+                    if (category) params.append('category', category);
+                    if (sort) params.append('sort', sort);
+                    if (search) params.append('search', search);
+
+                    const response = await this.apiCall(`/catalog/places?${params}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentPlaces = data.places || [];
+                        this.totalPages = data.total_pages || 1;
+                        this.displayPlaces();
+                        this.updatePagination();
+                        this.updateResultsCount(data.total || 0);
+                    }
+                } catch (error) {
+                    console.error('Error loading places:', error);
+                    this.showError('Ошибка загрузки каталога');
+                }
+            }
+
+            displayPlaces() {
+                const container = document.getElementById('placesContainer');
+                if (!this.currentPlaces || this.currentPlaces.length === 0) {
+                    container.innerHTML = '<div class="col-12"><p class="text-muted text-center">Заведения не найдены</p></div>';
+                    return;
+                }
+
+                container.innerHTML = this.currentPlaces.map(place => `
+                    <div class="col-md-4 mb-4">
+                        <div class="card h-100">
+                            <img src="${place.image || 'https://via.placeholder.com/300x200/007bff/ffffff?text=Place'}" 
+                                 class="card-img-top" alt="${place.title}" style="height: 200px; object-fit: cover;">
+                            <div class="card-body">
+                                <h5 class="card-title">${place.title}</h5>
+                                <p class="card-text">${place.description || 'Описание отсутствует'}</p>
+                                <div class="mb-2">
+                                    <span class="badge bg-primary">${place.category || 'Категория'}</span>
+                                    ${place.rating ? `<span class="badge bg-warning ms-1">⭐ ${place.rating}</span>` : ''}
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-map-marker-alt"></i> ${place.address || 'Адрес не указан'}
+                                    </small>
+                                </div>
+                                ${place.distance ? `
+                                    <div class="mb-2">
+                                        <small class="text-muted">
+                                            <i class="fas fa-route"></i> ${place.distance} км
+                                        </small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn btn-primary w-100" onclick="app.showPlaceDetails(${place.id})">
+                                    <i class="fas fa-eye"></i> Подробнее
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async showPlaceDetails(placeId) {
+                try {
+                    const response = await this.apiCall(`/catalog/places/${placeId}`);
+                    if (response.ok) {
+                        const place = await response.json();
+                        this.currentPlace = place;
+                        this.displayPlaceDetails(place);
+                        
+                        const modal = new bootstrap.Modal(document.getElementById('placeModal'));
+                        modal.show();
+                    }
+                } catch (error) {
+                    console.error('Error loading place details:', error);
+                    this.showError('Ошибка загрузки деталей заведения');
+                }
+            }
+
+            displayPlaceDetails(place) {
+                document.getElementById('placeModalTitle').textContent = place.title;
+                
+                const body = document.getElementById('placeModalBody');
+                body.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            <img src="${place.image || 'https://via.placeholder.com/400x300/007bff/ffffff?text=Place'}" 
+                                 class="img-fluid rounded" alt="${place.title}">
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Описание</h6>
+                            <p>${place.description || 'Описание отсутствует'}</p>
+                            
+                            <h6>Адрес</h6>
+                            <p><i class="fas fa-map-marker-alt"></i> ${place.address || 'Адрес не указан'}</p>
+                            
+                            <h6>Контактная информация</h6>
+                            <p><i class="fas fa-phone"></i> ${place.phone || 'Телефон не указан'}</p>
+                            <p><i class="fas fa-envelope"></i> ${place.email || 'Email не указан'}</p>
+                            
+                            <h6>Рабочие часы</h6>
+                            <p>${place.working_hours || 'Часы работы не указаны'}</p>
+                            
+                            ${place.discount_info ? `
+                                <h6>Скидки</h6>
+                                <p class="text-success">${place.discount_info}</p>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            updatePagination() {
+                const container = document.getElementById('pagination');
+                if (this.totalPages <= 1) {
+                    container.innerHTML = '';
+                    return;
+                }
+
+                let paginationHTML = '';
+                
+                // Previous button
+                if (this.currentPage > 1) {
+                    paginationHTML += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" onclick="app.goToPage(${this.currentPage - 1})">Предыдущая</a>
+                        </li>
+                    `;
+                }
+
+                // Page numbers
+                for (let i = 1; i <= this.totalPages; i++) {
+                    if (i === this.currentPage) {
+                        paginationHTML += `
+                            <li class="page-item active">
+                                <span class="page-link">${i}</span>
+                            </li>
+                        `;
+                    } else {
+                        paginationHTML += `
+                            <li class="page-item">
+                                <a class="page-link" href="#" onclick="app.goToPage(${i})">${i}</a>
+                            </li>
+                        `;
+                    }
+                }
+
+                // Next button
+                if (this.currentPage < this.totalPages) {
+                    paginationHTML += `
+                        <li class="page-item">
+                            <a class="page-link" href="#" onclick="app.goToPage(${this.currentPage + 1})">Следующая</a>
+                        </li>
+                    `;
+                }
+
+                container.innerHTML = paginationHTML;
+            }
+
+            goToPage(page) {
+                this.currentPage = page;
+                this.loadPlaces();
+            }
+
+            updateResultsCount(count) {
+                document.getElementById('resultsCount').textContent = `Найдено: ${count} заведений`;
+            }
+
+            searchPlaces() {
+                this.currentPage = 1;
+                this.loadPlaces();
+            }
+
+            async findNearby() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            this.searchNearby(position.coords.latitude, position.coords.longitude);
+                        },
+                        (error) => {
+                            this.showError('Не удалось получить ваше местоположение');
+                        }
+                    );
+                } else {
+                    this.showError('Геолокация не поддерживается вашим браузером');
+                }
+            }
+
+            async searchNearby(lat, lon) {
+                try {
+                    const response = await this.apiCall(`/catalog/places/nearby?lat=${lat}&lon=${lon}&radius=5`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.currentPlaces = data.places || [];
+                        this.displayPlaces();
+                        this.updateResultsCount(data.total || 0);
+                        this.showSuccess(`Найдено ${data.total || 0} заведений рядом с вами`);
+                    }
+                } catch (error) {
+                    console.error('Error searching nearby places:', error);
+                    this.showError('Ошибка поиска заведений рядом');
+                }
+            }
+
+            showMap() {
+                this.showInfo('Функция карты будет добавлена в следующей версии');
+            }
+
+            getDirections() {
+                if (this.currentPlace && this.currentPlace.address) {
+                    const address = encodeURIComponent(this.currentPlace.address);
+                    window.open(`https://www.google.com/maps/search/?api=1&query=${address}`, '_blank');
+                }
+            }
+
+            init() {
+                super.init();
+                this.loadPlaces();
+            }
+        }
+
+        // Initialize the catalog manager
+        const catalogManager = new CatalogManager();
+        window.app = catalogManager;
+    </script>
+</body>
+</html>

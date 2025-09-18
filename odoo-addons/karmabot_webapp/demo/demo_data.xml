@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Демо пользователи -->
+        <record id="demo_user_1" model="karmabot.user">
+            <field name="telegram_id">123456789</field>
+            <field name="telegram_username">demo_user</field>
+            <field name="display_name">Демо Пользователь</field>
+            <field name="role">user</field>
+            <field name="total_points">150</field>
+            <field name="available_points">100</field>
+            <field name="pending_points">50</field>
+            <field name="total_scans">15</field>
+            <field name="total_referrals">3</field>
+            <field name="registration_date" eval="datetime.now()"/>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+        
+        <record id="demo_partner_1" model="karmabot.user">
+            <field name="telegram_id">987654321</field>
+            <field name="telegram_username">demo_partner</field>
+            <field name="display_name">Демо Партнер</field>
+            <field name="role">partner</field>
+            <field name="total_points">500</field>
+            <field name="available_points">300</field>
+            <field name="pending_points">200</field>
+            <field name="total_scans">50</field>
+            <field name="total_referrals">10</field>
+            <field name="registration_date" eval="datetime.now()"/>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+        
+        <record id="demo_admin_1" model="karmabot.user">
+            <field name="telegram_id">555666777</field>
+            <field name="telegram_username">demo_admin</field>
+            <field name="display_name">Демо Админ</field>
+            <field name="role">admin</field>
+            <field name="total_points">1000</field>
+            <field name="available_points">800</field>
+            <field name="pending_points">200</field>
+            <field name="total_scans">100</field>
+            <field name="total_referrals">25</field>
+            <field name="registration_date" eval="datetime.now()"/>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+        
+        <record id="demo_superadmin_1" model="karmabot.user">
+            <field name="telegram_id">111222333</field>
+            <field name="telegram_username">demo_superadmin</field>
+            <field name="display_name">Демо Супер-Админ</field>
+            <field name="role">super_admin</field>
+            <field name="total_points">5000</field>
+            <field name="available_points">4000</field>
+            <field name="pending_points">1000</field>
+            <field name="total_scans">500</field>
+            <field name="total_referrals">100</field>
+            <field name="registration_date" eval="datetime.now()"/>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+        
+        <!-- Демо категории -->
+        <record id="demo_category_1" model="karmabot.category">
+            <field name="name">Рестораны</field>
+            <field name="description">Заведения общественного питания</field>
+        </record>
+        
+        <record id="demo_category_2" model="karmabot.category">
+            <field name="name">Кафе</field>
+            <field name="description">Кофейни и кафе</field>
+        </record>
+        
+        <record id="demo_category_3" model="karmabot.category">
+            <field name="name">Магазины</field>
+            <field name="description">Розничная торговля</field>
+        </record>
+        
+        <record id="demo_category_4" model="karmabot.category">
+            <field name="name">Услуги</field>
+            <field name="description">Сфера услуг</field>
+        </record>
+        
+        <!-- Демо программа лояльности -->
+        <record id="demo_loyalty_program" model="karmabot.loyalty.program">
+            <field name="name">Основная программа лояльности</field>
+            <field name="description">Программа начисления баллов за покупки</field>
+            <field name="points_per_scan">10</field>
+            <field name="referral_bonus">100</field>
+            <field name="welcome_bonus">50</field>
+            <field name="max_points_per_day">1000</field>
+            <field name="max_scans_per_place">10</field>
+            <field name="min_redeem_points">100</field>
+            <field name="points_expiry_days">365</field>
+            <field name="is_active">True</field>
+        </record>
+        
+        <!-- Демо карточки партнеров -->
+        <record id="demo_partner_card_1" model="karmabot.partner.card">
+            <field name="name">Демо Ресторан</field>
+            <field name="partner_id" ref="demo_partner_1"/>
+            <field name="category_id" ref="demo_category_1"/>
+            <field name="description">Демонстрационный ресторан для тестирования</field>
+            <field name="address">ул. Демо, д. 1</field>
+            <field name="phone">+7 (999) 123-45-67</field>
+            <field name="email">demo@restaurant.ru</field>
+            <field name="website">https://demo-restaurant.ru</field>
+            <field name="discount_percent">10</field>
+            <field name="special_offers">Скидка 10% на все блюда</field>
+            <field name="status">approved</field>
+            <field name="qr_scans_count">25</field>
+            <field name="views_count">150</field>
+            <field name="latitude">55.7558</field>
+            <field name="longitude">37.6176</field>
+        </record>
+        
+        <record id="demo_partner_card_2" model="karmabot.partner.card">
+            <field name="name">Демо Кафе</field>
+            <field name="partner_id" ref="demo_partner_1"/>
+            <field name="category_id" ref="demo_category_2"/>
+            <field name="description">Демонстрационное кафе для тестирования</field>
+            <field name="address">ул. Демо, д. 2</field>
+            <field name="phone">+7 (999) 234-56-78</field>
+            <field name="email">demo@cafe.ru</field>
+            <field name="website">https://demo-cafe.ru</field>
+            <field name="discount_percent">15</field>
+            <field name="special_offers">Скидка 15% на кофе и десерты</field>
+            <field name="status">approved</field>
+            <field name="qr_scans_count">18</field>
+            <field name="views_count">120</field>
+            <field name="latitude">55.7558</field>
+            <field name="longitude">37.6176</field>
+        </record>
+        
+        <!-- Демо транзакции -->
+        <record id="demo_transaction_1" model="karmabot.loyalty.transaction">
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="partner_card_id" ref="demo_partner_card_1"/>
+            <field name="points">10</field>
+            <field name="transaction_type">earn</field>
+            <field name="fraud_check_passed">True</field>
+            <field name="fraud_score">0.1</field>
+        </record>
+        
+        <record id="demo_transaction_2" model="karmabot.loyalty.transaction">
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="partner_card_id" ref="demo_partner_card_2"/>
+            <field name="points">15</field>
+            <field name="transaction_type">earn</field>
+            <field name="fraud_check_passed">True</field>
+            <field name="fraud_score">0.05</field>
+        </record>
+        
+        <!-- Демо QR-коды -->
+        <record id="demo_qr_code_1" model="karmabot.qr.code">
+            <field name="name">QR Демо Ресторан</field>
+            <field name="code">DEMO_RESTAURANT_001</field>
+            <field name="partner_card_id" ref="demo_partner_card_1"/>
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="is_active">True</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(days=30)"/>
+        </record>
+        
+        <record id="demo_qr_code_2" model="karmabot.qr.code">
+            <field name="name">QR Демо Кафе</field>
+            <field name="code">DEMO_CAFE_001</field>
+            <field name="partner_card_id" ref="demo_partner_card_2"/>
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="is_active">True</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(days=30)"/>
+        </record>
+        
+        <!-- Демо SSO токены -->
+        <record id="demo_sso_token_1" model="karmabot.sso.token">
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="token">demo_token_123456789</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(hours=1)"/>
+            <field name="is_active">True</field>
+            <field name="used_count">0</field>
+        </record>
+        
+        <record id="demo_sso_token_2" model="karmabot.sso.token">
+            <field name="user_id" ref="demo_partner_1"/>
+            <field name="token">demo_token_987654321</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(hours=1)"/>
+            <field name="is_active">True</field>
+            <field name="used_count">0</field>
+        </record>
+        
+        <!-- Демо сессии WebApp -->
+        <record id="demo_webapp_session_1" model="karmabot.webapp.session">
+            <field name="user_id" ref="demo_user_1"/>
+            <field name="session_id">demo_session_123456789</field>
+            <field name="ip_address">127.0.0.1</field>
+            <field name="user_agent">Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(hours=24)"/>
+            <field name="is_active">True</field>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+        
+        <record id="demo_webapp_session_2" model="karmabot.webapp.session">
+            <field name="user_id" ref="demo_partner_1"/>
+            <field name="session_id">demo_session_987654321</field>
+            <field name="ip_address">127.0.0.1</field>
+            <field name="user_agent">Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36</field>
+            <field name="expires_at" eval="datetime.now() + timedelta(hours=24)"/>
+            <field name="is_active">True</field>
+            <field name="last_activity" eval="datetime.now()"/>
+        </record>
+    </data>
+</odoo>
