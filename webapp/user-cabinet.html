@@ -238,46 +238,22 @@
         }
         
         function showFeature(feature) {
+            console.log('🔍 Button clicked:', feature);
+            
             // Отправляем команду боту через WebApp
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
+                console.log('📱 Telegram WebApp available');
                 
-                switch(feature) {
-                    case 'cards':
-                        tg.sendData(JSON.stringify({action: 'my_cards'}));
-                        break;
-                    case 'points':
-                        tg.sendData(JSON.stringify({action: 'my_points'}));
-                        break;
-                    case 'catalog':
-                        tg.sendData(JSON.stringify({action: 'catalog'}));
-                        break;
-                    case 'partner':
-                        tg.sendData(JSON.stringify({action: 'become_partner'}));
-                        break;
-                    case 'karma':
-                        tg.sendData(JSON.stringify({action: 'my_karma'}));
-                        break;
-                    case 'achievements':
-                        tg.sendData(JSON.stringify({action: 'achievements'}));
-                        break;
-                    case 'history':
-                        tg.sendData(JSON.stringify({action: 'history'}));
-                        break;
-                    case 'notifications':
-                        tg.sendData(JSON.stringify({action: 'notifications'}));
-                        break;
-                    case 'language':
-                        tg.sendData(JSON.stringify({action: 'language'}));
-                        break;
-                    case 'help':
-                        tg.sendData(JSON.stringify({action: 'help'}));
-                        break;
-                    default:
-                        tg.showAlert('Функция в разработке');
-                }
+                const data = {action: feature};
+                console.log('📤 Sending data:', data);
+                
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify(data));
+                console.log('✅ Data sent to bot');
             } else {
-                alert('Функция в разработке');
+                console.log('❌ Telegram WebApp not available');
+                alert('Telegram WebApp не доступен');
             }
         }
         

@@ -22,20 +22,27 @@ async def handle_webapp_data(message: Message, state: FSMContext):
     """Обработка данных от WebApp"""
     try:
         webapp_data = message.web_app_data
+        logger.info(f"🔍 WebApp data received: {webapp_data.data} from user {message.from_user.id}")
+        
         data = json.loads(webapp_data.data)
         action = data.get('action')
         
-        logger.info(f"WebApp action received: {action} from user {message.from_user.id}")
+        logger.info(f"🎯 WebApp action: {action} from user {message.from_user.id}")
         
-        if action == 'my_cards':
+        if action == 'cards' or action == 'my_cards':
+            logger.info("🎯 Processing my_cards action")
             await on_my_cards(message)
-        elif action == 'my_points':
+        elif action == 'points' or action == 'my_points':
+            logger.info("🎯 Processing my_points action")
             await on_my_points(message)
         elif action == 'catalog':
+            logger.info("🎯 Processing catalog action")
             await show_categories_v2(message)
-        elif action == 'become_partner':
+        elif action == 'partner' or action == 'become_partner':
+            logger.info("🎯 Processing become_partner action")
             await on_become_partner(message, state)
-        elif action == 'my_karma':
+        elif action == 'karma' or action == 'my_karma':
+            logger.info("🎯 Processing my_karma action")
             await message.answer(
                 "📊 <b>Моя карма</b>\n\n"
                 "💰 <b>Текущий баланс:</b> 150 баллов\n"
@@ -48,6 +55,7 @@ async def handle_webapp_data(message: Message, state: FSMContext):
                 parse_mode="HTML"
             )
         elif action == 'achievements':
+            logger.info("🎯 Processing achievements action")
             await message.answer(
                 "🏆 <b>Достижения</b>\n\n"
                 "✅ <b>Полученные:</b>\n"
@@ -60,6 +68,7 @@ async def handle_webapp_data(message: Message, state: FSMContext):
                 parse_mode="HTML"
             )
         elif action == 'history':
+            logger.info("🎯 Processing history action")
             await message.answer(
                 "📋 <b>История операций</b>\n\n"
                 "📅 <b>Сегодня:</b>\n"
@@ -73,6 +82,7 @@ async def handle_webapp_data(message: Message, state: FSMContext):
                 parse_mode="HTML"
             )
         elif action == 'notifications':
+            logger.info("🎯 Processing notifications action")
             lang = await profile_service.get_lang(message.from_user.id)
             await message.answer(
                 "🔔 <b>Настройки уведомлений</b>\n\n"
@@ -81,12 +91,14 @@ async def handle_webapp_data(message: Message, state: FSMContext):
                 reply_markup=get_profile_settings_keyboard(lang)
             )
         elif action == 'language':
+            logger.info("🎯 Processing language action")
             await message.answer(
                 "🌐 <b>Выбор языка</b>\n\n"
                 "Выберите язык интерфейса:",
                 parse_mode="HTML"
             )
         elif action == 'help':
+            logger.info("🎯 Processing help action")
             await message.answer(
                 "❓ <b>Помощь</b>\n\n"
                 "🤖 <b>Основные функции:</b>\n"
@@ -101,7 +113,8 @@ async def handle_webapp_data(message: Message, state: FSMContext):
                 parse_mode="HTML"
             )
         else:
-            await message.answer("❓ Неизвестная команда")
+            logger.warning(f"❓ Unknown WebApp action: {action}")
+            await message.answer(f"❓ Неизвестная команда: {action}")
             
     except json.JSONDecodeError:
         logger.error(f"Invalid JSON in WebApp data: {webapp_data.data}")
