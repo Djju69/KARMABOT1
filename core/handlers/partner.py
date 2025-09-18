@@ -39,7 +39,8 @@ from ..keyboards.reply_v2 import (
     get_profile_keyboard,
 )
 from ..keyboards.inline_v2 import get_cities_inline, CATEGORY_SLUGS
-from ..database.db_v2 import db_v2, Card
+from ..database.db_adapter import db_v2
+from ..database.db_v2 import Card
 from ..utils.locales_v2 import translations, get_text
 
 logger = logging.getLogger(__name__)

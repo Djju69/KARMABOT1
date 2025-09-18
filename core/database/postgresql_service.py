@@ -1,0 +1,195 @@
+"""
+PostgreSQL database service for production
+"""
+import os
+import asyncio
+import asyncpg
+import logging
+from typing import List, Dict, Optional, Any
+from dataclasses import dataclass
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class Partner:
+    id: Optional[int]
+    tg_user_id: int
+    display_name: Optional[str]
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    is_verified: bool = False
+    is_active: bool = True
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+@dataclass
+class Card:
+    id: Optional[int]
+    partner_id: int
+    category_id: int
+    title: str
+    description: Optional[str] = None
+    address: Optional[str] = None
+    contact: Optional[str] = None
+    discount_text: Optional[str] = None
+    status: str = 'pending'
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class PostgreSQLService:
+    """PostgreSQL database service"""
+    
+    def __init__(self, database_url: str):
+        self.database_url = database_url
+        self._pool = None
+    
+    async def init_pool(self):
+        """Initialize connection pool"""
+        if not self._pool:
+            self._pool = await asyncpg.create_pool(self.database_url)
+            logger.info("✅ PostgreSQL connection pool created")
+    
+    async def close_pool(self):
+        """Close connection pool"""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
+            logger.info("✅ PostgreSQL connection pool closed")
+    
+    async def get_connection(self):
+        """Get connection from pool"""
+        if not self._pool:
+            await self.init_pool()
+        return self._pool
+    
+    # Partner methods
+    async def get_partner_by_tg_id(self, tg_user_id: int) -> Optional[Partner]:
+        """Get partner by Telegram user ID"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM partners_v2 WHERE tg_user_id = $1",
+                tg_user_id
+            )
+            if row:
+                return Partner(
+                    id=row['id'],
+                    tg_user_id=row['tg_user_id'],
+                    display_name=row['display_name'],
+                    phone=row['phone'],
+                    email=row['email'],
+                    is_verified=row['is_verified'],
+                    is_active=row['is_active'],
+                    created_at=row['created_at'],
+                    updated_at=row['updated_at']
+                )
+            return None
+    
+    async def create_partner(self, partner: Partner) -> int:
+        """Create new partner, return ID"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO partners_v2 (tg_user_id, display_name, phone, email, is_verified, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING id
+                """,
+                partner.tg_user_id, partner.display_name, partner.phone, 
+                partner.email, partner.is_verified, partner.is_active
+            )
+            return row['id']
+    
+    async def get_or_create_partner(self, tg_user_id: int, display_name: str) -> Partner:
+        """Get existing partner or create new one"""
+        partner = await self.get_partner_by_tg_id(tg_user_id)
+        if partner:
+            return partner
+        
+        new_partner = Partner(
+            id=None,
+            tg_user_id=tg_user_id,
+            display_name=display_name,
+            is_verified=False,
+            is_active=True
+        )
+        
+        partner_id = await self.create_partner(new_partner)
+        new_partner.id = partner_id
+        return new_partner
+    
+    # Card methods
+    async def create_card(self, card: Card) -> int:
+        """Create new card, return ID"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO cards_v2 (partner_id, category_id, title, description, address, contact, discount_text, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING id
+                """,
+                card.partner_id, card.category_id, card.title, card.description,
+                card.address, card.contact, card.discount_text, card.status
+            )
+            return row['id']
+    
+    async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
+        """Get cards by category with pagination"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                       p.display_name as partner_name,
+                       COALESCE(COUNT(cp.id), 0) as photos_count
+                FROM cards_v2 c
+                JOIN categories_v2 cat ON c.category_id = cat.id
+                JOIN partners_v2 p ON c.partner_id = p.id
+                LEFT JOIN card_photos cp ON cp.card_id = c.id
+                WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
+                GROUP BY c.id
+                ORDER BY c.priority_level DESC, c.created_at DESC
+                LIMIT $3
+                """,
+                category_slug, status, limit
+            )
+            
+            return [dict(row) for row in rows]
+    
+    async def get_categories(self) -> List[Dict]:
+        """Get all active categories"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM categories_v2 WHERE is_active = true ORDER BY priority_level DESC, name"
+            )
+            return [dict(row) for row in rows]
+    
+    async def get_cards_count(self) -> int:
+        """Get total number of cards"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT COUNT(*) FROM cards_v2")
+            return row[0]
+    
+    async def get_partners_count(self) -> int:
+        """Get total number of partners"""
+        pool = await self.get_connection()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT COUNT(*) FROM partners_v2")
+            return row[0]
+
+# Global instance
+_postgresql_service = None
+
+def get_postgresql_service() -> PostgreSQLService:
+    """Get global PostgreSQL service instance"""
+    global _postgresql_service
+    if _postgresql_service is None:
+        database_url = os.getenv('DATABASE_URL', '')
+        if not database_url.startswith('postgresql://'):
+            raise ValueError("DATABASE_URL must be a PostgreSQL connection string")
+        _postgresql_service = PostgreSQLService(database_url)
+    return _postgresql_service

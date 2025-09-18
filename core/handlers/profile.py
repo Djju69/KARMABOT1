@@ -11,7 +11,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from ..database.db_v2 import db_v2
+from ..database.db_adapter import db_v2
 from ..utils.locales_v2 import get_text, translations
 from ..services.user_cabinet_service import UserCabinetService
 from ..services.cache import cache_service
@@ -138,7 +138,7 @@ async def on_bind_plastic_cb(callback: CallbackQuery):
 async def on_my_cards(message: Message):
     """Показать карточки пользователя"""
     try:
-        from core.database.db_v2 import db_v2
+        from core.database.db_adapter import db_v2
         
         # Получаем карточки пользователя (пока заглушка)
         user_id = message.from_user.id

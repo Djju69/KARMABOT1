@@ -82,7 +82,18 @@ class Category:
 
 class DatabaseServiceV2:
     def __init__(self, db_path: str = "core/database/data.db"):
-        # Support in-memory with shared cache and persistent connection
+        # Check if we should use PostgreSQL (only in production)
+        database_url = os.getenv('DATABASE_URL', '')
+        is_production = os.getenv('APP_ENV') == 'production' or os.getenv('RAILWAY_ENVIRONMENT') == 'production'
+        
+        if database_url.startswith('postgresql://') and is_production:
+            self.use_postgresql = True
+            self.database_url = database_url
+            logger.info(f"🗄️ Используется PostgreSQL: {database_url[:50]}...")
+            return
+        
+        # SQLite fallback
+        self.use_postgresql = False
         self._is_memory = db_path == ":memory:" or str(db_path).startswith("file::memory:")
         if self._is_memory:
             self._memory_uri = db_path if str(db_path).startswith("file:") else "file::memory:?cache=shared"
@@ -110,8 +121,13 @@ class DatabaseServiceV2:
         else:
             logger.info("Skipping database migrations (APPLY_MIGRATIONS=0)")
     
-    def get_connection(self) -> sqlite3.Connection:
+    def get_connection(self):
         """Get database connection with row factory"""
+        if self.use_postgresql:
+            # For PostgreSQL, we need to use asyncpg
+            # This is a placeholder - in production we should use async methods
+            raise NotImplementedError("PostgreSQL connection not implemented in sync methods")
+        
         if self._is_memory and self._conn is not None:
             return self._conn
         conn = sqlite3.connect(str(self.db_path))
@@ -651,8 +667,8 @@ class DatabaseServiceV2:
             cursor = conn.execute("SELECT COUNT(*) FROM partners_v2")
             return cursor.fetchone()[0]
 
-# Global database service instance
-db_v2 = DatabaseServiceV2()
+# Global database service instance - use adapter instead
+# db_v2 = DatabaseServiceV2()  # Moved to db_adapter.py
 
 def get_db():
     """
