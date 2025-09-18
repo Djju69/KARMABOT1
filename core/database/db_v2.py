@@ -638,6 +638,18 @@ class DatabaseServiceV2:
             )
             
             return self.create_card(card)
+    
+    def get_cards_count(self) -> int:
+        """Get total number of cards"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM cards_v2")
+            return cursor.fetchone()[0]
+    
+    def get_partners_count(self) -> int:
+        """Get total number of partners"""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM partners_v2")
+            return cursor.fetchone()[0]
 
 # Global database service instance
 db_v2 = DatabaseServiceV2()
