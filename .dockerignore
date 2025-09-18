@@ -1,15 +1,14 @@
 # Исключить всё
 **
-
 # Но включить кастомные модули
 !odoo-addons/
 !odoo-addons/**
-
+# Включить конфигурацию
+!odoo.conf
 # Можно исключить мусор
-__pycache__/
+**__pycache__**/
 *.pyc
 *.pyo
 *.log
 *.sqlite
 .env
-
