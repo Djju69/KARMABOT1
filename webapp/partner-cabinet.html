@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет партнера</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #f5576c;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .buttons {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(240, 147, 251, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+        
+        .icon {
+            font-size: 18px;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px 15px;
+            }
+            
+            .content {
+                padding: 20px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏪 Кабинет партнера</h1>
+            <p>Управление вашими заведениями и карточками</p>
+        </div>
+        
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="cards-count">0</div>
+                    <div class="stat-label">Карточки</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="scans-count">0</div>
+                    <div class="stat-label">Сканирования</div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" onclick="showFeature('qr')">
+                    <span class="icon">📷</span>
+                    Сканировать QR
+                </button>
+                
+                <button class="btn" onclick="showFeature('add-card')">
+                    <span class="icon">➕</span>
+                    Добавить карточку
+                </button>
+                
+                <button class="btn" onclick="showFeature('my-cards')">
+                    <span class="icon">📋</span>
+                    Мои карточки
+                </button>
+                
+                <button class="btn" onclick="showFeature('statistics')">
+                    <span class="icon">📊</span>
+                    Статистика
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showFeature('settings')">
+                    <span class="icon">⚙️</span>
+                    Настройки
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showFeature('language')">
+                    <span class="icon">🌐</span>
+                    Язык
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.ready();
+            tg.expand();
+            
+            // Получаем данные пользователя
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                console.log('Partner data:', user);
+                // Здесь можно загрузить данные партнера
+                loadPartnerData(user.id);
+            }
+        }
+        
+        function loadPartnerData(userId) {
+            // Заглушка для загрузки данных
+            document.getElementById('cards-count').textContent = '5';
+            document.getElementById('scans-count').textContent = '127';
+        }
+        
+        function showFeature(feature) {
+            const messages = {
+                qr: '📷 Функция "Сканировать QR" в разработке',
+                'add-card': '➕ Функция "Добавить карточку" в разработке',
+                'my-cards': '📋 Функция "Мои карточки" в разработке',
+                statistics: '📊 Функция "Статистика" в разработке',
+                settings: '⚙️ Функция "Настройки" в разработке',
+                language: '🌐 Функция "Язык" в разработке'
+            };
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.showAlert(messages[feature]);
+            } else {
+                alert(messages[feature]);
+            }
+        }
+        
+        // Обработка закрытия WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.onEvent('backButtonClicked', () => {
+                window.Telegram.WebApp.close();
+            });
+        }
+    </script>
+</body>
+</html>

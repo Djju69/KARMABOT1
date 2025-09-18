@@ -349,6 +349,9 @@ app.include_router(webapp_router)  # WebApp роуты без префикса
 # Serve static files
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
+# Serve WebApp files
+app.mount("/webapp", StaticFiles(directory="webapp", html=True), name="webapp")
+
 # Initialize cache service on startup
 @app.on_event("startup")
 async def _init_cache():
