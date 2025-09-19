@@ -274,7 +274,7 @@ async def main():
     # Get Redis URL
     redis_url = _get_redis_url()
     setup_logging(level=logging.INFO, retention_days=7)
-    logger.info(f"🚀 Starting KARMABOT1... version={APP_VERSION}")
+    logger.info("🚀 Starting KARMABOT1...")
     
     # Initialize Redis (optional)
     redis_url = _get_redis_url()
@@ -465,7 +465,7 @@ async def main():
 
     # Setup all routers
     await setup_routers(dp)
-    logger.info(f"✅ All routers registered successfully | version={APP_VERSION}")
+    logger.info("✅ All routers registered successfully")
 
     # Optional leader lock to avoid multiple pollers
     lock_enabled = os.getenv("ENABLE_POLLING_LEADER_LOCK", "1").lower() in {"1", "true", "yes"}
