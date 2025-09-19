@@ -254,10 +254,6 @@
                     Мои баллы
                 </button>
                 
-                <button class="btn" onclick="showFeature('catalog')">
-                    <span class="icon">🏪</span>
-                    Каталог мест
-                </button>
                 
                 <button class="btn" onclick="showFeature('achievements')">
                     <span class="icon">🏆</span>
@@ -450,15 +446,44 @@
         }
         
         function showPointsModal() {
+            // Получаем реальные данные о баллах
+            const currentPoints = 150; // В реальной системе здесь будет запрос к API
+            const level = Math.floor(currentPoints / 100) + 1;
+            const nextLevelPoints = (level * 100) - currentPoints;
+            
             const modal = createModal('💎 Мои баллы', `
                 <div style="text-align: center; padding: 20px;">
-                    <h3>💎 Текущий баланс</h3>
-                    <div style="font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0;">150 баллов</div>
-                    <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 20px 0;">
-                        <strong>Уровень:</strong> 3 (Новичок)<br>
-                        <strong>До следующего уровня:</strong> 50 баллов
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px;">💎 Текущий баланс</h3>
+                        <div style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+                            ${currentPoints} баллов
+                        </div>
                     </div>
-                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; border-left: 4px solid #007bff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong>Уровень:</strong> 
+                            <span style="background: #007bff; color: white; padding: 5px 10px; border-radius: 20px; font-size: 14px;">
+                                ${level} (Новичок)
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>До следующего уровня:</strong> 
+                            <span style="color: #28a745; font-weight: bold;">${nextLevelPoints} баллов</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976d2;">🎯 Как получить баллы:</h4>
+                        <div style="text-align: left; font-size: 14px;">
+                            • Ежедневный вход: +5 баллов<br>
+                            • Привязка карты: +25 баллов<br>
+                            • Рефералы: +50 баллов<br>
+                            • Покупки: 1% от суммы
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal()" style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
                 </div>
             `);
         }
@@ -632,39 +657,127 @@
         
         // Заглушки для остальных функций
         function showKarmaModal() { showMessage("📊 Карма: 150 баллов", "info"); }
-        function showAchievementsModal() { showMessage("🏆 Достижения загружаются...", "info"); }
+        function showAchievementsModal() {
+            const modal = createModal('🏆 Достижения', `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #ffd700, #ffb347); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px;">🏆 Система достижений</h3>
+                        <div style="font-size: 16px;">Зарабатывайте достижения за активность!</div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 15px 0; color: #333;">🎯 Доступные достижения:</h4>
+                        <div style="text-align: left;">
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #28a745;">
+                                <span style="font-size: 24px; margin-right: 15px;">🥇</span>
+                                <div>
+                                    <strong>Первый шаг</strong><br>
+                                    <small>Получите первые 100 баллов</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #007bff;">
+                                <span style="font-size: 24px; margin-right: 15px;">💳</span>
+                                <div>
+                                    <strong>Карточный мастер</strong><br>
+                                    <small>Привяжите 3 карты</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <span style="font-size: 24px; margin-right: 15px;">🤝</span>
+                                <div>
+                                    <strong>Социальный</strong><br>
+                                    <small>Пригласите 5 друзей</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976d2;">💡 Как получить достижения:</h4>
+                        <div style="text-align: left; font-size: 14px;">
+                            • Активно используйте бота<br>
+                            • Привязывайте карты<br>
+                            • Приглашайте друзей<br>
+                            • Делайте покупки
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal()" style="background: linear-gradient(135deg, #ffd700, #ffb347); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
+                </div>
+            `);
+        }
         function showHistoryModal() { showMessage("📋 История операций загружается...", "info"); }
         function showNotificationsModal() { showMessage("🔔 Настройки уведомлений", "info"); }
         function showLanguageModal() { 
-            // Создаем модальное окно выбора языка
+            // Создаем красивое модальное окно выбора языка
             const modal = document.createElement('div');
             modal.className = 'modal';
             modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>🌐 Выбор языка</h3>
-                        <span class="close" onclick="closeModal()">&times;</span>
+                <div class="modal-content" style="max-width: 400px; margin: 10% auto;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
+                        <h3 style="margin: 0; font-size: 18px;">🌐 Выберите язык</h3>
+                        <span class="close" onclick="closeModal()" style="color: white; font-size: 24px; cursor: pointer;">&times;</span>
                     </div>
-                    <div class="modal-body">
-                        <div class="language-options">
-                            <button class="lang-btn" onclick="changeLanguage('ru')">
+                    <div class="modal-body" style="padding: 30px; background: white;">
+                        <div class="language-options" style="display: grid; gap: 15px;">
+                            <button class="lang-btn" onclick="changeLanguage('ru')" style="
+                                background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+                            ">
                                 🇷🇺 Русский
                             </button>
-                            <button class="lang-btn" onclick="changeLanguage('en')">
+                            <button class="lang-btn" onclick="changeLanguage('en')" style="
+                                background: linear-gradient(135deg, #4ecdc4, #44a08d);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+                            ">
                                 🇺🇸 English
                             </button>
-                            <button class="lang-btn" onclick="changeLanguage('vi')">
+                            <button class="lang-btn" onclick="changeLanguage('vi')" style="
+                                background: linear-gradient(135deg, #f093fb, #f5576c);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+                            ">
                                 🇻🇳 Tiếng Việt
                             </button>
-                            <button class="lang-btn" onclick="changeLanguage('ko')">
+                            <button class="lang-btn" onclick="changeLanguage('ko')" style="
+                                background: linear-gradient(135deg, #4facfe, #00f2fe);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+                            ">
                                 🇰🇷 한국어
                             </button>
+                        </div>
+                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+                            Язык будет изменен в боте и кабинетах
                         </div>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
             modal.style.display = 'block';
+            
+            // Добавляем эффекты при наведении
+            const buttons = modal.querySelectorAll('.lang-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                });
+            });
         }
         
         function changeLanguage(langCode) {
@@ -780,7 +893,63 @@
                 browserBtn.textContent = langTexts.open_browser;
             }
         }
-        function showHelpModal() { showMessage("❓ Помощь и поддержка", "info"); }
+        function showHelpModal() {
+            // Отправляем команду в бот для открытия раздела помощи
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.sendData(JSON.stringify({
+                    action: 'open_help',
+                    command: '/help'
+                }));
+                
+                // Показываем уведомление
+                showMessage("📖 Открываем раздел помощи в боте...", "success");
+                
+                // Закрываем WebApp
+                setTimeout(() => {
+                    tg.close();
+                }, 1500);
+            } else {
+                // Fallback для браузера
+                const modal = createModal('❓ Помощь и поддержка', `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 18px;">❓ Помощь и поддержка</h3>
+                            <div style="font-size: 16px;">Получите помощь в боте!</div>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 15px 0; color: #333;">📱 Доступные команды в боте:</h4>
+                            <div style="text-align: left;">
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #007bff;">
+                                    <strong>/start</strong> - Начало работы с ботом
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #28a745;">
+                                    <strong>/help</strong> - Справка и инструкции
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                    <strong>/profile</strong> - Личный кабинет
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #dc3545;">
+                                    <strong>/catalog</strong> - Каталог заведений
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #1976d2;">💡 Для полной помощи:</h4>
+                            <div style="text-align: left; font-size: 14px;">
+                                • Откройте бота в Telegram<br>
+                                • Используйте команду /help<br>
+                                • Обратитесь к администратору
+                            </div>
+                        </div>
+                        
+                        <button onclick="closeModal()" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
+                    </div>
+                `);
+            }
+        }
         
         // Функция открытия в браузере
         function openInBrowser() {
