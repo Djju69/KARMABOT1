@@ -524,11 +524,11 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
                 bonus_for_points_usage = 0.30
         
         # Получаем границу закрытия чека баллами
-        cursor = conn.execute("""
+        cursor2 = conn.execute("""
             SELECT max_percent_per_bill FROM platform_loyalty_config 
             ORDER BY id DESC LIMIT 1
         """)
-        max_percent_per_bill = cursor.fetchone()
+        max_percent_per_bill = cursor2.fetchone()
         max_percent_per_bill = max_percent_per_bill[0] if max_percent_per_bill else 50.0
         
         await message.answer(

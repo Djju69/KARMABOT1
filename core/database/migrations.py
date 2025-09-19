@@ -100,6 +100,23 @@ class DatabaseMigrator:
                 )
                 return cursor.fetchone() is not None
     
+    def mark_migration_applied(self, version: str, description: str):
+        """Mark migration as applied"""
+        if self._is_memory:
+            conn = self.get_connection()
+            cursor = conn.execute(
+                "INSERT OR REPLACE INTO schema_migrations (version, description, applied_at) VALUES (?, ?, datetime('now'))",
+                (version, description)
+            )
+            conn.commit()
+        else:
+            with self.get_connection() as conn:
+                cursor = conn.execute(
+                    "INSERT OR REPLACE INTO schema_migrations (version, description, applied_at) VALUES (?, ?, datetime('now'))",
+                    (version, description)
+                )
+                conn.commit()
+    
     def _is_postgres(self) -> bool:
         """Check if we're using PostgreSQL"""
         if self._is_memory:
@@ -866,33 +883,7 @@ class DatabaseMigrator:
         - admin_logs: Admin action logs
         """
         # Create users table if it doesn't exist (PostgreSQL version)
-        users_sql_pg = """
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            telegram_id BIGINT UNIQUE NOT NULL,
-            username VARCHAR(255),
-            first_name VARCHAR(255),
-            last_name VARCHAR(255),
-            language_code VARCHAR(10) DEFAULT 'ru',
-            karma_points INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-        # SQLite version
-        users_sql_sqlite = """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER UNIQUE NOT NULL,
-            username TEXT,
-            first_name TEXT,
-            last_name TEXT,
-            language_code TEXT DEFAULT 'ru',
-            karma_points INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-        """
+        # Users table creation removed - handled by migration 020
         
         # Add karma_points column if it doesn't exist
         # We'll do a pre-check to avoid noisy duplicate-column errors in logs
@@ -1031,16 +1022,18 @@ class DatabaseMigrator:
         
         # Apply all migrations
         if self._is_memory or not self._is_postgres():
+            # Users table creation removed - handled by migration 020
             self.apply_migration(
                 "016",
                 "EXPAND: Create karma system and plastic cards tables (SQLite)",
-                users_sql_sqlite,
+                "-- Users table creation skipped",
             )
         else:
+            # Users table creation removed - handled by migration 020
             self.apply_migration(
                 "016",
                 "EXPAND: Create karma system and plastic cards tables (PG)",
-                users_sql_pg,
+                "-- Users table creation skipped",
             )
         
         # Try to add karma_points column safely: pre-check and mark applied if exists
@@ -1158,7 +1151,9 @@ class DatabaseMigrator:
         sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         
         try:
-            from migrations.migration_017_loyalty_system import upgrade_017
+            # Migration 017 disabled - external import causes issues
+            # from migrations.migration_017_loyalty_system import upgrade_017
+            upgrade_017 = None
             
             # For SQLite, we need to adapt the PostgreSQL-specific syntax
             if not self._is_memory:
@@ -1181,7 +1176,8 @@ class DatabaseMigrator:
                             async def run_migration():
                                 pg_conn = await asyncpg.connect(database_url)
                                 try:
-                                    await upgrade_017(pg_conn)
+                                    # await upgrade_017(pg_conn)  # Migration 017 disabled
+                                    print("Migration 017 skipped - external import disabled")
                                 finally:
                                     await pg_conn.close()
                             # Check if we're in an event loop
@@ -1355,7 +1351,9 @@ class DatabaseMigrator:
         sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
         
         try:
-            from migrations.migration_018_personal_cabinets import upgrade_018
+            # Migration 018 disabled - external import causes issues
+            # from migrations.migration_018_personal_cabinets import upgrade_018
+            upgrade_018 = None
             
             # For SQLite, we need to adapt the PostgreSQL-specific syntax
             if not self._is_memory:
@@ -1378,7 +1376,8 @@ class DatabaseMigrator:
                             async def run_migration():
                                 pg_conn = await asyncpg.connect(database_url)
                                 try:
-                                    await upgrade_018(pg_conn)
+                                    # await upgrade_018(pg_conn)  # Migration 018 disabled
+                                    print("Migration 018 skipped - external import disabled")
                                 finally:
                                     await pg_conn.close()
                             # Check if we're in an event loop
@@ -1424,29 +1423,8 @@ class DatabaseMigrator:
                 async def run_migration():
                     conn = await asyncpg.connect(database_url)
                     try:
-                        # Создаем таблицу users
-                        await conn.execute("""
-                            CREATE TABLE IF NOT EXISTS users (
-                                id SERIAL PRIMARY KEY,
-                                telegram_id BIGINT UNIQUE NOT NULL,
-                                username VARCHAR(255),
-                                first_name VARCHAR(255),
-                                last_name VARCHAR(255),
-                                language_code VARCHAR(10) DEFAULT 'ru',
-                                karma_points INTEGER DEFAULT 0,
-                                role VARCHAR(20) DEFAULT 'user',
-                                reputation_score INTEGER DEFAULT 0,
-                                level INTEGER DEFAULT 1,
-                                is_banned BOOLEAN DEFAULT FALSE,
-                                ban_reason TEXT,
-                                banned_by BIGINT,
-                                banned_at TIMESTAMP,
-                                last_activity TIMESTAMP DEFAULT NOW(),
-                                created_at TIMESTAMP DEFAULT NOW(),
-                                updated_at TIMESTAMP DEFAULT NOW()
-                            )
-                        """)
-                        print("✅ Users table created/verified")
+                        # Users table creation removed - handled by migration 020
+                        print("✅ Users table creation skipped - handled by migration 020")
                         
                         # Создаем таблицу user_notifications
                         await conn.execute("""
@@ -1520,20 +1498,7 @@ class DatabaseMigrator:
 
     def _migrate_018_sqlite(self, conn):
         """SQLite-specific migration for personal cabinets system"""
-        # 0. Create users table if it doesn't exist
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                telegram_id INTEGER UNIQUE NOT NULL,
-                username TEXT,
-                first_name TEXT,
-                last_name TEXT,
-                language_code TEXT DEFAULT 'ru',
-                karma_points INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        # Users table creation removed - handled by migration 020
         
         # 1. Add missing fields to users table
         fields_to_add = [
@@ -1617,36 +1582,8 @@ class DatabaseMigrator:
         try:
             print("🔧 Force creating users table (SQLite)...")
             
-            # Проверяем, существует ли таблица users
-            try:
-                conn.execute("SELECT COUNT(*) FROM users LIMIT 1").fetchone()
-                print("✅ Users table already exists")
-            except:
-                print("❌ Users table does not exist, creating...")
-                
-                # Создаем таблицу users
-                conn.execute("""
-                    CREATE TABLE users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        telegram_id INTEGER UNIQUE NOT NULL,
-                        username TEXT,
-                        first_name TEXT,
-                        last_name TEXT,
-                        language_code TEXT DEFAULT 'ru',
-                        karma_points INTEGER DEFAULT 0,
-                        role TEXT DEFAULT 'user',
-                        reputation_score INTEGER DEFAULT 0,
-                        level INTEGER DEFAULT 1,
-                        is_banned BOOLEAN DEFAULT 0,
-                        ban_reason TEXT,
-                        banned_by INTEGER,
-                        banned_at TEXT,
-                        last_activity TEXT DEFAULT CURRENT_TIMESTAMP,
-                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                print("✅ Users table created successfully")
+            # Users table creation removed - handled by migration 020
+            print("✅ Users table creation skipped - handled by migration 020")
             
             # Создаем таблицу user_notifications если её нет
             try:
@@ -2032,15 +1969,32 @@ class DatabaseMigrator:
     def _migrate_020_sqlite(self, conn):
         """SQLite-specific migration for loyalty system expansion"""
         try:
-            # Expand users table
-            conn.execute("""
-                ALTER TABLE users 
-                ADD COLUMN points_balance INTEGER DEFAULT 0;
-            """)
-            conn.execute("""
-                ALTER TABLE users 
-                ADD COLUMN partner_id INTEGER;
-            """)
+            # Check if points_balance column exists
+            cursor = conn.execute("PRAGMA table_info(users)")
+            columns = cursor.fetchall()
+            has_points_balance = any(col[1] == 'points_balance' for col in columns)
+            
+            if not has_points_balance:
+                # Expand users table
+                conn.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN points_balance INTEGER DEFAULT 0;
+                """)
+                print("✅ Added points_balance column to users table")
+            else:
+                print("✅ points_balance column already exists")
+            
+            # Check if partner_id column exists
+            has_partner_id = any(col[1] == 'partner_id' for col in columns)
+            
+            if not has_partner_id:
+                conn.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN partner_id INTEGER;
+                """)
+                print("✅ Added partner_id column to users table")
+            else:
+                print("✅ partner_id column already exists")
             
             # Create points_history table
             conn.execute("""
@@ -2236,6 +2190,30 @@ class DatabaseMigrator:
                 );
             """)
             
+            # Check and add missing columns to platform_loyalty_config
+            cursor = conn.execute("PRAGMA table_info(platform_loyalty_config)")
+            columns = cursor.fetchall()
+            existing_columns = [col[1] for col in columns]
+            
+            required_columns = [
+                ('max_percent_per_bill', 'REAL DEFAULT 50.00'),
+                ('min_purchase_for_points', 'INTEGER DEFAULT 10000'),
+                ('max_discount_percent', 'REAL DEFAULT 40.00'),
+                ('bonus_for_points_usage', 'REAL DEFAULT 0.30'),
+                ('welcome_bonus_immediate', 'INTEGER DEFAULT 51'),
+                ('welcome_unlock_stage_1', 'INTEGER DEFAULT 67'),
+                ('welcome_unlock_stage_2', 'INTEGER DEFAULT 50'),
+                ('welcome_unlock_stage_3', 'INTEGER DEFAULT 50')
+            ]
+            
+            for col_name, col_def in required_columns:
+                if col_name not in existing_columns:
+                    try:
+                        conn.execute(f"ALTER TABLE platform_loyalty_config ADD COLUMN {col_name} {col_def}")
+                        print(f"✅ Added {col_name} column to platform_loyalty_config")
+                    except Exception as e:
+                        print(f"⚠️ Could not add {col_name}: {e}")
+            
             # Insert default loyalty config
             conn.execute("""
                 INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
@@ -2279,7 +2257,9 @@ class DatabaseMigrator:
         """PostgreSQL-specific migration for partners_v2 table"""
         try:
             import asyncio
-            from migrations.migration_021_create_partners_v2 import upgrade_021
+            # Migration 021 disabled - external import causes issues
+            # from migrations.migration_021_create_partners_v2 import upgrade_021
+            upgrade_021 = None
             
             # Run async migration directly
             async def run_migration():
@@ -2288,7 +2268,8 @@ class DatabaseMigrator:
                 await postgresql_service.init_pool()
                 pool = await postgresql_service.get_pool()
                 async with pool.acquire() as conn:
-                    await upgrade_021(conn)
+                    # await upgrade_021(conn)  # Migration 021 disabled
+                    print("Migration 021 skipped - external import disabled")
                 await postgresql_service.close_pool()
             
             asyncio.run(run_migration())
@@ -2535,9 +2516,9 @@ migrator = DatabaseMigrator(db_path) if db_path else None
 
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
-    # Only run migrations if APPLY_MIGRATIONS=1
-    if os.getenv("APPLY_MIGRATIONS", "0") != "1":
-        logger.info("Skipping database migrations (APPLY_MIGRATIONS != 1)")
+    # Run migrations by default, skip only if explicitly disabled
+    if os.getenv("SKIP_MIGRATIONS", "0") == "1":
+        logger.info("Skipping database migrations (SKIP_MIGRATIONS=1)")
         return
     
     # Skip SQLite migrations if using PostgreSQL

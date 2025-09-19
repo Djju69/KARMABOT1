@@ -194,7 +194,7 @@ async def on_my_points(message: Message):
         # Получаем баллы пользователя
         try:
             from core.services.loyalty_service import loyalty_service
-            points_balance = loyalty_service.get_user_points_balance(user_id)
+            points_balance = await loyalty_service.get_user_points_balance(user_id)
         except Exception as db_error:
             logger.warning(f"Database error in on_my_points: {db_error}")
             points_balance = 0
