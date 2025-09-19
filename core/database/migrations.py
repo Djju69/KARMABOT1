@@ -95,7 +95,7 @@ class DatabaseMigrator:
         else:
             with self.get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT 1 FROM schema_migrations WHERE version = ?",
+                    "SELECT 1 FROM schema_migrations WHERE version = ?", 
                     (version,)
                 )
                 return cursor.fetchone() is not None
@@ -199,7 +199,7 @@ class DatabaseMigrator:
                             (version, description)
                         )
                         conn.commit()
-                        logger.info(f"Applied migration {version}: {description}")
+                    logger.info(f"Applied migration {version}: {description}")
                 except Exception as e:
                     logger.error(f"Failed to apply migration {version}: {e}")
                     raise
@@ -1669,7 +1669,31 @@ class DatabaseMigrator:
                 conn = await asyncpg.connect(database_url)
                 
                 try:
-                    # Expand users table
+                    # Create users table if it doesn't exist
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            user_id BIGINT UNIQUE NOT NULL,
+                            username VARCHAR(255),
+                            first_name VARCHAR(255),
+                            last_name VARCHAR(255),
+                            language_code VARCHAR(5) DEFAULT 'ru',
+                            phone VARCHAR(20),
+                            email VARCHAR(255),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            is_partner BOOLEAN DEFAULT FALSE,
+                            is_admin BOOLEAN DEFAULT FALSE,
+                            is_super_admin BOOLEAN DEFAULT FALSE,
+                            points_balance INTEGER DEFAULT 0,
+                            partner_id INTEGER,
+                            welcome_stage INTEGER DEFAULT 0,
+                            language VARCHAR(5) DEFAULT 'ru'
+                        );
+                    """)
+                    
+                    # Expand users table (add columns if they don't exist)
                     await conn.execute("""
                         ALTER TABLE users 
                         ADD COLUMN IF NOT EXISTS points_balance INTEGER DEFAULT 0,
@@ -1969,6 +1993,26 @@ class DatabaseMigrator:
     def _migrate_020_sqlite(self, conn):
         """SQLite-specific migration for loyalty system expansion"""
         try:
+            # First, create users table if it doesn't exist
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id BIGINT UNIQUE NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    last_name TEXT,
+                    language_code TEXT DEFAULT 'ru',
+                    is_bot BOOLEAN DEFAULT FALSE,
+                    is_premium BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    points_balance INTEGER DEFAULT 0,
+                    partner_id INTEGER DEFAULT NULL,
+                    FOREIGN KEY (partner_id) REFERENCES partners_v2(id)
+                )
+            """)
+            
             # Check if points_balance column exists
             cursor = conn.execute("PRAGMA table_info(users)")
             columns = cursor.fetchall()
@@ -2242,9 +2286,8 @@ class DatabaseMigrator:
                 # PostgreSQL migration
                 self._migrate_021_postgresql()
             else:
-                # SQLite migration - skip for now
-                logger.info(f"Migration {version} skipped for SQLite")
-                return
+                # SQLite migration
+                self._migrate_021_sqlite()
                 
             self.mark_migration_applied(version, desc)
             logger.info(f"Applied migration {version}: {desc}")
@@ -2268,14 +2311,180 @@ class DatabaseMigrator:
                 await postgresql_service.init_pool()
                 pool = await postgresql_service.get_pool()
                 async with pool.acquire() as conn:
-                    # await upgrade_021(conn)  # Migration 021 disabled
-                    print("Migration 021 skipped - external import disabled")
+                    # Create partners_v2 table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partners_v2 (
+                            id SERIAL PRIMARY KEY,
+                            tg_user_id BIGINT UNIQUE NOT NULL,
+                            display_name VARCHAR(255),
+                            phone VARCHAR(20),
+                            email VARCHAR(255),
+                            is_verified BOOLEAN DEFAULT FALSE,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    
+                    # Create categories_v2 table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS categories_v2 (
+                            id SERIAL PRIMARY KEY,
+                            name VARCHAR(255) NOT NULL,
+                            description TEXT,
+                            icon VARCHAR(50),
+                            is_active BOOLEAN DEFAULT TRUE,
+                            sort_order INTEGER DEFAULT 0,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    
+                    # Create cards_v2 table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS cards_v2 (
+                            id SERIAL PRIMARY KEY,
+                            partner_id INTEGER NOT NULL,
+                            category_id INTEGER NOT NULL,
+                            title VARCHAR(255) NOT NULL,
+                            description TEXT,
+                            discount_percent INTEGER DEFAULT 0,
+                            min_purchase_amount DECIMAL(10,2) DEFAULT 0,
+                            max_discount_amount DECIMAL(10,2),
+                            valid_from DATE,
+                            valid_until DATE,
+                            is_active BOOLEAN DEFAULT TRUE,
+                            priority_level INTEGER DEFAULT 0,
+                            view_count INTEGER DEFAULT 0,
+                            is_featured BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (partner_id) REFERENCES partners_v2(id) ON DELETE CASCADE,
+                            FOREIGN KEY (category_id) REFERENCES categories_v2(id) ON DELETE RESTRICT
+                        );
+                    """)
+                    
+                    # Create platform_loyalty_config table if it doesn't exist
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                            id SERIAL PRIMARY KEY,
+                            redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
+                            rounding_rule VARCHAR(20) DEFAULT 'bankers',
+                            max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
+                            max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00,
+                            min_purchase_for_points INTEGER DEFAULT 10000,
+                            max_discount_percent NUMERIC(5,2) DEFAULT 40.00,
+                            bonus_for_points_usage NUMERIC(5,2) DEFAULT 0.30,
+                            welcome_bonus_immediate INTEGER DEFAULT 51,
+                            welcome_unlock_stage_1 INTEGER DEFAULT 67,
+                            welcome_unlock_stage_2 INTEGER DEFAULT 50,
+                            welcome_unlock_stage_3 INTEGER DEFAULT 50,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    
+                    # Insert default loyalty config
+                    await conn.execute("""
+                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
+                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50)
+                        ON CONFLICT DO NOTHING;
+                    """)
+                    
+                    print("✅ Migration 021 completed - partners_v2, categories_v2, cards_v2, platform_loyalty_config tables created")
                 await postgresql_service.close_pool()
             
             asyncio.run(run_migration())
             
         except Exception as e:
             logger.error(f"Error in PostgreSQL migration 021: {e}")
+            raise
+
+    def _migrate_021_sqlite(self):
+        """SQLite-specific migration for partners_v2 table"""
+        try:
+            conn = self.get_connection()
+            
+            # Create partners_v2 table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partners_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tg_user_id INTEGER UNIQUE NOT NULL,
+                    display_name TEXT,
+                    phone TEXT,
+                    email TEXT,
+                    is_verified BOOLEAN DEFAULT 0,
+                    is_active BOOLEAN DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create categories_v2 table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS categories_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    icon TEXT,
+                    is_active BOOLEAN DEFAULT 1,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create cards_v2 table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS cards_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    discount_percent INTEGER DEFAULT 0,
+                    min_purchase_amount REAL DEFAULT 0,
+                    max_discount_amount REAL,
+                    valid_from TEXT,
+                    valid_until TEXT,
+                    is_active BOOLEAN DEFAULT 1,
+                    priority_level INTEGER DEFAULT 0,
+                    view_count INTEGER DEFAULT 0,
+                    is_featured BOOLEAN DEFAULT 0,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (partner_id) REFERENCES partners_v2(id) ON DELETE CASCADE,
+                    FOREIGN KEY (category_id) REFERENCES categories_v2(id) ON DELETE RESTRICT
+                );
+            """)
+            
+            # Create platform_loyalty_config table if it doesn't exist
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    redeem_rate REAL DEFAULT 5000.0,
+                    rounding_rule TEXT DEFAULT 'bankers',
+                    max_accrual_percent REAL DEFAULT 20.00,
+                    max_percent_per_bill REAL DEFAULT 50.00,
+                    min_purchase_for_points INTEGER DEFAULT 10000,
+                    max_discount_percent REAL DEFAULT 40.00,
+                    bonus_for_points_usage REAL DEFAULT 0.30,
+                    welcome_bonus_immediate INTEGER DEFAULT 51,
+                    welcome_unlock_stage_1 INTEGER DEFAULT 67,
+                    welcome_unlock_stage_2 INTEGER DEFAULT 50,
+                    welcome_unlock_stage_3 INTEGER DEFAULT 50,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Insert default loyalty config
+            conn.execute("""
+                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
+                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50);
+            """)
+            
+            conn.commit()
+            print("✅ Migration 021 completed (SQLite) - partners_v2, categories_v2, cards_v2, platform_loyalty_config tables created")
+            
+        except Exception as e:
+            logger.error(f"Error in SQLite migration 021: {e}")
             raise
 
     def migrate_022_add_policy_accepted_to_users(self):
