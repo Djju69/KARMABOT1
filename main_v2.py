@@ -579,8 +579,112 @@ if __name__ == "__main__":
         def start_web_server():
             port = int(os.getenv("PORT", 8080))
             os.chdir("webapp")  # Serve files from webapp directory
-            httpd = HTTPServer(("0.0.0.0", port), SimpleHTTPRequestHandler)
-            logger.info(f"Web server started on port {port}")
+            
+            # Создаем кастомный обработчик с API эндпоинтами
+            class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+                def do_GET(self):
+                    if self.path.startswith('/api/'):
+                        self.handle_api_request()
+                    else:
+                        super().do_GET()
+                
+                def do_POST(self):
+                    if self.path.startswith('/api/'):
+                        self.handle_api_request()
+                    else:
+                        super().do_POST()
+                
+                def do_OPTIONS(self):
+                    if self.path.startswith('/api/'):
+                        self.send_response(200)
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                        self.end_headers()
+                    else:
+                        super().do_OPTIONS()
+                
+                def handle_api_request(self):
+                    try:
+                        import json
+                        import sys
+                        import os
+                        
+                        # Добавляем путь к корню проекта
+                        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                        
+                        from core.database.db_adapter import db_v2
+                        
+                        if self.path == '/api/moderation/applications':
+                            # Получаем заявки партнеров
+                            applications = db_v2.execute_query("""
+                                SELECT id, name, phone, email, telegram_user_id, created_at, status
+                                FROM partner_applications 
+                                WHERE status = 'pending' 
+                                ORDER BY created_at ASC 
+                                LIMIT 50
+                            """)
+                            
+                            apps_list = []
+                            for app in applications:
+                                apps_list.append({
+                                    'id': app['id'],
+                                    'name': app['name'],
+                                    'phone': app['phone'],
+                                    'email': app['email'],
+                                    'telegram_user_id': app['telegram_user_id'],
+                                    'created_at': app['created_at'].isoformat() if hasattr(app['created_at'], 'isoformat') else str(app['created_at']),
+                                    'status': app['status']
+                                })
+                            
+                            response = {
+                                'success': True,
+                                'applications': apps_list,
+                                'count': len(apps_list)
+                            }
+                            
+                            self.send_json_response(response)
+                            
+                        elif self.path.startswith('/api/moderation/approve/'):
+                            app_id = self.path.split('/')[-1]
+                            db_v2.execute_query("""
+                                UPDATE partner_applications 
+                                SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                WHERE id = ?
+                            """, (app_id,))
+                            
+                            self.send_json_response({'success': True, 'message': 'Заявка одобрена'})
+                            
+                        elif self.path.startswith('/api/moderation/reject/'):
+                            app_id = self.path.split('/')[-1]
+                            db_v2.execute_query("""
+                                UPDATE partner_applications 
+                                SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                WHERE id = ?
+                            """, (app_id,))
+                            
+                            self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
+                            
+                        else:
+                            self.send_error(404, "API endpoint not found")
+                            
+                    except Exception as e:
+                        logger.error(f"API error: {e}")
+                        self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                
+                def send_json_response(self, data, status=200):
+                    self.send_response(status)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                    self.end_headers()
+                    
+                    response_json = json.dumps(data, ensure_ascii=False, indent=2)
+                    self.wfile.write(response_json.encode('utf-8'))
+            
+            httpd = HTTPServer(("0.0.0.0", port), CustomHTTPRequestHandler)
+            logger.info(f"Web server with API started on port {port}")
             httpd.serve_forever()
         
         web_thread = threading.Thread(target=start_web_server)
