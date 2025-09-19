@@ -706,12 +706,46 @@ async def settings_handler(message: Message, state: FSMContext):
 async def view_catalog_handler(message: Message, state: FSMContext):
     """Handle catalog viewing."""
     try:
+        # Получаем категории из базы данных
+        from core.database.db_adapter import db_v2
+        
+        # Получаем все категории
+        categories = db_v2.get_categories()
+        
+        if not categories:
+            await message.answer(
+                "🏪 <b>Каталог мест</b>\n\n"
+                "⚠️ Категории пока не добавлены в систему.",
+                reply_markup=get_user_cabinet_keyboard(),
+                parse_mode='HTML'
+            )
+            return
+        
+        # Создаем клавиатуру с категориями
+        from core.keyboards.inline_v2 import get_categories_keyboard
+        keyboard = get_categories_keyboard()
+        
+        # Формируем текст с категориями
+        categories_text = ""
+        for i, cat in enumerate(categories[:5]):
+            if hasattr(cat, 'name'):
+                categories_text += f"• {cat.name}\n"
+            elif isinstance(cat, dict):
+                categories_text += f"• {cat.get('name', 'Без названия')}\n"
+            else:
+                categories_text += f"• Категория {i+1}\n"
+        
+        if len(categories) > 5:
+            categories_text += f"• ... и еще {len(categories) - 5} категорий"
+        
         await message.answer(
-            "🏪 <b>Каталог мест</b>\n\n"
-            "Здесь будет отображаться каталог всех заведений с возможностью поиска и фильтрации.",
-            reply_markup=get_user_cabinet_keyboard(),
+            f"🏪 <b>Каталог мест</b>\n\n"
+            f"Доступные категории:\n{categories_text}\n\n"
+            f"Выберите категорию для просмотра заведений:",
+            reply_markup=keyboard,
             parse_mode='HTML'
         )
+        
     except Exception as e:
         logger.error(f"Error in view_catalog_handler: {str(e)}", exc_info=True)
         await message.answer(

@@ -489,12 +489,17 @@ async def handle_broadcast(message: Message, state: FSMContext):
 async def handle_loyalty_settings(message: Message, state: FSMContext):
     """Handle loyalty settings management for admins."""
     try:
+        logger.info(f"🔧 Loyalty settings requested by user {message.from_user.id}")
+        
         # Check if user is admin or super admin
         from core.security.roles import get_user_role
         user_role = await get_user_role(message.from_user.id)
         role_name = getattr(user_role, "name", str(user_role)).lower()
         
+        logger.info(f"🔧 User {message.from_user.id} role: {role_name}")
+        
         if role_name not in ("admin", "super_admin"):
+            logger.warning(f"🔧 Access denied for user {message.from_user.id} with role {role_name}")
             await message.answer("⛔ Недостаточно прав. Только администраторы могут управлять настройками лояльности.")
             return
         

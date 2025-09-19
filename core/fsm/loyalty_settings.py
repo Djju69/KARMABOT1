@@ -22,6 +22,7 @@ class LoyaltySettingsStates(StatesGroup):
 async def start_loyalty_settings_edit(message: Message, state: FSMContext):
     """Начать процесс редактирования настроек лояльности"""
     try:
+        logger.info(f"🔧 Starting loyalty settings edit for user {message.from_user.id}")
         await state.set_state(LoyaltySettingsStates.waiting_for_setting_choice)
         await message.answer(
             "⚙️ <b>Редактирование настроек лояльности</b>\n\n"
@@ -34,6 +35,7 @@ async def start_loyalty_settings_edit(message: Message, state: FSMContext):
             "Введите номер параметра (1-5) или <b>ОТМЕНА</b> для выхода:",
             parse_mode='HTML'
         )
+        logger.info(f"🔧 Loyalty settings edit menu sent to user {message.from_user.id}")
     except Exception as e:
         logger.error(f"Error starting loyalty settings edit: {e}")
         await message.answer("❌ Ошибка при начале редактирования настроек.")
@@ -42,6 +44,7 @@ async def handle_setting_choice(message: Message, state: FSMContext):
     """Обработка выбора настройки"""
     try:
         choice = message.text.strip()
+        logger.info(f"🔧 User {message.from_user.id} selected setting: {choice}")
         
         if choice.upper() in ["ОТМЕНА", "CANCEL", "НЕТ", "NO"]:
             await message.answer("❌ Редактирование настроек отменено.")

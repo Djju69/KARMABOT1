@@ -345,6 +345,14 @@ async def main():
     except Exception as e:
         logger.warning("WebApp router not included: %s", e)
     
+    # Loyalty settings router for admin FSM
+    try:
+        from core.handlers.loyalty_settings_router import router as loyalty_settings_router
+        dp.include_router(loyalty_settings_router)
+        logger.info("✅ Loyalty settings router included")
+    except Exception as e:
+        logger.warning("Loyalty settings router not included: %s", e)
+    
     # Set up bot commands
     await set_commands(bot)
     logger.info("✅ Bot commands set")
