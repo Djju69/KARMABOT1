@@ -192,10 +192,15 @@ async def show_moderation_queue(message: Message):
     try:
         from core.database.db_adapter import db_v2
         
-        # Получаем всех партнеров со статусом 'pending'
-        partners = db_v2.get_partners_by_status('pending')
+        # Получаем заявки партнеров со статусом 'pending'
+        applications = db_v2.execute_query("""
+            SELECT * FROM partner_applications 
+            WHERE status = 'pending' 
+            ORDER BY created_at ASC 
+            LIMIT 10
+        """)
         
-        if not partners:
+        if not applications:
             await message.answer(
                 "📋 <b>Модерация</b>\n\n"
                 "✅ Нет заявок на модерацию\n"
@@ -207,18 +212,19 @@ async def show_moderation_queue(message: Message):
         # Формируем список заявок
         applications_text = "📋 <b>Заявки на модерацию</b>\n\n"
         
-        for i, partner in enumerate(partners[:10], 1):  # Показываем первые 10
+        for i, app in enumerate(applications[:10], 1):  # Показываем первые 10
             applications_text += (
-                f"<b>{i}. Партнер #{partner.id}</b>\n"
-                f"👤 Пользователь: {partner.display_name}\n"
-                f"🆔 ID: {partner.tg_user_id}\n"
-                f"📞 Телефон: {partner.phone or 'Не указан'}\n"
-                f"📧 Email: {partner.email or 'Не указан'}\n"
-                f"📅 Создан: {partner.created_at.strftime('%d.%m.%Y %H:%M') if partner.created_at else 'Неизвестно'}\n\n"
+                f"<b>{i}. Заявка #{app['id']}</b>\n"
+                f"👤 Пользователь: {app['name']}\n"
+                f"🆔 Telegram ID: {app['telegram_user_id']}\n"
+                f"📞 Телефон: {app['phone'] or 'Не указан'}\n"
+                f"📧 Email: {app['email'] or 'Не указан'}\n"
+                f"📝 Описание: {app['business_description'] or 'Не указано'}\n"
+                f"📅 Создан: {app['created_at']}\n\n"
             )
         
-        if len(partners) > 10:
-            applications_text += f"... и еще {len(partners) - 10} заявок\n\n"
+        if len(applications) > 10:
+            applications_text += f"... и еще {len(applications) - 10} заявок\n\n"
         
         applications_text += (
             "🔧 <b>Действия:</b>\n"

@@ -2649,27 +2649,32 @@ class DatabaseMigrator:
             if self._is_memory or not self._is_postgres():
                 # SQLite version
                 with self.get_connection() as conn:
-                    conn.executescript("""
+                    # Create user_roles table
+                    conn.execute("""
                         CREATE TABLE IF NOT EXISTS user_roles (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER NOT NULL UNIQUE,
                             role TEXT NOT NULL DEFAULT 'USER',
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                             CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
-                        );
-                        
+                        )
+                    """)
+                    
+                    # Create two_factor_auth table
+                    conn.execute("""
                         CREATE TABLE IF NOT EXISTS two_factor_auth (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER NOT NULL UNIQUE,
                             secret_key TEXT NOT NULL,
                             is_enabled BOOLEAN DEFAULT 0,
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                        );
-                        
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    
+                    # Create audit_log table
+                    conn.execute("""
                         CREATE TABLE IF NOT EXISTS audit_log (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             user_id INTEGER,
@@ -2680,14 +2685,14 @@ class DatabaseMigrator:
                             new_values TEXT,
                             ip_address TEXT,
                             user_agent TEXT,
-                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-                        );
-                        
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                        )
                     """)
+                    
+                    # Create indexes
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
                     
                     # Insert initial admin role (skip for now - no is_admin column)
                     # conn.execute("""
@@ -2700,6 +2705,7 @@ class DatabaseMigrator:
             else:
                 # PostgreSQL version
                 with self.get_connection() as conn:
+                    # Create user_roles table
                     conn.execute("""
                         CREATE TABLE IF NOT EXISTS user_roles (
                             id SERIAL PRIMARY KEY,
@@ -2707,20 +2713,24 @@ class DatabaseMigrator:
                             role VARCHAR(20) NOT NULL DEFAULT 'USER',
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            -- CONSTRAINT fk_user_roles_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                             CONSTRAINT chk_role CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
-                        );
-                        
+                        )
+                    """)
+                    
+                    # Create two_factor_auth table
+                    conn.execute("""
                         CREATE TABLE IF NOT EXISTS two_factor_auth (
                             id SERIAL PRIMARY KEY,
                             user_id BIGINT NOT NULL UNIQUE,
                             secret_key VARCHAR(50) NOT NULL,
                             is_enabled BOOLEAN DEFAULT FALSE,
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            -- CONSTRAINT fk_two_factor_auth_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-                        );
-                        
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                        )
+                    """)
+                    
+                    # Create audit_log table
+                    conn.execute("""
                         CREATE TABLE IF NOT EXISTS audit_log (
                             id BIGSERIAL PRIMARY KEY,
                             user_id BIGINT,
@@ -2731,18 +2741,19 @@ class DatabaseMigrator:
                             new_values JSONB,
                             ip_address INET,
                             user_agent TEXT,
-                            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            -- CONSTRAINT fk_audit_log_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-                        );
-                        
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
-                        CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action);
-                        
-                        COMMENT ON TABLE user_roles IS 'Роли пользователей в системе';
-                        COMMENT ON TABLE two_factor_auth IS 'Настройки двухфакторной аутентификации';
-                        COMMENT ON TABLE audit_log IS 'Журнал аудита действий пользователей';
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+                        )
                     """)
+                    
+                    # Create indexes
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
+                    
+                    # Add comments
+                    conn.execute("COMMENT ON TABLE user_roles IS 'Роли пользователей в системе'")
+                    conn.execute("COMMENT ON TABLE two_factor_auth IS 'Настройки двухфакторной аутентификации'")
+                    conn.execute("COMMENT ON TABLE audit_log IS 'Журнал аудита действий пользователей'")
                     
                     # Insert initial admin role (skip for now - no is_admin column)
                     # conn.execute("""
