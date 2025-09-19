@@ -92,6 +92,12 @@ def create_help_menu_keyboard(lang: str = 'ru') -> InlineKeyboardMarkup:
     )
     builder.row(
         InlineKeyboardButton(
+            text=texts.get('btn.tariffs', '🏢 Тарифы'),
+            callback_data="help:tariffs"
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
             text=texts.get('btn.back', '◀️ Назад'),
             callback_data="help:back"
         )
@@ -459,6 +465,53 @@ async def back_to_help_menu(callback: CallbackQuery, state: FSMContext):
         
     except Exception as e:
         logger.error(f"Error going back: {e}", exc_info=True)
+
+# Обработчик кнопки "Тарифы"
+@ai_help_router.callback_query(F.data == "help:tariffs")
+async def show_tariffs(callback: CallbackQuery, state: FSMContext):
+    """Показать страницу тарифов"""
+    try:
+        user_id = callback.from_user.id
+        lang = await get_user_lang(user_id)
+        texts = get_all_texts(lang)
+        
+        logger.info(f"[AI_HELP] Tariffs requested by user {user_id}")
+        
+        # Создаем WebApp URL для тарифов
+        from core.services.webapp_integration import create_webapp_url
+        webapp_url = create_webapp_url(user_id, '/tariffs.html')
+        
+        tariff_text = texts.get('help.tariffs',
+            "🏢 **Тарифы KARMABOT1**\n\n"
+            "Выберите подходящий тариф для вашего бизнеса:\n\n"
+            "🆓 **FREE STARTER** - 0 VND/мес, 12% комиссия, до 15 транзакций\n"
+            "💼 **BUSINESS** - 490,000 VND/мес, 6% комиссия, до 100 транзакций\n"
+            "🏢 **ENTERPRISE** - 960,000 VND/мес, 4% комиссия, безлимит\n\n"
+            "Нажмите кнопку ниже для просмотра детальной информации:"
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text=texts.get('btn.view_tariffs', '🏢 Посмотреть тарифы'),
+                web_app=WebAppInfo(url=webapp_url)
+            )],
+            [InlineKeyboardButton(
+                text=texts.get('btn.back', '◀️ Назад'),
+                callback_data="help:back"
+            )]
+        ])
+        
+        await callback.message.edit_text(
+            tariff_text,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        await callback.answer()
+        
+    except Exception as e:
+        logger.error(f"Error showing tariffs: {e}", exc_info=True)
+        await callback.answer("❌ Ошибка при загрузке тарифов", show_alert=True)
 
 # Обработчик возврата в главное меню
 @ai_help_router.callback_query(F.data == "help:main_menu")

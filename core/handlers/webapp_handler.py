@@ -64,6 +64,29 @@ async def handle_webapp_data(message: Message):
                 f"• Сохранение данных в браузере",
                 parse_mode="HTML"
             )
+        
+        elif action == 'change_language':
+            # Изменение языка пользователя
+            language = data.get('language', 'ru')
+            logger.info(f"[WEBAPP] Language change request from user {user_id}: {language}")
+            
+            # Обновляем язык пользователя в БД
+            from core.services.translation_service import translation_service
+            success = translation_service.set_user_language(user_id, language)
+            
+            if success:
+                await message.answer(
+                    f"✅ <b>Язык изменен!</b>\n\n"
+                    f"Интерфейс переключен на: {translation_service.get_language_name(language)}\n\n"
+                    f"Изменения вступят в силу при следующем открытии кабинета.",
+                    parse_mode="HTML"
+                )
+            else:
+                await message.answer(
+                    "❌ <b>Ошибка изменения языка</b>\n\n"
+                    "Попробуйте снова или обратитесь в поддержку.",
+                    parse_mode="HTML"
+                )
             
         else:
             await message.answer(f"❌ Неизвестная команда: {action}")
