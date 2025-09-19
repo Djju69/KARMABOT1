@@ -339,6 +339,21 @@ class DatabaseMigrator:
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         
+        -- Partner applications table
+        CREATE TABLE IF NOT EXISTS partner_applications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_user_id INTEGER UNIQUE NOT NULL,
+            telegram_username TEXT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT NOT NULL,
+            business_description TEXT,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TEXT,
+            reviewed_by INTEGER
+        );
+        
         -- Cards table for business listings
         CREATE TABLE IF NOT EXISTS cards_v2 (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2216,6 +2231,23 @@ class DatabaseMigrator:
                         );
                     """)
                     
+                    # Create partner_applications table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_applications (
+                            id SERIAL PRIMARY KEY,
+                            telegram_user_id BIGINT UNIQUE NOT NULL,
+                            telegram_username VARCHAR(255),
+                            name VARCHAR(255) NOT NULL,
+                            phone VARCHAR(20) NOT NULL,
+                            email VARCHAR(255) NOT NULL,
+                            business_description TEXT,
+                            status VARCHAR(20) DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            reviewed_at TIMESTAMP,
+                            reviewed_by BIGINT
+                        );
+                    """)
+                    
                     # Create categories_v2 table
                     await conn.execute("""
                         CREATE TABLE IF NOT EXISTS categories_v2 (
@@ -2590,7 +2622,7 @@ class DatabaseMigrator:
                             role TEXT NOT NULL DEFAULT 'USER',
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                             CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
                         );
                         
@@ -2601,7 +2633,7 @@ class DatabaseMigrator:
                             is_enabled BOOLEAN DEFAULT 0,
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                         );
                         
                         CREATE TABLE IF NOT EXISTS audit_log (
@@ -2615,7 +2647,7 @@ class DatabaseMigrator:
                             ip_address TEXT,
                             user_agent TEXT,
                             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                            -- FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
                         );
                         
                         CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);
@@ -2641,7 +2673,7 @@ class DatabaseMigrator:
                             role VARCHAR(20) NOT NULL DEFAULT 'USER',
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            CONSTRAINT fk_user_roles_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                            -- CONSTRAINT fk_user_roles_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
                             CONSTRAINT chk_role CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
                         );
                         
@@ -2652,7 +2684,7 @@ class DatabaseMigrator:
                             is_enabled BOOLEAN DEFAULT FALSE,
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            CONSTRAINT fk_two_factor_auth_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                            -- CONSTRAINT fk_two_factor_auth_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                         );
                         
                         CREATE TABLE IF NOT EXISTS audit_log (
@@ -2666,7 +2698,7 @@ class DatabaseMigrator:
                             ip_address INET,
                             user_agent TEXT,
                             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                            CONSTRAINT fk_audit_log_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+                            -- CONSTRAINT fk_audit_log_user_id FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
                         );
                         
                         CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON audit_log(user_id);

@@ -107,10 +107,38 @@ async def save_partner_application(user_id: int, partner_data: dict, message: Me
             display_name=partner_data.get('name', message.from_user.first_name or 'Партнер')
         )
         
-        # Обновляем статус на 'pending' если партнер уже существовал
-        if hasattr(partner, 'status'):
-            partner.status = 'pending'
-            # TODO: Добавить метод update_partner_status в db_adapter
+        # Обновляем данные партнера
+        if hasattr(partner, 'phone'):
+            partner.phone = partner_data.get('phone', '')
+        if hasattr(partner, 'email'):
+            partner.email = partner_data.get('email', '')
+        
+        # Сохраняем в таблицу заявок партнеров (если есть)
+        try:
+            # Создаем запись в таблице заявок
+            from core.database.db_adapter import db_v2
+            db_v2.execute_query("""
+                INSERT INTO partner_applications (
+                    telegram_user_id, telegram_username, name, phone, email, 
+                    business_description, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+                ON CONFLICT(telegram_user_id) DO UPDATE SET
+                    name = excluded.name,
+                    phone = excluded.phone,
+                    email = excluded.email,
+                    business_description = excluded.business_description,
+                    status = 'pending',
+                    created_at = datetime('now')
+            """, (
+                user_id,
+                message.from_user.username or '',
+                partner_data.get('name', ''),
+                partner_data.get('phone', ''),
+                partner_data.get('email', ''),
+                partner_data.get('description', '')
+            ))
+        except Exception as e:
+            logger.warning(f"[WEBAPP] Could not save to partner_applications table: {e}")
         
         logger.info(f"[WEBAPP] Partner application saved: {partner.id}")
         
