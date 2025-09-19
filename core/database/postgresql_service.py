@@ -344,6 +344,67 @@ class PostgreSQLService:
     def get_partners_by_status_sync(self, status: str) -> List[Partner]:
         """Get partners by status (sync)"""
         return self._run_async(self.get_partners_by_status(status))
+    
+    def execute_query_sync(self, query: str, params: tuple = ()):
+        """Execute a query and return results (sync version)"""
+        try:
+            with self._lock:
+                if self._pool is None:
+                    # Create a new connection for this query
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        conn = loop.run_until_complete(asyncpg.connect(self.database_url))
+                        try:
+                            result = loop.run_until_complete(conn.fetch(query, *params))
+                            return result
+                        finally:
+                            loop.run_until_complete(conn.close())
+                    finally:
+                        loop.close()
+                else:
+                    # Use existing pool
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        result = loop.run_until_complete(self._pool.fetch(query, *params))
+                        return result
+                    finally:
+                        loop.close()
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
+            return []
+    
+    def fetch_all_sync(self, query: str, params: tuple = ()):
+        """Fetch all results from a query (sync version)"""
+        return self.execute_query_sync(query, params)
+    
+    def execute_sync(self, query: str, params: tuple = ()):
+        """Execute a query without returning results (sync version)"""
+        try:
+            with self._lock:
+                if self._pool is None:
+                    # Create a new connection for this query
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        conn = loop.run_until_complete(asyncpg.connect(self.database_url))
+                        try:
+                            loop.run_until_complete(conn.execute(query, *params))
+                        finally:
+                            loop.run_until_complete(conn.close())
+                    finally:
+                        loop.close()
+                else:
+                    # Use existing pool
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(self._pool.execute(query, *params))
+                    finally:
+                        loop.close()
+        except Exception as e:
+            logger.error(f"Error executing query: {e}")
 
 # Global instance
 _postgresql_service = None

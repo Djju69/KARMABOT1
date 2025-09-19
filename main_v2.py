@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List, Union, Callable, Awaitable
 
 import redis.asyncio as aioredis
+import json
 from aiogram import Dispatcher, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import CommandStart, Command
@@ -606,7 +607,6 @@ if __name__ == "__main__":
                 
                 def handle_api_request(self):
                     try:
-                        import json
                         import sys
                         import os
                         

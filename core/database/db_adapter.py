@@ -104,6 +104,27 @@ class DatabaseAdapter:
             return self.postgresql_service.get_partners_by_status_sync(status)
         else:
             return self.sqlite_service.get_partners_by_status(status)
+    
+    def execute_query(self, query: str, params: tuple = ()):
+        """Execute a query and return results"""
+        if self.use_postgresql:
+            return self.postgresql_service.execute_query_sync(query, params)
+        else:
+            return self.sqlite_service.execute_query(query, params)
+    
+    def fetch_all(self, query: str, params: tuple = ()):
+        """Fetch all results from a query"""
+        if self.use_postgresql:
+            return self.postgresql_service.fetch_all_sync(query, params)
+        else:
+            return self.sqlite_service.fetch_all(query, params)
+    
+    def execute(self, query: str, params: tuple = ()):
+        """Execute a query without returning results"""
+        if self.use_postgresql:
+            return self.postgresql_service.execute_sync(query, params)
+        else:
+            return self.sqlite_service.execute(query, params)
 
 # Global instance
 db_v2 = DatabaseAdapter()

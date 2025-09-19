@@ -741,6 +741,22 @@ class DatabaseServiceV2:
                 'created_at': datetime.now().isoformat(),
                 'is_new_user': True
             }
+    
+    def execute_query(self, query: str, params: tuple = ()):
+        """Execute a query and return results"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(query, params)
+            return cursor.fetchall()
+    
+    def fetch_all(self, query: str, params: tuple = ()):
+        """Fetch all results from a query"""
+        return self.execute_query(query, params)
+    
+    def execute(self, query: str, params: tuple = ()):
+        """Execute a query without returning results"""
+        with self.get_connection() as conn:
+            conn.execute(query, params)
+            conn.commit()
 
 # Global database service instance - use adapter instead
 from .db_adapter import db_v2
