@@ -2767,9 +2767,9 @@ class DatabaseMigrator:
                     if hasattr(settings, 'bots') and hasattr(settings.bots, 'admin_id'):
                         admin_id = settings.bots.admin_id
                         # Проверяем что пользователь существует
-                        user_exists = await conn.fetchval("SELECT 1 FROM users WHERE id = $1", admin_id)
+                        user_exists = conn.fetchval("SELECT 1 FROM users WHERE id = $1", admin_id)
                         if user_exists:
-                            await conn.execute("""
+                            conn.execute("""
                                 INSERT INTO user_roles (user_id, role)
                                 VALUES ($1, 'SUPER_ADMIN')
                                 ON CONFLICT (user_id) DO NOTHING
