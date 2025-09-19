@@ -1,0 +1,3 @@
+Force deploy - все изменения уже запушены
+Timestamp: 2025-01-09
+Status: Ready for Railway deployment
