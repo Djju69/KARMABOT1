@@ -2694,12 +2694,14 @@ class DatabaseMigrator:
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)")
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
                     
-                    # Insert initial admin role (skip for now - no is_admin column)
-                    # conn.execute("""
-                    #     INSERT INTO user_roles (user_id, role)
-                    #     SELECT id, 'SUPER_ADMIN' FROM users WHERE is_admin = 1
-                    #     ON CONFLICT (user_id) DO NOTHING
-                    # """)
+                    # Insert initial admin role
+                    from core.settings import settings
+                    if hasattr(settings, 'bots') and hasattr(settings.bots, 'admin_id'):
+                        admin_id = settings.bots.admin_id
+                        conn.execute("""
+                            INSERT OR IGNORE INTO user_roles (user_id, role)
+                            VALUES (?, 'SUPER_ADMIN')
+                        """, (admin_id,))
                     
                     conn.commit()
             else:
@@ -2755,12 +2757,15 @@ class DatabaseMigrator:
                     conn.execute("COMMENT ON TABLE two_factor_auth IS 'Настройки двухфакторной аутентификации'")
                     conn.execute("COMMENT ON TABLE audit_log IS 'Журнал аудита действий пользователей'")
                     
-                    # Insert initial admin role (skip for now - no is_admin column)
-                    # conn.execute("""
-                    #     INSERT INTO user_roles (user_id, role)
-                    #     SELECT id, 'SUPER_ADMIN' FROM users WHERE is_admin = TRUE
-                    #     ON CONFLICT (user_id) DO NOTHING
-                    # """)
+                    # Insert initial admin role
+                    from core.settings import settings
+                    if hasattr(settings, 'bots') and hasattr(settings.bots, 'admin_id'):
+                        admin_id = settings.bots.admin_id
+                        conn.execute("""
+                            INSERT INTO user_roles (user_id, role)
+                            VALUES ($1, 'SUPER_ADMIN')
+                            ON CONFLICT (user_id) DO NOTHING
+                        """, admin_id)
                     
                     conn.commit()
             

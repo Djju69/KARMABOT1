@@ -163,6 +163,21 @@
         🌐 Открыть в браузере
     </button>
     
+    <script>
+        function openInBrowser() {
+            // Получаем текущий URL
+            const currentUrl = window.location.href;
+            
+            // Открываем в новом окне браузера
+            window.open(currentUrl, '_blank');
+            
+            // Если это Telegram WebApp, закрываем его
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.close();
+            }
+        }
+    </script>
+    
     <div class="container">
         <div class="header">
             <h1>👑 Админ кабинет</h1>
@@ -258,8 +273,20 @@
         }
         
         function showFeature(feature) {
+            if (feature === 'moderation') {
+                // Открываем модерацию через Telegram бота
+                if (window.Telegram && window.Telegram.WebApp) {
+                    // Отправляем команду модерации в бота
+                    window.Telegram.WebApp.sendData('moderation');
+                    window.Telegram.WebApp.close();
+                } else {
+                    // Если не в Telegram, показываем информацию
+                    alert('📋 Модерация доступна только через Telegram бота');
+                }
+                return;
+            }
+            
             const messages = {
-                moderation: '📋 Функция "Модерация" в разработке',
                 search: '🔍 Функция "Поиск" в разработке',
                 statistics: '📊 Функция "Статистика" в разработке',
                 users: '👥 Функция "Пользователи" в разработке',
