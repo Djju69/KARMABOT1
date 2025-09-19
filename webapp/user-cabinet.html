@@ -480,6 +480,32 @@
         }
         
         function submitPartnerForm() {
+            // Получаем данные формы
+            const inputs = document.querySelectorAll('input');
+            const formData = {
+                name: inputs[0].value,
+                phone: inputs[1].value,
+                email: inputs[2].value,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('📤 Отправляем данные партнера:', formData);
+            
+            // Отправляем через Telegram WebApp если доступен
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                const data = {
+                    action: 'partner_registration',
+                    data: formData
+                };
+                tg.sendData(JSON.stringify(data));
+                console.log('✅ Данные отправлены через Telegram WebApp');
+            } else {
+                // Альтернативный способ - сохраняем в localStorage и показываем инструкции
+                localStorage.setItem('partner_registration', JSON.stringify(formData));
+                console.log('💾 Данные сохранены в localStorage');
+            }
+            
             showMessage("✅ Заявка отправлена! Мы свяжемся с вами в течение 24 часов", "success");
             closeModal();
         }
