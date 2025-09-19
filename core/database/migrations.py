@@ -641,7 +641,7 @@ class DatabaseMigrator:
         # Add loyalty columns to users table
         self.migrate_022_add_loyalty_columns()
         # User roles and 2FA system
-        self.migrate_023_user_roles_2fa()
+        self.migrate_024_user_roles_2fa()
         
         # 021: Extend qr_codes_v2 for user-scoped QR operations used by db_v2 helpers
         try:
@@ -2410,9 +2410,9 @@ class DatabaseMigrator:
             raise
 
     def migrate_022_add_loyalty_columns(self):
-        """Migration 022: Add loyalty columns to users table"""
+        """Migration 022: Add loyalty columns to users table AND create partner_applications table"""
         version = "022"
-        desc = "ADD: Add loyalty columns to users table"
+        desc = "ADD: Add loyalty columns to users table and create partner_applications table"
         
         if self.is_migration_applied(version):
             logger.info(f"Migration {version} already applied, skipping")
@@ -2455,7 +2455,24 @@ class DatabaseMigrator:
                         ADD COLUMN IF NOT EXISTS language VARCHAR(5) DEFAULT 'ru';
                     """)
                     
-                    print("✅ Migration 022 completed (PostgreSQL) - loyalty columns added to users table")
+                    # Create partner_applications table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_applications (
+                            id SERIAL PRIMARY KEY,
+                            telegram_user_id BIGINT NOT NULL,
+                            telegram_username TEXT,
+                            name TEXT NOT NULL,
+                            phone TEXT NOT NULL,
+                            email TEXT NOT NULL,
+                            business_description TEXT NOT NULL,
+                            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            reviewed_at TIMESTAMPTZ,
+                            reviewed_by INTEGER
+                        );
+                    """)
+                    
+                    print("✅ Migration 022 completed (PostgreSQL) - loyalty columns and partner_applications table created")
                 finally:
                     await conn.close()
             
@@ -2491,8 +2508,25 @@ class DatabaseMigrator:
                 ADD COLUMN language TEXT DEFAULT 'ru';
             """)
             
+            # Create partner_applications table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_applications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    telegram_user_id BIGINT NOT NULL,
+                    telegram_username TEXT,
+                    name TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    business_description TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    reviewed_at TIMESTAMP,
+                    reviewed_by INTEGER
+                );
+            """)
+            
             conn.commit()
-            print("✅ Migration 022 completed (SQLite) - loyalty columns added to users table")
+            print("✅ Migration 022 completed (SQLite) - loyalty columns and partner_applications table created")
             
         except Exception as e:
             logger.error(f"Error in SQLite migration 022: {e}")
@@ -2602,9 +2636,9 @@ class DatabaseMigrator:
             logger.error(f"Failed to apply migration 010: {e}")
             raise
 
-    def migrate_022_user_roles_2fa(self):
+    def migrate_024_user_roles_2fa(self):
         """Create user_roles, two_factor_auth, and audit_log tables"""
-        version = "022"
+        version = "024"
         description = "EXPAND: Create user roles, 2FA, and audit log tables"
         
         if self.is_migration_applied(version):

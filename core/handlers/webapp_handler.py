@@ -117,26 +117,40 @@ async def save_partner_application(user_id: int, partner_data: dict, message: Me
         try:
             # Создаем запись в таблице заявок
             from core.database.db_adapter import db_v2
-            db_v2.execute_query("""
-                INSERT INTO partner_applications (
-                    telegram_user_id, telegram_username, name, phone, email, 
-                    business_description, status, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-                ON CONFLICT(telegram_user_id) DO UPDATE SET
-                    name = excluded.name,
-                    phone = excluded.phone,
-                    email = excluded.email,
-                    business_description = excluded.business_description,
-                    status = 'pending',
-                    created_at = datetime('now')
-            """, (
-                user_id,
-                message.from_user.username or '',
-                partner_data.get('name', ''),
-                partner_data.get('phone', ''),
-                partner_data.get('email', ''),
-                partner_data.get('description', '')
-            ))
+            # Check if application already exists
+            existing = db_v2.execute_query("""
+                SELECT id FROM partner_applications WHERE telegram_user_id = ?
+            """, (user_id,))
+            
+            if existing:
+                # Update existing application
+                db_v2.execute_query("""
+                    UPDATE partner_applications SET
+                        name = ?, phone = ?, email = ?, business_description = ?,
+                        status = 'pending', created_at = datetime('now')
+                    WHERE telegram_user_id = ?
+                """, (
+                    partner_data.get('name', ''),
+                    partner_data.get('phone', ''),
+                    partner_data.get('email', ''),
+                    partner_data.get('description', ''),
+                    user_id
+                ))
+            else:
+                # Insert new application
+                db_v2.execute_query("""
+                    INSERT INTO partner_applications (
+                        telegram_user_id, telegram_username, name, phone, email, 
+                        business_description, status, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+                """, (
+                    user_id,
+                    message.from_user.username or '',
+                    partner_data.get('name', ''),
+                    partner_data.get('phone', ''),
+                    partner_data.get('email', ''),
+                    partner_data.get('description', '')
+                ))
         except Exception as e:
             logger.warning(f"[WEBAPP] Could not save to partner_applications table: {e}")
         
