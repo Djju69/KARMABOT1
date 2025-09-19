@@ -166,8 +166,8 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
         
         admin_id = settings.bots.admin_id
         if admin_id:
-            from aiogram import Bot
-            bot = Bot.get_current()
+            # Получаем бота из контекста сообщения
+            bot = message.bot
             
             await bot.send_message(
                 admin_id,

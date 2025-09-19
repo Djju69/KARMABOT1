@@ -617,7 +617,7 @@ if __name__ == "__main__":
                         
                         if self.path == '/api/moderation/applications':
                             # Получаем заявки партнеров
-                            applications = db_v2.execute_query("""
+                            applications = db_v2.fetch_all("""
                                 SELECT id, name, phone, email, telegram_user_id, created_at, status
                                 FROM partner_applications 
                                 WHERE status = 'pending' 
@@ -647,7 +647,7 @@ if __name__ == "__main__":
                             
                         elif self.path.startswith('/api/moderation/approve/'):
                             app_id = self.path.split('/')[-1]
-                            db_v2.execute_query("""
+                            db_v2.execute("""
                                 UPDATE partner_applications 
                                 SET status = 'approved', updated_at = CURRENT_TIMESTAMP
                                 WHERE id = ?
@@ -657,7 +657,7 @@ if __name__ == "__main__":
                             
                         elif self.path.startswith('/api/moderation/reject/'):
                             app_id = self.path.split('/')[-1]
-                            db_v2.execute_query("""
+                            db_v2.execute("""
                                 UPDATE partner_applications 
                                 SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
                                 WHERE id = ?

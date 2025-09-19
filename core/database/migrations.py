@@ -2813,7 +2813,11 @@ class DatabaseMigrator:
                     
                     # Create indexes
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
-                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    # Проверяем существование колонки перед созданием индекса
+                    try:
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    except Exception as e:
+                        logger.warning(f"Could not create index on is_main column: {e}")
                     
                     conn.commit()
             else:
@@ -2835,7 +2839,11 @@ class DatabaseMigrator:
                     
                     # Create indexes
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
-                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    # Проверяем существование колонки перед созданием индекса
+                    try:
+                        conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    except Exception as e:
+                        logger.warning(f"Could not create index on is_main column: {e}")
                     
                     # Add comments
                     conn.execute("COMMENT ON TABLE card_photos IS 'Фотографии карточек партнеров'")
