@@ -1737,7 +1737,8 @@ class DatabaseMigrator:
                         ALTER TABLE users 
                         ADD COLUMN IF NOT EXISTS points_balance INTEGER DEFAULT 0,
                         ADD COLUMN IF NOT EXISTS partner_id INTEGER,
-                        ADD COLUMN IF NOT EXISTS welcome_stage INTEGER DEFAULT 0;
+                        ADD COLUMN IF NOT EXISTS welcome_stage INTEGER DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS language VARCHAR(5) DEFAULT 'ru';
                     """)
                     
                     # Create points_history table
@@ -1895,6 +1896,65 @@ class DatabaseMigrator:
                             used_at TIMESTAMP,
                             sale_id INTEGER
                         );
+                    """)
+                    
+                    # Create tariffs table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS tariffs (
+                            id SERIAL PRIMARY KEY,
+                            name VARCHAR(100) NOT NULL,
+                            tariff_type VARCHAR(50) NOT NULL,
+                            monthly_price_vnd INTEGER DEFAULT 0,
+                            commission_percent DECIMAL(5,2) DEFAULT 0.00,
+                            transaction_limit INTEGER,
+                            features TEXT DEFAULT '[]',
+                            is_active BOOLEAN DEFAULT TRUE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
+                    
+                    # Create partner_tariffs table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_tariffs (
+                            id SERIAL PRIMARY KEY,
+                            partner_id BIGINT NOT NULL,
+                            tariff_id INTEGER NOT NULL,
+                            status VARCHAR(20) DEFAULT 'active',
+                            start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            end_date TIMESTAMP,
+                            auto_renew BOOLEAN DEFAULT TRUE,
+                            payment_method VARCHAR(50),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (tariff_id) REFERENCES tariffs(id)
+                        );
+                    """)
+                    
+                    # Create tariff_usage table
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS tariff_usage (
+                            id SERIAL PRIMARY KEY,
+                            partner_id BIGINT NOT NULL,
+                            tariff_id INTEGER NOT NULL,
+                            month INTEGER NOT NULL,
+                            year INTEGER NOT NULL,
+                            transactions_count INTEGER DEFAULT 0,
+                            transactions_limit INTEGER,
+                            commission_earned DECIMAL(10,2) DEFAULT 0.00,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(partner_id, tariff_id, month, year)
+                        );
+                    """)
+                    
+                    # Insert default tariffs
+                    await conn.execute("""
+                        INSERT INTO tariffs (id, name, tariff_type, monthly_price_vnd, commission_percent, transaction_limit, features)
+                        VALUES 
+                            (1, 'FREE STARTER', 'free_starter', 0, 12.00, 15, '["Базовые карты лояльности", "QR-коды для скидок", "Простая аналитика", "Email поддержка"]'),
+                            (2, 'BUSINESS', 'business', 490000, 6.00, 100, '["Расширенные карты лояльности", "QR-коды с кастомизацией", "Детальная аналитика", "Приоритетная поддержка", "API доступ (ограниченный)", "Интеграция с CRM"]'),
+                            (3, 'ENTERPRISE', 'enterprise', 960000, 4.00, NULL, '["Полный функционал карт", "Кастомные QR-коды", "Продвинутая аналитика", "Выделенный менеджер", "Полный API доступ", "Кастомные интеграции", "Белый лейбл", "Приоритетная разработка"]')
+                        ON CONFLICT (id) DO NOTHING;
                     """)
                     
                     # Create pos_terminals table
@@ -2101,6 +2161,64 @@ class DatabaseMigrator:
                     used_at TEXT,
                     sale_id INTEGER
                 );
+            """)
+            
+            # Create tariffs table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tariffs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    tariff_type TEXT NOT NULL,
+                    monthly_price_vnd INTEGER DEFAULT 0,
+                    commission_percent REAL DEFAULT 0.00,
+                    transaction_limit INTEGER,
+                    features TEXT DEFAULT '[]',
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create partner_tariffs table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_tariffs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER NOT NULL,
+                    tariff_id INTEGER NOT NULL,
+                    status TEXT DEFAULT 'active',
+                    start_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                    end_date TEXT,
+                    auto_renew INTEGER DEFAULT 1,
+                    payment_method TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (tariff_id) REFERENCES tariffs(id)
+                );
+            """)
+            
+            # Create tariff_usage table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tariff_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER NOT NULL,
+                    tariff_id INTEGER NOT NULL,
+                    month INTEGER NOT NULL,
+                    year INTEGER NOT NULL,
+                    transactions_count INTEGER DEFAULT 0,
+                    transactions_limit INTEGER,
+                    commission_earned REAL DEFAULT 0.00,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(partner_id, tariff_id, month, year)
+                );
+            """)
+            
+            # Insert default tariffs
+            conn.execute("""
+                INSERT OR IGNORE INTO tariffs (id, name, tariff_type, monthly_price_vnd, commission_percent, transaction_limit, features)
+                VALUES 
+                    (1, 'FREE STARTER', 'free_starter', 0, 12.00, 15, '["Базовые карты лояльности", "QR-коды для скидок", "Простая аналитика", "Email поддержка"]'),
+                    (2, 'BUSINESS', 'business', 490000, 6.00, 100, '["Расширенные карты лояльности", "QR-коды с кастомизацией", "Детальная аналитика", "Приоритетная поддержка", "API доступ (ограниченный)", "Интеграция с CRM"]'),
+                    (3, 'ENTERPRISE', 'enterprise', 960000, 4.00, NULL, '["Полный функционал карт", "Кастомные QR-коды", "Продвинутая аналитика", "Выделенный менеджер", "Полный API доступ", "Кастомные интеграции", "Белый лейбл", "Приоритетная разработка"]');
             """)
             
             # Create pos_terminals table
