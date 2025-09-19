@@ -217,8 +217,13 @@
 
     <script>
         // Инициализация WebApp
+        console.log('🔍 WebApp initialization check:');
+        console.log('window.Telegram:', window.Telegram);
+        console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
+        
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
+            console.log('✅ Telegram WebApp available');
             tg.ready();
             tg.expand();
             
@@ -229,6 +234,9 @@
                 // Здесь можно загрузить данные пользователя
                 loadUserData(user.id);
             }
+        } else {
+            console.log('❌ Telegram WebApp not available');
+            console.log('This means WebApp is opened as regular web page');
         }
         
         function loadUserData(userId) {
@@ -254,8 +262,29 @@
                 showMessage("📤 Команда отправлена", "success");
             } else {
                 console.log('❌ Telegram WebApp not available');
-                showMessage("🔧 Откройте через Telegram бот для полной функциональности", "warning");
+                console.log('🔧 WebApp opened as regular web page');
+                
+                // Альтернативный способ - показать информацию
+                showFeatureInfo(feature);
             }
+        }
+        
+        function showFeatureInfo(feature) {
+            const messages = {
+                'cards': '💳 Для просмотра карт откройте бота и нажмите "💳 Мои карты"',
+                'points': '💎 Для просмотра баллов откройте бота и нажмите "💎 Мои баллы"',
+                'catalog': '🗂️ Для просмотра каталога откройте бота и нажмите "🗂️ Категории"',
+                'partner': '🤝 Для регистрации партнера откройте бота и нажмите "🤝 Стать партнёром"',
+                'karma': '📊 Для просмотра кармы откройте бота',
+                'achievements': '🏆 Для просмотра достижений откройте бота',
+                'history': '📋 Для просмотра истории откройте бота',
+                'notifications': '🔔 Для настройки уведомлений откройте бота',
+                'language': '🌐 Для смены языка откройте бота',
+                'help': '❓ Для получения помощи откройте бота'
+            };
+            
+            const message = messages[feature] || `🔧 Функция "${feature}" доступна в боте`;
+            showMessage(message, "info");
         }
         
         function showMessage(text, type = 'info') {
