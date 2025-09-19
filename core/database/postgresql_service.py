@@ -242,6 +242,32 @@ class PostgreSQLService:
     def get_partners_count_sync(self) -> int:
         """Get total number of partners (sync)"""
         return self._run_async(self.get_partners_count())
+    
+    async def get_partners_by_status(self, status: str) -> List[Partner]:
+        """Get partners by status"""
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM partners_v2 WHERE status = $1 ORDER BY created_at DESC",
+                status
+            )
+            return [
+                Partner(
+                    id=row['id'],
+                    tg_user_id=row['tg_user_id'],
+                    display_name=row['display_name'],
+                    phone=row['phone'],
+                    email=row['email'],
+                    is_verified=row['is_verified'],
+                    is_active=row['is_active'],
+                    created_at=row['created_at'],
+                    updated_at=row['updated_at']
+                ) for row in rows
+            ]
+    
+    def get_partners_by_status_sync(self, status: str) -> List[Partner]:
+        """Get partners by status (sync)"""
+        return self._run_async(self.get_partners_by_status(status))
 
 # Global instance
 _postgresql_service = None

@@ -97,6 +97,13 @@ class DatabaseAdapter:
             return self.postgresql_service.get_partners_count_sync()
         else:
             return self.sqlite_service.get_partners_count()
+    
+    def get_partners_by_status(self, status: str):
+        """Get partners by status"""
+        if self.use_postgresql:
+            return self.postgresql_service.get_partners_by_status_sync(status)
+        else:
+            return self.sqlite_service.get_partners_by_status(status)
 
 # Global instance
 db_v2 = DatabaseAdapter()

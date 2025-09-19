@@ -657,6 +657,16 @@ class DatabaseServiceV2:
         with self.get_connection() as conn:
             cursor = conn.execute("SELECT COUNT(*) FROM partners_v2")
             return cursor.fetchone()[0]
+    
+    def get_partners_by_status(self, status: str) -> List[Partner]:
+        """Get partners by status"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM partners_v2 WHERE status = ? ORDER BY created_at DESC",
+                (status,)
+            )
+            rows = cursor.fetchall()
+            return [Partner.from_row(row) for row in rows]
 
 # Global database service instance - use adapter instead
 from .db_adapter import db_v2
