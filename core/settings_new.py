@@ -53,7 +53,7 @@ class Settings:
             database_url = database_url.replace('postgres://', 'postgresql://')
         
         self.DATABASE_URL: str = database_url
-        print(f"🗄️ Используется БД: {database_url.split('@')[0] if '@' in database_url else database_url}...")
+        print(f"Database URL: {database_url.split('@')[0] if '@' in database_url else database_url}...")
         
         # Фича-флаги (по умолчанию выключены для безопасности)
         self.FEATURE_PARTNER_FSM: bool = os.getenv("FEATURE_PARTNER_FSM", "false").lower() == "true"

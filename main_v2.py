@@ -268,10 +268,8 @@ async def main():
     # Initialize logging first
     setup_logging()
     
-    # Ensure only one instance is running
-    if not await _ensure_single_instance():
-        logger.warning("Another instance is already running. Exiting...")
-        return
+    # Single instance check removed - function was not defined
+    # This was causing NameError in production
         
     # Get Redis URL
     redis_url = _get_redis_url()
