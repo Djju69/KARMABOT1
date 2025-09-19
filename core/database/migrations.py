@@ -2132,8 +2132,17 @@ class DatabaseMigrator:
             import asyncio
             from migrations.migration_021_create_partners_v2 import upgrade_021
             
-            # Run async migration
-            asyncio.run(self._run_postgresql_migration(upgrade_021))
+            # Run async migration directly
+            async def run_migration():
+                from core.database.postgresql_service import get_postgresql_service
+                postgresql_service = get_postgresql_service()
+                await postgresql_service.init_pool()
+                pool = await postgresql_service.get_pool()
+                async with pool.acquire() as conn:
+                    await upgrade_021(conn)
+                await postgresql_service.close_pool()
+            
+            asyncio.run(run_migration())
             
         except Exception as e:
             logger.error(f"Error in PostgreSQL migration 021: {e}")
