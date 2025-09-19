@@ -503,19 +503,20 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
         
         with get_connection() as conn:
             cursor = conn.execute("""
-                SELECT redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent
+                SELECT redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage
                 FROM platform_loyalty_config 
                 ORDER BY id DESC LIMIT 1
             """)
             config = cursor.fetchone()
             
             if config:
-                redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent = config
+                redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage = config
             else:
                 redeem_rate = 5000.0
                 max_accrual_percent = 20.0
                 min_purchase_for_points = 10000
                 max_discount_percent = 40.0
+                bonus_for_points_usage = 0.30
         
         # Получаем границу закрытия чека баллами
         cursor = conn.execute("""
@@ -532,17 +533,20 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
             f"• Максимальное начисление: {max_accrual_percent}%\n"
             f"• Минимальная покупка для начисления: {min_purchase_for_points:,.0f} VND\n"
             f"• Максимальная скидка за баллы: {max_discount_percent}%\n"
-            f"• 🎯 Граница закрытия чека баллами: {max_percent_per_bill}%\n\n"
+            f"• 🎯 Граница закрытия чека баллами: {max_percent_per_bill}%\n"
+            f"• 🎁 Дополнительная скидка при оплате баллами: {bonus_for_points_usage}%\n\n"
             f"🔧 <b>Доступные изменения:</b>\n"
             f"• Изменить курс обмена баллов\n"
             f"• Настроить минимальную сумму покупки\n"
             f"• Установить максимальный процент скидки\n"
-            f"• 🎯 Изменить границу закрытия чека баллами\n\n"
+            f"• 🎯 Изменить границу закрытия чека баллами\n"
+            f"• 🎁 Настроить дополнительную скидку при оплате баллами\n\n"
             f"💡 <b>Примеры:</b>\n"
             f"• При курсе 5000 VND: 100 баллов = 500,000 VND скидки\n"
             f"• При минимуме 10,000 VND: покупки меньше не дают баллы\n"
             f"• При максимуме 40%: скидка за баллы не может превышать 40% от чека\n"
-            f"• При границе 50%: баллы могут закрыть до 50% от суммы чека\n\n"
+            f"• При границе 50%: баллы могут закрыть до 50% от суммы чека\n"
+            f"• При бонусе {bonus_for_points_usage}%: дополнительная скидка при оплате баллами\n\n"
             f"✏️ <b>Для редактирования настроек отправьте любое сообщение.</b>",
             parse_mode='HTML'
         )

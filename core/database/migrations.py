@@ -1856,6 +1856,11 @@ class DatabaseMigrator:
                         ADD COLUMN IF NOT EXISTS max_discount_percent NUMERIC(5,2) DEFAULT 40.00;
                     """)
                     
+                    await conn.execute("""
+                        ALTER TABLE platform_loyalty_config 
+                        ADD COLUMN IF NOT EXISTS bonus_for_points_usage NUMERIC(5,2) DEFAULT 0.30;
+                    """)
+                    
                     # Create payment_qr_tokens table
                     await conn.execute("""
                         CREATE TABLE IF NOT EXISTS payment_qr_tokens (
@@ -1917,8 +1922,8 @@ class DatabaseMigrator:
                     
                     # Insert default loyalty config
                     await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
-                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00)
+                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage)
+                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30)
                         ON CONFLICT DO NOTHING;
                     """)
                     
@@ -2052,6 +2057,7 @@ class DatabaseMigrator:
                     max_percent_per_bill REAL DEFAULT 50.00,
                     min_purchase_for_points INTEGER DEFAULT 10000,
                     max_discount_percent REAL DEFAULT 40.00,
+                    bonus_for_points_usage REAL DEFAULT 0.30,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_by INTEGER
                 );
@@ -2089,8 +2095,8 @@ class DatabaseMigrator:
             
             # Insert default loyalty config
             conn.execute("""
-                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent)
-                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00);
+                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage)
+                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30);
             """)
             
             print("✅ SQLite migration 020 completed successfully")

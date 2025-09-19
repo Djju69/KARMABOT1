@@ -16,6 +16,7 @@ class LoyaltySettingsStates(StatesGroup):
     waiting_for_min_purchase = State()    # Ожидание минимальной покупки
     waiting_for_max_discount = State()   # Ожидание максимальной скидки
     waiting_for_max_percent_bill = State() # Ожидание границы закрытия чека
+    waiting_for_bonus_points_usage = State() # Ожидание дополнительной скидки при оплате баллами
     waiting_for_confirmation = State()   # Ожидание подтверждения
 
 async def start_loyalty_settings_edit(message: Message, state: FSMContext):
@@ -28,8 +29,9 @@ async def start_loyalty_settings_edit(message: Message, state: FSMContext):
             "1️⃣ <b>Курс обмена</b> - сколько VND стоит 1 балл\n"
             "2️⃣ <b>Минимальная покупка</b> - минимальная сумма для начисления баллов\n"
             "3️⃣ <b>Максимальная скидка</b> - максимальный процент скидки за баллы\n"
-            "4️⃣ <b>Граница закрытия чека</b> - максимальный процент чека, который можно закрыть баллами\n\n"
-            "Введите номер параметра (1-4) или <b>ОТМЕНА</b> для выхода:",
+            "4️⃣ <b>Граница закрытия чека</b> - максимальный процент чека, который можно закрыть баллами\n"
+            "5️⃣ <b>Дополнительная скидка</b> - дополнительный процент скидки при оплате баллами\n\n"
+            "Введите номер параметра (1-5) или <b>ОТМЕНА</b> для выхода:",
             parse_mode='HTML'
         )
     except Exception as e:
@@ -98,8 +100,21 @@ async def handle_setting_choice(message: Message, state: FSMContext):
                 "Введите число (минимум 1, максимум 100):",
                 parse_mode='HTML'
             )
+        elif choice == "5":
+            await state.update_data(setting_type="bonus_for_points_usage")
+            await state.set_state(LoyaltySettingsStates.waiting_for_bonus_points_usage)
+            await message.answer(
+                "🎁 <b>Изменение дополнительной скидки при оплате баллами</b>\n\n"
+                "Введите дополнительный процент скидки при оплате баллами:\n\n"
+                "💡 <b>Примеры:</b>\n"
+                "• 0.3 - дополнительная скидка 0.3% при оплате баллами\n"
+                "• 0.5 - дополнительная скидка 0.5% при оплате баллами\n"
+                "• 1.0 - дополнительная скидка 1.0% при оплате баллами\n\n"
+                "Введите число (минимум 0.1, максимум 5.0):",
+                parse_mode='HTML'
+            )
         else:
-            await message.answer("❌ Неверный выбор. Введите номер от 1 до 4 или <b>ОТМЕНА</b>:", parse_mode='HTML')
+            await message.answer("❌ Неверный выбор. Введите номер от 1 до 5 или <b>ОТМЕНА</b>:", parse_mode='HTML')
             
     except Exception as e:
         logger.error(f"Error handling setting choice: {e}")
@@ -181,6 +196,25 @@ async def handle_max_percent_bill(message: Message, state: FSMContext):
         logger.error(f"Error handling max percent bill: {e}")
         await message.answer("❌ Ошибка при обработке границы закрытия чека.")
 
+async def handle_bonus_points_usage(message: Message, state: FSMContext):
+    """Обработка дополнительной скидки при оплате баллами"""
+    try:
+        try:
+            bonus_points_usage = float(message.text.strip())
+            if bonus_points_usage < 0.1 or bonus_points_usage > 5.0:
+                await message.answer("❌ Дополнительная скидка должна быть от 0.1 до 5.0. Попробуйте снова:")
+                return
+        except ValueError:
+            await message.answer("❌ Неверный формат числа. Введите число (например: 0.3):")
+            return
+        
+        await state.update_data(new_value=bonus_points_usage)
+        await show_confirmation(message, state, "дополнительную скидку при оплате баллами", f"{bonus_points_usage}%")
+        
+    except Exception as e:
+        logger.error(f"Error handling bonus points usage: {e}")
+        await message.answer("❌ Ошибка при обработке дополнительной скидки.")
+
 async def show_confirmation(message: Message, state: FSMContext, setting_name: str, new_value: str):
     """Показать подтверждение изменения"""
     try:
@@ -252,14 +286,14 @@ async def get_current_setting_value(setting_type: str) -> str:
         
         with get_connection() as conn:
             cursor = conn.execute("""
-                SELECT redeem_rate, min_purchase_for_points, max_discount_percent, max_percent_per_bill
+                SELECT redeem_rate, min_purchase_for_points, max_discount_percent, max_percent_per_bill, bonus_for_points_usage
                 FROM platform_loyalty_config 
                 ORDER BY id DESC LIMIT 1
             """)
             result = cursor.fetchone()
             
             if result:
-                redeem_rate, min_purchase, max_discount, max_percent_bill = result
+                redeem_rate, min_purchase, max_discount, max_percent_bill, bonus_for_points_usage = result
                 
                 if setting_type == "redeem_rate":
                     return f"{redeem_rate:,.0f} VND за 1 балл"
@@ -269,6 +303,8 @@ async def get_current_setting_value(setting_type: str) -> str:
                     return f"{max_discount}%"
                 elif setting_type == "max_percent_bill":
                     return f"{max_percent_bill}%"
+                elif setting_type == "bonus_for_points_usage":
+                    return f"{bonus_for_points_usage}%"
             
             return "Не установлено"
             
@@ -306,6 +342,12 @@ async def save_loyalty_setting(setting_type: str, new_value: float, admin_id: in
                 conn.execute("""
                     UPDATE platform_loyalty_config 
                     SET max_percent_per_bill = %s, updated_at = NOW(), updated_by = %s
+                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+                """, (new_value, admin_id))
+            elif setting_type == "bonus_for_points_usage":
+                conn.execute("""
+                    UPDATE platform_loyalty_config 
+                    SET bonus_for_points_usage = %s, updated_at = NOW(), updated_by = %s
                     WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
                 """, (new_value, admin_id))
             

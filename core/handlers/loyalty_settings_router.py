@@ -13,6 +13,7 @@ from core.fsm.loyalty_settings import (
     handle_min_purchase,
     handle_max_discount,
     handle_max_percent_bill,
+    handle_bonus_points_usage,
     handle_confirmation
 )
 
@@ -45,6 +46,11 @@ async def fsm_max_discount(message: Message, state: FSMContext):
 async def fsm_max_percent_bill(message: Message, state: FSMContext):
     """Обработчик состояния ожидания границы закрытия чека"""
     await handle_max_percent_bill(message, state)
+
+@router.message(LoyaltySettingsStates.waiting_for_bonus_points_usage)
+async def fsm_bonus_points_usage(message: Message, state: FSMContext):
+    """Обработчик состояния ожидания дополнительной скидки при оплате баллами"""
+    await handle_bonus_points_usage(message, state)
 
 @router.message(LoyaltySettingsStates.waiting_for_confirmation)
 async def fsm_confirmation(message: Message, state: FSMContext):
