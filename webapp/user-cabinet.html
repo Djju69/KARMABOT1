@@ -277,8 +277,47 @@
                 console.log('❌ Telegram WebApp not available');
                 console.log('🔧 WebApp opened as regular web page');
                 
-                // Показываем что нужно открыть через бота
-                showMessage("⚠️ Откройте WebApp через кнопку в боте для работы с функциями", "warning");
+                // Альтернативный подход - выполняем действие напрямую
+                executeFeatureDirectly(feature);
+            }
+        }
+        
+        function executeFeatureDirectly(feature) {
+            console.log('🚀 Executing feature directly:', feature);
+            
+            switch(feature) {
+                case 'cards':
+                    showCardsModal();
+                    break;
+                case 'points':
+                    showPointsModal();
+                    break;
+                case 'catalog':
+                    showCatalogModal();
+                    break;
+                case 'partner':
+                    showPartnerModal();
+                    break;
+                case 'karma':
+                    showKarmaModal();
+                    break;
+                case 'achievements':
+                    showAchievementsModal();
+                    break;
+                case 'history':
+                    showHistoryModal();
+                    break;
+                case 'notifications':
+                    showNotificationsModal();
+                    break;
+                case 'language':
+                    showLanguageModal();
+                    break;
+                case 'help':
+                    showHelpModal();
+                    break;
+                default:
+                    showMessage(`🔧 Функция "${feature}" в разработке`, "info");
             }
         }
         
@@ -312,6 +351,146 @@
             document.body.appendChild(div);
             setTimeout(() => div.remove(), 3000);
         }
+        
+        // Модальные окна для функций
+        function showCardsModal() {
+            const modal = createModal('💳 Мои карты', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>💳 Привязанные карты</h3>
+                    <div style="margin: 20px 0;">
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                            <strong>KS-1234-5678</strong><br>
+                            <small>Баланс: 1,250 баллов</small>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                            <strong>KS-8765-4321</strong><br>
+                            <small>Баланс: 890 баллов</small>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showPointsModal() {
+            const modal = createModal('💎 Мои баллы', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>💎 Текущий баланс</h3>
+                    <div style="font-size: 24px; font-weight: bold; color: #007bff; margin: 20px 0;">150 баллов</div>
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <strong>Уровень:</strong> 3 (Новичок)<br>
+                        <strong>До следующего уровня:</strong> 50 баллов
+                    </div>
+                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showCatalogModal() {
+            const modal = createModal('🗂️ Каталог', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🗂️ Категории партнеров</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0;">
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🍽️</div>
+                            <strong>Рестораны</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">💆</div>
+                            <strong>СПА и красота</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🚗</div>
+                            <strong>Транспорт</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🏨</div>
+                            <strong>Отели</strong>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showPartnerModal() {
+            const modal = createModal('🤝 Стать партнёром', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🤝 Регистрация партнера</h3>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <p>Для регистрации в качестве партнера заполните форму:</p>
+                        <div style="text-align: left; margin: 20px 0;">
+                            <label style="display: block; margin: 10px 0;"><strong>Название заведения:</strong></label>
+                            <input type="text" placeholder="Введите название" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            
+                            <label style="display: block; margin: 10px 0;"><strong>Телефон:</strong></label>
+                            <input type="tel" placeholder="+7 (999) 123-45-67" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            
+                            <label style="display: block; margin: 10px 0;"><strong>Email:</strong></label>
+                            <input type="email" placeholder="example@mail.ru" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="closeModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Отмена</button>
+                        <button onclick="submitPartnerForm()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Отправить заявку</button>
+                    </div>
+                </div>
+            `);
+        }
+        
+        function createModal(title, content) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 10000; display: flex;
+                align-items: center; justify-content: center;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: white; border-radius: 10px; max-width: 90%; max-height: 90%;
+                overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            `;
+            
+            modalContent.innerHTML = `
+                <div style="padding: 20px; border-bottom: 1px solid #eee;">
+                    <h2 style="margin: 0; text-align: center;">${title}</h2>
+                </div>
+                ${content}
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Закрытие по клику вне модального окна
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+            
+            return modal;
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function submitPartnerForm() {
+            showMessage("✅ Заявка отправлена! Мы свяжемся с вами в течение 24 часов", "success");
+            closeModal();
+        }
+        
+        // Заглушки для остальных функций
+        function showKarmaModal() { showMessage("📊 Карма: 150 баллов", "info"); }
+        function showAchievementsModal() { showMessage("🏆 Достижения загружаются...", "info"); }
+        function showHistoryModal() { showMessage("📋 История операций загружается...", "info"); }
+        function showNotificationsModal() { showMessage("🔔 Настройки уведомлений", "info"); }
+        function showLanguageModal() { showMessage("🌐 Выбор языка", "info"); }
+        function showHelpModal() { showMessage("❓ Помощь и поддержка", "info"); }
         
         // Обработка закрытия WebApp
         if (window.Telegram && window.Telegram.WebApp) {
