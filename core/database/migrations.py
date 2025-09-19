@@ -623,8 +623,10 @@ class DatabaseMigrator:
         self.migrate_021_create_partners_v2()
         # User features (favorites, referrals, karma_log, points_log, achievements)
         self.migrate_010_user_features()
+        # Add loyalty columns to users table
+        self.migrate_022_add_loyalty_columns()
         # User roles and 2FA system
-        self.migrate_022_user_roles_2fa()
+        self.migrate_023_user_roles_2fa()
         
         # 021: Extend qr_codes_v2 for user-scoped QR operations used by db_v2 helpers
         try:
@@ -1330,11 +1332,8 @@ class DatabaseMigrator:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_sales_user_id ON partner_sales(user_telegram_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_partner_sales_created_at ON partner_sales(created_at)")
         
-        # 8. Insert default loyalty config
-        conn.execute("""
-            INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent)
-            VALUES (5000.0, 'bankers', 20.00)
-        """)
+        # Migration 020 only creates basic tables
+        # Advanced loyalty config will be handled in migration 021
 
     def migrate_018_personal_cabinets(self):
         """
@@ -1685,21 +1684,8 @@ class DatabaseMigrator:
                             is_active BOOLEAN DEFAULT TRUE,
                             is_partner BOOLEAN DEFAULT FALSE,
                             is_admin BOOLEAN DEFAULT FALSE,
-                            is_super_admin BOOLEAN DEFAULT FALSE,
-                            points_balance INTEGER DEFAULT 0,
-                            partner_id INTEGER,
-                            welcome_stage INTEGER DEFAULT 0,
-                            language VARCHAR(5) DEFAULT 'ru'
+                            is_super_admin BOOLEAN DEFAULT FALSE
                         );
-                    """)
-                    
-                    # Expand users table (add columns if they don't exist)
-                    await conn.execute("""
-                        ALTER TABLE users 
-                        ADD COLUMN IF NOT EXISTS points_balance INTEGER DEFAULT 0,
-                        ADD COLUMN IF NOT EXISTS partner_id INTEGER,
-                        ADD COLUMN IF NOT EXISTS welcome_stage INTEGER DEFAULT 0,
-                        ADD COLUMN IF NOT EXISTS language VARCHAR(5) DEFAULT 'ru';
                     """)
                     
                     # Create points_history table
@@ -1803,46 +1789,8 @@ class DatabaseMigrator:
                         );
                     """)
                     
-                    # Add missing columns if they don't exist
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS min_purchase_for_points INTEGER DEFAULT 10000;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS max_discount_percent NUMERIC(5,2) DEFAULT 40.00;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS bonus_for_points_usage NUMERIC(5,2) DEFAULT 0.30;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS welcome_bonus_immediate INTEGER DEFAULT 51;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS welcome_unlock_stage_1 INTEGER DEFAULT 67;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS welcome_unlock_stage_2 INTEGER DEFAULT 50;
-                    """)
-                    
-                    await conn.execute("""
-                        ALTER TABLE platform_loyalty_config 
-                        ADD COLUMN IF NOT EXISTS welcome_unlock_stage_3 INTEGER DEFAULT 50;
-                    """)
+                    # Migration 020 only creates basic tables
+                    # Advanced loyalty config will be handled in migration 021
                     
                     # Create payment_qr_tokens table
                     await conn.execute("""
@@ -1962,12 +1910,8 @@ class DatabaseMigrator:
                         ON cards_binding(status);
                     """)
                     
-                    # Insert default loyalty config
-                    await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
-                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50)
-                        ON CONFLICT DO NOTHING;
-                    """)
+                    # Migration 020 only creates basic tables
+                    # Advanced loyalty config will be handled in migration 021
                     
                     print("✅ PostgreSQL migration 020 completed successfully")
                     
@@ -2006,39 +1950,12 @@ class DatabaseMigrator:
                     is_premium BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    points_balance INTEGER DEFAULT 0,
-                    partner_id INTEGER DEFAULT NULL,
-                    FOREIGN KEY (partner_id) REFERENCES partners_v2(id)
+                    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             
-            # Check if points_balance column exists
-            cursor = conn.execute("PRAGMA table_info(users)")
-            columns = cursor.fetchall()
-            has_points_balance = any(col[1] == 'points_balance' for col in columns)
-            
-            if not has_points_balance:
-                # Expand users table
-                conn.execute("""
-                    ALTER TABLE users 
-                    ADD COLUMN points_balance INTEGER DEFAULT 0;
-                """)
-                print("✅ Added points_balance column to users table")
-            else:
-                print("✅ points_balance column already exists")
-            
-            # Check if partner_id column exists
-            has_partner_id = any(col[1] == 'partner_id' for col in columns)
-            
-            if not has_partner_id:
-                conn.execute("""
-                    ALTER TABLE users 
-                    ADD COLUMN partner_id INTEGER;
-                """)
-                print("✅ Added partner_id column to users table")
-            else:
-                print("✅ partner_id column already exists")
+            # Migration 020 only creates the basic users table
+            # Loyalty columns will be added in migration 022
             
             # Create points_history table
             conn.execute("""
@@ -2234,35 +2151,8 @@ class DatabaseMigrator:
                 );
             """)
             
-            # Check and add missing columns to platform_loyalty_config
-            cursor = conn.execute("PRAGMA table_info(platform_loyalty_config)")
-            columns = cursor.fetchall()
-            existing_columns = [col[1] for col in columns]
-            
-            required_columns = [
-                ('max_percent_per_bill', 'REAL DEFAULT 50.00'),
-                ('min_purchase_for_points', 'INTEGER DEFAULT 10000'),
-                ('max_discount_percent', 'REAL DEFAULT 40.00'),
-                ('bonus_for_points_usage', 'REAL DEFAULT 0.30'),
-                ('welcome_bonus_immediate', 'INTEGER DEFAULT 51'),
-                ('welcome_unlock_stage_1', 'INTEGER DEFAULT 67'),
-                ('welcome_unlock_stage_2', 'INTEGER DEFAULT 50'),
-                ('welcome_unlock_stage_3', 'INTEGER DEFAULT 50')
-            ]
-            
-            for col_name, col_def in required_columns:
-                if col_name not in existing_columns:
-                    try:
-                        conn.execute(f"ALTER TABLE platform_loyalty_config ADD COLUMN {col_name} {col_def}")
-                        print(f"✅ Added {col_name} column to platform_loyalty_config")
-                    except Exception as e:
-                        print(f"⚠️ Could not add {col_name}: {e}")
-            
-            # Insert default loyalty config
-            conn.execute("""
-                INSERT OR IGNORE INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
-                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50);
-            """)
+            # Migration 020 only creates basic tables
+            # Advanced loyalty config will be handled in migration 021
             
             print("✅ SQLite migration 020 completed successfully")
             
@@ -2487,8 +2377,97 @@ class DatabaseMigrator:
             logger.error(f"Error in SQLite migration 021: {e}")
             raise
 
-    def migrate_022_add_policy_accepted_to_users(self):
-        """Add policy_accepted column to users table"""
+    def migrate_022_add_loyalty_columns(self):
+        """Migration 022: Add loyalty columns to users table"""
+        version = "022"
+        desc = "ADD: Add loyalty columns to users table"
+        
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+            
+        try:
+            database_url = os.getenv('DATABASE_URL', '')
+            
+            if database_url and database_url.startswith("postgresql"):
+                # PostgreSQL migration
+                self._migrate_022_postgresql()
+            else:
+                # SQLite migration
+                self._migrate_022_sqlite()
+                
+            self.mark_migration_applied(version, desc)
+            logger.info(f"Applied migration {version}: {desc}")
+            
+        except Exception as e:
+            logger.error(f"Error in migration {version}: {e}")
+            raise
+
+    def _migrate_022_postgresql(self):
+        """PostgreSQL-specific migration for adding loyalty columns"""
+        try:
+            import asyncio
+            import asyncpg
+            
+            async def run_migration():
+                database_url = os.getenv("DATABASE_URL")
+                conn = await asyncpg.connect(database_url)
+                
+                try:
+                    # Add loyalty columns to users table
+                    await conn.execute("""
+                        ALTER TABLE users 
+                        ADD COLUMN IF NOT EXISTS points_balance INTEGER DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS partner_id INTEGER,
+                        ADD COLUMN IF NOT EXISTS welcome_stage INTEGER DEFAULT 0,
+                        ADD COLUMN IF NOT EXISTS language VARCHAR(5) DEFAULT 'ru';
+                    """)
+                    
+                    print("✅ Migration 022 completed (PostgreSQL) - loyalty columns added to users table")
+                finally:
+                    await conn.close()
+            
+            asyncio.run(run_migration())
+            
+        except Exception as e:
+            logger.error(f"Error in PostgreSQL migration 022: {e}")
+            raise
+
+    def _migrate_022_sqlite(self):
+        """SQLite-specific migration for adding loyalty columns"""
+        try:
+            conn = self.get_connection()
+            
+            # Add loyalty columns to users table
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN points_balance INTEGER DEFAULT 0;
+            """)
+            
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN partner_id INTEGER;
+            """)
+            
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN welcome_stage INTEGER DEFAULT 0;
+            """)
+            
+            conn.execute("""
+                ALTER TABLE users 
+                ADD COLUMN language TEXT DEFAULT 'ru';
+            """)
+            
+            conn.commit()
+            print("✅ Migration 022 completed (SQLite) - loyalty columns added to users table")
+            
+        except Exception as e:
+            logger.error(f"Error in SQLite migration 022: {e}")
+            raise
+
+    def migrate_023_user_roles_2fa(self):
+        """Migration 023: Add policy_accepted column to users table"""
         try:
             conn = self.get_connection()
             
