@@ -99,24 +99,22 @@ async def handle_moderation(message: Message, state: FSMContext):
             await message.answer("⛔ Недостаточно прав. Только администраторы могут просматривать модерацию.")
             return
         
-        # Получаем партнеров на модерации
+        # Получаем заявки партнеров на модерации
         try:
-            import asyncpg
-            from core.settings import settings
+            from core.database.db_adapter import db_v2
             
-            conn = await asyncpg.connect(settings.database.url)
+            # Заявки партнеров на модерации
+            pending_applications = db_v2.execute_query("""
+                SELECT * FROM partner_applications 
+                WHERE status = 'pending' 
+                ORDER BY created_at ASC 
+                LIMIT 10
+            """)
+            
+            # Заведения на модерации (если есть таблица partner_places)
+            pending_places = []
             try:
-                # Партнеры на модерации
-                pending_partners = await conn.fetch("""
-                    SELECT id, title, contact_name, contact_phone, contact_email, created_at, status
-                    FROM partners 
-                    WHERE status = 'pending' 
-                    ORDER BY created_at ASC 
-                    LIMIT 10
-                """)
-                
-                # Заведения на модерации
-                pending_places = await conn.fetch("""
+                pending_places = db_v2.execute_query("""
                     SELECT pp.id, pp.title, pp.address, pp.status, p.title as partner_name, pp.created_at
                     FROM partner_places pp
                     JOIN partners p ON pp.partner_id = p.id
@@ -124,26 +122,27 @@ async def handle_moderation(message: Message, state: FSMContext):
                     ORDER BY pp.created_at ASC 
                     LIMIT 10
                 """)
-            finally:
-                await conn.close()
+            except:
+                pending_places = []
                 
         except Exception as e:
             logger.error(f"Error getting moderation data: {e}")
-            pending_partners = []
+            pending_applications = []
             pending_places = []
         
         text = "📋 <b>Очередь модерации</b>\n\n"
         
-        # Партнеры на модерации
-        if pending_partners:
-            text += f"🤝 <b>Партнеры на модерации ({len(pending_partners)}):</b>\n"
-            for partner in pending_partners[:5]:  # Показываем только первые 5
-                text += f"• <b>{partner['title']}</b>\n"
-                text += f"  👤 {partner['contact_name']}\n"
-                text += f"  📞 {partner['contact_phone']}\n"
-                text += f"  📅 {str(partner['created_at'])[:10]}\n\n"
+        # Заявки партнеров на модерации
+        if pending_applications:
+            text += f"🤝 <b>Заявки партнеров ({len(pending_applications)}):</b>\n"
+            for app in pending_applications[:5]:  # Показываем только первые 5
+                text += f"• <b>{app['name']}</b>\n"
+                text += f"  👤 Telegram ID: {app['telegram_user_id']}\n"
+                text += f"  📞 {app['phone']}\n"
+                text += f"  📧 {app['email']}\n"
+                text += f"  📅 {str(app['created_at'])[:10]}\n\n"
         else:
-            text += "🤝 <b>Партнеры на модерации:</b> Нет заявок\n\n"
+            text += "🤝 <b>Заявки партнеров:</b> Нет заявок\n\n"
         
         # Заведения на модерации
         if pending_places:
@@ -157,10 +156,10 @@ async def handle_moderation(message: Message, state: FSMContext):
             text += "🏪 <b>Заведения на модерации:</b> Нет заявок\n\n"
         
         # Статистика
-        total_pending = len(pending_partners) + len(pending_places)
+        total_pending = len(pending_applications) + len(pending_places)
         text += f"📊 <b>Общая статистика:</b>\n"
         text += f"• Всего на модерации: {total_pending}\n"
-        text += f"• Партнеры: {len(pending_partners)}\n"
+        text += f"• Заявки партнеров: {len(pending_applications)}\n"
         text += f"• Заведения: {len(pending_places)}\n\n"
         
         if total_pending > 0:

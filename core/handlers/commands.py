@@ -31,7 +31,6 @@ async def set_commands(bot: Bot) -> None:
         ("help", "commands.help"),
         ("policy", "commands.policy"),
         ("clear_cache", "commands.clear_cache"),
-        ("moderation", "commands.moderation"),
     ]
 
     def build(locale: str):
@@ -73,11 +72,6 @@ def register_commands(router):
         from .help_with_ai_router import help_handler
         await help_handler(message)
 
-    @router.message(Command("moderation"))
-    async def cmd_moderation(message: Message):
-        """/moderation — Показать заявки на модерацию (только для админов)"""
-        from .webapp_handler import show_moderation_queue
-        await show_moderation_queue(message)
         try:
             from core.services.help_service import HelpService
             from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
