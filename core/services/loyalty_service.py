@@ -23,6 +23,7 @@ from core.models.loyalty_models import (
 from core.database import get_db, execute_in_transaction
 from core.logger import get_logger
 from core.common.exceptions import NotFoundError, ValidationError
+from .performance_service import cached_query, monitor_performance
 
 logger = get_logger(__name__)
 
@@ -82,6 +83,8 @@ class LoyaltyService:
         await self._load_referral_program()
 
     # --- Backward-compatibility helpers used by cabinet_router and handlers ---
+    @cached_query("loyalty:balance:{user_id}", ttl=300)
+    @monitor_performance("get_user_points_balance")
     async def get_user_points_balance(self, user_id: int) -> int:
         """Возвращает баланс баллов пользователя (SQLite/PG совместимо).
         Ищет по users.points_balance, fallback к 0 при отсутствии колонки/записи.
@@ -108,6 +111,8 @@ class LoyaltyService:
             pass
         return 0
 
+    @cached_query("loyalty:history:{user_id}:{limit}", ttl=60)
+    @monitor_performance("get_points_history")
     async def get_points_history(self, user_id: int, limit: int = 20) -> List[Dict[str, Any]]:
         """Возвращает историю операций с баллами (последние limit записей)."""
         try:

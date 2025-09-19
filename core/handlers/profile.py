@@ -201,10 +201,20 @@ async def on_my_points(message: Message):
         
         # Получаем историю операций
         try:
-            from core.database.db_adapter import db_v2
-            # TODO: Реализовать получение истории операций
-            history_text = "• Пока нет операций"
-        except Exception:
+            from core.services.loyalty_service import loyalty_service
+            history = await loyalty_service.get_points_history(user_id, limit=10)
+            if history:
+                history_text = ""
+                for item in history:
+                    change = item.get('change_amount', 0)
+                    reason = item.get('reason', 'Операция')
+                    created_at = item.get('created_at', '')
+                    sign = "+" if change > 0 else ""
+                    history_text += f"• {sign}{change} баллов - {reason}\n"
+            else:
+                history_text = "• Пока нет операций"
+        except Exception as e:
+            logger.warning(f"Error getting points history: {e}")
             history_text = "• Пока нет операций"
         
         await message.answer(

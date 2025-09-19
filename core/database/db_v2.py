@@ -667,6 +667,80 @@ class DatabaseServiceV2:
             )
             rows = cursor.fetchall()
             return [Partner.from_row(row) for row in rows]
+    
+    # User methods
+    def get_or_create_user(self, telegram_id: int, username: str = None, first_name: str = None, last_name: str = None, language_code: str = 'ru') -> Dict[str, Any]:
+        """
+        Get existing user or create new one with Welcome bonus.
+        
+        Args:
+            telegram_id: Telegram user ID
+            username: Telegram username
+            first_name: User's first name
+            last_name: User's last name
+            language_code: User's language preference
+            
+        Returns:
+            dict: User information including points balance
+        """
+        with self.get_connection() as conn:
+            # Check if user exists
+            cursor = conn.execute(
+                "SELECT * FROM users WHERE telegram_id = ?",
+                (telegram_id,)
+            )
+            row = cursor.fetchone()
+            
+            if row:
+                # User exists, return existing data
+                user_data = dict(row)
+                logger.info(f"Existing user found: {telegram_id}")
+                return {
+                    'telegram_id': user_data['telegram_id'],
+                    'username': user_data.get('username'),
+                    'first_name': user_data.get('first_name'),
+                    'last_name': user_data.get('last_name'),
+                    'language_code': user_data.get('language_code', 'ru'),
+                    'points_balance': user_data.get('points_balance', 0),
+                    'created_at': user_data.get('created_at'),
+                    'is_new_user': False
+                }
+            
+            # Create new user with Welcome bonus
+            welcome_bonus = 167  # Welcome bonus points
+            cursor = conn.execute("""
+                INSERT INTO users (
+                    telegram_id, username, first_name, last_name, 
+                    language_code, points_balance, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                telegram_id, username, first_name, last_name,
+                language_code, welcome_bonus, datetime.now().isoformat(), datetime.now().isoformat()
+            ))
+            
+            # Add welcome bonus to points history
+            cursor = conn.execute("""
+                INSERT INTO points_history (
+                    user_id, change_amount, reason, transaction_type, created_at
+                ) VALUES (?, ?, ?, ?, ?)
+            """, (
+                telegram_id, welcome_bonus, "Welcome бонус при регистрации", "welcome_bonus", datetime.now().isoformat()
+            ))
+            
+            conn.commit()
+            
+            logger.info(f"New user created with Welcome bonus: {telegram_id}, bonus: {welcome_bonus} points")
+            
+            return {
+                'telegram_id': telegram_id,
+                'username': username,
+                'first_name': first_name,
+                'last_name': last_name,
+                'language_code': language_code,
+                'points_balance': welcome_bonus,
+                'created_at': datetime.now().isoformat(),
+                'is_new_user': True
+            }
 
 # Global database service instance - use adapter instead
 from .db_adapter import db_v2

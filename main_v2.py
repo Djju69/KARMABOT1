@@ -353,6 +353,30 @@ async def main():
     except Exception as e:
         logger.warning("Loyalty settings router not included: %s", e)
     
+    # Performance monitoring router
+    try:
+        from core.handlers.performance_handler import router as performance_router
+        dp.include_router(performance_router)
+        logger.info("✅ Performance router included")
+    except Exception as e:
+        logger.warning("Performance router not included: %s", e)
+    
+    # Analytics router
+    try:
+        from core.handlers.analytics_handler import router as analytics_router
+        dp.include_router(analytics_router)
+        logger.info("✅ Analytics router included")
+    except Exception as e:
+        logger.warning("Analytics router not included: %s", e)
+    
+    # Notification router
+    try:
+        from core.handlers.notification_handler import router as notification_router
+        dp.include_router(notification_router)
+        logger.info("✅ Notification router included")
+    except Exception as e:
+        logger.warning("Notification router not included: %s", e)
+    
     # Set up bot commands
     await set_commands(bot)
     logger.info("✅ Bot commands set")
@@ -1034,6 +1058,30 @@ async def main():
     # Initialize Redis (optional)
     redis_url = _get_redis_url()
     redis = aioredis.from_url(redis_url, decode_responses=True) if redis_url else None
+    
+    # Initialize performance service
+    try:
+        from core.services.performance_service import performance_service
+        await performance_service.initialize()
+        logger.info("🚀 Performance service initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize performance service: {e}")
+    
+    # Initialize analytics service
+    try:
+        from core.services.analytics_service import analytics_service
+        await analytics_service.initialize()
+        logger.info("📊 Analytics service initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize analytics service: {e}")
+    
+    # Initialize notification service
+    try:
+        from core.services.notification_service import notification_service
+        await notification_service.initialize()
+        logger.info("📱 Notification service initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize notification service: {e}")
     
     # Initialize Dispatcher and register shutdown handler
     dp = Dispatcher()

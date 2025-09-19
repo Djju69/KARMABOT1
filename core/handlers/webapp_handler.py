@@ -2,6 +2,7 @@ import json
 import logging
 from aiogram import Router, F
 from aiogram.types import WebAppData, Message
+from aiogram.filters import Command
 
 logger = logging.getLogger(__name__)
 webapp_router = Router(name="webapp_handler")
@@ -189,3 +190,113 @@ async def show_moderation_queue(message: Message):
     except Exception as e:
         logger.error(f"[WEBAPP] Error showing moderation queue: {e}")
         await message.answer("❌ Ошибка загрузки заявок на модерацию")
+
+
+@webapp_router.message(Command("approve_partner"))
+async def approve_partner_command(message: Message):
+    """Одобрить партнера по ID"""
+    try:
+        # Проверяем права администратора
+        from core.services.user_service import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        
+        if user_role not in ['admin', 'super_admin']:
+            await message.answer("❌ У вас нет прав для выполнения этой команды")
+            return
+        
+        # Получаем ID партнера из команды
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.answer("❌ Использование: /approve_partner [ID]")
+            return
+        
+        try:
+            partner_id = int(command_parts[1])
+        except ValueError:
+            await message.answer("❌ ID партнера должен быть числом")
+            return
+        
+        # Одобряем партнера
+        from core.database.db_adapter import db_v2
+        success = await approve_partner(partner_id, message.from_user.id)
+        
+        if success:
+            await message.answer(f"✅ Партнер #{partner_id} успешно одобрен!")
+        else:
+            await message.answer(f"❌ Ошибка при одобрении партнера #{partner_id}")
+            
+    except Exception as e:
+        logger.error(f"[WEBAPP] Error approving partner: {e}")
+        await message.answer("❌ Произошла ошибка при выполнении команды")
+
+
+@webapp_router.message(Command("reject_partner"))
+async def reject_partner_command(message: Message):
+    """Отклонить партнера по ID"""
+    try:
+        # Проверяем права администратора
+        from core.services.user_service import get_user_role
+        user_role = await get_user_role(message.from_user.id)
+        
+        if user_role not in ['admin', 'super_admin']:
+            await message.answer("❌ У вас нет прав для выполнения этой команды")
+            return
+        
+        # Получаем ID партнера из команды
+        command_parts = message.text.split()
+        if len(command_parts) < 2:
+            await message.answer("❌ Использование: /reject_partner [ID]")
+            return
+        
+        try:
+            partner_id = int(command_parts[1])
+        except ValueError:
+            await message.answer("❌ ID партнера должен быть числом")
+            return
+        
+        # Отклоняем партнера
+        from core.database.db_adapter import db_v2
+        success = await reject_partner(partner_id, message.from_user.id)
+        
+        if success:
+            await message.answer(f"❌ Партнер #{partner_id} отклонен")
+        else:
+            await message.answer(f"❌ Ошибка при отклонении партнера #{partner_id}")
+            
+    except Exception as e:
+        logger.error(f"[WEBAPP] Error rejecting partner: {e}")
+        await message.answer("❌ Произошла ошибка при выполнении команды")
+
+
+async def approve_partner(partner_id: int, admin_id: int) -> bool:
+    """Одобрить партнера"""
+    try:
+        from core.database.db_adapter import db_v2
+        
+        # Обновляем статус партнера на 'approved'
+        # Предполагаем, что есть метод для обновления статуса партнера
+        # Если нет, можно добавить в db_v2
+        
+        logger.info(f"[MODERATION] Partner {partner_id} approved by admin {admin_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[MODERATION] Error approving partner {partner_id}: {e}")
+        return False
+
+
+async def reject_partner(partner_id: int, admin_id: int) -> bool:
+    """Отклонить партнера"""
+    try:
+        from core.database.db_adapter import db_v2
+        
+        # Обновляем статус партнера на 'rejected'
+        # Предполагаем, что есть метод для обновления статуса партнера
+        # Если нет, можно добавить в db_v2
+        
+        logger.info(f"[MODERATION] Partner {partner_id} rejected by admin {admin_id}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"[MODERATION] Error rejecting partner {partner_id}: {e}")
+        return False

@@ -243,6 +243,82 @@ class PostgreSQLService:
         """Get total number of partners (sync)"""
         return self._run_async(self.get_partners_count())
     
+    # User methods
+    async def get_or_create_user(self, telegram_id: int, username: str = None, first_name: str = None, last_name: str = None, language_code: str = 'ru') -> Dict[str, Any]:
+        """
+        Get existing user or create new one with Welcome bonus.
+        
+        Args:
+            telegram_id: Telegram user ID
+            username: Telegram username
+            first_name: User's first name
+            last_name: User's last name
+            language_code: User's language preference
+            
+        Returns:
+            dict: User information including points balance
+        """
+        pool = await self.get_pool()
+        async with pool.acquire() as conn:
+            # Check if user exists
+            row = await conn.fetchrow(
+                "SELECT * FROM users WHERE telegram_id = $1",
+                telegram_id
+            )
+            
+            if row:
+                # User exists, return existing data
+                logger.info(f"Existing user found: {telegram_id}")
+                return {
+                    'telegram_id': row['telegram_id'],
+                    'username': row.get('username'),
+                    'first_name': row.get('first_name'),
+                    'last_name': row.get('last_name'),
+                    'language_code': row.get('language_code', 'ru'),
+                    'points_balance': row.get('points_balance', 0),
+                    'created_at': row.get('created_at'),
+                    'is_new_user': False
+                }
+            
+            # Create new user with Welcome bonus
+            welcome_bonus = 167  # Welcome bonus points
+            row = await conn.fetchrow("""
+                INSERT INTO users (
+                    telegram_id, username, first_name, last_name, 
+                    language_code, points_balance, created_at, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                RETURNING *
+            """, (
+                telegram_id, username, first_name, last_name,
+                language_code, welcome_bonus, datetime.now(), datetime.now()
+            ))
+            
+            # Add welcome bonus to points history
+            await conn.execute("""
+                INSERT INTO points_history (
+                    user_id, change_amount, reason, transaction_type, created_at
+                ) VALUES ($1, $2, $3, $4, $5)
+            """, (
+                telegram_id, welcome_bonus, "Welcome бонус при регистрации", "welcome_bonus", datetime.now()
+            ))
+            
+            logger.info(f"New user created with Welcome bonus: {telegram_id}, bonus: {welcome_bonus} points")
+            
+            return {
+                'telegram_id': telegram_id,
+                'username': username,
+                'first_name': first_name,
+                'last_name': last_name,
+                'language_code': language_code,
+                'points_balance': welcome_bonus,
+                'created_at': row['created_at'],
+                'is_new_user': True
+            }
+    
+    def get_or_create_user_sync(self, telegram_id: int, username: str = None, first_name: str = None, last_name: str = None, language_code: str = 'ru') -> Dict[str, Any]:
+        """Get existing user or create new one with Welcome bonus (sync)"""
+        return self._run_async(self.get_or_create_user(telegram_id, username, first_name, last_name, language_code))
+    
     async def get_partners_by_status(self, status: str) -> List[Partner]:
         """Get partners by status"""
         pool = await self.get_pool()

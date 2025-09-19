@@ -32,6 +32,7 @@ from ..utils.locales_v2 import get_text, get_all_texts
 from ..utils.telemetry import log_event
 from ..settings import settings
 from ..services.profile import profile_service
+from ..services.performance_service import cached_query, monitor_performance
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,8 @@ async def show_cards(user_id: int, category: str, sub_slug: Optional[str] = None
         page=max(1, int(page or 1)),
         city_id=city_id,
     )
+@cached_query("catalog:{slug}:{sub_slug}:{page}:{city_id}", ttl=300)
+@monitor_performance("show_catalog_page")
 async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_slug: str = "all", page: int = 1, city_id: int | None = None, message_id: int | None = None):
     """
     Универсальный обработчик для отображения страницы каталога с фильтрацией по sub_slug.
