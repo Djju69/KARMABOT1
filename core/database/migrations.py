@@ -642,6 +642,8 @@ class DatabaseMigrator:
         self.migrate_022_add_loyalty_columns()
         # User roles and 2FA system
         self.migrate_024_user_roles_2fa()
+        # Card photos table
+        self.migrate_025_card_photos()
         
         # 021: Extend qr_codes_v2 for user-scoped QR operations used by db_v2 helpers
         try:
@@ -2694,14 +2696,17 @@ class DatabaseMigrator:
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)")
                     conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_action ON audit_log(action)")
                     
-                    # Insert initial admin role
+                    # Insert initial admin role (только если пользователь существует)
                     from core.settings import settings
                     if hasattr(settings, 'bots') and hasattr(settings.bots, 'admin_id'):
                         admin_id = settings.bots.admin_id
-                        conn.execute("""
-                            INSERT OR IGNORE INTO user_roles (user_id, role)
-                            VALUES (?, 'SUPER_ADMIN')
-                        """, (admin_id,))
+                        # Проверяем что пользователь существует
+                        cursor = conn.execute("SELECT 1 FROM users WHERE id = ?", (admin_id,))
+                        if cursor.fetchone():
+                            conn.execute("""
+                                INSERT OR IGNORE INTO user_roles (user_id, role)
+                                VALUES (?, 'SUPER_ADMIN')
+                            """, (admin_id,))
                     
                     conn.commit()
             else:
@@ -2757,15 +2762,87 @@ class DatabaseMigrator:
                     conn.execute("COMMENT ON TABLE two_factor_auth IS 'Настройки двухфакторной аутентификации'")
                     conn.execute("COMMENT ON TABLE audit_log IS 'Журнал аудита действий пользователей'")
                     
-                    # Insert initial admin role
+                    # Insert initial admin role (только если пользователь существует)
                     from core.settings import settings
                     if hasattr(settings, 'bots') and hasattr(settings.bots, 'admin_id'):
                         admin_id = settings.bots.admin_id
-                        conn.execute("""
-                            INSERT INTO user_roles (user_id, role)
-                            VALUES ($1, 'SUPER_ADMIN')
-                            ON CONFLICT (user_id) DO NOTHING
-                        """, admin_id)
+                        # Проверяем что пользователь существует
+                        user_exists = await conn.fetchval("SELECT 1 FROM users WHERE id = $1", admin_id)
+                        if user_exists:
+                            await conn.execute("""
+                                INSERT INTO user_roles (user_id, role)
+                                VALUES ($1, 'SUPER_ADMIN')
+                                ON CONFLICT (user_id) DO NOTHING
+                            """, admin_id)
+                    
+                    conn.commit()
+            
+            self.apply_migration(version, description, "")
+            logger.info(f"Applied migration {version}: {description}")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply migration {version}: {e}")
+            raise
+
+    def migrate_025_card_photos(self):
+        """Create card_photos table for card images"""
+        version = "025"
+        description = "CREATE: Create card_photos table"
+        
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+        
+        try:
+            if self._is_memory or not self._is_postgres():
+                # SQLite version
+                with self.get_connection() as conn:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS card_photos (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            card_id INTEGER NOT NULL,
+                            photo_url TEXT NOT NULL,
+                            photo_file_id TEXT,
+                            caption TEXT,
+                            is_main BOOLEAN DEFAULT FALSE,
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (card_id) REFERENCES cards_v2(id) ON DELETE CASCADE
+                        )
+                    """)
+                    
+                    # Create indexes
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    
+                    conn.commit()
+            else:
+                # PostgreSQL version
+                with self.get_connection() as conn:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS card_photos (
+                            id SERIAL PRIMARY KEY,
+                            card_id INTEGER NOT NULL,
+                            photo_url TEXT NOT NULL,
+                            photo_file_id TEXT,
+                            caption TEXT,
+                            is_main BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                            FOREIGN KEY (card_id) REFERENCES cards_v2(id) ON DELETE CASCADE
+                        )
+                    """)
+                    
+                    # Create indexes
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+                    
+                    # Add comments
+                    conn.execute("COMMENT ON TABLE card_photos IS 'Фотографии карточек партнеров'")
+                    conn.execute("COMMENT ON COLUMN card_photos.card_id IS 'ID карточки'")
+                    conn.execute("COMMENT ON COLUMN card_photos.photo_url IS 'URL фотографии'")
+                    conn.execute("COMMENT ON COLUMN card_photos.photo_file_id IS 'Telegram file_id фотографии'")
+                    conn.execute("COMMENT ON COLUMN card_photos.is_main IS 'Главная фотография карточки'")
                     
                     conn.commit()
             

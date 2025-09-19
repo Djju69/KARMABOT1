@@ -164,7 +164,7 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
     try:
         from core.settings import settings
         
-        admin_id = settings.bot.admin_id
+        admin_id = settings.bots.admin_id
         if admin_id:
             from aiogram import Bot
             bot = Bot.get_current()

@@ -151,10 +151,101 @@
                 padding: 20px 15px;
             }
             
-            .content {
-                padding: 20px 15px;
-            }
+        .content {
+            padding: 20px 15px;
         }
+    }
+    
+    /* Стили для модального окна модерации */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    
+    .modal-content {
+        background: white;
+        border-radius: 15px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+    
+    .modal-header {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 15px 15px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+    }
+    
+    .close-btn {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .moderation-item {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f9f9f9;
+    }
+    
+    .moderation-item h5 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    
+    .moderation-item p {
+        margin: 5px 0;
+        color: #666;
+    }
+    
+    .moderation-actions {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-approve {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .btn-reject {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
     </style>
 </head>
 <body>
@@ -272,17 +363,109 @@
             document.getElementById('partners-count').textContent = '89';
         }
         
+        function showModerationModal() {
+            // Создаем модальное окно модерации
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📋 Модерация</h3>
+                        <button class="close-btn" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="moderation-content">
+                            <p>🔄 Загрузка заявок на модерацию...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Загружаем данные модерации
+            loadModerationData();
+        }
+        
+        function loadModerationData() {
+            // Загружаем заявки партнеров
+            fetch('/api/moderation/applications')
+                .then(response => response.json())
+                .then(data => {
+                    const content = document.getElementById('moderation-content');
+                    if (data.applications && data.applications.length > 0) {
+                        let html = '<h4>🤝 Заявки партнеров:</h4>';
+                        data.applications.forEach(app => {
+                            html += `
+                                <div class="moderation-item">
+                                    <h5>${app.name}</h5>
+                                    <p>📞 ${app.phone}</p>
+                                    <p>📧 ${app.email}</p>
+                                    <p>📅 ${new Date(app.created_at).toLocaleDateString()}</p>
+                                    <div class="moderation-actions">
+                                        <button onclick="approveApplication(${app.id})" class="btn-approve">✅ Одобрить</button>
+                                        <button onclick="rejectApplication(${app.id})" class="btn-reject">❌ Отклонить</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        content.innerHTML = html;
+                    } else {
+                        content.innerHTML = '<p>✅ Нет заявок на модерацию</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading moderation data:', error);
+                    document.getElementById('moderation-content').innerHTML = 
+                        '<p>❌ Ошибка загрузки данных модерации</p>';
+                });
+        }
+        
+        function approveApplication(appId) {
+            fetch(`/api/moderation/approve/${appId}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Заявка одобрена');
+                        loadModerationData(); // Перезагружаем данные
+                    } else {
+                        alert('❌ Ошибка при одобрении заявки');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error approving application:', error);
+                    alert('❌ Ошибка при одобрении заявки');
+                });
+        }
+        
+        function rejectApplication(appId) {
+            fetch(`/api/moderation/reject/${appId}`, { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('❌ Заявка отклонена');
+                        loadModerationData(); // Перезагружаем данные
+                    } else {
+                        alert('❌ Ошибка при отклонении заявки');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error rejecting application:', error);
+                    alert('❌ Ошибка при отклонении заявки');
+                });
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
         function showFeature(feature) {
             if (feature === 'moderation') {
-                // Открываем модерацию через Telegram бота
-                if (window.Telegram && window.Telegram.WebApp) {
-                    // Отправляем команду модерации в бота
-                    window.Telegram.WebApp.sendData('moderation');
-                    window.Telegram.WebApp.close();
-                } else {
-                    // Если не в Telegram, показываем информацию
-                    alert('📋 Модерация доступна только через Telegram бота');
-                }
+                // Показываем модерацию прямо в WebApp
+                showModerationModal();
                 return;
             }
             
