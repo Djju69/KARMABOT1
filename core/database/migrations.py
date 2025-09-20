@@ -191,13 +191,13 @@ class DatabaseMigrator:
                             asyncio.run(run_postgres_migration())
                     else:
                         # SQLite migration
-                        conn.executescript(sql)
-                        
-                        # Record migration
-                        conn.execute(
-                            "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
-                            (version, description)
-                        )
+                    conn.executescript(sql)
+                    
+                    # Record migration
+                    conn.execute(
+                        "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
+                        (version, description)
+                    )
                         conn.commit()
                     logger.info(f"Applied migration {version}: {description}")
                 except Exception as e:
@@ -2869,6 +2869,64 @@ if db_path.startswith("postgresql://"):
     db_path = None
 migrator = DatabaseMigrator(db_path) if db_path else None
 
+def ensure_partner_applications_table():
+    """Ensure partner_applications table exists"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            # PostgreSQL
+            import asyncio
+            import asyncpg
+            
+            async def create_table():
+                conn = await asyncpg.connect(database_url)
+                try:
+                    await conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_applications (
+                            id SERIAL PRIMARY KEY,
+                            telegram_user_id BIGINT NOT NULL,
+                            telegram_username TEXT,
+                            name TEXT NOT NULL,
+                            phone TEXT NOT NULL,
+                            email TEXT NOT NULL,
+                            business_description TEXT NOT NULL,
+                            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            reviewed_at TIMESTAMPTZ,
+                            reviewed_by INTEGER
+                        );
+                    """)
+                    logger.info("✅ partner_applications table created/verified in PostgreSQL")
+                finally:
+                    await conn.close()
+            
+            asyncio.run(create_table())
+        else:
+            # SQLite
+            if migrator:
+                with migrator.get_connection() as conn:
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS partner_applications (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            telegram_user_id INTEGER NOT NULL,
+                            telegram_username TEXT,
+                            name TEXT NOT NULL,
+                            phone TEXT NOT NULL,
+                            email TEXT NOT NULL,
+                            business_description TEXT NOT NULL,
+                            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            reviewed_at DATETIME,
+                            reviewed_by INTEGER
+                        );
+                    """)
+                    conn.commit()
+                    logger.info("✅ partner_applications table created/verified in SQLite")
+                
+    except Exception as e:
+        logger.error(f"Error creating partner_applications table: {e}")
+
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
     # Run migrations by default, skip only if explicitly disabled
@@ -2879,11 +2937,17 @@ def ensure_database_ready():
     # Skip SQLite migrations if using PostgreSQL
     if migrator is None:
         logger.info("Skipping SQLite migrations (using PostgreSQL)")
+        # Still ensure partner_applications table exists
+        ensure_partner_applications_table()
         return
         
     try:
         logger.info("Running database migrations...")
         migrator.run_all_migrations()
+        
+        # Ensure partner_applications table exists
+        ensure_partner_applications_table()
+        
     except Exception as e:
         logger.error(f"Failed to run migrations: {e}")
         if os.getenv("APP_ENV") != "production":

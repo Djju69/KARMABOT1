@@ -163,11 +163,15 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
     """Уведомить админов о новой заявке партнера"""
     try:
         from core.settings import settings
+        from aiogram import Bot
         
         admin_id = settings.bots.admin_id
         if admin_id:
-            # Получаем бота из контекста сообщения
-            bot = message.bot
+            # Получаем бота из глобального контекста
+            bot = Bot.get_current()
+            if not bot:
+                # Создаем нового бота если глобальный недоступен
+                bot = Bot(token=settings.bots.token)
             
             await bot.send_message(
                 admin_id,

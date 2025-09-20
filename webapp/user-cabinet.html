@@ -321,9 +321,26 @@
         }
         
         function loadUserData(userId) {
-            // Заглушка для загрузки данных
-            document.getElementById('karma-points').textContent = '150';
-            document.getElementById('cards-count').textContent = '3';
+            // Загружаем реальную статистику пользователя
+            fetch(`/api/user/stats?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('karma-points').textContent = data.data.points_balance;
+                        document.getElementById('cards-count').textContent = data.data.cards_count;
+                    } else {
+                        console.error('Error loading user stats:', data.error);
+                        // Fallback к заглушкам
+                        document.getElementById('karma-points').textContent = '0';
+                        document.getElementById('cards-count').textContent = '0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user stats:', error);
+                    // Fallback к заглушкам
+                    document.getElementById('karma-points').textContent = '0';
+                    document.getElementById('cards-count').textContent = '0';
+                });
         }
         
         function showFeature(feature) {

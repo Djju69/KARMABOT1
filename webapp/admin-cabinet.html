@@ -358,9 +358,26 @@
         }
         
         function loadAdminData(userId) {
-            // Заглушка для загрузки данных
-            document.getElementById('users-count').textContent = '1,247';
-            document.getElementById('partners-count').textContent = '89';
+            // Загружаем реальную статистику
+            fetch('/api/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('users-count').textContent = data.data.users_count;
+                        document.getElementById('partners-count').textContent = data.data.partners_count;
+                    } else {
+                        console.error('Error loading admin stats:', data.error);
+                        // Fallback к заглушкам
+                        document.getElementById('users-count').textContent = '0';
+                        document.getElementById('partners-count').textContent = '0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching admin stats:', error);
+                    // Fallback к заглушкам
+                    document.getElementById('users-count').textContent = '0';
+                    document.getElementById('partners-count').textContent = '0';
+                });
         }
         
         function showModerationModal() {

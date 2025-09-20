@@ -665,6 +665,45 @@ if __name__ == "__main__":
                             
                             self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
                             
+                        elif self.path == '/api/admin/stats':
+                            # Получаем статистику для админ кабинета
+                            try:
+                                users_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM users")[0]['count']
+                                partners_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM partners_v2")[0]['count']
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'users_count': users_count,
+                                        'partners_count': partners_count
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path.startswith('/api/user/stats'):
+                            # Получаем статистику для пользовательского кабинета
+                            try:
+                                # Получаем user_id из параметров
+                                user_id = self.path.split('?')[1].split('=')[1] if '?' in self.path else '0'
+                                
+                                # Получаем баллы пользователя
+                                points_result = db_v2.fetch_all("SELECT points_balance FROM users WHERE telegram_id = ?", (user_id,))
+                                points_balance = points_result[0]['points_balance'] if points_result else 0
+                                
+                                # Получаем количество карт пользователя
+                                cards_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM cards_binding WHERE user_id = ?", (user_id,))[0]['count']
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'points_balance': points_balance,
+                                        'cards_count': cards_count
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                            
                         else:
                             self.send_error(404, "API endpoint not found")
                             
