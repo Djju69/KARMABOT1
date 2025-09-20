@@ -303,7 +303,7 @@ async def main():
         from core.services.notification_service import notification_service
         await notification_service.initialize()
         logger.info("📱 Notification service initialized")
-            except Exception as e:
+    except Exception as e:
         logger.warning(f"Failed to initialize notification service: {e}")
     
     # Initialize Dispatcher and register shutdown handler
