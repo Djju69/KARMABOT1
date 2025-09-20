@@ -46,7 +46,7 @@ requests>=2.31.0
 
 # Отказоустойчивость и мониторинг
 asyncio>=3.4.3
-threading2>=0.1.2
+# threading2>=0.1.2  # Несовместим с Python 3.11, используем встроенный threading
 
 # === НОВЫЕ ЗАВИСИМОСТИ ДЛЯ MULTI-PLATFORM SYSTEM ===
 
