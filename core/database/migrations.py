@@ -1062,6 +1062,12 @@ class DatabaseMigrator:
                 # SQLite path
                 try:
                     with self.get_connection() as _conn_chk:
+                        # First check if users table exists
+                        cur = _conn_chk.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                        if not cur.fetchone():
+                            logger.info("Users table doesn't exist, skipping migration 016.1")
+                            return
+                        
                         cur = _conn_chk.execute("PRAGMA table_info(users)")
                         cols = {row[1] for row in cur.fetchall()}
                         column_exists = 'karma_points' in cols
@@ -1075,6 +1081,14 @@ class DatabaseMigrator:
                     async def _check_pg():
                         conn_pg = await asyncpg.connect(database_url)
                         try:
+                            # First check if users table exists
+                            table_exists = await conn_pg.fetchval(
+                                "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='users')"
+                            )
+                            if not table_exists:
+                                logger.info("Users table doesn't exist, skipping migration 016.1")
+                                return False
+                            
                             return await conn_pg.fetchval(
                                 "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='karma_points')"
                             )
