@@ -510,32 +510,31 @@ async def handle_loyalty_settings(message: Message, state: FSMContext):
             return
         
         # Получаем текущие настройки
-        from core.database.db_v2 import get_connection
+        from core.database.db_adapter import db_v2
         
-        with get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage
-                FROM platform_loyalty_config 
-                ORDER BY id DESC LIMIT 1
-            """)
-            config = cursor.fetchone()
-            
-            if config:
-                redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage = config
-            else:
-                redeem_rate = 5000.0
-                max_accrual_percent = 20.0
-                min_purchase_for_points = 10000
-                max_discount_percent = 40.0
-                bonus_for_points_usage = 0.30
+        query = """
+            SELECT redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage
+            FROM platform_loyalty_config 
+            ORDER BY id DESC LIMIT 1
+        """
+        config = db_v2.fetch_one(query, ())
+        
+        if config:
+            redeem_rate, max_accrual_percent, min_purchase_for_points, max_discount_percent, bonus_for_points_usage = config
+        else:
+            redeem_rate = 5000.0
+            max_accrual_percent = 20.0
+            min_purchase_for_points = 10000
+            max_discount_percent = 40.0
+            bonus_for_points_usage = 0.30
         
         # Получаем границу закрытия чека баллами
-        cursor2 = conn.execute("""
+        query2 = """
             SELECT max_percent_per_bill FROM platform_loyalty_config 
             ORDER BY id DESC LIMIT 1
-        """)
-        max_percent_per_bill = cursor2.fetchone()
-        max_percent_per_bill = max_percent_per_bill[0] if max_percent_per_bill else 50.0
+        """
+        max_percent_per_bill_result = db_v2.fetch_one(query2, ())
+        max_percent_per_bill = max_percent_per_bill_result[0] if max_percent_per_bill_result else 50.0
         
         await message.answer(
             f"⚙️ <b>Настройки системы лояльности</b>\n\n"

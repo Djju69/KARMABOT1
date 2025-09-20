@@ -285,31 +285,30 @@ async def handle_confirmation(message: Message, state: FSMContext):
 async def get_current_setting_value(setting_type: str) -> str:
     """Получить текущее значение настройки"""
     try:
-        from core.database.db_v2 import get_connection
+        from core.database.db_adapter import db_v2
         
-        with get_connection() as conn:
-            cursor = conn.execute("""
-                SELECT redeem_rate, min_purchase_for_points, max_discount_percent, max_percent_per_bill, bonus_for_points_usage
-                FROM platform_loyalty_config 
-                ORDER BY id DESC LIMIT 1
-            """)
-            result = cursor.fetchone()
+        query = """
+            SELECT redeem_rate, min_purchase_for_points, max_discount_percent, max_percent_per_bill, bonus_for_points_usage
+            FROM platform_loyalty_config 
+            ORDER BY id DESC LIMIT 1
+        """
+        result = db_v2.fetch_one(query, ())
+        
+        if result:
+            redeem_rate, min_purchase, max_discount, max_percent_bill, bonus_for_points_usage = result
             
-            if result:
-                redeem_rate, min_purchase, max_discount, max_percent_bill, bonus_for_points_usage = result
-                
-                if setting_type == "redeem_rate":
-                    return f"{redeem_rate:,.0f} VND за 1 балл"
-                elif setting_type == "min_purchase":
-                    return f"{min_purchase:,.0f} VND"
-                elif setting_type == "max_discount":
-                    return f"{max_discount}%"
-                elif setting_type == "max_percent_bill":
-                    return f"{max_percent_bill}%"
-                elif setting_type == "bonus_for_points_usage":
-                    return f"{bonus_for_points_usage}%"
-            
-            return "Не установлено"
+            if setting_type == "redeem_rate":
+                return f"{redeem_rate:,.0f} VND за 1 балл"
+            elif setting_type == "min_purchase":
+                return f"{min_purchase:,.0f} VND"
+            elif setting_type == "max_discount":
+                return f"{max_discount}%"
+            elif setting_type == "max_percent_bill":
+                return f"{max_percent_bill}%"
+            elif setting_type == "bonus_for_points_usage":
+                return f"{bonus_for_points_usage}%"
+        
+        return "Не установлено"
             
     except Exception as e:
         logger.error(f"Error getting current setting value: {e}")
@@ -318,56 +317,57 @@ async def get_current_setting_value(setting_type: str) -> str:
 async def save_loyalty_setting(setting_type: str, new_value: float, admin_id: int) -> bool:
     """Сохранить изменение настройки лояльности"""
     try:
-        from core.database.db_v2 import get_connection
-        from datetime import datetime
+        from core.database.db_adapter import db_v2
         
-        with get_connection() as conn:
-            # Обновляем настройку
-            if setting_type == "redeem_rate":
-                conn.execute("""
-                    UPDATE platform_loyalty_config 
-                    SET redeem_rate = %s, updated_at = NOW(), updated_by = %s
-                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
-                """, (new_value, admin_id))
-            elif setting_type == "min_purchase":
-                conn.execute("""
-                    UPDATE platform_loyalty_config 
-                    SET min_purchase_for_points = %s, updated_at = NOW(), updated_by = %s
-                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
-                """, (new_value, admin_id))
-            elif setting_type == "max_discount":
-                conn.execute("""
-                    UPDATE platform_loyalty_config 
-                    SET max_discount_percent = %s, updated_at = NOW(), updated_by = %s
-                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
-                """, (new_value, admin_id))
-            elif setting_type == "max_percent_bill":
-                conn.execute("""
-                    UPDATE platform_loyalty_config 
-                    SET max_percent_per_bill = %s, updated_at = NOW(), updated_by = %s
-                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
-                """, (new_value, admin_id))
-            elif setting_type == "bonus_for_points_usage":
-                conn.execute("""
-                    UPDATE platform_loyalty_config 
-                    SET bonus_for_points_usage = %s, updated_at = NOW(), updated_by = %s
-                    WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
-                """, (new_value, admin_id))
-            
-            conn.commit()
-            
-            # Логируем изменение
-            conn.execute("""
-                INSERT INTO admin_logs (admin_id, action, details, created_at)
-                VALUES (%s, %s, %s, NOW())
-            """, (
-                admin_id,
-                'loyalty_setting_changed',
-                f"Setting: {setting_type}, New value: {new_value}"
-            ))
-            conn.commit()
-            
-            return True
+        # Обновляем настройку
+        if setting_type == "redeem_rate":
+            query = """
+                UPDATE platform_loyalty_config 
+                SET redeem_rate = ?, updated_at = datetime('now'), updated_by = ?
+                WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+            """
+            db_v2.execute(query, (new_value, admin_id))
+        elif setting_type == "min_purchase":
+            query = """
+                UPDATE platform_loyalty_config 
+                SET min_purchase_for_points = ?, updated_at = datetime('now'), updated_by = ?
+                WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+            """
+            db_v2.execute(query, (new_value, admin_id))
+        elif setting_type == "max_discount":
+            query = """
+                UPDATE platform_loyalty_config 
+                SET max_discount_percent = ?, updated_at = datetime('now'), updated_by = ?
+                WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+            """
+            db_v2.execute(query, (new_value, admin_id))
+        elif setting_type == "max_percent_bill":
+            query = """
+                UPDATE platform_loyalty_config 
+                SET max_percent_per_bill = ?, updated_at = datetime('now'), updated_by = ?
+                WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+            """
+            db_v2.execute(query, (new_value, admin_id))
+        elif setting_type == "bonus_for_points_usage":
+            query = """
+                UPDATE platform_loyalty_config 
+                SET bonus_for_points_usage = ?, updated_at = datetime('now'), updated_by = ?
+                WHERE id = (SELECT id FROM platform_loyalty_config ORDER BY id DESC LIMIT 1)
+            """
+            db_v2.execute(query, (new_value, admin_id))
+        
+        # Логируем изменение
+        log_query = """
+            INSERT INTO admin_logs (admin_id, action, details, created_at)
+            VALUES (?, ?, ?, datetime('now'))
+        """
+        db_v2.execute(log_query, (
+            admin_id,
+            'loyalty_setting_changed',
+            f"Setting: {setting_type}, New value: {new_value}"
+        ))
+        
+        return True
             
     except Exception as e:
         logger.error(f"Error saving loyalty setting: {e}")
