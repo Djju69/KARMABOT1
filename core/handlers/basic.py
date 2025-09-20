@@ -130,7 +130,8 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
             return
 
         # Ensure policy consent before showing menu
-        if not await ensure_policy_accepted(message, bot, state):
+        policy_accepted = await ensure_policy_accepted(message, bot, state)
+        if not policy_accepted:
             return
 
         # Build spec-compliant main menu (reply keyboard v4.1)

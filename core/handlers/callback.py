@@ -194,17 +194,38 @@ async def handle_policy_accept(callback: CallbackQuery, state: FSMContext, bot: 
             pass
         # Короткий ответ на callback, чтобы убрать спиннер
         await callback.answer("✅ Политика принята")
-        # Подтверждение пользователю с диагностикой
+        
+        # Удаляем сообщение с политикой
         try:
+            await callback.message.delete()
+        except Exception:
+            pass
+        
+        # Вызываем get_start для показа меню
+        try:
+            from core.handlers.basic import get_start
+            from aiogram.types import Message
+            
+            # Создаем фейковое сообщение для вызова get_start
+            fake_message = Message(
+                message_id=callback.message.message_id + 1,
+                from_user=callback.from_user,
+                chat=callback.message.chat,
+                date=callback.message.date,
+                text="/start"
+            )
+            
+            await get_start(fake_message, bot, state)
+        except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.warning(f"POLICY_ACCEPT: Сохранили policy_accepted=TRUE для пользователя {callback.from_user.id}")
+            logger.error(f"Error calling get_start after policy acceptance: {e}")
+            
+            # Fallback - просто отправляем сообщение
             await bot.send_message(
                 callback.from_user.id, 
-                f"✅ Политика принята! Можете пользоваться меню."
+                f"✅ Политика принята! Нажмите /start для продолжения."
             )
-        except Exception as e:
-            logger.error(f"Error sending policy acceptance confirmation: {e}")
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error in policy acceptance: {e}")
