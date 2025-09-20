@@ -2959,6 +2959,61 @@ def ensure_user_roles_table():
     except Exception as e:
         logger.error(f"Error creating user_roles table: {e}")
 
+def ensure_partners_v2_columns():
+    """Ensure partners_v2 table has all required columns"""
+    try:
+        from core.settings import settings
+        import psycopg2
+        
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(settings.database.url)
+        cur = conn.cursor()
+        try:
+            # Check if partners_v2 table exists
+            cur.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = 'partners_v2'
+                );
+            """)
+            
+            table_exists = cur.fetchone()[0]
+            
+            if table_exists:
+                # Check if is_verified column exists
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.columns 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'partners_v2' 
+                        AND column_name = 'is_verified'
+                    );
+                """)
+                
+                column_exists = cur.fetchone()[0]
+                
+                if not column_exists:
+                    # Add is_verified column
+                    cur.execute("""
+                        ALTER TABLE partners_v2 
+                        ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
+                    """)
+                    logger.info("✅ Added is_verified column to partners_v2 table")
+                else:
+                    logger.info("✅ is_verified column already exists in partners_v2 table")
+            else:
+                logger.warning("⚠️ partners_v2 table does not exist")
+            
+            conn.commit()
+            
+        finally:
+            cur.close()
+            conn.close()
+            
+    except Exception as e:
+        logger.error(f"Error ensuring partners_v2 columns: {e}")
+
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
     # Run migrations by default, skip only if explicitly disabled
@@ -2972,6 +3027,7 @@ def ensure_database_ready():
         # Still ensure required tables exist
         ensure_partner_applications_table()
         ensure_user_roles_table()
+        ensure_partners_v2_columns()
         return
         
     try:
