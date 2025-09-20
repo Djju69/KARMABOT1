@@ -1,0 +1,469 @@
+{
+  "cache": {
+    "user_telegram_999999999": {
+      "username": "test_user",
+      "first_name": "Test User",
+      "user_identifier": 999999999,
+      "platform": "telegram",
+      "created_at": "2025-09-20T04:21:05.704023",
+      "cached": true
+    },
+    "user_telegram_1000000000": {
+      "username": "test_user",
+      "first_name": "Test User",
+      "user_identifier": 1000000000,
+      "platform": "telegram",
+      "created_at": "2025-09-20T04:21:05.705025",
+      "cached": true
+    },
+    "order_None": {
+      "order_id": null,
+      "user_identifier": 1000000000,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test Product",
+            "price": 100.0
+          }
+        ],
+        "total_amount": 100.0,
+        "currency": "USD"
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-20T04:20:39.831594"
+    },
+    "order_1758316865706": {
+      "order_id": 1758316865706,
+      "user_identifier": 1000000000,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test Product",
+            "price": 100.0
+          }
+        ],
+        "total_amount": 100.0,
+        "currency": "USD"
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-20T04:21:05.706025"
+    },
+    "user_telegram_test_user": {
+      "points": 100
+    },
+    "user_telegram_888888888": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888888,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888888,
+      "created_at": "2025-09-20T04:29:41.494932",
+      "cached": true,
+      "is_bot_user": true
+    },
+    "order_1758317381495": {
+      "order_id": 1758317381495,
+      "user_identifier": 888888888,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test",
+            "price": 100
+          }
+        ],
+        "total_amount": 100,
+        "platform": "telegram",
+        "source": "telegram_bot",
+        "user_telegram_id": 888888888
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-20T04:29:41.495934"
+    },
+    "loyalty_telegram_888888888": {
+      "current_points": 0,
+      "partner_cards": [],
+      "recent_history": [],
+      "source": "supabase",
+      "platform": "telegram",
+      "telegram_id": 888888888,
+      "can_use_bot_commands": true
+    },
+    "user_website_test@platform.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Updated",
+      "email": "test@platform.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "test@platform.com",
+      "created_at": "2025-09-20T04:29:41.496934",
+      "cached": true,
+      "is_web_user": true,
+      "can_receive_emails": true,
+      "updated_at": "2025-09-20T04:29:41.498932"
+    },
+    "order_1758317381497": {
+      "order_id": 1758317381497,
+      "user_identifier": "test@platform.com",
+      "platform": "website",
+      "order_data": {
+        "items": [
+          {
+            "name": "Web Test",
+            "price": 200
+          }
+        ],
+        "total_amount": 200,
+        "platform": "website",
+        "source": "website",
+        "user_email": "test@platform.com",
+        "payment_method": "card"
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-20T04:29:41.497933"
+    },
+    "user_mobile_ios_device_12345": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "device_id": "device_12345",
+      "platform": "mobile_ios",
+      "user_type": "mobile_user",
+      "device_type": "ios",
+      "app_version": "1.0.0",
+      "push_token": "push_token_123",
+      "user_identifier": "device_12345",
+      "created_at": "2025-09-20T04:29:41.499932",
+      "cached": true,
+      "is_mobile_user": true,
+      "can_receive_push": false,
+      "last_sync": "2025-09-20T04:29:41.499932",
+      "sync_data": {
+        "app_version": "2.0.0",
+        "settings": {
+          "notifications": true
+        }
+      },
+      "sync_version": "1.0",
+      "device_info": {
+        "platform": "mobile_ios",
+        "device_id": "device_12345",
+        "app_version": "2.0.0"
+      },
+      "push_registered_at": "2025-09-20T04:29:41.501439"
+    },
+    "user_telegram_888888898": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888898,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888898,
+      "created_at": "2025-09-20T04:29:41.502445",
+      "cached": true,
+      "is_bot_user": true
+    },
+    "user_website_link@test.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "email": "link@test.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "link@test.com",
+      "created_at": "2025-09-20T04:29:41.503835",
+      "cached": true,
+      "is_web_user": true,
+      "can_receive_emails": true
+    },
+    "link_email_link@test.com": {
+      "telegram_id": 888888898,
+      "linked_at": "2025-09-20T04:29:41.503835"
+    },
+    "link_telegram_888888898": {
+      "email": "link@test.com",
+      "linked_at": "2025-09-20T04:29:41.503835"
+    },
+    "user_telegram_888888908": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888908,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888908,
+      "created_at": "2025-09-20T04:29:41.503835",
+      "cached": true,
+      "is_bot_user": true,
+      "found_via": "telegram"
+    },
+    "user_website_search@test.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "email": "search@test.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "search@test.com",
+      "created_at": "2025-09-20T04:29:41.503835",
+      "cached": true,
+      "is_web_user": true,
+      "can_receive_emails": true,
+      "found_via": "email"
+    },
+    "user_telegram_888888918": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888918,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888918,
+      "created_at": "2025-09-20T04:29:41.507934",
+      "cached": true
+    },
+    "user_website_loyalty@test.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "email": "loyalty@test.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "loyalty@test.com",
+      "created_at": "2025-09-20T04:29:41.508942",
+      "cached": true
+    },
+    "loyalty_telegram_888888918": {
+      "current_points": 0,
+      "partner_cards": [],
+      "recent_history": [],
+      "source": "supabase",
+      "platform": "telegram",
+      "telegram_id": 888888918,
+      "can_use_bot_commands": true
+    },
+    "loyalty_website_loyalty@test.com": {
+      "current_points": 0,
+      "partner_cards": [],
+      "recent_history": [],
+      "source": "supabase",
+      "platform": "website",
+      "email": "loyalty@test.com",
+      "can_redeem_online": true
+    },
+    "user_telegram_888888928": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888928,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888928,
+      "created_at": "2025-09-20T04:29:41.511445",
+      "cached": true
+    },
+    "order_1758317381512": {
+      "order_id": 1758317381512,
+      "user_identifier": 888888928,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Cross Platform",
+            "price": 300
+          }
+        ],
+        "total_amount": 300,
+        "platform": "telegram",
+        "source": "telegram_bot",
+        "user_telegram_id": 888888928
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-20T04:29:41.512831"
+    },
+    "user_telegram_888888938": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888938,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888938,
+      "created_at": "2025-09-20T04:29:41.513840",
+      "cached": true
+    },
+    "user_website_unified@test.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "email": "unified@test.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "unified@test.com",
+      "created_at": "2025-09-20T04:29:41.514837",
+      "cached": true
+    },
+    "user_mobile_ios_device_unified": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "device_id": "device_unified",
+      "platform": "mobile_ios",
+      "user_type": "mobile_user",
+      "device_type": "ios",
+      "app_version": "1.0.0",
+      "push_token": null,
+      "user_identifier": "device_unified",
+      "created_at": "2025-09-20T04:29:41.515836",
+      "cached": true
+    },
+    "user_telegram_888888948": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888948,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888948,
+      "created_at": "2025-09-20T04:29:41.517838",
+      "cached": true,
+      "is_bot_user": true,
+      "preferences": {
+        "language": "ru",
+        "notifications": true
+      },
+      "updated_profile": {
+        "last_name": "Synchronized"
+      }
+    },
+    "user_website_sync@test.com": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "email": "sync@test.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "sync@test.com",
+      "created_at": "2025-09-20T04:29:41.518836",
+      "cached": true,
+      "is_web_user": true,
+      "can_receive_emails": true
+    },
+    "link_email_sync@test.com": {
+      "telegram_id": 888888948,
+      "linked_at": "2025-09-20T04:29:41.519836"
+    },
+    "link_telegram_888888948": {
+      "email": "sync@test.com",
+      "linked_at": "2025-09-20T04:29:41.519836"
+    },
+    "user_mobile_android_push_device": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "device_id": "push_device",
+      "platform": "mobile_android",
+      "user_type": "mobile_user",
+      "device_type": "android",
+      "app_version": "1.0.0",
+      "push_token": "fcm_token_android_123",
+      "user_identifier": "push_device",
+      "created_at": "2025-09-20T04:29:41.523411",
+      "cached": true,
+      "is_mobile_user": true,
+      "can_receive_push": true,
+      "push_registered_at": "2025-09-20T04:29:41.524830"
+    },
+    "user_telegram_888888958": {
+      "username": "platform_test",
+      "first_name": "Platform",
+      "last_name": "Tester",
+      "telegram_id": 888888958,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 888888958,
+      "created_at": "2025-09-20T04:29:41.525867",
+      "cached": true
+    },
+    "user_telegram_111111111": {
+      "username": "test_tg",
+      "telegram_id": 111111111,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 111111111,
+      "created_at": "2025-09-20T04:29:48.465467",
+      "cached": true
+    },
+    "user_website_test@web.com": {
+      "username": "test_web",
+      "email": "test@web.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "email_verified": false,
+      "user_identifier": "test@web.com",
+      "created_at": "2025-09-20T04:29:48.467465",
+      "cached": true
+    },
+    "user_mobile_ios_device123": {
+      "username": "test_mobile",
+      "device_id": "device123",
+      "platform": "mobile_ios",
+      "user_type": "mobile_user",
+      "device_type": "ios",
+      "app_version": "1.0.0",
+      "push_token": null,
+      "user_identifier": "device123",
+      "created_at": "2025-09-20T04:29:48.468466",
+      "cached": true
+    }
+  },
+  "expiry": {
+    "user_telegram_999999999": "2025-09-20T05:21:05.704023",
+    "user_telegram_1000000000": "2025-09-20T05:21:05.705025",
+    "order_None": "2025-09-21T04:20:39.831594",
+    "order_1758316865706": "2025-09-21T04:21:05.706025",
+    "user_telegram_test_user": "2025-09-20T05:21:05.708023",
+    "user_telegram_888888888": "2025-09-20T05:29:41.494932",
+    "order_1758317381495": "2025-09-21T04:29:41.495934",
+    "loyalty_telegram_888888888": "2025-09-20T04:34:41.496934",
+    "user_website_test@platform.com": "2025-09-20T05:29:41.498932",
+    "order_1758317381497": "2025-09-21T04:29:41.497933",
+    "user_mobile_ios_device_12345": "2025-09-20T05:29:41.501439",
+    "user_telegram_888888898": "2025-09-20T05:29:41.502445",
+    "user_website_link@test.com": "2025-09-20T05:29:41.503835",
+    "link_email_link@test.com": "2025-09-21T04:29:41.503835",
+    "link_telegram_888888898": "2025-09-21T04:29:41.503835",
+    "user_telegram_888888908": "2025-09-20T05:29:41.503835",
+    "user_website_search@test.com": "2025-09-20T05:29:41.503835",
+    "user_telegram_888888918": "2025-09-20T05:29:41.507934",
+    "user_website_loyalty@test.com": "2025-09-20T05:29:41.508942",
+    "loyalty_telegram_888888918": "2025-09-20T04:34:41.509940",
+    "loyalty_website_loyalty@test.com": "2025-09-20T04:34:41.509940",
+    "user_telegram_888888928": "2025-09-20T05:29:41.511445",
+    "order_1758317381512": "2025-09-21T04:29:41.512831",
+    "user_telegram_888888938": "2025-09-20T05:29:41.513840",
+    "user_website_unified@test.com": "2025-09-20T05:29:41.514837",
+    "user_mobile_ios_device_unified": "2025-09-20T05:29:41.515836",
+    "user_telegram_888888948": "2025-09-20T05:29:41.522344",
+    "user_website_sync@test.com": "2025-09-20T05:29:41.518836",
+    "link_email_sync@test.com": "2025-09-21T04:29:41.519836",
+    "link_telegram_888888948": "2025-09-21T04:29:41.521339",
+    "user_mobile_android_push_device": "2025-09-20T05:29:41.524830",
+    "user_telegram_888888958": "2025-09-20T05:29:41.525867",
+    "user_telegram_111111111": "2025-09-20T05:29:48.465467",
+    "user_website_test@web.com": "2025-09-20T05:29:48.467465",
+    "user_mobile_ios_device123": "2025-09-20T05:29:48.468466"
+  }
+}
