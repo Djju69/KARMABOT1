@@ -382,3 +382,46 @@ async def reject_partner(partner_id: int, admin_id: int) -> bool:
     except Exception as e:
         logger.error(f"[MODERATION] Error rejecting partner {partner_id}: {e}")
         return False
+
+
+async def open_webapp_cabinet(message: Message, bot: Bot, state: FSMContext):
+    """Открывает WebApp кабинет для пользователя"""
+    try:
+        from core.security.roles import get_user_role
+        
+        # Получаем роль пользователя
+        user_role = await get_user_role(message.from_user.id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        
+        # Определяем URL WebApp в зависимости от роли
+        from core.settings import settings
+        base_url = settings.features.webapp_url or "https://webbot-production-42fe.up.railway.app"
+        
+        if role_name in ("admin", "super_admin"):
+            webapp_url = f"{base_url}/admin-cabinet.html"
+        else:
+            webapp_url = f"{base_url}/user-cabinet.html"
+        
+        logger.info(f"WebApp URL created for user {message.from_user.id} ({user_role}): {webapp_url}")
+        
+        # Создаем кнопку WebApp
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="🌐 Открыть кабинет",
+                web_app=WebAppInfo(url=webapp_url)
+            )]
+        ])
+        
+        # Отправляем сообщение с WebApp
+        await message.answer(
+            "🌐 <b>Личный кабинет</b>\n\n"
+            "Нажмите кнопку ниже для открытия кабинета:",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error opening WebApp cabinet: {e}", exc_info=True)
+        await message.answer("❌ Ошибка открытия WebApp. Попробуйте позже.")

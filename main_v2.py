@@ -730,6 +730,51 @@ if __name__ == "__main__":
                                     conn.close()
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                        
+                        elif self.path == '/api/partner/register':
+                            # Регистрация партнера через WebApp
+                            try:
+                                import json
+                                content_length = int(self.headers.get('Content-Length', 0))
+                                post_data = self.rfile.read(content_length)
+                                partner_data = json.loads(post_data.decode('utf-8'))
+                                
+                                # Сохраняем заявку партнера в PostgreSQL
+                                import psycopg2
+                                from core.settings import settings
+                                
+                                conn = psycopg2.connect(settings.database.url)
+                                cur = conn.cursor()
+                                try:
+                                    cur.execute("""
+                                        INSERT INTO partner_applications 
+                                        (user_id, name, phone, email, description, status, created_at)
+                                        VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
+                                        ON CONFLICT (user_id) DO UPDATE SET
+                                        name = EXCLUDED.name,
+                                        phone = EXCLUDED.phone,
+                                        email = EXCLUDED.email,
+                                        description = EXCLUDED.description,
+                                        status = 'pending',
+                                        updated_at = NOW()
+                                    """, (
+                                        7006636786,  # Временно используем фиксированный user_id
+                                        partner_data.get('name', ''),
+                                        partner_data.get('phone', ''),
+                                        partner_data.get('email', ''),
+                                        partner_data.get('description', '')
+                                    ))
+                                    conn.commit()
+                                    
+                                    self.send_json_response({
+                                        'success': True,
+                                        'message': 'Заявка партнера сохранена'
+                                    })
+                                finally:
+                                    cur.close()
+                                    conn.close()
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
                             
                         else:
                             self.send_error(404, "API endpoint not found")

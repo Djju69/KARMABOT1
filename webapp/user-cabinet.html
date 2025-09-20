@@ -358,8 +358,12 @@
             console.log('❌ Telegram WebApp not available');
             console.log('This means WebApp is opened as regular web page');
             
-            // WebApp работает в обычном браузере - это нормально
-            console.log('✅ WebApp работает в обычном браузере');
+            // WebApp работает в обычном браузере - активируем кнопки для работы
+            console.log('✅ WebApp работает в обычном браузере - активируем кнопки');
+            enableAllButtons();
+            
+            // Показываем сообщение о том, что WebApp работает в браузере
+            showMessage("✅ WebApp работает в браузере", "info");
         }
         
         function loadUserData(userId) {
@@ -643,7 +647,7 @@
             }
         }
         
-        function submitPartnerForm() {
+        async function submitPartnerForm() {
             // Получаем данные формы по ID
             const name = document.getElementById('partner-name')?.value || '';
             const phone = document.getElementById('partner-phone')?.value || '';
