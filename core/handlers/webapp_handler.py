@@ -120,7 +120,7 @@ async def save_partner_application(user_id: int, partner_data: dict, message: Me
             import psycopg2
             
             # Подключаемся к PostgreSQL
-            conn = psycopg2.connect(settings.database_url)
+            conn = psycopg2.connect(settings.database.url)
             cur = conn.cursor()
             try:
                 # Check if application already exists
@@ -214,7 +214,7 @@ async def show_moderation_queue(message: Message):
         import psycopg2
         
         # Подключаемся к PostgreSQL
-        conn = psycopg2.connect(settings.database_url)
+        conn = psycopg2.connect(settings.database.url)
         cur = conn.cursor()
         try:
             # Получаем заявки партнеров со статусом 'pending'

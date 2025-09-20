@@ -523,3 +523,85 @@ async def update_partner_settings(
     except Exception as e:
         logger.error(f"Error updating partner settings: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+# Partner registration endpoint
+class PartnerRegistrationRequest(BaseModel):
+    name: str = Field(..., description="Business name")
+    phone: str = Field(..., description="Contact phone")
+    email: str = Field(..., description="Contact email")
+    description: str = Field(..., description="Business description")
+    timestamp: Optional[str] = Field(None, description="Registration timestamp")
+
+@router.post("/register")
+async def register_partner(
+    request: PartnerRegistrationRequest,
+    db: Session = Depends(get_db)
+):
+    """Register a new partner application"""
+    try:
+        # Get user_id from request headers or query params
+        # For now, we'll use a placeholder - in real implementation, 
+        # this should come from authentication
+        user_id = 1  # TODO: Get from authentication
+        
+        # Use raw SQL for PostgreSQL
+        import psycopg2
+        from core.settings import settings
+        
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(settings.database.url)
+        cur = conn.cursor()
+        try:
+            # Check if application already exists
+            cur.execute("""
+                SELECT id FROM partner_applications WHERE telegram_user_id = %s
+            """, (user_id,))
+            
+            existing_app = cur.fetchone()
+            
+            if existing_app:
+                # Update existing application
+                cur.execute("""
+                    UPDATE partner_applications SET
+                        name = %s, phone = %s, email = %s, business_description = %s,
+                        status = 'pending', created_at = NOW()
+                    WHERE telegram_user_id = %s
+                """, (
+                    request.name,
+                    request.phone,
+                    request.email,
+                    request.description,
+                    user_id
+                ))
+            else:
+                # Insert new application
+                cur.execute("""
+                    INSERT INTO partner_applications (
+                        telegram_user_id, telegram_username, name, phone, email, 
+                        business_description, status, created_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, 'pending', NOW())
+                """, (
+                    user_id,
+                    '',  # username
+                    request.name,
+                    request.phone,
+                    request.email,
+                    request.description
+                ))
+            
+            conn.commit()
+            
+        finally:
+            cur.close()
+            conn.close()
+        
+        logger.info(f"Partner application registered for user {user_id}")
+        
+        return {
+            "success": True,
+            "message": "Partner application submitted successfully"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error registering partner: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

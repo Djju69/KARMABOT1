@@ -109,7 +109,7 @@ def get_live_dashboard_text(is_superadmin: bool = False) -> str:
         import psycopg2
         
         # Подключаемся к PostgreSQL
-        conn = psycopg2.connect(settings.database_url)
+        conn = psycopg2.connect(settings.database.url)
         cur = conn.cursor()
         try:
             # Заявки партнеров на модерации
