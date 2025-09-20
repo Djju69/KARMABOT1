@@ -159,6 +159,7 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
             # Fallback to regular user menu
             user_ctx = {"role": "user", "lang": current_lang, "has_partner_cards": False}
             keyboard = get_reply_keyboard(user_ctx, screen="main")
+            logger.info(f"[DEBUG] Using fallback menu due to role error")
         
         if not keyboard:
             logger.error("[ERROR] Failed to generate menu: keyboard is None")

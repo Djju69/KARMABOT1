@@ -703,6 +703,23 @@ if __name__ == "__main__":
                                 })
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path.startswith('/api/user/policy'):
+                            # Проверяем принятие политики пользователем
+                            try:
+                                # Получаем user_id из параметров
+                                user_id = self.path.split('?')[1].split('=')[1] if '?' in self.path else '0'
+                                
+                                # Проверяем принятие политики
+                                policy_result = db_v2.fetch_all("SELECT policy_accepted FROM users WHERE telegram_id = ?", (user_id,))
+                                policy_accepted = policy_result[0]['policy_accepted'] if policy_result else False
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'policy_accepted': bool(policy_accepted)
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
                             
                         else:
                             self.send_error(404, "API endpoint not found")

@@ -3002,6 +3002,28 @@ def ensure_partners_v2_columns():
                     logger.info("✅ Added is_verified column to partners_v2 table")
                 else:
                     logger.info("✅ is_verified column already exists in partners_v2 table")
+                
+                # Check if is_active column exists
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.columns 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'partners_v2' 
+                        AND column_name = 'is_active'
+                    );
+                """)
+                
+                is_active_exists = cur.fetchone()[0]
+                
+                if not is_active_exists:
+                    # Add is_active column
+                    cur.execute("""
+                        ALTER TABLE partners_v2 
+                        ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+                    """)
+                    logger.info("✅ Added is_active column to partners_v2 table")
+                else:
+                    logger.info("✅ is_active column already exists in partners_v2 table")
             else:
                 logger.warning("⚠️ partners_v2 table does not exist")
             

@@ -26,10 +26,6 @@ class RoleRepository:
     async def get_user_role(self, user_id: int) -> Optional[RoleEnum]:
         """Получить роль пользователя по его ID."""
         try:
-            # Ensure user_roles table exists
-            from core.database.migrations import ensure_user_roles_table
-            ensure_user_roles_table()
-            
             # For DatabaseServiceV2 (SQLite), use synchronous method
             if hasattr(self.db, 'get_connection'):
                 # This is DatabaseServiceV2 - use synchronous SQLite

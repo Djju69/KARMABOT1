@@ -212,6 +212,38 @@
                 padding: 20px 15px;
             }
         }
+        
+        .policy-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .policy-message .message-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 300px;
+            margin: 20px;
+        }
+        
+        .policy-message h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }
+        
+        .policy-message p {
+            margin: 10px 0;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -308,6 +340,9 @@
                 console.log('User data:', user);
                 // Здесь можно загрузить данные пользователя
                 loadUserData(user.id);
+                
+                // Проверяем принятие политики
+                checkPolicyAcceptance(user.id);
             }
             
             // Показываем что WebApp работает
@@ -1048,6 +1083,62 @@
                 document.body.removeChild(textArea);
                 showMessage("✅ Ссылка скопирована в буфер обмена", "success");
             }
+        }
+        
+        // Функция проверки принятия политики
+        async function checkPolicyAcceptance(userId) {
+            try {
+                const response = await fetch(`/api/user/policy?user_id=${userId}`);
+                const data = await response.json();
+                
+                if (data.success && data.policy_accepted) {
+                    console.log('✅ Политика принята, активируем кнопки');
+                    enableAllButtons();
+                } else {
+                    console.log('❌ Политика не принята, блокируем кнопки');
+                    disableAllButtons();
+                    showPolicyMessage();
+                }
+            } catch (error) {
+                console.error('Ошибка проверки политики:', error);
+                // В случае ошибки блокируем кнопки для безопасности
+                disableAllButtons();
+                showPolicyMessage();
+            }
+        }
+        
+        // Функция показа сообщения о политике
+        function showPolicyMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'policy-message';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <h3>📋 Принятие политики</h3>
+                    <p>Для использования функций необходимо принять политику конфиденциальности.</p>
+                    <p>Вернитесь в бот и нажмите /start для принятия политики.</p>
+                </div>
+            `;
+            document.body.insertBefore(messageDiv, document.body.firstChild);
+        }
+        
+        // Функция блокировки всех кнопок
+        function disableAllButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
+        }
+        
+        // Функция активации всех кнопок
+        function enableAllButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            });
         }
         
         // Обработка закрытия WebApp
