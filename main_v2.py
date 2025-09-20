@@ -710,14 +710,24 @@ if __name__ == "__main__":
                                 # Получаем user_id из параметров
                                 user_id = self.path.split('?')[1].split('=')[1] if '?' in self.path else '0'
                                 
-                                # Проверяем принятие политики
-                                policy_result = db_v2.fetch_all("SELECT policy_accepted FROM users WHERE telegram_id = ?", (user_id,))
-                                policy_accepted = policy_result[0]['policy_accepted'] if policy_result else False
+                                # Проверяем принятие политики в PostgreSQL
+                                import psycopg2
+                                from core.settings import settings
                                 
-                                self.send_json_response({
-                                    'success': True,
-                                    'policy_accepted': bool(policy_accepted)
-                                })
+                                conn = psycopg2.connect(settings.database.url)
+                                cur = conn.cursor()
+                                try:
+                                    cur.execute("SELECT policy_accepted FROM users WHERE telegram_id = %s", (user_id,))
+                                    result = cur.fetchone()
+                                    policy_accepted = result[0] if result else False
+                                    
+                                    self.send_json_response({
+                                        'success': True,
+                                        'policy_accepted': bool(policy_accepted)
+                                    })
+                                finally:
+                                    cur.close()
+                                    conn.close()
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
                             

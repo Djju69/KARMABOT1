@@ -377,24 +377,16 @@ def format_card_preview(card_data: dict, category_name: str) -> str:
 # Command to start adding card
 @partner_router.message(Command("add_card"))
 async def start_add_card(message: Message, state: FSMContext):
-    """Start adding new card (only if feature enabled)"""
-    if not settings.features.partner_fsm:
-        await message.answer("🚧 Функция добавления карточек временно недоступна.")
-        return
-    
-    # Get or create partner
-    partner = db_v2.get_or_create_partner(
-        message.from_user.id,
-        message.from_user.full_name
-    )
-    
-    # Сохраняем partner_id и город по умолчанию (Нячанг = 1)
-    await state.update_data(partner_id=partner.id, city_id=1)
-    await state.set_state(AddCardStates.choose_city)
-    await message.answer(
-        "🏪 Добавление новой карточки\n\nВыберите город (по умолчанию Нячанг):",
-        reply_markup=get_cities_inline(active_id=1, cb_prefix="pfsm:city")
-    )
+    """Open WebApp for partner registration instead of bot FSM"""
+    try:
+        from core.handlers.webapp_handler import open_webapp_cabinet
+        
+        # Открываем WebApp для регистрации партнера
+        await open_webapp_cabinet(message, message.bot, state)
+        
+    except Exception as e:
+        logger.error(f"Error opening WebApp for add_card: {e}")
+        await message.answer("❌ Ошибка открытия WebApp. Попробуйте позже.")
 
 # ===== Reply-button entry points (no new slash commands) =====
 @partner_router.message(F.text.startswith("➕"))
