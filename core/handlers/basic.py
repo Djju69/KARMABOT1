@@ -575,11 +575,11 @@ async def ensure_policy_accepted(message: Message, bot: Bot, state: FSMContext) 
             [
                 InlineKeyboardButton(
                     text=translations.get(lang, {}).get('accept_policy', '✅ Принять'),
-                    callback_data="accept_policy"
+                    callback_data="policy:accept"
                 ),
                 InlineKeyboardButton(
                     text=translations.get(lang, {}).get('decline_policy', '❌ Отклонить'),
-                    callback_data="decline_policy"
+                    callback_data="policy:decline"
                 )
             ]
         ])
