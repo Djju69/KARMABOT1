@@ -191,7 +191,7 @@ class DatabaseMigrator:
                             asyncio.run(run_postgres_migration())
                     else:
                         # SQLite migration
-                    conn.executescript(sql)
+                        conn.executescript(sql)
                     
                     # Record migration
                     conn.execute(
