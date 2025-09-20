@@ -343,6 +343,10 @@
                 
                 // Проверяем принятие политики
                 checkPolicyAcceptance(user.id);
+            } else {
+                console.log('❌ No user data available');
+                // Если нет данных пользователя, активируем кнопки (fallback)
+                enableAllButtons();
             }
             
             // Показываем что WebApp работает
@@ -354,6 +358,9 @@
             // WebApp работает в обычном браузере - это нормально
             console.log('✅ WebApp работает в обычном браузере');
         }
+        
+        // По умолчанию блокируем все кнопки до проверки политики
+        disableAllButtons();
         
         function loadUserData(userId) {
             // Загружаем реальную статистику пользователя
@@ -1101,9 +1108,9 @@
                 }
             } catch (error) {
                 console.error('Ошибка проверки политики:', error);
-                // В случае ошибки блокируем кнопки для безопасности
-                disableAllButtons();
-                showPolicyMessage();
+                // В случае ошибки активируем кнопки (fallback для работы)
+                console.log('⚠️ Fallback: активируем кнопки при ошибке проверки политики');
+                enableAllButtons();
             }
         }
         

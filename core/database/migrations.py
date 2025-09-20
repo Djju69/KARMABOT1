@@ -2920,41 +2920,75 @@ def ensure_partner_applications_table():
         logger.error(f"Error creating partner_applications table: {e}")
 
 def ensure_user_roles_table():
-    """Ensure user_roles table exists in PostgreSQL"""
+    """Ensure user_roles table exists in both PostgreSQL and SQLite"""
     try:
-        from core.settings import settings
-        import psycopg2
+        import os
+        database_url = os.getenv("DATABASE_URL", "").lower()
         
-        # Connect to PostgreSQL
-        conn = psycopg2.connect(settings.database.url)
-        cur = conn.cursor()
-        try:
-            # Create user_roles table if it doesn't exist
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_roles (
-                    id SERIAL PRIMARY KEY,
-                    user_id BIGINT NOT NULL UNIQUE,
-                    role VARCHAR(20) NOT NULL DEFAULT 'USER',
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-                    CONSTRAINT chk_role CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
-                )
-            """)
+        if database_url.startswith("postgres"):
+            # PostgreSQL
+            from core.settings import settings
+            import psycopg2
             
-            # Insert super-admin role if it doesn't exist
-            admin_id = getattr(settings.bots, 'admin_id', 6391215556)
-            cur.execute("""
-                INSERT INTO user_roles (user_id, role) 
-                VALUES (%s, 'SUPER_ADMIN') 
-                ON CONFLICT (user_id) DO NOTHING
-            """, (admin_id,))
-            
-            conn.commit()
-            logger.info("✅ user_roles table created/verified in PostgreSQL")
-            
-        finally:
-            cur.close()
-            conn.close()
+            conn = psycopg2.connect(settings.database.url)
+            cur = conn.cursor()
+            try:
+                # Create user_roles table if it doesn't exist
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS user_roles (
+                        id SERIAL PRIMARY KEY,
+                        user_id BIGINT NOT NULL UNIQUE,
+                        role VARCHAR(20) NOT NULL DEFAULT 'USER',
+                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                        CONSTRAINT chk_role CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
+                    )
+                """)
+                
+                # Insert super-admin role if it doesn't exist
+                admin_id = getattr(settings.bots, 'admin_id', 6391215556)
+                cur.execute("""
+                    INSERT INTO user_roles (user_id, role) 
+                    VALUES (%s, 'SUPER_ADMIN') 
+                    ON CONFLICT (user_id) DO NOTHING
+                """, (admin_id,))
+                
+                conn.commit()
+                logger.info("✅ user_roles table created/verified in PostgreSQL")
+                
+            finally:
+                cur.close()
+                conn.close()
+        else:
+            # SQLite
+            from core.database.db_v2 import db_v2
+            conn = db_v2.get_connection()
+            try:
+                # Create user_roles table if it doesn't exist
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS user_roles (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL UNIQUE,
+                        role TEXT NOT NULL DEFAULT 'USER',
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        CHECK (role IN ('USER', 'PARTNER', 'MODERATOR', 'ADMIN', 'SUPER_ADMIN'))
+                    )
+                """)
+                
+                # Insert super-admin role if it doesn't exist
+                from core.settings import settings
+                admin_id = getattr(settings.bots, 'admin_id', 6391215556)
+                conn.execute("""
+                    INSERT OR IGNORE INTO user_roles (user_id, role) 
+                    VALUES (?, 'SUPER_ADMIN')
+                """, (admin_id,))
+                
+                conn.commit()
+                logger.info("✅ user_roles table created/verified in SQLite")
+                
+            finally:
+                conn.close()
             
     except Exception as e:
         logger.error(f"Error creating user_roles table: {e}")

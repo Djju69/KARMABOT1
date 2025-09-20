@@ -120,17 +120,17 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
         
         logger.info(f"[DEBUG] Current language: {current_lang}")
 
-        # First run: ask for language inline and exit
+        # Ensure policy consent first
+        if not await ensure_policy_accepted(message, bot, state):
+            return
+            
+        # If no language set, ask for language
         if not current_lang:
             from .language import build_language_inline_kb
             await message.answer(
                 "🌐 Choose your language / Выберите язык / 언어를 선택하세요 / Chọn ngôn ngữ:",
                 reply_markup=build_language_inline_kb()
             )
-            return
-
-        # Ensure policy consent before showing menu
-        if not await ensure_policy_accepted(message, bot, state):
             return
 
         # Build spec-compliant main menu (reply keyboard v4.1)
