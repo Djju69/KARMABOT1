@@ -395,67 +395,74 @@ async def handle_deletion(message: Message, state: FSMContext):
 
 @router.message(F.text.startswith("📊 Дашборд:"))
 async def handle_dashboard(message: Message, state: FSMContext):
-    """Handle dashboard button for super admin."""
+    """Handle dashboard button for admins and super admins."""
     try:
-        # Check if user is super admin
+        # Check if user is admin or super admin
         from core.security.roles import get_user_role
         user_role = await get_user_role(message.from_user.id)
         role_name = getattr(user_role, "name", str(user_role)).lower()
         
-        if role_name != "super_admin":
-            await message.answer("⛔ Недостаточно прав. Только супер-админ может просматривать дашборд.")
+        if role_name not in ("admin", "super_admin"):
+            await message.answer("⛔ Недостаточно прав. Только админы могут просматривать дашборд.")
             return
         
         # Получаем реальные данные из базы
         try:
-            import asyncpg
             from core.settings import settings
             
-            # Подключаемся к PostgreSQL
-            conn = await asyncpg.connect(settings.database.url)
+            # Подключаемся к PostgreSQL синхронно
+            import psycopg2
+            conn = psycopg2.connect(settings.database_url)
+            cur = conn.cursor()
             try:
-                # Партнеры на модерации
-                partners_pending = await conn.fetchval("SELECT COUNT(*) FROM partners WHERE status = 'pending'")
+                # Заявки партнеров на модерации
+                cur.execute("SELECT COUNT(*) FROM partner_applications WHERE status = 'pending'")
+                partner_applications_pending = cur.fetchone()[0] or 0
                 
-                # Заведения на модерации
-                places_pending = await conn.fetchval("SELECT COUNT(*) FROM partner_places WHERE status = 'pending'")
-                
-                # Непрочитанные уведомления
-                notifications_count = await conn.fetchval("SELECT COUNT(*) FROM user_notifications WHERE is_read = false")
+                # Карточки на модерации
+                cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'pending'")
+                cards_pending = cur.fetchone()[0] or 0
                 
                 # Общее количество пользователей
-                total_users = await conn.fetchval("SELECT COUNT(*) FROM users WHERE role = 'user'")
+                cur.execute("SELECT COUNT(*) FROM users")
+                total_users = cur.fetchone()[0] or 0
                 
                 # Активные партнеры
-                active_partners = await conn.fetchval("SELECT COUNT(*) FROM partners WHERE status = 'approved'")
+                cur.execute("SELECT COUNT(*) FROM partners_v2 WHERE is_active = true")
+                active_partners = cur.fetchone()[0] or 0
+                
+                # Общее количество карточек
+                cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE is_active = true")
+                total_cards = cur.fetchone()[0] or 0
                 
             finally:
-                await conn.close()
+                cur.close()
+                conn.close()
                 
         except Exception as e:
             logger.error(f"Error getting dashboard data: {e}")
             # Fallback значения
-            partners_pending = 0
-            places_pending = 0
-            notifications_count = 0
+            partner_applications_pending = 0
+            cards_pending = 0
             total_users = 0
             active_partners = 0
+            total_cards = 0
         
-        moderation_count = partners_pending + places_pending
+        moderation_count = partner_applications_pending + cards_pending
         system_status = "OK"  # TODO: Проверить статус системы
         
         await message.answer(
             f"📊 <b>Системный дашборд</b>\n\n"
-            f"📋 <b>Модерация:</b> {moderation_count} карточек в очереди\n"
-            f"   • Партнеры: {partners_pending}\n"
-            f"   • Заведения: {places_pending}\n"
-            f"🔔 <b>Уведомления:</b> {notifications_count} непрочитанных\n"
+            f"📋 <b>Модерация:</b> {moderation_count} заявок в очереди\n"
+            f"   • Заявки партнеров: {partner_applications_pending}\n"
+            f"   • Карточки на модерации: {cards_pending}\n"
             f"👥 <b>Пользователи:</b> {total_users} зарегистрированных\n"
             f"🤝 <b>Партнеры:</b> {active_partners} активных\n"
+            f"📱 <b>Карточки:</b> {total_cards} опубликованных\n"
             f"⚙️ <b>Система:</b> {system_status}\n\n"
             f"💡 <b>Быстрые действия:</b>\n"
             f"• Нажмите '📋 Модерация' для просмотра очереди\n"
-            f"• Нажмите '👥 Админы' для управления администраторами\n"
+            f"• Нажмите '👥 Пользователи' для управления пользователями\n"
             f"• Нажмите '📊 Статистика' для детальной аналитики\n\n"
             f"🚧 <i>Дашборд обновляется в реальном времени.</i>",
             parse_mode='HTML'

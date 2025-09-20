@@ -116,43 +116,59 @@ async def save_partner_application(user_id: int, partner_data: dict, message: Me
         # Сохраняем в таблицу заявок партнеров (если есть)
         try:
             # Создаем запись в таблице заявок
-            from core.database.db_adapter import db_v2
-            # Check if application already exists
-            existing = db_v2.execute_query("""
-                SELECT id FROM partner_applications WHERE telegram_user_id = ?
-            """, (user_id,))
+            from core.settings import settings
+            import psycopg2
             
-            if existing:
-                # Update existing application
-                db_v2.execute_query("""
-                    UPDATE partner_applications SET
-                        name = ?, phone = ?, email = ?, business_description = ?,
-                        status = 'pending', created_at = datetime('now')
-                    WHERE telegram_user_id = ?
-                """, (
-                    partner_data.get('name', ''),
-                    partner_data.get('phone', ''),
-                    partner_data.get('email', ''),
-                    partner_data.get('description', ''),
-                    user_id
-                ))
-            else:
-                # Insert new application
-                db_v2.execute_query("""
-                    INSERT INTO partner_applications (
-                        telegram_user_id, telegram_username, name, phone, email, 
-                        business_description, status, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
-                """, (
-                    user_id,
-                    message.from_user.username or '',
-                    partner_data.get('name', ''),
-                    partner_data.get('phone', ''),
-                    partner_data.get('email', ''),
-                    partner_data.get('description', '')
-                ))
+            # Подключаемся к PostgreSQL
+            conn = psycopg2.connect(settings.database_url)
+            cur = conn.cursor()
+            try:
+                # Check if application already exists
+                cur.execute("""
+                    SELECT id FROM partner_applications WHERE telegram_user_id = %s
+                """, (user_id,))
+                
+                existing = cur.fetchone()
+                
+                if existing:
+                    # Update existing application
+                    cur.execute("""
+                        UPDATE partner_applications SET
+                            name = %s, phone = %s, email = %s, business_description = %s,
+                            status = 'pending', created_at = NOW()
+                        WHERE telegram_user_id = %s
+                    """, (
+                        partner_data.get('name', ''),
+                        partner_data.get('phone', ''),
+                        partner_data.get('email', ''),
+                        partner_data.get('description', ''),
+                        user_id
+                    ))
+                else:
+                    # Insert new application
+                    cur.execute("""
+                        INSERT INTO partner_applications (
+                            telegram_user_id, telegram_username, name, phone, email, 
+                            business_description, status, created_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, 'pending', NOW())
+                    """, (
+                        user_id,
+                        message.from_user.username or '',
+                        partner_data.get('name', ''),
+                        partner_data.get('phone', ''),
+                        partner_data.get('email', ''),
+                        partner_data.get('description', '')
+                    ))
+                
+                conn.commit()
+                logger.info(f"[WEBAPP] Partner application saved to PostgreSQL for user {user_id}")
+                
+            finally:
+                cur.close()
+                conn.close()
+                
         except Exception as e:
-            logger.warning(f"[WEBAPP] Could not save to partner_applications table: {e}")
+            logger.error(f"[WEBAPP] Could not save to partner_applications table: {e}")
         
         logger.info(f"[WEBAPP] Partner application saved: {partner.id}")
         
@@ -194,50 +210,64 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
 async def show_moderation_queue(message: Message):
     """Показать заявки на модерацию"""
     try:
-        from core.database.db_adapter import db_v2
+        from core.settings import settings
+        import psycopg2
         
-        # Получаем заявки партнеров со статусом 'pending'
-        applications = db_v2.execute_query("""
-            SELECT * FROM partner_applications 
-            WHERE status = 'pending' 
-            ORDER BY created_at ASC 
-            LIMIT 10
-        """)
-        
-        if not applications:
-            await message.answer(
-                "📋 <b>Модерация</b>\n\n"
-                "✅ Нет заявок на модерацию\n"
-                "Все заявки обработаны!",
-                parse_mode="HTML"
-            )
-            return
-        
-        # Формируем список заявок
-        applications_text = "📋 <b>Заявки на модерацию</b>\n\n"
-        
-        for i, app in enumerate(applications[:10], 1):  # Показываем первые 10
+        # Подключаемся к PostgreSQL
+        conn = psycopg2.connect(settings.database_url)
+        cur = conn.cursor()
+        try:
+            # Получаем заявки партнеров со статусом 'pending'
+            cur.execute("""
+                SELECT id, telegram_user_id, telegram_username, name, phone, email, 
+                       business_description, status, created_at
+                FROM partner_applications 
+                WHERE status = 'pending' 
+                ORDER BY created_at ASC 
+                LIMIT 10
+            """)
+            
+            applications = cur.fetchall()
+            
+            if not applications:
+                await message.answer(
+                    "📋 <b>Модерация</b>\n\n"
+                    "✅ Нет заявок на модерацию\n"
+                    "Все заявки обработаны!",
+                    parse_mode="HTML"
+                )
+                return
+            
+            # Формируем список заявок
+            applications_text = "📋 <b>Заявки на модерацию</b>\n\n"
+            
+            for i, app in enumerate(applications[:10], 1):  # Показываем первые 10
+                app_id, tg_id, tg_username, name, phone, email, description, status, created_at = app
+                applications_text += (
+                    f"<b>{i}. Заявка #{app_id}</b>\n"
+                    f"👤 Пользователь: {name or 'Не указано'}\n"
+                    f"🆔 Telegram ID: {tg_id}\n"
+                    f"📞 Телефон: {phone or 'Не указан'}\n"
+                    f"📧 Email: {email or 'Не указан'}\n"
+                    f"📝 Описание: {description or 'Не указано'}\n"
+                    f"📅 Создан: {created_at}\n\n"
+                )
+            
+            if len(applications) > 10:
+                applications_text += f"... и еще {len(applications) - 10} заявок\n\n"
+            
             applications_text += (
-                f"<b>{i}. Заявка #{app['id']}</b>\n"
-                f"👤 Пользователь: {app['name']}\n"
-                f"🆔 Telegram ID: {app['telegram_user_id']}\n"
-                f"📞 Телефон: {app['phone'] or 'Не указан'}\n"
-                f"📧 Email: {app['email'] or 'Не указан'}\n"
-                f"📝 Описание: {app['business_description'] or 'Не указано'}\n"
-                f"📅 Создан: {app['created_at']}\n\n"
+                "🔧 <b>Действия:</b>\n"
+                "• /approve_partner [ID] - одобрить партнера\n"
+                "• /reject_partner [ID] - отклонить заявку\n"
+                "• /partner_info [ID] - подробная информация"
             )
-        
-        if len(applications) > 10:
-            applications_text += f"... и еще {len(applications) - 10} заявок\n\n"
-        
-        applications_text += (
-            "🔧 <b>Действия:</b>\n"
-            "• /approve_partner [ID] - одобрить партнера\n"
-            "• /reject_partner [ID] - отклонить заявку\n"
-            "• /partner_info [ID] - подробная информация"
-        )
-        
-        await message.answer(applications_text, parse_mode="HTML")
+            
+            await message.answer(applications_text, parse_mode="HTML")
+            
+        finally:
+            cur.close()
+            conn.close()
         
     except Exception as e:
         logger.error(f"[WEBAPP] Error showing moderation queue: {e}")

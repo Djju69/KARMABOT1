@@ -89,16 +89,11 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
         KeyboardButton(text=get_text('ai_assistant', lang)),
     ])
 
-    # Ряд 2: Дашборд (admin/superadmin)
-    if is_superadmin:
-        rows.append([KeyboardButton(text=get_text('dashboard_superadmin', lang))])
-    else:
-        rows.append([KeyboardButton(text=get_text('dashboard_admin', lang))])
+    # Ряд 2: Дашборд с живыми данными (admin/superadmin)
+    dashboard_text = get_live_dashboard_text(is_superadmin)
+    rows.append([KeyboardButton(text=dashboard_text)])
 
-    # Ряд 3: Помощь
-    rows.append([KeyboardButton(text=get_text('help', lang))])
-
-    # Ряд 4: Админ кабинет (с короной для супер-админа)
+    # Ряд 3: Админ кабинет (с короной для супер-админа)
     rows.append([KeyboardButton(text=admin_btn_text)])
 
     return ReplyKeyboardMarkup(
@@ -106,6 +101,42 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
         resize_keyboard=True,
         input_field_placeholder=get_text('choose_action', lang)
     )
+
+def get_live_dashboard_text(is_superadmin: bool = False) -> str:
+    """Получить текст дашборда с живыми данными"""
+    try:
+        from core.settings import settings
+        import psycopg2
+        
+        # Подключаемся к PostgreSQL
+        conn = psycopg2.connect(settings.database_url)
+        cur = conn.cursor()
+        try:
+            # Заявки партнеров на модерации
+            cur.execute("SELECT COUNT(*) FROM partner_applications WHERE status = 'pending'")
+            partner_applications_pending = cur.fetchone()[0] or 0
+            
+            # Карточки на модерации
+            cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'pending'")
+            cards_pending = cur.fetchone()[0] or 0
+            
+            moderation_count = partner_applications_pending + cards_pending
+            
+            if is_superadmin:
+                return f"📊 Дашборд: Модерация({moderation_count}) | Система(OK)"
+            else:
+                return f"📊 Дашборд: Модерация({moderation_count})"
+                
+        finally:
+            cur.close()
+            conn.close()
+            
+    except Exception as e:
+        # Fallback к статичному тексту
+        if is_superadmin:
+            return "📊 Дашборд: Модерация(0) | Система(OK)"
+        else:
+            return "📊 Дашборд: Модерация(0)"
 
 def get_spa_reply_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
     """Клавиатура для подменю 'SPA'."""
