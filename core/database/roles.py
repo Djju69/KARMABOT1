@@ -26,24 +26,42 @@ class RoleRepository:
     async def get_user_role(self, user_id: int) -> Optional[RoleEnum]:
         """Получить роль пользователя по его ID."""
         try:
-            # For DatabaseServiceV2 (SQLite), use synchronous method
-            if hasattr(self.db, 'get_connection'):
-                # This is DatabaseServiceV2 - use synchronous SQLite
-                conn = self.db.get_connection()
-                cursor = conn.execute(
-                    "SELECT role FROM user_roles WHERE user_id = ?",
-                    (user_id,)
-                )
-                result = cursor.fetchone()
-                result = result[0] if result else None
-                conn.close()
+            # Проверяем какая БД используется
+            import os
+            database_url = os.getenv("DATABASE_URL", "").lower()
+            
+            if database_url.startswith("postgres"):
+                # PostgreSQL - используем psycopg2 напрямую
+                from core.settings import settings
+                import psycopg2
+                
+                conn = psycopg2.connect(settings.database.url)
+                cur = conn.cursor()
+                try:
+                    cur.execute("SELECT role FROM user_roles WHERE user_id = %s", (user_id,))
+                    result = cur.fetchone()
+                    result = result[0] if result else None
+                finally:
+                    cur.close()
+                    conn.close()
             else:
-                # This is async database service (PostgreSQL)
-                query = """
-                    SELECT role FROM user_roles
-                    WHERE user_id = $1
-                """
-                result = await self.db.fetchval(query, user_id)
+                # SQLite - используем DatabaseServiceV2
+                if hasattr(self.db, 'get_connection'):
+                    conn = self.db.get_connection()
+                    cursor = conn.execute(
+                        "SELECT role FROM user_roles WHERE user_id = ?",
+                        (user_id,)
+                    )
+                    result = cursor.fetchone()
+                    result = result[0] if result else None
+                    conn.close()
+                else:
+                    # Fallback to async method
+                    query = """
+                        SELECT role FROM user_roles
+                        WHERE user_id = $1
+                    """
+                    result = await self.db.fetchval(query, user_id)
 
             if not result and user_id == getattr(self.db, 'admin_id', None):
                 return RoleEnum.SUPER_ADMIN
