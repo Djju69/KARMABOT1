@@ -710,24 +710,17 @@ if __name__ == "__main__":
                                 # Получаем user_id из параметров
                                 user_id = self.path.split('?')[1].split('=')[1] if '?' in self.path else '0'
                                 
-                                # Проверяем принятие политики в PostgreSQL
-                                import psycopg2
-                                from core.settings import settings
+                                # Используем единый DatabaseAdapter
+                                from core.database.db_adapter import db_v2
                                 
-                                conn = psycopg2.connect(settings.database.url)
-                                cur = conn.cursor()
-                                try:
-                                    cur.execute("SELECT policy_accepted FROM users WHERE telegram_id = %s", (user_id,))
-                                    result = cur.fetchone()
-                                    policy_accepted = result[0] if result else False
-                                    
-                                    self.send_json_response({
-                                        'success': True,
-                                        'policy_accepted': bool(policy_accepted)
-                                    })
-                                finally:
-                                    cur.close()
-                                    conn.close()
+                                query = "SELECT policy_accepted FROM users WHERE telegram_id = ?"
+                                result = db_v2.fetch_one(query, (user_id,))
+                                policy_accepted = result[0] if result else False
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'policy_accepted': bool(policy_accepted)
+                                })
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
                         
@@ -741,46 +734,42 @@ if __name__ == "__main__":
                                 
                                 logger.info(f"[API] Partner registration data received: {partner_data}")
                                 
-                                # Сохраняем заявку партнера в PostgreSQL
-                                import psycopg2
-                                from core.settings import settings
+                                # Используем единый DatabaseAdapter
+                                from core.database.db_adapter import db_v2
                                 
-                                conn = psycopg2.connect(settings.database.url)
-                                cur = conn.cursor()
-                                try:
-                                    # Используем временный user_id для тестирования
-                                    # В реальном приложении user_id должен передаваться из WebApp
-                                    temp_user_id = 7006636786
-                                    
-                                    cur.execute("""
-                                        INSERT INTO partner_applications 
-                                        (user_id, name, phone, email, description, status, created_at)
-                                        VALUES (%s, %s, %s, %s, %s, 'pending', NOW())
-                                        ON CONFLICT (user_id) DO UPDATE SET
-                                        name = EXCLUDED.name,
-                                        phone = EXCLUDED.phone,
-                                        email = EXCLUDED.email,
-                                        description = EXCLUDED.description,
-                                        status = 'pending',
-                                        updated_at = NOW()
-                                    """, (
-                                        temp_user_id,
-                                        partner_data.get('name', ''),
-                                        partner_data.get('phone', ''),
-                                        partner_data.get('email', ''),
-                                        partner_data.get('description', '')
-                                    ))
-                                    conn.commit()
-                                    
-                                    logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
-                                    
-                                    self.send_json_response({
-                                        'success': True,
-                                        'message': 'Заявка партнера сохранена'
-                                    })
-                                finally:
-                                    cur.close()
-                                    conn.close()
+                                # Используем временный user_id для тестирования
+                                temp_user_id = 7006636786
+                                
+                                # Сохраняем заявку партнера через DatabaseAdapter
+                                query = """
+                                    INSERT INTO partner_applications 
+                                    (user_id, name, phone, email, description, status, created_at)
+                                    VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
+                                    ON CONFLICT (user_id) DO UPDATE SET
+                                    name = excluded.name,
+                                    phone = excluded.phone,
+                                    email = excluded.email,
+                                    description = excluded.description,
+                                    status = 'pending',
+                                    updated_at = datetime('now')
+                                """
+                                
+                                params = (
+                                    temp_user_id,
+                                    partner_data.get('name', ''),
+                                    partner_data.get('phone', ''),
+                                    partner_data.get('email', ''),
+                                    partner_data.get('description', '')
+                                )
+                                
+                                db_v2.execute(query, params)
+                                
+                                logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'message': 'Заявка партнера сохранена'
+                                })
                             except Exception as e:
                                 logger.error(f"[API] Error saving partner application: {e}")
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)

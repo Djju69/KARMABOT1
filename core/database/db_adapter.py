@@ -119,6 +119,13 @@ class DatabaseAdapter:
         else:
             return self.sqlite_service.fetch_all(query, params)
     
+    def fetch_one(self, query: str, params: tuple = ()):
+        """Fetch one result from query"""
+        if self.use_postgresql:
+            return self.postgresql_service.fetch_one_sync(query, params)
+        else:
+            return self.sqlite_service.fetch_one(query, params)
+    
     def execute(self, query: str, params: tuple = ()):
         """Execute a query without returning results"""
         if self.use_postgresql:

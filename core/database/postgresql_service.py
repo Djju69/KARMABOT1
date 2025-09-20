@@ -379,6 +379,11 @@ class PostgreSQLService:
         """Fetch all results from a query (sync version)"""
         return self.execute_query_sync(query, params)
     
+    def fetch_one_sync(self, query: str, params: tuple = ()):
+        """Fetch one result from a query (sync version)"""
+        results = self.execute_query_sync(query, params)
+        return results[0] if results else None
+    
     def execute_sync(self, query: str, params: tuple = ()):
         """Execute a query without returning results (sync version)"""
         try:

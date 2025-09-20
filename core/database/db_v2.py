@@ -752,6 +752,11 @@ class DatabaseServiceV2:
         """Fetch all results from a query"""
         return self.execute_query(query, params)
     
+    def fetch_one(self, query: str, params: tuple = ()):
+        """Fetch one result from a query"""
+        results = self.execute_query(query, params)
+        return results[0] if results else None
+    
     def execute(self, query: str, params: tuple = ()):
         """Execute a query without returning results"""
         with self.get_connection() as conn:
