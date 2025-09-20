@@ -312,7 +312,7 @@ async def main():
         from core.services.notification_service import notification_service
         await notification_service.initialize()
         logger.info("📱 Notification service initialized")
-            except Exception as e:
+    except Exception as e:
         logger.warning(f"Failed to initialize notification service: {e}")
     
     # Initialize Dispatcher and register shutdown handler
@@ -386,19 +386,19 @@ async def main():
         ) as bot:
             # Test Redis connection
             if redis is not None:
-            try:
-                ok = await redis.ping()
-                logger.info(f"✅ Redis ping: {ok}")
-            except Exception as e:
+                try:
+                    ok = await redis.ping()
+                    logger.info(f"✅ Redis ping: {ok}")
+                except Exception as e:
                     logger.warning(f"⚠️ Redis connection failed, continue without lock: {e}")
                     redis = None
             
             # Try to acquire leader lock
             if redis is not None:
-            got_lock = await acquire_leader_lock(redis, lock_key, instance, lock_ttl, retries=12)
-            if not got_lock:
-                logger.error("❌ Failed to acquire leader lock after retries, exiting...")
-                return
+                got_lock = await acquire_leader_lock(redis, lock_key, instance, lock_ttl, retries=12)
+                if not got_lock:
+                    logger.error("❌ Failed to acquire leader lock after retries, exiting...")
+                    return
             
             # Set bot commands
             try:
