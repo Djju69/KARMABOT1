@@ -38,7 +38,7 @@ redis[asyncio]==5.0.1
 cachetools==5.3.2
 
 # === УВЕДОМЛЕНИЯ ===
-python-telegram-bot==20.7
+python-telegram-bot==20.6
 
 # === ТЕСТИРОВАНИЕ ===
 pytest==7.4.3
