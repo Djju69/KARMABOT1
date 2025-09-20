@@ -23,7 +23,7 @@ from aiogram.exceptions import TelegramUnauthorizedError
 from aiogram.client.bot import Bot, DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from core.settings import Settings, get_settings, Features
+# Убрали импорт core.settings - используем простые переменные
 from core.database.migrations import ensure_database_ready
 
 # === ИНТЕГРАЦИЯ MULTI-PLATFORM API ===
@@ -160,18 +160,8 @@ def resolve_bot_token(settings):
         logger.error(f"❌ Failed to resolve bot token: {e}")
         return None
 
-# Load settings after environment is set up (use core.settings.get_settings)
-try:
-    settings = get_settings()
-    # Ensure features exist
-    if not hasattr(settings, "features") or settings.features is None:
-        settings.features = Features()
-    # Force-enable required feature flags per production baseline
-    settings.features.partner_fsm = True
-    logging.getLogger(__name__).info("✅ Features: %s", settings.features)
-except Exception as e:
-    logging.error("Failed to load settings via get_settings(): %s", str(e))
-    raise
+# Простые настройки без core.settings
+logger.info("✅ Using simple configuration without core.settings")
 
 def setup_logging(level=logging.INFO, retention_days: int = 7):
     """Configure logging with file and console handlers.
