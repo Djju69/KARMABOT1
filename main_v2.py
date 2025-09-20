@@ -262,7 +262,7 @@ async def set_commands(bot: Bot) -> None:
         await set_core_commands(bot)
     except Exception as e:
         logger.error("set_commands failed: %s", e, exc_info=True)
-            raise
+        raise
 
 # Первая функция main() удалена - используется вторая более полная версия
 async def main():
