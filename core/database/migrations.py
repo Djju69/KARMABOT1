@@ -198,7 +198,7 @@ class DatabaseMigrator:
                         "INSERT INTO schema_migrations (version, description) VALUES (?, ?)",
                         (version, description)
                     )
-                        conn.commit()
+                    conn.commit()
                     logger.info(f"Applied migration {version}: {description}")
                 except Exception as e:
                     logger.error(f"Failed to apply migration {version}: {e}")
