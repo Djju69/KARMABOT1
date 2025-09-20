@@ -2206,117 +2206,112 @@ class DatabaseMigrator:
     def _migrate_021_postgresql(self):
         """PostgreSQL-specific migration for partners_v2 table"""
         try:
-            import asyncio
-            # Migration 021 disabled - external import causes issues
-            # from migrations.migration_021_create_partners_v2 import upgrade_021
-            upgrade_021 = None
+            # Use synchronous connection instead of asyncio.run()
+            import psycopg2
+            from core.settings import settings
             
-            # Run async migration directly
-            async def run_migration():
-                from core.database.postgresql_service import get_postgresql_service
-                postgresql_service = get_postgresql_service()
-                await postgresql_service.init_pool()
-                pool = await postgresql_service.get_pool()
-                async with pool.acquire() as conn:
-                    # Create partners_v2 table
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS partners_v2 (
-                            id SERIAL PRIMARY KEY,
-                            tg_user_id BIGINT UNIQUE NOT NULL,
-                            display_name VARCHAR(255),
-                            phone VARCHAR(20),
-                            email VARCHAR(255),
-                            is_verified BOOLEAN DEFAULT FALSE,
-                            is_active BOOLEAN DEFAULT TRUE,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        );
-                    """)
-                    
-                    # Create partner_applications table
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS partner_applications (
-                            id SERIAL PRIMARY KEY,
-                            telegram_user_id BIGINT UNIQUE NOT NULL,
-                            telegram_username VARCHAR(255),
-                            name VARCHAR(255) NOT NULL,
-                            phone VARCHAR(20) NOT NULL,
-                            email VARCHAR(255) NOT NULL,
-                            business_description TEXT,
-                            status VARCHAR(20) DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            reviewed_at TIMESTAMP,
-                            reviewed_by BIGINT
-                        );
-                    """)
-                    
-                    # Create categories_v2 table
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS categories_v2 (
-                            id SERIAL PRIMARY KEY,
-                            name VARCHAR(255) NOT NULL,
-                            description TEXT,
-                            icon VARCHAR(50),
-                            is_active BOOLEAN DEFAULT TRUE,
-                            sort_order INTEGER DEFAULT 0,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        );
-                    """)
-                    
-                    # Create cards_v2 table
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS cards_v2 (
-                            id SERIAL PRIMARY KEY,
-                            partner_id INTEGER NOT NULL,
-                            category_id INTEGER NOT NULL,
-                            title VARCHAR(255) NOT NULL,
-                            description TEXT,
-                            discount_percent INTEGER DEFAULT 0,
-                            min_purchase_amount DECIMAL(10,2) DEFAULT 0,
-                            max_discount_amount DECIMAL(10,2),
-                            valid_from DATE,
-                            valid_until DATE,
-                            is_active BOOLEAN DEFAULT TRUE,
-                            priority_level INTEGER DEFAULT 0,
-                            view_count INTEGER DEFAULT 0,
-                            is_featured BOOLEAN DEFAULT FALSE,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            conn = psycopg2.connect(settings.database_url)
+            cur = conn.cursor()
+            
+            # Create partners_v2 table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS partners_v2 (
+                    id SERIAL PRIMARY KEY,
+                    tg_user_id BIGINT UNIQUE NOT NULL,
+                    display_name VARCHAR(255),
+                    phone VARCHAR(20),
+                    email VARCHAR(255),
+                    is_verified BOOLEAN DEFAULT FALSE,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create partner_applications table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS partner_applications (
+                    id SERIAL PRIMARY KEY,
+                    telegram_user_id BIGINT UNIQUE NOT NULL,
+                    telegram_username VARCHAR(255),
+                    name VARCHAR(255) NOT NULL,
+                    phone VARCHAR(20) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    business_description TEXT,
+                    status VARCHAR(20) DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected')),
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    reviewed_at TIMESTAMP,
+                    reviewed_by BIGINT
+                );
+            """)
+            
+            # Create categories_v2 table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS categories_v2 (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    icon VARCHAR(50),
+                    is_active BOOLEAN DEFAULT TRUE,
+                    sort_order INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create cards_v2 table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS cards_v2 (
+                    id SERIAL PRIMARY KEY,
+                    partner_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT,
+                    discount_percent INTEGER DEFAULT 0,
+                    min_purchase_amount DECIMAL(10,2) DEFAULT 0,
+                    max_discount_amount DECIMAL(10,2),
+                    valid_from DATE,
+                    valid_until DATE,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    priority_level INTEGER DEFAULT 0,
+                    view_count INTEGER DEFAULT 0,
+                    is_featured BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             FOREIGN KEY (partner_id) REFERENCES partners_v2(id) ON DELETE CASCADE,
                             FOREIGN KEY (category_id) REFERENCES categories_v2(id) ON DELETE RESTRICT
                         );
                     """)
-                    
-                    # Create platform_loyalty_config table if it doesn't exist
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS platform_loyalty_config (
-                            id SERIAL PRIMARY KEY,
-                            redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
-                            rounding_rule VARCHAR(20) DEFAULT 'bankers',
-                            max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
-                            max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00,
-                            min_purchase_for_points INTEGER DEFAULT 10000,
-                            max_discount_percent NUMERIC(5,2) DEFAULT 40.00,
-                            bonus_for_points_usage NUMERIC(5,2) DEFAULT 0.30,
-                            welcome_bonus_immediate INTEGER DEFAULT 51,
-                            welcome_unlock_stage_1 INTEGER DEFAULT 67,
-                            welcome_unlock_stage_2 INTEGER DEFAULT 50,
-                            welcome_unlock_stage_3 INTEGER DEFAULT 50,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                        );
-                    """)
-                    
-                    # Insert default loyalty config
-                    await conn.execute("""
-                        INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
-                        VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50)
-                        ON CONFLICT DO NOTHING;
-                    """)
-                    
-                    print("✅ Migration 021 completed - partners_v2, categories_v2, cards_v2, platform_loyalty_config tables created")
-                await postgresql_service.close_pool()
             
-            asyncio.run(run_migration())
+            # Create platform_loyalty_config table if it doesn't exist
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS platform_loyalty_config (
+                    id SERIAL PRIMARY KEY,
+                    redeem_rate NUMERIC(14,4) DEFAULT 5000.0,
+                    rounding_rule VARCHAR(20) DEFAULT 'bankers',
+                    max_accrual_percent NUMERIC(5,2) DEFAULT 20.00,
+                    max_percent_per_bill NUMERIC(5,2) DEFAULT 50.00,
+                    min_purchase_for_points INTEGER DEFAULT 10000,
+                    max_discount_percent NUMERIC(5,2) DEFAULT 40.00,
+                    bonus_for_points_usage NUMERIC(5,2) DEFAULT 0.30,
+                    welcome_bonus_immediate INTEGER DEFAULT 51,
+                    welcome_unlock_stage_1 INTEGER DEFAULT 67,
+                    welcome_unlock_stage_2 INTEGER DEFAULT 50,
+                    welcome_unlock_stage_3 INTEGER DEFAULT 50,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Insert default loyalty config
+            cur.execute("""
+                INSERT INTO platform_loyalty_config (redeem_rate, rounding_rule, max_accrual_percent, max_percent_per_bill, min_purchase_for_points, max_discount_percent, bonus_for_points_usage, welcome_bonus_immediate, welcome_unlock_stage_1, welcome_unlock_stage_2, welcome_unlock_stage_3)
+                VALUES (5000.0, 'bankers', 20.00, 50.00, 10000, 40.00, 0.30, 51, 67, 50, 50)
+                ON CONFLICT DO NOTHING;
+            """)
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("✅ Migration 021 completed - partners_v2, categories_v2, cards_v2, platform_loyalty_config tables created")
             
         except Exception as e:
             logger.error(f"Error in PostgreSQL migration 021: {e}")
@@ -2875,33 +2870,30 @@ def ensure_partner_applications_table():
         database_url = os.getenv('DATABASE_URL', '')
         
         if database_url and database_url.startswith("postgresql"):
-            # PostgreSQL
-            import asyncio
-            import asyncpg
+            # PostgreSQL - use synchronous connection
+            import psycopg2
             
-            async def create_table():
-                conn = await asyncpg.connect(database_url)
-                try:
-                    await conn.execute("""
-                        CREATE TABLE IF NOT EXISTS partner_applications (
-                            id SERIAL PRIMARY KEY,
-                            telegram_user_id BIGINT NOT NULL,
-                            telegram_username TEXT,
-                            name TEXT NOT NULL,
-                            phone TEXT NOT NULL,
-                            email TEXT NOT NULL,
-                            business_description TEXT NOT NULL,
-                            status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-                            created_at TIMESTAMPTZ DEFAULT NOW(),
-                            reviewed_at TIMESTAMPTZ,
-                            reviewed_by INTEGER
-                        );
-                    """)
-                    logger.info("✅ partner_applications table created/verified in PostgreSQL")
-                finally:
-                    await conn.close()
-            
-            asyncio.run(create_table())
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS partner_applications (
+                    id SERIAL PRIMARY KEY,
+                    telegram_user_id BIGINT NOT NULL,
+                    telegram_username TEXT,
+                    name TEXT NOT NULL,
+                    phone TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    business_description TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    reviewed_at TIMESTAMPTZ,
+                    reviewed_by INTEGER
+                );
+            """)
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ partner_applications table created/verified in PostgreSQL")
         else:
             # SQLite
             if migrator:
