@@ -739,6 +739,8 @@ if __name__ == "__main__":
                                 post_data = self.rfile.read(content_length)
                                 partner_data = json.loads(post_data.decode('utf-8'))
                                 
+                                logger.info(f"[API] Partner registration data received: {partner_data}")
+                                
                                 # Сохраняем заявку партнера в PostgreSQL
                                 import psycopg2
                                 from core.settings import settings
@@ -746,6 +748,10 @@ if __name__ == "__main__":
                                 conn = psycopg2.connect(settings.database.url)
                                 cur = conn.cursor()
                                 try:
+                                    # Используем временный user_id для тестирования
+                                    # В реальном приложении user_id должен передаваться из WebApp
+                                    temp_user_id = 7006636786
+                                    
                                     cur.execute("""
                                         INSERT INTO partner_applications 
                                         (user_id, name, phone, email, description, status, created_at)
@@ -758,13 +764,15 @@ if __name__ == "__main__":
                                         status = 'pending',
                                         updated_at = NOW()
                                     """, (
-                                        7006636786,  # Временно используем фиксированный user_id
+                                        temp_user_id,
                                         partner_data.get('name', ''),
                                         partner_data.get('phone', ''),
                                         partner_data.get('email', ''),
                                         partner_data.get('description', '')
                                     ))
                                     conn.commit()
+                                    
+                                    logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
                                     
                                     self.send_json_response({
                                         'success': True,
@@ -774,6 +782,7 @@ if __name__ == "__main__":
                                     cur.close()
                                     conn.close()
                             except Exception as e:
+                                logger.error(f"[API] Error saving partner application: {e}")
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
                             
                         else:

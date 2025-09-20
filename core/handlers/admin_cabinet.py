@@ -428,11 +428,11 @@ async def handle_dashboard(message: Message, state: FSMContext):
                 total_users = cur.fetchone()[0] or 0
                 
                 # Активные партнеры
-                cur.execute("SELECT COUNT(*) FROM partners_v2 WHERE is_active = true")
+                cur.execute("SELECT COUNT(*) FROM partners_v2")
                 active_partners = cur.fetchone()[0] or 0
                 
                 # Общее количество карточек
-                cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE is_active = true")
+                cur.execute("SELECT COUNT(*) FROM cards_v2")
                 total_cards = cur.fetchone()[0] or 0
                 
             finally:
