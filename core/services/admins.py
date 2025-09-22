@@ -88,7 +88,7 @@ class AdminsService:
 
     async def is_admin(self, user_id: int) -> bool:
         user_id = int(user_id)
-        if user_id == int(settings.bots.admin_id):
+        if user_id == int(settings.bot_token.split(':')[0]):
             return True
         if self._redis:
             try:
