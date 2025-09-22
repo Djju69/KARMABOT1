@@ -206,7 +206,7 @@ def get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text('category_shops_services', lang)),
             ],
             [
-                KeyboardButton(text=get_text('back', lang)),
+                KeyboardButton(text=get_text('menu.back_to_main_menu', lang)),
             ]
         ],
         resize_keyboard=True,
