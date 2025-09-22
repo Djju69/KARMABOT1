@@ -25,3 +25,7 @@ class AuthorizationError(Exception):
 class ServiceError(Exception):
     """Raised when service operation fails"""
     pass
+
+class BusinessLogicError(Exception):
+    """Raised when business logic validation fails"""
+    pass
