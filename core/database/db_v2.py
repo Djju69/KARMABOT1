@@ -264,7 +264,7 @@ class DatabaseServiceV2:
                     LEFT JOIN card_photos cp ON cp.card_id = c.id
                     WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
                     GROUP BY c.id
-                    ORDER BY c.priority_level DESC, c.created_at DESC
+                    ORDER BY cat.priority_level DESC, c.created_at DESC
                     LIMIT ?
                     """,
                     (category_slug, status, limit),
