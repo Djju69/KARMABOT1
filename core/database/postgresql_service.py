@@ -179,7 +179,7 @@ class PostgreSQLService:
                 LEFT JOIN card_photos cp ON cp.card_id = c.id
                 WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
                 GROUP BY c.id
-                ORDER BY c.priority_level DESC, c.created_at DESC
+                ORDER BY cat.priority_level DESC, c.created_at DESC
                 LIMIT $3
                 """,
                 category_slug, status, limit
