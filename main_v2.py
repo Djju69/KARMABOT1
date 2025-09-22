@@ -585,6 +585,17 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Запуск multiplatform ПЕРЕД основным ботом
+    try:
+        import subprocess
+        import os
+        if os.path.exists("multiplatform/main_api.py"):
+            print("Starting multiplatform system...")
+            subprocess.Popen(["python", "multiplatform/main_api.py"])
+            print("Multiplatform started on port 8001")
+    except Exception as e:
+        print(f"Failed to start multiplatform: {e}")
+    
     try:
         # Start simple web server in background thread
         import threading
@@ -835,19 +846,6 @@ if __name__ == "__main__":
                 
             except Exception as e:
                 logger.error(f"Failed to initialize multi-platform system: {e}")
-        
-        # Запуск multiplatform ПЕРЕД основным ботом
-        try:
-            import subprocess
-            import os
-            if os.path.exists("multiplatform/main_api.py"):
-                print("Starting multiplatform system...")
-                subprocess.Popen([
-                    "python", "multiplatform/main_api.py"
-                ])
-                print("Multiplatform started on port 8001")
-        except Exception as e:
-            print(f"Failed to start multiplatform: {e}")
         
         # Start bot (блокирующий)
         asyncio.run(main())
