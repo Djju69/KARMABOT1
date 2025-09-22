@@ -16,6 +16,9 @@ from .db_v2 import db_v2
 # Реальное подключение к Supabase
 class SupabaseClient:
     def __init__(self):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         from core.settings import settings
         self.url = settings.supabase_url
         self.key = settings.supabase_key
@@ -58,7 +61,8 @@ class SupabaseClient:
             }).execute()
             return True
         except Exception as e:
-            logger.error(f"Supabase create_user_profile error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase create_user_profile error: {e}")
             return False
     
     def get_user_profile(self, user_id):
@@ -71,7 +75,8 @@ class SupabaseClient:
                 return result.data[0]
             return None
         except Exception as e:
-            logger.error(f"Supabase get_user_profile error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase get_user_profile error: {e}")
             return None
     
     def add_loyalty_points(self, user_id, points, reason):
@@ -87,7 +92,8 @@ class SupabaseClient:
             }).execute()
             return True
         except Exception as e:
-            logger.error(f"Supabase add_loyalty_points error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase add_loyalty_points error: {e}")
             return False
     
     def spend_loyalty_points(self, user_id, points, reason, partner_id):
@@ -104,7 +110,8 @@ class SupabaseClient:
             }).execute()
             return True
         except Exception as e:
-            logger.error(f"Supabase spend_loyalty_points error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase spend_loyalty_points error: {e}")
             return False
     
     def get_loyalty_points(self, user_id):
@@ -116,7 +123,8 @@ class SupabaseClient:
             total = sum(row['points'] for row in result.data)
             return total
         except Exception as e:
-            logger.error(f"Supabase get_loyalty_points error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase get_loyalty_points error: {e}")
             return 0
     
     def get_user_partner_cards(self, user_id):
@@ -127,7 +135,8 @@ class SupabaseClient:
             result = self.client.table('partner_cards').select('*').eq('user_id', user_id).execute()
             return result.data
         except Exception as e:
-            logger.error(f"Supabase get_user_partner_cards error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase get_user_partner_cards error: {e}")
             return []
     
     def get_loyalty_history(self, user_id, limit=5):
@@ -138,7 +147,8 @@ class SupabaseClient:
             result = self.client.table('loyalty_transactions').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(limit).execute()
             return result.data
         except Exception as e:
-            logger.error(f"Supabase get_loyalty_history error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase get_loyalty_history error: {e}")
             return []
     
     def activate_partner_card(self, user_id, card_number, partner_id):
@@ -154,7 +164,8 @@ class SupabaseClient:
             }).execute()
             return True
         except Exception as e:
-            logger.error(f"Supabase activate_partner_card error: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase activate_partner_card error: {e}")
             return False
 
 secure_supabase = SupabaseClient()
@@ -274,7 +285,8 @@ class DatabaseHealthMonitor:
             health = secure_supabase.health_check()
             return health.get('status') == 'ok'
         except Exception as e:
-            logger.error(f"Supabase health check failed: {e}")
+            import logging
+            logging.getLogger(__name__).error(f"Supabase health check failed: {e}")
             return False
     
     def get_health_status(self) -> Dict:
