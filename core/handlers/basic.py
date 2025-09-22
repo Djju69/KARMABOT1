@@ -123,7 +123,8 @@ async def get_start(message: Message, bot: Bot, state: FSMContext):
         # First run: ask for language inline and exit
         if not current_lang:
             from .language import build_language_inline_kb
-            await message.answer(
+            await bot.send_message(
+                message.chat.id,
                 "🌐 Choose your language / Выберите язык / 언어를 선택하세요 / Chọn ngôn ngữ:",
                 reply_markup=build_language_inline_kb()
             )

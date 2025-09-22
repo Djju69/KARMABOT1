@@ -191,11 +191,14 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             text = get_text('catalog_empty_sub', lang)
             kb = None
         else:
+            # Отображаем только первую карточку с информацией о пагинации
             header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
-            text = header + "\n\n" + card_service.render_cards_list(cards_page, lang, max_cards=per_page)
+            first_card = cards_page[0]
+            card_text = card_service.render_card(first_card, lang)
+            text = header + "\n\n" + card_text
             
-            # 4. Сборка клавиатуры
-            inline_rows = [get_catalog_item_row(c.get('id'), c.get('google_maps_url'), lang) for c in cards_page]
+            # 4. Сборка клавиатуры только для первой карточки
+            inline_rows = [get_catalog_item_row(first_card.get('id'), first_card.get('google_maps_url'), lang)]
             pagination_row = [get_pagination_row(slug, page, total_pages, sub_slug)]
             kb_rows = inline_rows + pagination_row
             kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
