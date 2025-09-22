@@ -485,6 +485,37 @@ async def category_selected_v2(message: Message, bot: Bot, lang: str):
         logger.error(f"Error in category_selected_v2: {e}")
         await handle_legacy_category(message, bot, category_text)
 
+# Обработчики для новых категорий (v2)
+@category_router.message(F.text == get_text('category_restaurants', 'ru'))
+async def handle_restaurants_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории Рестораны и кафе"""
+    await on_restaurants(message, bot, lang, None)
+
+@category_router.message(F.text == get_text('category_spa', 'ru'))
+async def handle_spa_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории SPA и массаж"""
+    await on_spa(message, bot, lang, None)
+
+@category_router.message(F.text == get_text('category_transport', 'ru'))
+async def handle_transport_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории Транспорт"""
+    await on_transport(message, bot, lang, None)
+
+@category_router.message(F.text == get_text('category_hotels', 'ru'))
+async def handle_hotels_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории Отели"""
+    await on_hotels(message, bot, lang, None)
+
+@category_router.message(F.text == get_text('category_tours', 'ru'))
+async def handle_tours_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории Экскурсии"""
+    await on_tours(message, bot, lang, None)
+
+@category_router.message(F.text == get_text('category_shops_services', 'ru'))
+async def handle_shops_v2(message: Message, bot: Bot, lang: str = 'ru'):
+    """Обработчик категории Магазины и услуги"""
+    await on_shops(message, bot, lang, None)
+
 async def handle_legacy_category(message: Message, bot: Bot, category_text: str):
     """Fallback to legacy category handling for backward compatibility"""
     lang = 'ru'
