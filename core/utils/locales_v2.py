@@ -324,7 +324,7 @@ translations_v2 = {
         # Common actions
         'cancel': '❌ Hủy',
         'skip': '⏭️ Bỏ qua',
-        'back': '🔙 Quay lại',
+        'back': '◀️ Назад в главное меню',
         'next': '➡️ Tiếp',
         'edit': '✏️ Chỉnh sửa',
         'delete': '🗑️ Xóa',
@@ -426,6 +426,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'menu.become_partner': '👨‍💼 Стать парнером',
         'menu.help': '❓ Помощь',
         'menu.profile': '👤 Личный кабинет',
+        'help': '❓ Помощь',
         'back_admin': '◀️ Назад в админ‑меню',
         'back_partner': '◀️ Назад в меню партнёра',
         # Missing keys used by reply keyboards
@@ -620,6 +621,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         
         # Navigation - Common
         'common.back_simple': '◀️ Назад',
+        'back': '◀️ Назад в главное меню',
         
         # Navigation - Menu
         'menu.back_to_main_menu': '◀️ Назад в главное меню',
