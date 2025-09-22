@@ -37,7 +37,7 @@ class Settings:
     
     # Дополнительные атрибуты для совместимости
     admins: list = field(default_factory=list)
-    super_admins: list = field(default_factory=list)
+    super_admins: list = field(default_factory=lambda: [6391215556])  # Ваш ID как супер-админ
     partners: list = field(default_factory=list)
 
     def __post_init__(self):
