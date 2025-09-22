@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove, Update, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 
 from ..services.profile import profile_service
-from ..utils.locales_v2 import translations
+from ..utils.locales_v2 import translations, get_text
 from .basic import (
     ensure_policy_accepted, feedback_user, get_file, get_hello, get_inline,
     get_location, get_photo, get_start, get_video, hiw_user, main_menu,

@@ -324,8 +324,8 @@ async def main():
     from core.handlers import (
         basic_router,
         callback_router,
-        main_menu_router,
     )
+    from core.handlers.main_menu_router import main_menu_router
     from core.handlers.category_handlers_v2 import get_category_router
     from core.handlers.profile import get_profile_router
     from core.handlers.cabinet_router import get_cabinet_router
