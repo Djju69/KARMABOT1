@@ -20,7 +20,7 @@ class Features:
     support_voice: bool = field(default=False)
     support_ai: bool = field(default=True)
     support_reports: bool = field(default=True)
-    webapp_url: str = field(default="https://web-production-d51c7.up.railway.app/webapp")
+    webapp_url: str = field(default="https://webbot-production-42fe.up.railway.app")
     verbose_admin_back: bool = field(default=False)
     multi_platform_available: bool = field(default=True)
 
