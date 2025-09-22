@@ -3,7 +3,7 @@ Enhanced category handlers with unified card rendering
 Backward compatible with existing functionality
 """
 from aiogram import Router, F, Bot as AioBot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InputMediaPhoto
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.fsm.context import FSMContext
 from aiogram import Bot
 import logging
@@ -191,14 +191,30 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             text = get_text('catalog_empty_sub', lang)
             kb = None
         else:
-            # Отображаем только первую карточку с информацией о пагинации
+            # Отображаем все карточки на странице (до 5 штук)
             header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
-            first_card = cards_page[0]
-            card_text = card_service.render_card(first_card, lang)
-            text = header + "\n\n" + card_text
             
-            # 4. Сборка клавиатуры только для первой карточки
-            inline_rows = [get_catalog_item_row(first_card.get('id'), first_card.get('google_maps_url'), lang)]
+            # Рендерим каждую карточку отдельно
+            cards_text = []
+            for i, card in enumerate(cards_page, 1):
+                card_text = card_service.render_card(card, lang)
+                cards_text.append(f"**{i}.** {card_text}")
+            
+            text = header + "\n\n" + "\n\n".join(cards_text)
+            
+            # 4. Сборка клавиатуры для всех карточек на странице
+            inline_rows = []
+            for card in cards_page:
+                # Кнопки для каждой карточки: QR, Фото, Избранное
+                card_buttons = [
+                    InlineKeyboardButton(text="📱 QR", callback_data=f"qr_create:{card.get('id')}"),
+                    InlineKeyboardButton(text="📷 Фото", callback_data=f"gallery:{card.get('id')}"),
+                    InlineKeyboardButton(text="⭐", callback_data=f"favorite:{card.get('id')}"),
+                    InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{card.get('id')}")
+                ]
+                inline_rows.append(card_buttons)
+            
+            # Добавляем пагинацию
             pagination_row = [get_pagination_row(slug, page, total_pages, sub_slug)]
             kb_rows = inline_rows + pagination_row
             kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
