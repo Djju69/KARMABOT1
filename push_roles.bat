@@ -1,0 +1,9 @@
+@echo off
+echo Adding files...
+git add core/security/roles.py core/settings.py
+echo Committing...
+git commit -m "Исправление ролей пользователей - добавлен супер-админ и партнер"
+echo Pushing...
+git push origin main
+echo Done!
+pause
