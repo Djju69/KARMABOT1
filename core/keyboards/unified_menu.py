@@ -148,6 +148,9 @@ def get_admin_cabinet_keyboard(role: str = 'admin', lang: str = 'ru') -> ReplyKe
                     KeyboardButton(text=get_text("dashboard_system", lang))
                 ],
                 [
+                    KeyboardButton(text="🧪 Тестовые данные")
+                ],
+                [
                     KeyboardButton(text=get_text("super_admin_cabinet", lang))
                 ],
                 [

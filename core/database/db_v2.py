@@ -786,3 +786,42 @@ def get_db():
         yield db
     finally:
         db.close()
+
+    def get_cards_by_partner(self, partner_id: int) -> List[Dict]:
+        """Get all cards by partner ID"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                           p.display_name as partner_name
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    JOIN partners_v2 p ON c.partner_id = p.id
+                    WHERE c.partner_id = ?
+                    ORDER BY c.created_at DESC
+                """, (partner_id,))
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting cards by partner {partner_id}: {e}")
+            return []
+
+    def delete_cards_by_partner(self, partner_id: int) -> int:
+        """Delete all cards by partner ID"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("DELETE FROM cards_v2 WHERE partner_id = ?", (partner_id,))
+                return cursor.rowcount or 0
+        except Exception as e:
+            logger.error(f"Error deleting cards by partner {partner_id}: {e}")
+            return 0
+
+    def delete_partner_by_tg_id(self, tg_user_id: int) -> int:
+        """Delete partner by Telegram user ID"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("DELETE FROM partners_v2 WHERE tg_user_id = ?", (tg_user_id,))
+                return cursor.rowcount or 0
+        except Exception as e:
+            logger.error(f"Error deleting partner by tg_id {tg_user_id}: {e}")
+            return 0

@@ -33,6 +33,7 @@ class SuperAdminStates(StatesGroup):
     deleting_user_data = State()
     managing_roles = State()
     viewing_settings = State()
+    managing_test_data = State()
 
 
 @router.message(F.text.in_(["👑 Супер-админ", "👑 SuperAdmin"]))
@@ -397,6 +398,148 @@ async def system_settings_handler(message: Message, state: FSMContext):
             reply_markup=get_superadmin_keyboard()
         )
 
+
+@router.message(F.text.in_(["🧪 Тестовые данные", "🧪 Test Data"]))
+async def manage_test_data_handler(message: Message, state: FSMContext):
+    """Handle test data management."""
+    try:
+        from core.database import db_v2
+        
+        # Get test cards count
+        test_cards = db_v2.get_cards_by_partner(123456789)  # Sample partner ID
+        test_count = len(test_cards)
+        
+        text = (
+            f"🧪 <b>Управление тестовыми данными</b>\n\n"
+            f"📊 <b>Статистика:</b>\n"
+            f"• Тестовых карточек: {test_count}\n"
+            f"• Партнер-тестер: Sample Partner\n\n"
+            f"Выберите действие:"
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📋 Показать тестовые карточки", callback_data="test_show_cards"),
+                InlineKeyboardButton(text="🗑️ Удалить все тестовые данные", callback_data="test_delete_all")
+            ],
+            [
+                InlineKeyboardButton(text="➕ Добавить тестовые карточки", callback_data="test_add_cards"),
+                InlineKeyboardButton(text="🔄 Обновить статистику", callback_data="test_refresh")
+            ],
+            [
+                InlineKeyboardButton(text="◀️ Назад в панель", callback_data="superadmin_back")
+            ]
+        ])
+        
+        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        await state.set_state(SuperAdminStates.managing_test_data)
+        
+    except Exception as e:
+        logger.error(f"Error in manage_test_data_handler: {e}", exc_info=True)
+        await message.answer("Ошибка при загрузке тестовых данных.")
+
+@router.callback_query(F.data == "test_show_cards")
+async def show_test_cards_handler(callback: CallbackQuery):
+    """Show test cards list."""
+    try:
+        from core.database import db_v2
+        
+        test_cards = db_v2.get_cards_by_partner(123456789)
+        
+        if not test_cards:
+            await callback.message.edit_text("Тестовые карточки не найдены.")
+            return
+            
+        text = "🧪 <b>Тестовые карточки:</b>\n\n"
+        
+        for i, card in enumerate(test_cards[:10], 1):  # Show first 10
+            text += f"{i}. <b>{card.get('title', 'Без названия')}</b>\n"
+            text += f"   📍 {card.get('address', 'Адрес не указан')}\n"
+            text += f"   📞 {card.get('phone', 'Телефон не указан')}\n"
+            text += f"   📧 {card.get('email', 'Email не указан')}\n"
+            text += f"   🏷️ Статус: {card.get('status', 'unknown')}\n\n"
+        
+        if len(test_cards) > 10:
+            text += f"... и еще {len(test_cards) - 10} карточек"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🗑️ Удалить все тестовые карточки", callback_data="test_delete_all")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="test_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing test cards: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при загрузке карточек.")
+
+@router.callback_query(F.data == "test_delete_all")
+async def delete_test_data_handler(callback: CallbackQuery):
+    """Delete all test data."""
+    try:
+        from core.database import db_v2
+        
+        # Delete test cards
+        deleted_cards = db_v2.delete_cards_by_partner(123456789)
+        
+        # Delete test partner
+        deleted_partner = db_v2.delete_partner_by_tg_id(123456789)
+        
+        text = (
+            f"✅ <b>Тестовые данные удалены</b>\n\n"
+            f"• Удалено карточек: {deleted_cards}\n"
+            f"• Удален партнер: {deleted_partner}\n\n"
+            f"Все тестовые данные очищены."
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Назад в панель", callback_data="superadmin_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error deleting test data: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при удалении тестовых данных.")
+
+@router.callback_query(F.data == "test_add_cards")
+async def add_test_cards_handler(callback: CallbackQuery):
+    """Add test cards."""
+    try:
+        from core.database.migrations import add_sample_cards
+        
+        # Call the function to add sample cards
+        add_sample_cards()
+        
+        text = (
+            "✅ <b>Тестовые карточки добавлены</b>\n\n"
+            "Добавлены примеры ресторанов:\n"
+            "• Ресторан \"Вкусно\"\n"
+            "• Кафе \"Уют\"\n"
+            "• Пиццерия \"Италия\"\n\n"
+            "Карточки доступны в категории \"🍽️ Рестораны\""
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Показать тестовые карточки", callback_data="test_show_cards")],
+            [InlineKeyboardButton(text="◀️ Назад в панель", callback_data="superadmin_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error adding test cards: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при добавлении тестовых карточек.")
+
+@router.callback_query(F.data == "test_back")
+async def test_data_back_handler(callback: CallbackQuery, state: FSMContext):
+    """Go back to test data management."""
+    await manage_test_data_handler(callback.message, state)
+
+@router.callback_query(F.data == "superadmin_back")
+async def superadmin_back_handler(callback: CallbackQuery, state: FSMContext):
+    """Go back to superadmin dashboard."""
+    await superadmin_dashboard_handler(callback.message, state)
 
 @router.message(F.text.in_(["◀️ Назад", "◀️ Back"]))
 async def back_to_main_handler(message: Message, state: FSMContext):
