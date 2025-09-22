@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛡️ Fault-Tolerant System Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #718096;
+            font-size: 1.1rem;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .system-mode {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .mode-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .mode-full { background: #48bb78; }
+        .mode-partial { background: #ed8936; }
+        .mode-limited { background: #f56565; }
+        .mode-cache { background: #9f7aea; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            color: #2d3748;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        
+        .status-good { color: #48bb78; }
+        .status-warning { color: #ed8936; }
+        .status-error { color: #f56565; }
+        
+        .platform-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .platform-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .platform-item.active {
+            border-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .platform-item h4 {
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .platform-item p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+        
+        .alert {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid;
+        }
+        
+        .alert-critical { border-left-color: #f56565; }
+        .alert-warning { border-left-color: #ed8936; }
+        .alert-info { border-left-color: #4299e1; }
+        
+        .alert h4 {
+            margin-bottom: 10px;
+            color: #2d3748;
+        }
+        
+        .alert p {
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .alert-time {
+            font-size: 0.8rem;
+            color: #a0aec0;
+        }
+        
+        .recommendation {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #48bb78;
+        }
+        
+        .recommendation h4 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation p {
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .priority {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .priority-high { background: #fed7d7; color: #c53030; }
+        .priority-medium { background: #fef5e7; color: #dd6b20; }
+        .priority-low { background: #e6fffa; color: #38a169; }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .last-update {
+            text-align: center;
+            color: #718096;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .header h1 { font-size: 2rem; }
+            .grid { grid-template-columns: 1fr; }
+            .status-bar { flex-direction: column; gap: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Fault-Tolerant System Dashboard</h1>
+            <p>Мониторинг мульти-платформенной системы в реальном времени</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="system-mode">
+                <div class="mode-indicator mode-full" id="modeIndicator"></div>
+                <span id="systemMode">FULL_OPERATIONAL</span>
+            </div>
+            <button class="refresh-btn" onclick="refreshData()">
+                🔄 Обновить данные
+            </button>
+        </div>
+        
+        <div class="grid">
+            <!-- Статистика системы -->
+            <div class="card">
+                <h3>📊 Статистика системы</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Всего пользователей:</span>
+                    <span class="stat-value" id="totalUsers">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Всего заказов:</span>
+                    <span class="stat-value" id="totalOrders">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Операций в очереди:</span>
+                    <span class="stat-value" id="queuedOperations">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Элементов в кэше:</span>
+                    <span class="stat-value" id="cacheItems">0</span>
+                </div>
+            </div>
+            
+            <!-- Статус платформ -->
+            <div class="card">
+                <h3>🌐 Статус платформ</h3>
+                <div class="platform-grid" id="platformGrid">
+                    <!-- Заполняется JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Здоровье БД -->
+            <div class="card">
+                <h3>💾 Здоровье баз данных</h3>
+                <div class="stat-item">
+                    <span class="stat-label">PostgreSQL:</span>
+                    <span class="stat-value status-good" id="postgresqlStatus">✅ Онлайн</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Supabase:</span>
+                    <span class="stat-value status-good" id="supabaseStatus">✅ Онлайн</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Общий статус:</span>
+                    <span class="stat-value status-good" id="overallStatus">✅ Здоров</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Uptime PostgreSQL:</span>
+                    <span class="stat-value" id="postgresqlUptime">100%</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Uptime Supabase:</span>
+                    <span class="stat-value" id="supabaseUptime">100%</span>
+                </div>
+            </div>
+            
+            <!-- Очередь операций -->
+            <div class="card">
+                <h3>📋 Очередь операций</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Всего операций:</span>
+                    <span class="stat-value" id="queueTotal">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Критические:</span>
+                    <span class="stat-value status-error" id="queueCritical">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Высокий приоритет:</span>
+                    <span class="stat-value status-warning" id="queueHigh">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Обычные:</span>
+                    <span class="stat-value" id="queueNormal">0</span>
+                </div>
+            </div>
+            
+            <!-- Локальный кэш -->
+            <div class="card">
+                <h3>💾 Локальный кэш</h3>
+                <div class="stat-item">
+                    <span class="stat-label">Всего элементов:</span>
+                    <span class="stat-value" id="cacheTotal">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Действительных:</span>
+                    <span class="stat-value status-good" id="cacheValid">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Истекших:</span>
+                    <span class="stat-value status-warning" id="cacheExpired">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Использование памяти:</span>
+                    <span class="stat-value" id="cacheMemory">0 MB</span>
+                </div>
+            </div>
+            
+            <!-- Активные алерты -->
+            <div class="card">
+                <h3>🚨 Активные алерты</h3>
+                <div id="alertsContainer">
+                    <p style="color: #718096; text-align: center;">Нет активных алертов</p>
+                </div>
+            </div>
+            
+            <!-- Рекомендации -->
+            <div class="card">
+                <h3>💡 Рекомендации</h3>
+                <div id="recommendationsContainer">
+                    <p style="color: #718096; text-align: center;">Система работает оптимально</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="last-update">
+            Последнее обновление: <span id="lastUpdate">Загрузка...</span>
+        </div>
+    </div>
+
+    <script>
+        let refreshInterval;
+        
+        async function refreshData() {
+            try {
+                const refreshBtn = document.querySelector('.refresh-btn');
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<div class="loading"></div> Загрузка...';
+                
+                document.getElementById('lastUpdate').textContent = 'Загрузка...';
+                
+                // Получить данные статуса
+                const response = await fetch('/v1/admin/status', {
+                    headers: {
+                        'Authorization': 'Bearer admin_secret_token_2025'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Обновить статус системы
+                updateSystemStatus(data);
+                
+                // Обновить статистику платформ
+                updatePlatformStats(data.platform_stats);
+                
+                // Обновить алерты
+                updateAlerts(data.alerts);
+                
+                // Обновить рекомендации
+                updateRecommendations(data.recommendations);
+                
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString('ru-RU');
+                
+            } catch (error) {
+                console.error('Ошибка обновления данных:', error);
+                document.getElementById('lastUpdate').textContent = `Ошибка: ${error.message}`;
+                
+                // Показать ошибку в алертах
+                const alertsContainer = document.getElementById('alertsContainer');
+                alertsContainer.innerHTML = `
+                    <div class="alert alert-critical">
+                        <h4>🚨 Ошибка подключения</h4>
+                        <p>Не удалось получить данные от API</p>
+                        <p class="alert-time">${new Date().toLocaleString('ru-RU')}</p>
+                    </div>
+                `;
+            } finally {
+                const refreshBtn = document.querySelector('.refresh-btn');
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '🔄 Обновить данные';
+            }
+        }
+        
+        function updateSystemStatus(data) {
+            const systemStatus = data.system_status;
+            
+            // Режим системы
+            const mode = systemStatus.mode;
+            document.getElementById('systemMode').textContent = mode;
+            
+            const modeIndicator = document.getElementById('modeIndicator');
+            modeIndicator.className = 'mode-indicator';
+            if (mode === 'FULL_OPERATIONAL') {
+                modeIndicator.classList.add('mode-full');
+            } else if (mode === 'MAIN_DB_ONLY' || mode === 'LOYALTY_ONLY') {
+                modeIndicator.classList.add('mode-partial');
+            } else if (mode === 'CACHE_ONLY') {
+                modeIndicator.classList.add('mode-cache');
+            } else {
+                modeIndicator.classList.add('mode-limited');
+            }
+            
+            // Статистика операций
+            const operations = systemStatus.operations;
+            document.getElementById('totalUsers').textContent = operations.total_operations || 0;
+            document.getElementById('totalOrders').textContent = operations.successful_operations || 0;
+            document.getElementById('queuedOperations').textContent = operations.queued_operations || 0;
+            document.getElementById('cacheItems').textContent = operations.cached_operations || 0;
+            
+            // Здоровье БД
+            const health = systemStatus.health;
+            document.getElementById('postgresqlStatus').textContent = health.postgresql.status ? '✅ Онлайн' : '❌ Офлайн';
+            document.getElementById('postgresqlStatus').className = `stat-value ${health.postgresql.status ? 'status-good' : 'status-error'}`;
+            
+            document.getElementById('supabaseStatus').textContent = health.supabase.status ? '✅ Онлайн' : '❌ Офлайн';
+            document.getElementById('supabaseStatus').className = `stat-value ${health.supabase.status ? 'status-good' : 'status-error'}`;
+            
+            document.getElementById('overallStatus').textContent = health.overall ? '✅ Здоров' : '❌ Проблемы';
+            document.getElementById('overallStatus').className = `stat-value ${health.overall ? 'status-good' : 'status-error'}`;
+            
+            // Uptime
+            const uptime = systemStatus.uptime;
+            document.getElementById('postgresqlUptime').textContent = `${uptime.postgresql}%`;
+            document.getElementById('supabaseUptime').textContent = `${uptime.supabase}%`;
+            
+            // Очередь операций
+            const queue = systemStatus.queue;
+            document.getElementById('queueTotal').textContent = queue.total_operations || 0;
+            document.getElementById('queueCritical').textContent = queue.by_priority?.[4] || 0;
+            document.getElementById('queueHigh').textContent = queue.by_priority?.[3] || 0;
+            document.getElementById('queueNormal').textContent = queue.by_priority?.[2] || 0;
+            
+            // Кэш
+            const cache = systemStatus.cache;
+            document.getElementById('cacheTotal').textContent = cache.total_items || 0;
+            document.getElementById('cacheValid').textContent = cache.valid_items || 0;
+            document.getElementById('cacheExpired').textContent = cache.expired_items || 0;
+            document.getElementById('cacheMemory').textContent = `${cache.memory_usage_mb?.toFixed(2) || 0} MB`;
+        }
+        
+        function updatePlatformStats(platformStats) {
+            const platformGrid = document.getElementById('platformGrid');
+            const platforms = platformStats.platform_breakdown || {};
+            
+            const platformData = [
+                { key: 'telegram', name: '🤖 Telegram', icon: '🤖' },
+                { key: 'website', name: '🌐 Website', icon: '🌐' },
+                { key: 'mobile', name: '📱 Mobile', icon: '📱' },
+                { key: 'desktop', name: '🖥️ Desktop', icon: '🖥️' },
+                { key: 'api', name: '🔗 API', icon: '🔗' }
+            ];
+            
+            platformGrid.innerHTML = platformData.map(platform => {
+                const stats = platforms[platform.key] || { users: 0, orders: 0 };
+                return `
+                    <div class="platform-item active">
+                        <h4>${platform.icon} ${platform.name}</h4>
+                        <p>👥 ${stats.users} пользователей</p>
+                        <p>📦 ${stats.orders} заказов</p>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateAlerts(alerts) {
+            const alertsContainer = document.getElementById('alertsContainer');
+            
+            if (!alerts || alerts.length === 0) {
+                alertsContainer.innerHTML = '<p style="color: #718096; text-align: center;">Нет активных алертов</p>';
+                return;
+            }
+            
+            alertsContainer.innerHTML = alerts.map(alert => {
+                const alertClass = alert.level === 'critical' ? 'alert-critical' : 
+                                 alert.level === 'warning' ? 'alert-warning' : 'alert-info';
+                
+                return `
+                    <div class="alert ${alertClass}">
+                        <h4>🚨 ${alert.message}</h4>
+                        <p class="alert-time">${new Date(alert.timestamp).toLocaleString('ru-RU')}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateRecommendations(recommendations) {
+            const recommendationsContainer = document.getElementById('recommendationsContainer');
+            
+            if (!recommendations || recommendations.length === 0) {
+                recommendationsContainer.innerHTML = '<p style="color: #718096; text-align: center;">Система работает оптимально</p>';
+                return;
+            }
+            
+            recommendationsContainer.innerHTML = recommendations.map(rec => {
+                const priorityClass = rec.priority === 'high' ? 'priority-high' : 
+                                    rec.priority === 'medium' ? 'priority-medium' : 'priority-low';
+                
+                return `
+                    <div class="recommendation">
+                        <h4>💡 ${rec.message}</h4>
+                        <span class="priority ${priorityClass}">${rec.priority}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Автообновление каждые 30 секунд
+        function startAutoRefresh() {
+            refreshInterval = setInterval(refreshData, 30000);
+        }
+        
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        }
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshData();
+            startAutoRefresh();
+        });
+        
+        // Остановка автообновления при скрытии страницы
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopAutoRefresh();
+            } else {
+                startAutoRefresh();
+            }
+        });
+    </script>
+</body>
+</html>

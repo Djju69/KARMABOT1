@@ -1,0 +1,260 @@
+{
+  "cache": {
+    "user_telegram_999999999": {
+      "username": "test_user",
+      "first_name": "Test User",
+      "user_identifier": 999999999,
+      "platform": "telegram",
+      "created_at": "2025-09-22T00:45:52.868713",
+      "cached": true
+    },
+    "user_telegram_1000000000": {
+      "username": "test_user",
+      "first_name": "Test User",
+      "user_identifier": 1000000000,
+      "platform": "telegram",
+      "created_at": "2025-09-22T00:45:52.869712",
+      "cached": true
+    },
+    "order_1758476752869": {
+      "order_id": 1758476752869,
+      "user_identifier": 1000000000,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test Product",
+            "price": 100.0
+          }
+        ],
+        "total_amount": 100.0,
+        "currency": "USD"
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-22T00:45:52.869712"
+    },
+    "user_telegram_test_user": {
+      "points": 100
+    },
+    "user_telegram_123456789": {
+      "username": "test_user",
+      "first_name": "Test",
+      "telegram_id": 123456789,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 123456789,
+      "created_at": "2025-09-22T00:45:55.378959",
+      "cached": true,
+      "is_bot_user": true,
+      "linked_accounts": [
+        {
+          "platform": "website",
+          "identifier": "test@example.com",
+          "linked_at": "2025-09-22T00:45:55.384726"
+        }
+      ]
+    },
+    "order_1758476755379": {
+      "order_id": 1758476755379,
+      "user_identifier": 123456789,
+      "platform": "telegram",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test Product",
+            "price": 50.0
+          }
+        ],
+        "total_amount": 50.0,
+        "platform": "telegram",
+        "source": "telegram_bot",
+        "user_telegram_id": 123456789
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-22T00:45:55.379960"
+    },
+    "user_website_test@example.com": {
+      "username": "test_user",
+      "first_name": "Test",
+      "email": "test@example.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "user_identifier": "test@example.com",
+      "created_at": "2025-09-22T00:45:55.380962",
+      "cached": true,
+      "is_web_user": true
+    },
+    "order_1758476755381": {
+      "order_id": 1758476755381,
+      "user_identifier": "test@example.com",
+      "platform": "website",
+      "order_data": {
+        "items": [
+          {
+            "name": "Test Product",
+            "price": 75.0
+          }
+        ],
+        "total_amount": 75.0,
+        "platform": "website",
+        "source": "website",
+        "user_email": "test@example.com"
+      },
+      "status": "confirmed",
+      "created_at": "2025-09-22T00:45:55.381962"
+    },
+    "user_mobile_ios_test_device_123": {
+      "username": "test_user",
+      "first_name": "Test",
+      "device_id": "test_device_123",
+      "platform": "mobile_ios",
+      "user_type": "mobile_user",
+      "app_platform": "ios",
+      "user_identifier": "test_device_123",
+      "created_at": "2025-09-22T00:45:55.381962",
+      "cached": true,
+      "is_mobile_user": true
+    },
+    "sync_mobile_ios_test_device_123": {
+      "preferences": {
+        "theme": "dark"
+      },
+      "last_sync": "2025-01-01T00:00:00Z"
+    },
+    "user_desktop_windows_test_user_456": {
+      "username": "test_user",
+      "first_name": "Test",
+      "user_id": "test_user_456",
+      "platform": "desktop_windows",
+      "user_type": "desktop_user",
+      "desktop_platform": "windows",
+      "user_identifier": "test_user_456",
+      "created_at": "2025-09-22T00:45:55.383465",
+      "cached": true,
+      "is_desktop_user": true
+    },
+    "user_api_pk_test_123456": {
+      "username": "test_user",
+      "first_name": "Test",
+      "platform": "api",
+      "user_type": "api_user",
+      "api_key": "pk_test_123456",
+      "user_identifier": "pk_test_123456",
+      "created_at": "2025-09-22T00:45:55.383969",
+      "cached": true,
+      "is_api_user": true
+    },
+    "link_telegram_123456789_website_test@example.com": {
+      "primary_identifier": 123456789,
+      "primary_platform": "telegram",
+      "secondary_identifier": "test@example.com",
+      "secondary_platform": "website",
+      "linked_at": "2025-09-22T00:45:55.384726"
+    },
+    "sync_website_test@example.com": {
+      "preferences": {
+        "notifications": true
+      }
+    },
+    "user_telegram_123456790": {
+      "username": "unified_test",
+      "telegram_id": 123456790,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 123456790,
+      "created_at": "2025-09-22T00:45:55.385732",
+      "cached": true
+    },
+    "user_website_unified_test@example.com": {
+      "username": "unified_test",
+      "email": "unified_test@example.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "user_identifier": "unified_test@example.com",
+      "created_at": "2025-09-22T00:45:55.386733",
+      "cached": true
+    },
+    "user_mobile_android_unified_test_device_123": {
+      "username": "unified_test",
+      "device_id": "unified_test_device_123",
+      "platform": "mobile_android",
+      "user_type": "mobile_user",
+      "app_platform": "android",
+      "user_identifier": "unified_test_device_123",
+      "created_at": "2025-09-22T00:45:55.386733",
+      "cached": true
+    },
+    "user_desktop_mac_unified_test_user_456": {
+      "username": "unified_test",
+      "user_id": "unified_test_user_456",
+      "platform": "desktop_mac",
+      "user_type": "desktop_user",
+      "desktop_platform": "mac",
+      "user_identifier": "unified_test_user_456",
+      "created_at": "2025-09-22T00:45:55.387732",
+      "cached": true
+    },
+    "user_telegram_987654321": {
+      "username": "fulltest_telegram",
+      "first_name": "Telegram Test",
+      "telegram_id": 987654321,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 987654321,
+      "created_at": "2025-09-22T00:45:58.168493",
+      "cached": true
+    },
+    "user_website_fulltest@example.com": {
+      "username": "fulltest_website",
+      "first_name": "Website Test",
+      "email": "fulltest@example.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "user_identifier": "fulltest@example.com",
+      "created_at": "2025-09-22T00:45:58.169492",
+      "cached": true
+    },
+    "user_mobile_ios_fulltest_device_789": {
+      "username": "fulltest_mobile",
+      "first_name": "Mobile Test",
+      "device_id": "fulltest_device_789",
+      "platform": "mobile_ios",
+      "user_type": "mobile_user",
+      "app_platform": "ios",
+      "user_identifier": "fulltest_device_789",
+      "created_at": "2025-09-22T00:45:58.170492",
+      "cached": true
+    },
+    "user_desktop_linux_fulltest_user_101": {
+      "username": "fulltest_desktop",
+      "first_name": "Desktop Test",
+      "user_id": "fulltest_user_101",
+      "platform": "desktop_linux",
+      "user_type": "desktop_user",
+      "desktop_platform": "linux",
+      "user_identifier": "fulltest_user_101",
+      "created_at": "2025-09-22T00:45:58.171492",
+      "cached": true
+    },
+    "user_telegram_987654322": {
+      "username": "link_test_telegram",
+      "telegram_id": 987654322,
+      "platform": "telegram",
+      "user_type": "telegram_user",
+      "user_identifier": 987654322,
+      "created_at": "2025-09-22T00:45:58.171492",
+      "cached": true,
+      "linked_accounts": [
+        {
+          "platform": "website",
+          "identifier": "link_fulltest@example.com",
+          "linked_at": "2025-09-22T00:45:58.173509"
+        }
+      ]
+    },
+    "user_website_link_fulltest@example.com": {
+      "username": "link_test_website",
+      "email": "link_fulltest@example.com",
+      "platform": "website",
+      "user_type": "website_user",
+      "user_identifier": 
