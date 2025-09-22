@@ -178,7 +178,7 @@ class PostgreSQLService:
                 JOIN partners_v2 p ON c.partner_id = p.id
                 LEFT JOIN card_photos cp ON cp.card_id = c.id
                 WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
-                GROUP BY c.id
+                GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
                 ORDER BY cat.priority_level DESC, c.created_at DESC
                 LIMIT $3
                 """,
