@@ -838,6 +838,20 @@ if __name__ == "__main__":
         
         # Start bot
         asyncio.run(main())
+        
+        # Параллельный запуск multiplatform системы
+        try:
+            import subprocess
+            import os
+            if os.path.exists("multiplatform/main_api.py"):
+                print("Starting multiplatform system...")
+                subprocess.Popen([
+                    "python", "multiplatform/main_api.py"
+                ], cwd=os.getcwd())
+                print("Multiplatform started on port 8001")
+        except Exception as e:
+            print(f"Failed to start multiplatform: {e}")
+            
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped")
     except Exception as e:
