@@ -3100,6 +3100,8 @@ def ensure_database_ready():
         ensure_partners_v2_columns()
         ensure_cards_v2_table()
         ensure_card_photos_table()
+        # Setup Supabase RLS if configured
+        setup_supabase_rls()
         return
         
     try:
@@ -3198,6 +3200,47 @@ def ensure_cards_v2_table():
             
     except Exception as e:
         logger.error(f"Error creating cards_v2 table: {e}")
+
+def setup_supabase_rls():
+    """Setup Row Level Security for Supabase tables"""
+    try:
+        from core.settings import settings
+        
+        # Only setup if Supabase is configured
+        if not settings.supabase_url or not settings.supabase_key:
+            logger.info("Supabase not configured, skipping RLS setup")
+            return
+            
+        from supabase import create_client
+        
+        supabase = create_client(settings.supabase_url, settings.supabase_key)
+        
+        # Tables that need RLS
+        tables = ['partners_v2', 'cards_v2', 'categories_v2']
+        
+        for table in tables:
+            try:
+                # Enable RLS
+                supabase.rpc('exec_sql', {
+                    'sql': f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;'
+                }).execute()
+                
+                # Create policy
+                supabase.rpc('exec_sql', {
+                    'sql': f'CREATE POLICY IF NOT EXISTS "Allow anonymous access" ON {table} FOR ALL USING (true);'
+                }).execute()
+                
+                logger.info(f"✅ RLS enabled for {table}")
+                
+            except Exception as e:
+                logger.warning(f"Could not enable RLS for {table}: {e}")
+                
+        logger.info("✅ Supabase RLS setup completed")
+        
+    except ImportError:
+        logger.warning("supabase-py not available, skipping RLS setup")
+    except Exception as e:
+        logger.error(f"Error setting up Supabase RLS: {e}")
 
 def ensure_card_photos_table():
     """Ensure card_photos table exists"""
