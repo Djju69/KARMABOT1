@@ -237,7 +237,7 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
             'super_admin': '/admin-cabinet.html'
         }
         
-        cabinet_path = cabinet_paths.get(user_role, '/user-cabinet.html')
+        cabinet_path = cabinet_paths.get(user_role.name, '/user-cabinet.html')
         
         # Получить базовый URL из настроек
         from core.settings import settings
