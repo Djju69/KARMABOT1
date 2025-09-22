@@ -44,7 +44,7 @@ class SupabaseClient:
         
         try:
             # Простая проверка подключения
-            result = self.client.table('users').select('id').limit(1).execute()
+            result = self.client.table('user_profiles').select('id').limit(1).execute()
             return {'status': 'ok'}
         except Exception as e:
             return {'status': 'error', 'message': str(e)}
