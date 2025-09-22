@@ -215,7 +215,7 @@ def setup_logging(level=logging.INFO, retention_days: int = 7):
     # Log environment info
     logger = logging.getLogger(__name__)
     logger.info("Starting in %s environment", settings.environment)
-    logger.info("Using bot token: %s", _mask(settings.bots.bot_token))
+    logger.info("Using bot token: %s", _mask(settings.bot_token))
     
     return logger
 
