@@ -34,6 +34,11 @@ class Settings:
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     features: Features = field(default_factory=Features)
+    
+    # Дополнительные атрибуты для совместимости
+    admins: list = field(default_factory=list)
+    super_admins: list = field(default_factory=list)
+    partners: list = field(default_factory=list)
 
     def __post_init__(self):
         env = Env()
@@ -62,3 +67,6 @@ def get_settings() -> Settings:
     if _settings is None:
         _settings = Settings()
     return _settings
+
+# Создаем глобальный объект settings для совместимости
+settings = get_settings()
