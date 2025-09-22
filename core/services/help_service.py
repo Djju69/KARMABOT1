@@ -26,7 +26,7 @@ class HelpService:
 
         # Ссылки для каждой роли (используются в тестах/вспомогательных сценариях)
         self.help_links = {
-            Role.USER: [
+            "user": [
                 {
                     "title": "Инструкция для пользователей",
                     "url": sdoc("help_user.html"),
@@ -63,7 +63,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            Role.PARTNER: [
+            "partner": [
                 {
                     "title": "Инструкция для пользователей",
                     "url": sdoc("help_user.html"),
@@ -110,7 +110,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            Role.ADMIN: [
+            "admin": [
                 {
                     "title": "Инструкция для пользователей",
                     "url": sdoc("help_user.html"),
@@ -177,7 +177,7 @@ class HelpService:
                     "emoji": "🔹"
                 }
             ],
-            Role.SUPER_ADMIN: [
+            "super_admin": [
                 {
                     "title": "Инструкция для пользователей",
                     "url": sdoc("help_user.html"),
@@ -373,7 +373,8 @@ class HelpService:
     
     def get_help_links_for_role(self, role: Role) -> List[Dict]:
         """Получить ссылки для конкретной роли"""
-        return self.help_links.get(role, self.help_links[Role.USER])
+        role_name = role.name if hasattr(role, 'name') else str(role)
+        return self.help_links.get(role_name, self.help_links["user"])
     
     def update_base_url(self, new_url: str):
         """Обновить базовый URL (не используется для /static/docs, оставлено для совместимости)"""
@@ -383,7 +384,7 @@ class HelpService:
         """Тестовая функция для проверки ссылок"""
         try:
             # Тестируем с ролью USER
-            links = self.help_links[Role.USER]
+            links = self.help_links["user"]
             
             # Формируем тестовое сообщение
             message = "🧪 <b>ТЕСТ ССЫЛОК</b>\n\n"

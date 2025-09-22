@@ -3098,6 +3098,7 @@ def ensure_database_ready():
         ensure_partner_applications_table()
         ensure_user_roles_table()
         ensure_partners_v2_columns()
+        ensure_card_photos_table()
         return
         
     try:
@@ -3111,3 +3112,72 @@ def ensure_database_ready():
         logger.error(f"Failed to run migrations: {e}")
         if os.getenv("APP_ENV") != "production":
             raise
+
+def ensure_card_photos_table():
+    """Ensure card_photos table exists"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            # PostgreSQL - use synchronous connection
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS card_photos (
+                    id SERIAL PRIMARY KEY,
+                    card_id INTEGER NOT NULL,
+                    photo_url TEXT NOT NULL,
+                    photo_file_id TEXT,
+                    caption TEXT,
+                    is_main BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    FOREIGN KEY (card_id) REFERENCES cards_v2(id) ON DELETE CASCADE
+                );
+            """)
+            
+            # Create indexes
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
+            try:
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+            except Exception as e:
+                logger.warning(f"Could not create index on is_main column: {e}")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ card_photos table created/verified in PostgreSQL")
+        else:
+            # SQLite fallback
+            import sqlite3
+            db_path = os.getenv('DATABASE_PATH', 'core/database/data.db')
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS card_photos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    card_id INTEGER NOT NULL,
+                    photo_url TEXT NOT NULL,
+                    photo_file_id TEXT,
+                    caption TEXT,
+                    is_main BOOLEAN DEFAULT FALSE,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (card_id) REFERENCES cards_v2(id) ON DELETE CASCADE
+                );
+            """)
+            
+            # Create indexes
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_card_id ON card_photos(card_id)")
+            try:
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_card_photos_is_main ON card_photos(is_main)")
+            except Exception as e:
+                logger.warning(f"Could not create index on is_main column: {e}")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ card_photos table created/verified in SQLite")
+            
+    except Exception as e:
+        logger.error(f"Error creating card_photos table: {e}")
