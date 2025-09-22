@@ -3102,6 +3102,8 @@ def ensure_database_ready():
         ensure_card_photos_table()
         # Setup Supabase RLS if configured
         setup_supabase_rls()
+        # Add sample data if needed
+        add_sample_cards()
         return
         
     try:
@@ -3241,6 +3243,72 @@ def setup_supabase_rls():
         logger.warning("supabase-py not available, skipping RLS setup")
     except Exception as e:
         logger.error(f"Error setting up Supabase RLS: {e}")
+
+def add_sample_cards():
+    """Add sample cards for testing"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            
+            # Check if we have any cards
+            cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'published'")
+            count = cur.fetchone()[0]
+            
+            if count == 0:
+                logger.info("No published cards found, adding sample data...")
+                
+                # Add sample partner
+                cur.execute("""
+                    INSERT INTO partners_v2 (tg_user_id, display_name, username, status, karma_points)
+                    VALUES (123456789, 'Sample Partner', 'sample_partner', 'active', 100)
+                    ON CONFLICT (tg_user_id) DO NOTHING
+                    RETURNING id
+                """)
+                result = cur.fetchone()
+                if result:
+                    partner_id = result[0]
+                else:
+                    cur.execute("SELECT id FROM partners_v2 WHERE tg_user_id = 123456789")
+                    partner_id = cur.fetchone()[0]
+                
+                # Add sample cards for restaurants
+                cur.execute("SELECT id FROM categories_v2 WHERE slug = 'restaurants'")
+                cat_result = cur.fetchone()
+                if cat_result:
+                    category_id = cat_result[0]
+                    
+                    sample_cards = [
+                        (partner_id, category_id, 'Ресторан "Вкусно"', 'Отличная кухня и атмосфера', 'ул. Пушкина, 1', '+7-999-123-45-67', 'https://vkuso.ru', 'info@vkuso.ru', 'published'),
+                        (partner_id, category_id, 'Кафе "Уют"', 'Домашняя кухня и кофе', 'пр. Мира, 15', '+7-999-234-56-78', 'https://uyut-cafe.ru', 'hello@uyut-cafe.ru', 'published'),
+                        (partner_id, category_id, 'Пиццерия "Италия"', 'Настоящая итальянская пицца', 'ул. Ленина, 42', '+7-999-345-67-89', 'https://italia-pizza.ru', 'order@italia-pizza.ru', 'published')
+                    ]
+                    
+                    for card_data in sample_cards:
+                        cur.execute("""
+                            INSERT INTO cards_v2 (partner_id, category_id, title, description, address, phone, website, email, status)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT DO NOTHING
+                        """, card_data)
+                    
+                    logger.info("✅ Sample cards added to restaurants category")
+                
+                conn.commit()
+            else:
+                logger.info(f"Found {count} published cards, skipping sample data")
+            
+            cur.close()
+            conn.close()
+            
+        else:
+            logger.info("Using SQLite, skipping sample data")
+            
+    except Exception as e:
+        logger.error(f"Error adding sample cards: {e}")
 
 def ensure_card_photos_table():
     """Ensure card_photos table exists"""
