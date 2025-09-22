@@ -144,7 +144,9 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     try:
         # 1. Получение данных и фильтрация
         await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
+        logger.info(f"ДИАГНОСТИКА: Запрашиваем карточки для категории '{slug}', статус 'published'")
         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
 
         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
         if sub_slug == "all":

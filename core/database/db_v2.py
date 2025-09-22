@@ -247,25 +247,35 @@ class DatabaseServiceV2:
     
     def get_cards_by_category(self, category_slug: str, status: str = 'published', limit: int = 50) -> List[Dict]:
         """Get cards by category with pagination"""
-        with self.get_connection() as conn:
-            cursor = conn.execute(
-                """
-                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
-                       p.display_name as partner_name,
-                       COALESCE(COUNT(cp.id), 0) as photos_count
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                JOIN partners_v2 p ON c.partner_id = p.id
-                LEFT JOIN card_photos cp ON cp.card_id = c.id
-                WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
-                GROUP BY c.id
-                ORDER BY c.priority_level DESC, c.created_at DESC
-                LIMIT ?
-                """,
-                (category_slug, status, limit),
-            )
-            
-            return [dict(row) for row in cursor.fetchall()]
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            with self.get_connection() as conn:
+                logger.info(f"ДИАГНОСТИКА: Выполняем запрос карточек для категории '{category_slug}', статус '{status}'")
+                cursor = conn.execute(
+                    """
+                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                           p.display_name as partner_name,
+                           COALESCE(COUNT(cp.id), 0) as photos_count
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    JOIN partners_v2 p ON c.partner_id = p.id
+                    LEFT JOIN card_photos cp ON cp.card_id = c.id
+                    WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
+                    GROUP BY c.id
+                    ORDER BY c.priority_level DESC, c.created_at DESC
+                    LIMIT ?
+                    """,
+                    (category_slug, status, limit),
+                )
+                
+                result = [dict(row) for row in cursor.fetchall()]
+                logger.info(f"ДИАГНОСТИКА: Найдено {len(result)} карточек для категории '{category_slug}'")
+                return result
+        except Exception as e:
+            logger.error(f"ДИАГНОСТИКА: Ошибка при получении карточек для категории '{category_slug}': {e}")
+            return []
 
     # --- Superadmin helpers: bans and deletions ---
     def ban_user(self, tg_user_id: int, reason: str = "") -> None:
