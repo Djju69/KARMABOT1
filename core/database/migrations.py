@@ -3280,7 +3280,7 @@ def ensure_favorites_table():
         logger.error(f"Error creating favorites table: {e}")
 
 def add_sample_cards():
-    """Add sample cards for testing"""
+    """Add sample cards for testing in all categories and subcategories"""
     try:
         database_url = os.getenv('DATABASE_URL', '')
         
@@ -3299,7 +3299,7 @@ def add_sample_cards():
             test_count = cur.fetchone()[0]
             
             if test_count == 0:
-                logger.info("No test cards found, adding sample data...")
+                logger.info("No test cards found, adding sample data for all categories...")
                 
                 # Add sample partner
                 cur.execute("""
@@ -3315,28 +3315,164 @@ def add_sample_cards():
                     cur.execute("SELECT id FROM partners_v2 WHERE tg_user_id = 123456789")
                     partner_id = cur.fetchone()[0]
                 
-                # Add sample cards for restaurants
-                cur.execute("SELECT id FROM categories_v2 WHERE slug = 'restaurants'")
-                cat_result = cur.fetchone()
-                if cat_result:
-                    category_id = cat_result[0]
-                    
-                    sample_cards = [
-                        (partner_id, category_id, 'Ресторан "Вкусно"', 'Отличная кухня и атмосфера', 'published'),
-                        (partner_id, category_id, 'Кафе "Уют"', 'Домашняя кухня и кофе', 'published'),
-                        (partner_id, category_id, 'Пиццерия "Италия"', 'Настоящая итальянская пицца', 'published')
-                    ]
-                    
-                    for card_data in sample_cards:
-                        cur.execute("""
-                            INSERT INTO cards_v2 (partner_id, category_id, title, description, status)
-                            VALUES (%s, %s, %s, %s, %s)
-                            ON CONFLICT DO NOTHING
-                        """, card_data)
-                    
-                    logger.info("✅ Sample cards added to restaurants category")
+                # Define all categories and subcategories with sample cards
+                categories_data = {
+                    'restaurants': {
+                        'asia': [
+                            ('Суши-бар "Токио"', 'Настоящие японские суши и роллы'),
+                            ('Китайский ресторан "Дракон"', 'Аутентичная китайская кухня'),
+                            ('Тайский ресторан "Пхукет"', 'Острые тайские блюда')
+                        ],
+                        'europe': [
+                            ('Французский ресторан "Эйфель"', 'Изысканная французская кухня'),
+                            ('Итальянская траттория "Рим"', 'Классические итальянские блюда'),
+                            ('Немецкий паб "Октоберфест"', 'Традиционная немецкая кухня')
+                        ],
+                        'street': [
+                            ('Бургерная "Street Food"', 'Сочные бургеры и картошка фри'),
+                            ('Хот-дог "Быстро"', 'Горячие хот-доги с соусами'),
+                            ('Тако-бар "Мехико"', 'Мексиканские тако и буррито')
+                        ],
+                        'vege': [
+                            ('Веган-кафе "Зелень"', 'Полезная веганская еда'),
+                            ('Салат-бар "Витамин"', 'Свежие салаты и смузи'),
+                            ('Органик-кафе "Природа"', 'Органические продукты')
+                        ],
+                        'all': [
+                            ('Ресторан "Вкусно"', 'Отличная кухня и атмосфера'),
+                            ('Кафе "Уют"', 'Домашняя кухня и кофе'),
+                            ('Пиццерия "Италия"', 'Настоящая итальянская пицца')
+                        ]
+                    },
+                    'spa': {
+                        'salon': [
+                            ('Салон красоты "Элегант"', 'Парикмахерские услуги и маникюр'),
+                            ('Барбершоп "Мужской"', 'Стрижки и бритье для мужчин'),
+                            ('Студия красоты "Гламур"', 'Макияж и укладки')
+                        ],
+                        'massage': [
+                            ('СПА-центр "Релакс"', 'Массаж и релаксация'),
+                            ('Тайский массаж "Сиам"', 'Традиционный тайский массаж'),
+                            ('Массажный салон "Здоровье"', 'Лечебный массаж')
+                        ],
+                        'sauna': [
+                            ('Сауна "Баня"', 'Русская баня и сауна'),
+                            ('Финская сауна "Север"', 'Традиционная финская сауна'),
+                            ('Хаммам "Восток"', 'Турецкая баня')
+                        ],
+                        'all': [
+                            ('СПА "Роскошь"', 'Полный спектр СПА-услуг'),
+                            ('Массаж "Нежность"', 'Расслабляющий массаж'),
+                            ('Сауна "Жара"', 'Горячая сауна и бассейн')
+                        ]
+                    },
+                    'transport': {
+                        'bikes': [
+                            ('Прокат мотоциклов "Скорость"', 'Мотоциклы для аренды'),
+                            ('Скутеры "Город"', 'Электрические скутеры'),
+                            ('Мопеды "Эконом"', 'Недорогие мопеды')
+                        ],
+                        'cars': [
+                            ('Автопрокат "Премиум"', 'Люкс автомобили'),
+                            ('Эконом-кар "Бюджет"', 'Недорогие автомобили'),
+                            ('Семейные авто "Комфорт"', 'Просторные автомобили')
+                        ],
+                        'bicycles': [
+                            ('Велосипеды "Эко"', 'Экологичный транспорт'),
+                            ('Горные велосипеды "Адреналин"', 'Для экстремального спорта'),
+                            ('Городские велосипеды "Удобство"', 'Для городских поездок')
+                        ],
+                        'all': [
+                            ('Транспорт "Универсал"', 'Различные виды транспорта'),
+                            ('Прокат "24/7"', 'Круглосуточный прокат'),
+                            ('Транспорт "Быстро"', 'Быстрая подача транспорта')
+                        ]
+                    },
+                    'hotels': {
+                        'hotel': [
+                            ('Отель "Люкс"', 'Пятизвездочный отель'),
+                            ('Гостиница "Комфорт"', 'Уютная гостиница'),
+                            ('Отель "Бизнес"', 'Для деловых поездок')
+                        ],
+                        'apartments': [
+                            ('Апартаменты "Дом"', 'Квартиры для длительного проживания'),
+                            ('Студии "Мини"', 'Компактные студии'),
+                            ('Лофты "Стиль"', 'Стильные лофты')
+                        ],
+                        'all': [
+                            ('Отель "Гранд"', 'Большой отель с услугами'),
+                            ('Гостиница "Центр"', 'В центре города'),
+                            ('Отель "Тишина"', 'Спокойное место для отдыха')
+                        ]
+                    },
+                    'tours': {
+                        'group': [
+                            ('Групповые экскурсии "Друзья"', 'Экскурсии для групп'),
+                            ('Туры "Компания"', 'Корпоративные туры'),
+                            ('Походы "Команда"', 'Групповые походы')
+                        ],
+                        'private': [
+                            ('Индивидуальные туры "Личный"', 'Персональные экскурсии'),
+                            ('VIP туры "Эксклюзив"', 'Эксклюзивные туры'),
+                            ('Частные гиды "Персональный"', 'Личные гиды')
+                        ],
+                        'all': [
+                            ('Туры "Открытие"', 'Познавательные туры'),
+                            ('Экскурсии "История"', 'Исторические экскурсии'),
+                            ('Путешествия "Приключение"', 'Приключенческие туры')
+                        ]
+                    },
+                    'shops': {
+                        'shops': [
+                            ('Магазин "Мода"', 'Одежда и аксессуары'),
+                            ('Бутик "Стиль"', 'Дизайнерская одежда'),
+                            ('Торговый центр "Мега"', 'Большой торговый центр')
+                        ],
+                        'services': [
+                            ('Сервис "Ремонт"', 'Ремонтные услуги'),
+                            ('Услуги "Красота"', 'Косметические услуги'),
+                            ('Сервис "Доставка"', 'Служба доставки')
+                        ],
+                        'all': [
+                            ('Магазин "Универсал"', 'Различные товары'),
+                            ('Сервис "Удобство"', 'Удобные услуги'),
+                            ('Торговля "Качество"', 'Качественные товары')
+                        ]
+                    }
+                }
+                
+                # Add cards for each category and subcategory
+                for category_slug, subcategories in categories_data.items():
+                    cur.execute("SELECT id FROM categories_v2 WHERE slug = %s", (category_slug,))
+                    cat_result = cur.fetchone()
+                    if cat_result:
+                        category_id = cat_result[0]
+                        
+                        for sub_slug, cards in subcategories.items():
+                            for title, description in cards:
+                                cur.execute("""
+                                    INSERT INTO cards_v2 (partner_id, category_id, title, description, status, sub_slug)
+                                    VALUES (%s, %s, %s, %s, %s, %s)
+                                    ON CONFLICT DO NOTHING
+                                    RETURNING id
+                                """, (partner_id, category_id, title, description, 'published', sub_slug))
+                                
+                                result = cur.fetchone()
+                                if result:
+                                    card_id = result[0]
+                                    # Add 2 photos for each card
+                                    for photo_num in range(1, 3):
+                                        cur.execute("""
+                                            INSERT INTO card_photos (card_id, photo_url, photo_file_id, display_order)
+                                            VALUES (%s, %s, %s, %s)
+                                            ON CONFLICT DO NOTHING
+                                        """, (card_id, f"https://example.com/photo_{card_id}_{photo_num}.jpg", 
+                                              f"photo_{card_id}_{photo_num}", photo_num))
+                        
+                        logger.info(f"✅ Sample cards added to {category_slug} category")
                 
                 conn.commit()
+                logger.info("✅ All sample cards added successfully")
             else:
                 logger.info(f"Found {test_count} test cards, skipping sample data")
             

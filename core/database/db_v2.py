@@ -251,25 +251,25 @@ class DatabaseServiceV2:
         logger = logging.getLogger(__name__)
         
         try:
-            with self.get_connection() as conn:
+        with self.get_connection() as conn:
                 logger.info(f"ДИАГНОСТИКА: Выполняем запрос карточек для категории '{category_slug}', статус '{status}'")
-                cursor = conn.execute(
-                    """
-                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
-                           p.display_name as partner_name,
-                           COALESCE(COUNT(cp.id), 0) as photos_count
-                    FROM cards_v2 c
-                    JOIN categories_v2 cat ON c.category_id = cat.id
-                    JOIN partners_v2 p ON c.partner_id = p.id
-                    LEFT JOIN card_photos cp ON cp.card_id = c.id
-                    WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
-                    GROUP BY c.id
+            cursor = conn.execute(
+                """
+                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                       p.display_name as partner_name,
+                       COALESCE(COUNT(cp.id), 0) as photos_count
+                FROM cards_v2 c
+                JOIN categories_v2 cat ON c.category_id = cat.id
+                JOIN partners_v2 p ON c.partner_id = p.id
+                LEFT JOIN card_photos cp ON cp.card_id = c.id
+                WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1
+                GROUP BY c.id
                     ORDER BY cat.priority_level DESC, c.created_at DESC
-                    LIMIT ?
-                    """,
-                    (category_slug, status, limit),
-                )
-                
+                LIMIT ?
+                """,
+                (category_slug, status, limit),
+            )
+            
                 result = [dict(row) for row in cursor.fetchall()]
                 logger.info(f"ДИАГНОСТИКА: Найдено {len(result)} карточек для категории '{category_slug}'")
                 return result
@@ -655,7 +655,7 @@ class DatabaseServiceV2:
             )
             
             return self.create_card(card)
-    
+
     def get_cards_count(self) -> int:
         """Get total number of cards"""
         with self.get_connection() as conn:
@@ -886,3 +886,19 @@ def get_db():
         except Exception as e:
             logger.error(f"Error checking favorite status: {e}")
             return False
+
+    def get_card_photos(self, card_id: int) -> List[Dict]:
+        """Get photos for a specific card"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT photo_url, photo_file_id, display_order
+                    FROM card_photos 
+                    WHERE card_id = ?
+                    ORDER BY display_order
+                """, (card_id,))
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting card photos: {e}")
+            return []

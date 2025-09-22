@@ -778,27 +778,51 @@ async def on_card_gallery(callback: CallbackQuery):
     except Exception:
         await callback.answer()
         return
+    
     try:
-        from ..database.db_v2 import db_v2 as _db
-        photos = _db.get_card_photos(card_id)
+        from core.database import db_v2
+        photos = db_v2.get_card_photos(card_id)
     except Exception:
         photos = []
+    
     if not photos:
         await callback.answer("📭 Фото пока нет", show_alert=False)
         return
+    
+    # Get card info for caption
+    try:
+        card = db_v2.get_card_by_id(card_id)
+        card_title = card.get('title', 'Карточка') if card else 'Карточка'
+    except Exception:
+        card_title = 'Карточка'
+    
     media: list[InputMediaPhoto] = []
     for idx, p in enumerate(photos[:6]):
-        fid = p.get('file_id') if isinstance(p, dict) else getattr(p, 'file_id', None)
-        if not fid:
-            continue
-        if idx == 0:
-            media.append(InputMediaPhoto(media=fid, caption="📷 Галерея"))
+        # Use photo_url if available, otherwise photo_file_id
+        photo_url = p.get('photo_url')
+        photo_file_id = p.get('photo_file_id')
+        
+        if photo_url:
+            media_item = InputMediaPhoto(media=photo_url)
+        elif photo_file_id:
+            media_item = InputMediaPhoto(media=photo_file_id)
         else:
-            media.append(InputMediaPhoto(media=fid))
-    try:
-        await callback.message.answer_media_group(media)
-    except Exception:
-        pass
+            continue
+            
+        if idx == 0:
+            media_item.caption = f"📷 Галерея: {card_title}"
+        
+        media.append(media_item)
+    
+    if media:
+        try:
+            await callback.message.answer_media_group(media)
+        except Exception as e:
+            logger.error(f"Error sending media group: {e}")
+            await callback.answer("❌ Ошибка при загрузке фотографий", show_alert=True)
+    else:
+        await callback.answer("📭 Нет доступных фотографий", show_alert=False)
+    
     await callback.answer()
 
 
