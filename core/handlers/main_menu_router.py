@@ -1189,7 +1189,7 @@ async def handle_qr_text_redeem(message: Message, bot: Bot, state: FSMContext) -
         logger.error(f"Error redeeming QR: {e}", exc_info=True)
         await message.answer("❌ Ошибка обработки QR.")
 
-@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))
+@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()] + ['🏠 Главное меню']))
 async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'В главное меню' - возвращает в главное меню."""
     logger.debug(f"User {message.from_user.id} clicked back to main menu")
