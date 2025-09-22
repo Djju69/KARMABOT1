@@ -33,7 +33,7 @@ def get_universal_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text("help", lang))
             ],
             [
-                KeyboardButton(text="🌐 Открыть Личный кабинет")
+                KeyboardButton(text=get_text("menu.profile", lang))
             ]
         ],
         resize_keyboard=True,
@@ -263,7 +263,7 @@ def get_help_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:
 # Константы для проверки текста кнопок
 UNIVERSAL_MAIN_MENU_BUTTONS = [
     "choose_category", "keyboard.referral_program", 
-    "favorites", "help", "🌐 Открыть Личный кабинет"
+    "favorites", "help", "menu.profile"
 ]
 
 USER_CABINET_BUTTONS = [
