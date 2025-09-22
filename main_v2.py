@@ -836,10 +836,7 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.error(f"Failed to initialize multi-platform system: {e}")
         
-        # Start bot
-        asyncio.run(main())
-        
-        # Параллельный запуск multiplatform системы
+        # Запуск multiplatform ПЕРЕД основным ботом
         try:
             import subprocess
             import os
@@ -847,10 +844,13 @@ if __name__ == "__main__":
                 print("Starting multiplatform system...")
                 subprocess.Popen([
                     "python", "multiplatform/main_api.py"
-                ], cwd=os.getcwd())
+                ])
                 print("Multiplatform started on port 8001")
         except Exception as e:
             print(f"Failed to start multiplatform: {e}")
+        
+        # Start bot (блокирующий)
+        asyncio.run(main())
             
     except (KeyboardInterrupt, SystemExit):
         logger.info("Bot stopped")
