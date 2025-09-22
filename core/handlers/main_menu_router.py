@@ -270,7 +270,7 @@ async def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -
             'super_admin': "• ⚙️ Системные настройки\n• 🔧 Управление модулями\n• 📊 Полная аналитика"
         }
         
-        description = role_descriptions.get(user_role, "• 💳 Управление картами и баллами")
+        description = role_descriptions.get(user_role.name, "• 💳 Управление картами и баллами")
         
         await message.answer(
             f"🌐 <b>Личный кабинет WebApp</b>\n\n"
@@ -1203,7 +1203,7 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
         user_id = message.from_user.id
         lang = await profile_service.get_lang(user_id)
-        is_superadmin = int(user_id) == int(settings.bots.admin_id)
+        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена
         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
         if is_superadmin or is_admin:
             kb = get_main_menu_reply_admin(lang, is_superadmin)
@@ -1394,7 +1394,7 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
         user_id = message.from_user.id
         lang = await profile_service.get_lang(user_id)
-        is_superadmin = int(user_id) == int(settings.bots.admin_id)
+        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена
         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
         if is_superadmin or is_admin:
             kb = get_main_menu_reply_admin(lang, is_superadmin)

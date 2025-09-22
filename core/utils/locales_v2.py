@@ -631,7 +631,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         
         # Navigation - Keyboard
         'keyboard.profile_settings': '⚙️ Настройки',
-        'back_to_categories': '⬅️ To categories',
+        'back_to_categories': '◀️ Назад в главное меню',
         'ai_assistant': '🤖 AI Assistant',
         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
         'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',
@@ -795,7 +795,7 @@ For questions about personal data processing, contact the bot administrator.
         
         # Navigation
         'back_to_main_menu': '◀️ Back',
-        'back_to_categories': '⬅️ To categories',
+        'back_to_categories': '◀️ Назад в главное меню',
         'ai_assistant': '🤖 AI Assistant',
         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
         'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',
