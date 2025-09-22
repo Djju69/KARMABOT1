@@ -99,7 +99,19 @@ async def start_moderation(message: Message, state: FSMContext):
     pending_cards = db_v2.get_cards_pending_moderation()
     
     if not pending_cards:
-        await message.answer("✅ Нет карточек, ожидающих модерации.")
+        # Проверим тестовые данные
+        test_cards = db_v2.get_cards_by_partner(123456789)  # Sample partner ID
+        test_count = len(test_cards)
+        
+        if test_count > 0:
+            await message.answer(
+                f"✅ Нет карточек, ожидающих модерации.\n\n"
+                f"🧪 <b>Тестовые данные:</b> {test_count} карточек\n"
+                f"💡 Используйте команду /moderate_test для управления тестовыми данными",
+                parse_mode='HTML'
+            )
+        else:
+            await message.answer("✅ Нет карточек, ожидающих модерации.")
         return
     
     # Show first card
@@ -449,6 +461,140 @@ async def finish_moderation(callback: CallbackQuery, state: FSMContext):
         reply_markup=None
     )
     await state.clear()
+
+# Test data management command
+@moderation_router.message(Command("moderate_test"))
+async def moderate_test_data(message: Message):
+    """Manage test data from moderation panel"""
+    if not settings.features.moderation:
+        await message.answer("🚧 Функция модерации временно недоступна.")
+        return
+    
+    if not await _ensure_admin(message.from_user.id):
+        await message.answer("❌ Доступ запрещен. Только для администраторов.")
+        return
+    
+    try:
+        # Get test cards
+        test_cards = db_v2.get_cards_by_partner(123456789)
+        test_count = len(test_cards)
+        
+        text = (
+            f"🧪 <b>Управление тестовыми данными</b>\n\n"
+            f"📊 <b>Статистика:</b>\n"
+            f"• Тестовых карточек: {test_count}\n"
+            f"• Партнер-тестер: Sample Partner\n\n"
+            f"Выберите действие:"
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="📋 Показать тестовые карточки", callback_data="mod_test_show_cards"),
+                InlineKeyboardButton(text="🗑️ Удалить все тестовые данные", callback_data="mod_test_delete_all")
+            ],
+            [
+                InlineKeyboardButton(text="➕ Добавить тестовые карточки", callback_data="mod_test_add_cards"),
+                InlineKeyboardButton(text="◀️ Назад в модерацию", callback_data="mod_test_back")
+            ]
+        ])
+        
+        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error in moderate_test_data: {e}", exc_info=True)
+        await message.answer("Ошибка при загрузке тестовых данных.")
+
+@moderation_router.callback_query(F.data == "mod_test_show_cards")
+async def mod_show_test_cards_handler(callback: CallbackQuery):
+    """Show test cards from moderation panel."""
+    try:
+        test_cards = db_v2.get_cards_by_partner(123456789)
+        
+        if not test_cards:
+            await callback.message.edit_text("Тестовые карточки не найдены.")
+            return
+            
+        text = "🧪 <b>Тестовые карточки:</b>\n\n"
+        
+        for i, card in enumerate(test_cards[:10], 1):  # Show first 10
+            text += f"{i}. <b>{card.get('title', 'Без названия')}</b>\n"
+            text += f"   📝 {card.get('description', 'Описание не указано')}\n"
+            text += f"   🏷️ Статус: {card.get('status', 'unknown')}\n\n"
+        
+        if len(test_cards) > 10:
+            text += f"... и еще {len(test_cards) - 10} карточек"
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🗑️ Удалить все тестовые карточки", callback_data="mod_test_delete_all")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="mod_test_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error showing test cards from moderation: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при загрузке карточек.")
+
+@moderation_router.callback_query(F.data == "mod_test_delete_all")
+async def mod_delete_test_data_handler(callback: CallbackQuery):
+    """Delete all test data from moderation panel."""
+    try:
+        # Delete test cards
+        deleted_cards = db_v2.delete_cards_by_partner(123456789)
+        
+        # Delete test partner
+        deleted_partner = db_v2.delete_partner_by_tg_id(123456789)
+        
+        text = (
+            f"✅ <b>Тестовые данные удалены</b>\n\n"
+            f"• Удалено карточек: {deleted_cards}\n"
+            f"• Удален партнер: {deleted_partner}\n\n"
+            f"Все тестовые данные очищены."
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="◀️ Назад в модерацию", callback_data="mod_test_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error deleting test data from moderation: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при удалении тестовых данных.")
+
+@moderation_router.callback_query(F.data == "mod_test_add_cards")
+async def mod_add_test_cards_handler(callback: CallbackQuery):
+    """Add test cards from moderation panel."""
+    try:
+        from core.database.migrations import add_sample_cards
+        
+        # Call the function to add sample cards
+        add_sample_cards()
+        
+        text = (
+            "✅ <b>Тестовые карточки добавлены</b>\n\n"
+            "Добавлены примеры ресторанов:\n"
+            "• Ресторан \"Вкусно\"\n"
+            "• Кафе \"Уют\"\n"
+            "• Пиццерия \"Италия\"\n\n"
+            "Карточки доступны в категории \"🍽️ Рестораны\""
+        )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Показать тестовые карточки", callback_data="mod_test_show_cards")],
+            [InlineKeyboardButton(text="◀️ Назад в модерацию", callback_data="mod_test_back")]
+        ])
+        
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"Error adding test cards from moderation: {e}", exc_info=True)
+        await callback.message.edit_text("Ошибка при добавлении тестовых карточек.")
+
+@moderation_router.callback_query(F.data == "mod_test_back")
+async def mod_test_back_handler(callback: CallbackQuery):
+    """Go back to moderation."""
+    await start_moderation(callback.message, callback.bot)
 
 # Statistics command
 @moderation_router.message(Command("mod_stats"))

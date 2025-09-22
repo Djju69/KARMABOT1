@@ -3283,15 +3283,15 @@ def add_sample_cards():
                     category_id = cat_result[0]
                     
                     sample_cards = [
-                        (partner_id, category_id, 'Ресторан "Вкусно"', 'Отличная кухня и атмосфера', 'ул. Пушкина, 1', '+7-999-123-45-67', 'https://vkuso.ru', 'info@vkuso.ru', 'published'),
-                        (partner_id, category_id, 'Кафе "Уют"', 'Домашняя кухня и кофе', 'пр. Мира, 15', '+7-999-234-56-78', 'https://uyut-cafe.ru', 'hello@uyut-cafe.ru', 'published'),
-                        (partner_id, category_id, 'Пиццерия "Италия"', 'Настоящая итальянская пицца', 'ул. Ленина, 42', '+7-999-345-67-89', 'https://italia-pizza.ru', 'order@italia-pizza.ru', 'published')
+                        (partner_id, category_id, 'Ресторан "Вкусно"', 'Отличная кухня и атмосфера', 'published'),
+                        (partner_id, category_id, 'Кафе "Уют"', 'Домашняя кухня и кофе', 'published'),
+                        (partner_id, category_id, 'Пиццерия "Италия"', 'Настоящая итальянская пицца', 'published')
                     ]
                     
                     for card_data in sample_cards:
                         cur.execute("""
-                            INSERT INTO cards_v2 (partner_id, category_id, title, description, address, phone, website, email, status)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO cards_v2 (partner_id, category_id, title, description, status)
+                            VALUES (%s, %s, %s, %s, %s)
                             ON CONFLICT DO NOTHING
                         """, card_data)
                     

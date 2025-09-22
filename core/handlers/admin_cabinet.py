@@ -435,6 +435,13 @@ async def handle_dashboard(message: Message, state: FSMContext):
                 cur.execute("SELECT COUNT(*) FROM cards_v2")
                 total_cards = cur.fetchone()[0] or 0
                 
+                # Тестовые данные
+                cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE partner_id IN (SELECT id FROM partners_v2 WHERE tg_user_id = 123456789)")
+                test_cards = cur.fetchone()[0] or 0
+                
+                cur.execute("SELECT COUNT(*) FROM partners_v2 WHERE tg_user_id = 123456789")
+                test_partners = cur.fetchone()[0] or 0
+                
             finally:
                 cur.close()
                 conn.close()
@@ -447,6 +454,8 @@ async def handle_dashboard(message: Message, state: FSMContext):
             total_users = 0
             active_partners = 0
             total_cards = 0
+            test_cards = 0
+            test_partners = 0
         
         moderation_count = partner_applications_pending + cards_pending
         system_status = "OK"  # TODO: Проверить статус системы
@@ -459,6 +468,7 @@ async def handle_dashboard(message: Message, state: FSMContext):
             f"👥 <b>Пользователи:</b> {total_users} зарегистрированных\n"
             f"🤝 <b>Партнеры:</b> {active_partners} активных\n"
             f"📱 <b>Карточки:</b> {total_cards} опубликованных\n"
+            f"🧪 <b>Тестовые данные:</b> {test_cards} карточек, {test_partners} партнеров\n"
             f"⚙️ <b>Система:</b> {system_status}\n\n"
             f"💡 <b>Быстрые действия:</b>\n"
             f"• Нажмите '📋 Модерация' для просмотра очереди\n"
