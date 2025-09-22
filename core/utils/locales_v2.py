@@ -794,7 +794,7 @@ For questions about personal data processing, contact the bot administrator.
         'menu_error': 'Failed to return to main menu. Please try again later.',
         
         # Navigation
-        'back_to_main_menu': '◀️ Back',
+        'back_to_main_menu': '◀️ Назад в главное меню',
         'back_to_categories': '◀️ Назад в главное меню',
         'ai_assistant': '🤖 AI Assistant',
         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
