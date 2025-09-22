@@ -1,8 +1,10 @@
 """
 Commands handlers
 """
-from aiogram import Bot
+from aiogram import Router, Bot
 from aiogram.types import BotCommand
+
+router = Router()
 
 async def set_commands(bot: Bot):
     """Set bot commands"""
