@@ -1,0 +1,217 @@
+[1mdiff --git a/core/database/db_v2.py b/core/database/db_v2.py[m
+[1mindex 6b7efac..4e85a60 100644[m
+[1m--- a/core/database/db_v2.py[m
+[1m+++ b/core/database/db_v2.py[m
+[36m@@ -247,35 +247,25 @@[m [mclass DatabaseServiceV2:[m
+     [m
+     def get_cards_by_category(self, category_slug: str, status: str = 'published', limit: int = 50) -> List[Dict]:[m
+         """Get cards by category with pagination"""[m
+[31m-        import logging[m
+[31m-        logger = logging.getLogger(__name__)[m
+[31m-        [m
+[31m-        try:[m
+[31m-            with self.get_connection() as conn:[m
+[31m-                logger.info(f"ДИАГНОСТИКА: Выполняем запрос карточек для категории '{category_slug}', статус '{status}'")[m
+[31m-                cursor = conn.execute([m
+[31m-                    """[m
+[31m-                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,[m
+[31m-                           p.display_name as partner_name,[m
+[31m-                           COALESCE(COUNT(cp.id), 0) as photos_count[m
+[31m-                    FROM cards_v2 c[m
+[31m-                    JOIN categories_v2 cat ON c.category_id = cat.id[m
+[31m-                    JOIN partners_v2 p ON c.partner_id = p.id[m
+[31m-                    LEFT JOIN card_photos cp ON cp.card_id = c.id[m
+[31m-                    WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1[m
+[31m-                    GROUP BY c.id[m
+[31m-                    ORDER BY c.priority_level DESC, c.created_at DESC[m
+[31m-                    LIMIT ?[m
+[31m-                    """,[m
+[31m-                    (category_slug, status, limit),[m
+[31m-                )[m
+[31m-                [m
+[31m-                result = [dict(row) for row in cursor.fetchall()][m
+[31m-                logger.info(f"ДИАГНОСТИКА: Найдено {len(result)} карточек для категории '{category_slug}'")[m
+[31m-                return result[m
+[31m-        except Exception as e:[m
+[31m-            logger.error(f"ДИАГНОСТИКА: Ошибка при получении карточек для категории '{category_slug}': {e}")[m
+[31m-            return [][m
+[32m+[m[32m        with self.get_connection() as conn:[m
+[32m+[m[32m            cursor = conn.execute([m
+[32m+[m[32m                """[m
+[32m+[m[32m                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,[m
+[32m+[m[32m                       p.display_name as partner_name,[m
+[32m+[m[32m                       COALESCE(COUNT(cp.id), 0) as photos_count[m
+[32m+[m[32m                FROM cards_v2 c[m
+[32m+[m[32m                JOIN categories_v2 cat ON c.category_id = cat.id[m
+[32m+[m[32m                JOIN partners_v2 p ON c.partner_id = p.id[m
+[32m+[m[32m                LEFT JOIN card_photos cp ON cp.card_id = c.id[m
+[32m+[m[32m                WHERE cat.slug = ? AND c.status = ? AND cat.is_active = 1[m
+[32m+[m[32m                GROUP BY c.id[m
+[32m+[m[32m                ORDER BY c.priority_level DESC, c.created_at DESC[m
+[32m+[m[32m                LIMIT ?[m
+[32m+[m[32m                """,[m
+[32m+[m[32m                (category_slug, status, limit),[m
+[32m+[m[32m            )[m
+[32m+[m[41m            [m
+[32m+[m[32m            return [dict(row) for row in cursor.fetchall()][m
+ [m
+     # --- Superadmin helpers: bans and deletions ---[m
+     def ban_user(self, tg_user_id: int, reason: str = "") -> None:[m
+[1mdiff --git a/core/handlers/category_handlers_v2.py b/core/handlers/category_handlers_v2.py[m
+[1mindex 8faf5ea..f13cdbb 100644[m
+[1m--- a/core/handlers/category_handlers_v2.py[m
+[1m+++ b/core/handlers/category_handlers_v2.py[m
+[36m@@ -144,9 +144,7 @@[m [masync def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl[m
+     try:[m
+         # 1. Получение данных и фильтрация[m
+         await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)[m
+[31m-        logger.info(f"ДИАГНОСТИКА: Запрашиваем карточки для категории '{slug}', статус 'published'")[m
+         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)[m
+[31m-        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")[m
+ [m
+         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.[m
+         if sub_slug == "all":[m
+[1mdiff --git a/core/handlers/main_menu_router.py b/core/handlers/main_menu_router.py[m
+[1mindex dc360e6..92b4477 100644[m
+[1m--- a/core/handlers/main_menu_router.py[m
+[1m+++ b/core/handlers/main_menu_router.py[m
+[36m@@ -270,7 +270,7 @@[m [masync def handle_profile_button(message: Message, bot: Bot, state: FSMContext) -[m
+             'super_admin': "• ⚙️ Системные настройки\n• 🔧 Управление модулями\n• 📊 Полная аналитика"[m
+         }[m
+         [m
+[31m-        description = role_descriptions.get(user_role.name, "• 💳 Управление картами и баллами")[m
+[32m+[m[32m        description = role_descriptions.get(user_role, "• 💳 Управление картами и баллами")[m
+         [m
+         await message.answer([m
+             f"🌐 <b>Личный кабинет WebApp</b>\n\n"[m
+[36m@@ -1189,7 +1189,7 @@[m [masync def handle_qr_text_redeem(message: Message, bot: Bot, state: FSMContext) -[m
+         logger.error(f"Error redeeming QR: {e}", exc_info=True)[m
+         await message.answer("❌ Ошибка обработки QR.")[m
+ [m
+[31m-@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()] + ['🏠 Главное меню']))[m
+[32m+[m[32m@main_menu_router.message(F.text.in_([t.get('back_to_main_menu', '') for t in translations.values()]))[m
+ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext) -> None:[m
+     """Обработчик кнопки 'В главное меню' - возвращает в главное меню."""[m
+     logger.debug(f"User {message.from_user.id} clicked back to main menu")[m
+[36m@@ -1203,7 +1203,7 @@[m [masync def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext[m
+         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply[m
+         user_id = message.from_user.id[m
+         lang = await profile_service.get_lang(user_id)[m
+[31m-        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена[m
+[32m+[m[32m        is_superadmin = int(user_id) == int(settings.bots.admin_id)[m
+         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)[m
+         if is_superadmin or is_admin:[m
+             kb = get_main_menu_reply_admin(lang, is_superadmin)[m
+[36m@@ -1394,7 +1394,7 @@[m [masync def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext[m
+         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply[m
+         user_id = message.from_user.id[m
+         lang = await profile_service.get_lang(user_id)[m
+[31m-        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена[m
+[32m+[m[32m        is_superadmin = int(user_id) == int(settings.bots.admin_id)[m
+         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)[m
+         if is_superadmin or is_admin:[m
+             kb = get_main_menu_reply_admin(lang, is_superadmin)[m
+[1mdiff --git a/core/keyboards/reply_v2.py b/core/keyboards/reply_v2.py[m
+[1mindex 28ddbb5..ec5a0c7 100644[m
+[1m--- a/core/keyboards/reply_v2.py[m
+[1m+++ b/core/keyboards/reply_v2.py[m
+[36m@@ -206,7 +206,7 @@[m [mdef get_categories_keyboard(lang: str = 'ru') -> ReplyKeyboardMarkup:[m
+                 KeyboardButton(text=get_text('category_shops_services', lang)),[m
+             ],[m
+             [[m
+[31m-                KeyboardButton(text=get_text('menu.back_to_main_menu', lang)),[m
+[32m+[m[32m                KeyboardButton(text=get_text('back', lang)),[m
+             ][m
+         ],[m
+         resize_keyboard=True,[m
+[1mdiff --git a/core/services/admins.py b/core/services/admins.py[m
+[1mindex e80dacb..64a9886 100644[m
+[1m--- a/core/services/admins.py[m
+[1m+++ b/core/services/admins.py[m
+[36m@@ -88,7 +88,7 @@[m [mclass AdminsService:[m
+ [m
+     async def is_admin(self, user_id: int) -> bool:[m
+         user_id = int(user_id)[m
+[31m-        if user_id == int(settings.bot_token.split(':')[0]):[m
+[32m+[m[32m        if user_id == int(settings.bots.admin_id):[m
+             return True[m
+         if self._redis:[m
+             try:[m
+[1mdiff --git a/core/settings.py b/core/settings.py[m
+[1mindex 84baefb..52a7aa5 100644[m
+[1m--- a/core/settings.py[m
+[1m+++ b/core/settings.py[m
+[36m@@ -20,7 +20,7 @@[m [mclass Features:[m
+     support_voice: bool = field(default=False)[m
+     support_ai: bool = field(default=True)[m
+     support_reports: bool = field(default=True)[m
+[31m-    webapp_url: str = field(default="https://webbot-production-42fe.up.railway.app")[m
+[32m+[m[32m    webapp_url: str = field(default="https://web-production-d51c7.up.railway.app/webapp")[m
+     verbose_admin_back: bool = field(default=False)[m
+     multi_platform_available: bool = field(default=True)[m
+ [m
+[1mdiff --git a/core/utils/locales_v2.py b/core/utils/locales_v2.py[m
+[1mindex 7a76c26..42fe993 100644[m
+[1m--- a/core/utils/locales_v2.py[m
+[1m+++ b/core/utils/locales_v2.py[m
+[36m@@ -631,7 +631,7 @@[m [mBạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của[m
+         [m
+         # Navigation - Keyboard[m
+         'keyboard.profile_settings': '⚙️ Настройки',[m
+[31m-        'back_to_categories': '◀️ К категориям',[m
+[32m+[m[32m        'back_to_categories': '⬅️ To categories',[m
+         'ai_assistant': '🤖 AI Assistant',[m
+         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',[m
+         'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',[m
+[36m@@ -794,8 +794,8 @@[m [mFor questions about personal data processing, contact the bot administrator.[m
+         'menu_error': 'Failed to return to main menu. Please try again later.',[m
+         [m
+         # Navigation[m
+[31m-        'back_to_main_menu': '◀️ Назад в главное меню',[m
+[31m-        'back_to_categories': '◀️ К категориям',[m
+[32m+[m[32m        'back_to_main_menu': '◀️ Back',[m
+[32m+[m[32m        'back_to_categories': '⬅️ To categories',[m
+         'ai_assistant': '🤖 AI Assistant',[m
+         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',[m
+         'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',[m
+[1mdiff --git a/main_v2.py b/main_v2.py[m
+[1mindex e83e5a8..959a722 100644[m
+[1m--- a/main_v2.py[m
+[1m+++ b/main_v2.py[m
+[36m@@ -585,17 +585,6 @@[m [masync def main():[m
+ [m
+ [m
+ if __name__ == "__main__":[m
+[31m-    # Запуск multiplatform ПЕРЕД основным ботом[m
+[31m-    try:[m
+[31m-        import subprocess[m
+[31m-        import os[m
+[31m-        if os.path.exists("multiplatform/main_api.py"):[m
+[31m-            print("Starting multiplatform system...")[m
+[31m-            subprocess.Popen(["python", "multiplatform/main_api.py"])[m
+[31m-            print("Multiplatform started on port 8001")[m
+[31m-    except Exception as e:[m
+[31m-        print(f"Failed to start multiplatform: {e}")[m
+[31m-    [m
+     try:[m
+         # Start simple web server in background thread[m
+         import threading[m
+[36m@@ -847,9 +836,8 @@[m [mif __name__ == "__main__":[m
+             except Exception as e:[m
+                 logger.error(f"Failed to initialize multi-platform system: {e}")[m
+         [m
+[31m-        # Start bot (блокирующий)[m
+[32m+[m[32m        # Start bot[m
+         asyncio.run(main())[m
+[31m-            [m
+     except (KeyboardInterrupt, SystemExit):[m
+         logger.info("Bot stopped")[m
+     except Exception as e:[m
+[1mdiff --git a/multiplatform/api/__pycache__/__init__.cpython-311.pyc b/multiplatform/api/__pycache__/__init__.cpython-311.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 184c055..0000000[m
+Binary files a/multiplatform/api/__pycache__/__init__.cpython-311.pyc and /dev/null differ
+[1mdiff --git a/multiplatform/api/__pycache__/platform_endpoints.cpython-311.pyc b/multiplatform/api/__pycache__/platform_endpoints.cpython-311.pyc[m
+[1mdeleted file mode 100644[m
+[1mindex 423d22c..0000000[m
+Binary files a/multiplatform/api/__pycache__/platform_endpoints.cpython-311.pyc and /dev/null differ

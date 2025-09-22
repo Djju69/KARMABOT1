@@ -3098,6 +3098,7 @@ def ensure_database_ready():
         ensure_partner_applications_table()
         ensure_user_roles_table()
         ensure_partners_v2_columns()
+        ensure_cards_v2_table()
         ensure_card_photos_table()
         return
         
@@ -3112,6 +3113,91 @@ def ensure_database_ready():
         logger.error(f"Failed to run migrations: {e}")
         if os.getenv("APP_ENV") != "production":
             raise
+
+def ensure_cards_v2_table():
+    """Ensure cards_v2 table exists"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            # PostgreSQL - use synchronous connection
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS cards_v2 (
+                    id SERIAL PRIMARY KEY,
+                    partner_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    address TEXT,
+                    phone TEXT,
+                    website TEXT,
+                    email TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'published', 'rejected', 'archived')),
+                    subcategory_id INTEGER,
+                    city_id INTEGER,
+                    area_id INTEGER,
+                    odoo_card_id BIGINT,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            """)
+            
+            # Create indexes
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_status ON cards_v2(status)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_category ON cards_v2(category_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_partner ON cards_v2(partner_id)")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ cards_v2 table created/verified in PostgreSQL")
+        else:
+            # SQLite fallback
+            import sqlite3
+            db_path = os.getenv('DATABASE_PATH', 'core/database/data.db')
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS cards_v2 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER NOT NULL,
+                    category_id INTEGER NOT NULL,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    address TEXT,
+                    phone TEXT,
+                    website TEXT,
+                    email TEXT,
+                    latitude REAL,
+                    longitude REAL,
+                    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'pending', 'published', 'rejected', 'archived')),
+                    subcategory_id INTEGER,
+                    city_id INTEGER,
+                    area_id INTEGER,
+                    odoo_card_id INTEGER,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            
+            # Create indexes
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_status ON cards_v2(status)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_category ON cards_v2(category_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_cards_v2_partner ON cards_v2(partner_id)")
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ cards_v2 table created/verified in SQLite")
+            
+    except Exception as e:
+        logger.error(f"Error creating cards_v2 table: {e}")
 
 def ensure_card_photos_table():
     """Ensure card_photos table exists"""
