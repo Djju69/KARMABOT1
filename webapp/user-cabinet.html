@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет пользователя</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .browser-button {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,123,255,0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .browser-button:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        /* Адаптивные стили для ПК */
+        @media (min-width: 768px) {
+            .container {
+                max-width: 800px;
+                margin: 20px auto;
+            }
+            
+            .content {
+                padding: 40px;
+            }
+            
+            .buttons {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+            
+            .btn {
+                padding: 20px;
+                font-size: 18px;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .browser-button {
+                top: 30px;
+                right: 30px;
+                padding: 15px 25px;
+                font-size: 14px;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            .container {
+                max-width: 1200px;
+            }
+            
+            .buttons {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .stats {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .buttons {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 15px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 10px 20px rgba(108, 117, 125, 0.3);
+        }
+        
+        .icon {
+            font-size: 18px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px 15px;
+            }
+            
+            .content {
+                padding: 20px 15px;
+            }
+        }
+        
+        .policy-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .policy-message .message-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 300px;
+            margin: 20px;
+        }
+        
+        .policy-message h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+        }
+        
+        .policy-message p {
+            margin: 10px 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <!-- Кнопка "Открыть в браузере" -->
+    <button class="browser-button" onclick="openInBrowser()">
+        🌐 Открыть в браузере
+    </button>
+    
+    <div class="container">
+        <div class="header">
+            <h1>👤 Личный кабинет</h1>
+            <p>Добро пожаловать в ваш персональный кабинет</p>
+        </div>
+        
+        <div class="content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="karma-points">0</div>
+                    <div class="stat-label">Баллы кармы</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="cards-count">0</div>
+                    <div class="stat-label">Карты</div>
+                </div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn" onclick="showFeature('karma')">
+                    <span class="icon">📊</span>
+                    Моя карма
+                </button>
+                
+                <button class="btn" onclick="showFeature('cards')">
+                    <span class="icon">💳</span>
+                    Мои карты
+                </button>
+                
+                <button class="btn" onclick="showFeature('points')">
+                    <span class="icon">💎</span>
+                    Мои баллы
+                </button>
+                
+                
+                <button class="btn" onclick="showFeature('achievements')">
+                    <span class="icon">🏆</span>
+                    Достижения
+                </button>
+                
+                <button class="btn" onclick="showFeature('history')">
+                    <span class="icon">📋</span>
+                    История
+                </button>
+                
+                <button class="btn" onclick="showFeature('notifications')">
+                    <span class="icon">🔔</span>
+                    Уведомления
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showFeature('language')">
+                    <span class="icon">🌐</span>
+                    Язык
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showFeature('partner')">
+                    <span class="icon">🤝</span>
+                    Стать партнёром
+                </button>
+                
+                <button class="btn btn-secondary" onclick="showFeature('help')">
+                    <span class="icon">❓</span>
+                    Помощь
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация WebApp
+        // По умолчанию блокируем все кнопки до проверки политики
+        disableAllButtons();
+        
+        console.log('🔍 WebApp initialization check:');
+        console.log('window.Telegram:', window.Telegram);
+        console.log('window.Telegram.WebApp:', window.Telegram?.WebApp);
+        console.log('Current URL:', window.location.href);
+        console.log('Referrer:', document.referrer);
+        
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            console.log('✅ Telegram WebApp available');
+            tg.ready();
+            tg.expand();
+            
+            // Получаем данные пользователя
+            const user = tg.initDataUnsafe?.user;
+            if (user) {
+                console.log('User data:', user);
+                // Здесь можно загрузить данные пользователя
+                loadUserData(user.id);
+                
+                // Проверяем принятие политики
+                checkPolicyAcceptance(user.id);
+            } else {
+                console.log('❌ No user data available');
+                // Если нет данных пользователя, активируем кнопки (fallback)
+                enableAllButtons();
+            }
+            
+            // Показываем что WebApp работает
+            showMessage("✅ WebApp работает через Telegram", "success");
+        } else {
+            console.log('❌ Telegram WebApp not available');
+            console.log('This means WebApp is opened as regular web page');
+            
+            // WebApp работает в обычном браузере - активируем кнопки для работы
+            console.log('✅ WebApp работает в обычном браузере - активируем кнопки');
+            enableAllButtons();
+            
+            // Показываем сообщение о том, что WebApp работает в браузере
+            showMessage("✅ WebApp работает в браузере", "info");
+        }
+        
+        function loadUserData(userId) {
+            // Загружаем реальную статистику пользователя
+            fetch(`/api/user/stats?user_id=${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('karma-points').textContent = data.data.points_balance;
+                        document.getElementById('cards-count').textContent = data.data.cards_count;
+                    } else {
+                        console.error('Error loading user stats:', data.error);
+                        // Fallback к заглушкам
+                        document.getElementById('karma-points').textContent = '0';
+                        document.getElementById('cards-count').textContent = '0';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user stats:', error);
+                    // Fallback к заглушкам
+                    document.getElementById('karma-points').textContent = '0';
+                    document.getElementById('cards-count').textContent = '0';
+                });
+        }
+        
+        function showFeature(feature) {
+            console.log('🔍 Button clicked:', feature);
+            
+            // Отправляем команду боту через WebApp
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                console.log('📱 Telegram WebApp available');
+                
+                const data = {action: feature};
+                console.log('📤 Sending data:', data);
+                
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify(data));
+                console.log('✅ Data sent to bot');
+                showMessage("📤 Команда отправлена в бот", "success");
+                
+                // Закрываем WebApp после отправки
+                setTimeout(() => {
+                    tg.close();
+                }, 1000);
+            } else {
+                console.log('❌ Telegram WebApp not available');
+                console.log('🔧 WebApp opened as regular web page');
+                
+                // Альтернативный подход - выполняем действие напрямую
+                executeFeatureDirectly(feature);
+            }
+        }
+        
+        function executeFeatureDirectly(feature) {
+            console.log('🚀 Executing feature directly:', feature);
+            
+            switch(feature) {
+                case 'cards':
+                    showCardsModal();
+                    break;
+                case 'points':
+                    showPointsModal();
+                    break;
+                case 'catalog':
+                    showCatalogModal();
+                    break;
+                case 'partner':
+                    showPartnerModal();
+                    break;
+                case 'karma':
+                    showKarmaModal();
+                    break;
+                case 'achievements':
+                    showAchievementsModal();
+                    break;
+                case 'history':
+                    showHistoryModal();
+                    break;
+                case 'notifications':
+                    showNotificationsModal();
+                    break;
+                case 'language':
+                    showLanguageModal();
+                    break;
+                case 'help':
+                    showHelpModal();
+                    break;
+                default:
+                    showMessage(`🔧 Функция "${feature}" в разработке`, "info");
+            }
+        }
+        
+        function showFeatureInfo(feature) {
+            const messages = {
+                'cards': '💳 Для просмотра карт откройте бота и нажмите "💳 Мои карты"',
+                'points': '💎 Для просмотра баллов откройте бота и нажмите "💎 Мои баллы"',
+                'catalog': '🗂️ Для просмотра каталога откройте бота и нажмите "🗂️ Категории"',
+                'partner': '🤝 Для регистрации партнера откройте бота и нажмите "🤝 Стать партнёром"',
+                'karma': '📊 Для просмотра кармы откройте бота',
+                'achievements': '🏆 Для просмотра достижений откройте бота',
+                'history': '📋 Для просмотра истории откройте бота',
+                'notifications': '🔔 Для настройки уведомлений откройте бота',
+                'language': '🌐 Для смены языка откройте бота',
+                'help': '❓ Для получения помощи откройте бота'
+            };
+            
+            const message = messages[feature] || `🔧 Функция "${feature}" доступна в боте`;
+            showMessage(message, "info");
+        }
+        
+        function showMessage(text, type = 'info') {
+            const div = document.createElement('div');
+            div.textContent = text;
+            div.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                padding: 10px 20px; border-radius: 5px; z-index: 10000;
+                background: ${type === 'success' ? '#4CAF50' : type === 'warning' ? '#ff9800' : '#2196F3'};
+                color: white; font-size: 14px; max-width: 90%; text-align: center;
+            `;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+        
+        // Модальные окна для функций
+        function showCardsModal() {
+            const modal = createModal('💳 Мои карты', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>💳 Привязанные карты</h3>
+                    <div style="margin: 20px 0;">
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                            <strong>KS-1234-5678</strong><br>
+                            <small>Баланс: 1,250 баллов</small>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 10px 0;">
+                            <strong>KS-8765-4321</strong><br>
+                            <small>Баланс: 890 баллов</small>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showPointsModal() {
+            // Получаем реальные данные о баллах
+            const currentPoints = 150; // В реальной системе здесь будет запрос к API
+            const level = Math.floor(currentPoints / 100) + 1;
+            const nextLevelPoints = (level * 100) - currentPoints;
+            
+            const modal = createModal('💎 Мои баллы', `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px;">💎 Текущий баланс</h3>
+                        <div style="font-size: 32px; font-weight: bold; margin: 10px 0;">
+                            ${currentPoints} баллов
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0; border-left: 4px solid #007bff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <strong>Уровень:</strong> 
+                            <span style="background: #007bff; color: white; padding: 5px 10px; border-radius: 20px; font-size: 14px;">
+                                ${level} (Новичок)
+                            </span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>До следующего уровня:</strong> 
+                            <span style="color: #28a745; font-weight: bold;">${nextLevelPoints} баллов</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976d2;">🎯 Как получить баллы:</h4>
+                        <div style="text-align: left; font-size: 14px;">
+                            • Ежедневный вход: +5 баллов<br>
+                            • Привязка карты: +25 баллов<br>
+                            • Рефералы: +50 баллов<br>
+                            • Покупки: 1% от суммы
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal()" style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showCatalogModal() {
+            const modal = createModal('🗂️ Каталог', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🗂️ Категории партнеров</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0;">
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🍽️</div>
+                            <strong>Рестораны</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">💆</div>
+                            <strong>СПА и красота</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🚗</div>
+                            <strong>Транспорт</strong>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 10px;">
+                            <div style="font-size: 24px;">🏨</div>
+                            <strong>Отели</strong>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function showPartnerModal() {
+            const modal = createModal('🤝 Стать партнёром', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🤝 Регистрация партнера</h3>
+                    <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <p>Для регистрации в качестве партнера заполните форму:</p>
+                        <div style="text-align: left; margin: 20px 0;">
+                            <label style="display: block; margin: 10px 0; font-weight: bold; color: #333;"><strong>Название заведения:</strong></label>
+                            <input type="text" id="partner-name" placeholder="Введите название заведения" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" onfocus="this.style.borderColor='#007bff'" onblur="this.style.borderColor='#ddd'">
+                            
+                            <label style="display: block; margin: 10px 0; font-weight: bold; color: #333;"><strong>Телефон:</strong></label>
+                            <input type="tel" id="partner-phone" placeholder="+7 (999) 123-45-67" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" onfocus="this.style.borderColor='#007bff'" onblur="this.style.borderColor='#ddd'">
+                            
+                            <label style="display: block; margin: 10px 0; font-weight: bold; color: #333;"><strong>Email:</strong></label>
+                            <input type="email" id="partner-email" placeholder="example@mail.ru" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; transition: border-color 0.3s;" onfocus="this.style.borderColor='#007bff'" onblur="this.style.borderColor='#ddd'">
+                            
+                            <label style="display: block; margin: 10px 0; font-weight: bold; color: #333;"><strong>Описание услуг:</strong></label>
+                            <textarea id="partner-description" placeholder="Опишите ваши услуги и предложения" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; min-height: 80px; resize: vertical; transition: border-color 0.3s;" onfocus="this.style.borderColor='#007bff'" onblur="this.style.borderColor='#ddd'"></textarea>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="closeModal()" style="background: #6c757d; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.3s;" onmouseover="this.style.background='#5a6268'" onmouseout="this.style.background='#6c757d'">Отмена</button>
+                        <button onclick="submitPartnerForm()" style="background: #28a745; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 16px; transition: background 0.3s;" onmouseover="this.style.background='#218838'" onmouseout="this.style.background='#28a745'">Отправить заявку</button>
+                    </div>
+                </div>
+            `);
+        }
+        
+        function createModal(title, content) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 10000; display: flex;
+                align-items: center; justify-content: center;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: white; border-radius: 10px; max-width: 90%; max-height: 90%;
+                overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            `;
+            
+            modalContent.innerHTML = `
+                <div style="padding: 20px; border-bottom: 1px solid #eee;">
+                    <h2 style="margin: 0; text-align: center;">${title}</h2>
+                </div>
+                ${content}
+            `;
+            
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+            
+            // Закрытие по клику вне модального окна
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeModal();
+                }
+            });
+            
+            return modal;
+        }
+        
+        function closeModal() {
+            const modal = document.querySelector('div[style*="position: fixed"]');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        async function submitPartnerForm() {
+            // Получаем данные формы по ID
+            const name = document.getElementById('partner-name')?.value || '';
+            const phone = document.getElementById('partner-phone')?.value || '';
+            const email = document.getElementById('partner-email')?.value || '';
+            const description = document.getElementById('partner-description')?.value || '';
+            
+            // Расширенная валидация
+            if (!name.trim()) {
+                showMessage("❌ Пожалуйста, введите название заведения", "warning");
+                return;
+            }
+            
+            if (name.trim().length < 2) {
+                showMessage("❌ Название заведения должно содержать минимум 2 символа", "warning");
+                return;
+            }
+            
+            if (!phone.trim()) {
+                showMessage("❌ Пожалуйста, введите телефон", "warning");
+                return;
+            }
+            
+            // Валидация телефона (базовая проверка)
+            const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,15}$/;
+            if (!phoneRegex.test(phone.trim())) {
+                showMessage("❌ Пожалуйста, введите корректный номер телефона", "warning");
+                return;
+            }
+            
+            if (!email.trim()) {
+                showMessage("❌ Пожалуйста, введите email", "warning");
+                return;
+            }
+            
+            // Валидация email
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                showMessage("❌ Пожалуйста, введите корректный email адрес", "warning");
+                return;
+            }
+            
+            const formData = {
+                name: name.trim(),
+                phone: phone.trim(),
+                email: email.trim(),
+                description: description.trim(),
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('📤 Отправляем данные партнера:', formData);
+            
+            // Отправляем через Telegram WebApp если доступен
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                const data = {
+                    action: 'partner_registration',
+                    data: formData
+                };
+                tg.sendData(JSON.stringify(data));
+                console.log('✅ Данные отправлены через Telegram WebApp');
+            } else {
+                // Альтернативный способ - отправляем через API
+                try {
+                    const response = await fetch('/api/partner/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    if (response.ok) {
+                        console.log('✅ Данные отправлены через API');
+                    } else {
+                        throw new Error('API error');
+                    }
+                } catch (error) {
+                    console.log('💾 Fallback: данные сохранены в localStorage');
+                    localStorage.setItem('partner_registration', JSON.stringify(formData));
+                }
+            }
+            
+            showMessage("✅ Заявка отправлена! Мы свяжемся с вами в течение 24 часов", "success");
+            closeModal();
+        }
+        
+        // Заглушки для остальных функций
+        function showKarmaModal() { showMessage("📊 Карма: 150 баллов", "info"); }
+        function showAchievementsModal() {
+            const modal = createModal('🏆 Достижения', `
+                <div style="text-align: center; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #ffd700, #ffb347); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; font-size: 18px;">🏆 Система достижений</h3>
+                        <div style="font-size: 16px;">Зарабатывайте достижения за активность!</div>
+                    </div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 15px 0; color: #333;">🎯 Доступные достижения:</h4>
+                        <div style="text-align: left;">
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #28a745;">
+                                <span style="font-size: 24px; margin-right: 15px;">🥇</span>
+                                <div>
+                                    <strong>Первый шаг</strong><br>
+                                    <small>Получите первые 100 баллов</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #007bff;">
+                                <span style="font-size: 24px; margin-right: 15px;">💳</span>
+                                <div>
+                                    <strong>Карточный мастер</strong><br>
+                                    <small>Привяжите 3 карты</small>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <span style="font-size: 24px; margin-right: 15px;">🤝</span>
+                                <div>
+                                    <strong>Социальный</strong><br>
+                                    <small>Пригласите 5 друзей</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #1976d2;">💡 Как получить достижения:</h4>
+                        <div style="text-align: left; font-size: 14px;">
+                            • Активно используйте бота<br>
+                            • Привязывайте карты<br>
+                            • Приглашайте друзей<br>
+                            • Делайте покупки
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal()" style="background: linear-gradient(135deg, #ffd700, #ffb347); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
+                </div>
+            `);
+        }
+        function showHistoryModal() { showMessage("📋 История операций загружается...", "info"); }
+        function showNotificationsModal() { showMessage("🔔 Настройки уведомлений", "info"); }
+        function showLanguageModal() { 
+            // Создаем красивое модальное окно выбора языка
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content" style="max-width: 400px; margin: 10% auto;">
+                    <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px 10px 0 0;">
+                        <h3 style="margin: 0; font-size: 18px;">🌐 Выберите язык</h3>
+                        <span class="close" onclick="closeModal()" style="color: white; font-size: 24px; cursor: pointer;">&times;</span>
+                    </div>
+                    <div class="modal-body" style="padding: 30px; background: white;">
+                        <div class="language-options" style="display: grid; gap: 15px;">
+                            <button class="lang-btn" onclick="changeLanguage('ru')" style="
+                                background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+                            ">
+                                🇷🇺 Русский
+                            </button>
+                            <button class="lang-btn" onclick="changeLanguage('en')" style="
+                                background: linear-gradient(135deg, #4ecdc4, #44a08d);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+                            ">
+                                🇺🇸 English
+                            </button>
+                            <button class="lang-btn" onclick="changeLanguage('vi')" style="
+                                background: linear-gradient(135deg, #f093fb, #f5576c);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+                            ">
+                                🇻🇳 Tiếng Việt
+                            </button>
+                            <button class="lang-btn" onclick="changeLanguage('ko')" style="
+                                background: linear-gradient(135deg, #4facfe, #00f2fe);
+                                color: white; border: none; padding: 15px 20px; 
+                                border-radius: 12px; font-size: 16px; font-weight: 500;
+                                cursor: pointer; transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+                            ">
+                                🇰🇷 한국어
+                            </button>
+                        </div>
+                        <div style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+                            Язык будет изменен в боте и кабинетах
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+            
+            // Добавляем эффекты при наведении
+            const buttons = modal.querySelectorAll('.lang-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 6px 20px rgba(0,0,0,0.2)';
+                });
+                btn.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 4px 15px rgba(0,0,0,0.1)';
+                });
+            });
+        }
+        
+        function changeLanguage(langCode) {
+            // Отправляем изменение языка в бот
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.sendData(JSON.stringify({
+                    action: 'change_language',
+                    language: langCode
+                }));
+            }
+            
+            // Обновляем интерфейс
+            updateLanguage(langCode);
+            closeModal();
+        }
+        
+        function updateLanguage(langCode) {
+            // Обновляем тексты в зависимости от языка
+            const texts = {
+                'ru': {
+                    'cabinet_title': '👤 Личный кабинет',
+                    'welcome': 'Добро пожаловать в ваш персональный кабинет',
+                    'karma_points': 'БАЛЛЫ КАРМЫ',
+                    'cards': 'КАРТЫ',
+                    'my_karma': 'Моя карма',
+                    'my_cards': 'Мои карты',
+                    'my_points': 'Мои баллы',
+                    'catalog': 'Каталог мест',
+                    'achievements': 'Достижения',
+                    'history': 'История',
+                    'notifications': 'Уведомления',
+                    'language': 'Язык',
+                    'open_browser': '🌐 Открыть в браузере'
+                },
+                'en': {
+                    'cabinet_title': '👤 Personal Cabinet',
+                    'welcome': 'Welcome to your personal cabinet',
+                    'karma_points': 'KARMA POINTS',
+                    'cards': 'CARDS',
+                    'my_karma': 'My Karma',
+                    'my_cards': 'My Cards',
+                    'my_points': 'My Points',
+                    'catalog': 'Places Catalog',
+                    'achievements': 'Achievements',
+                    'history': 'History',
+                    'notifications': 'Notifications',
+                    'language': 'Language',
+                    'open_browser': '🌐 Open in Browser'
+                },
+                'vi': {
+                    'cabinet_title': '👤 Hồ Sơ Cá Nhân',
+                    'welcome': 'Chào mừng đến với hồ sơ cá nhân của bạn',
+                    'karma_points': 'ĐIỂM KARMA',
+                    'cards': 'THẺ',
+                    'my_karma': 'Karma Của Tôi',
+                    'my_cards': 'Thẻ Của Tôi',
+                    'my_points': 'Điểm Của Tôi',
+                    'catalog': 'Danh Mục Địa Điểm',
+                    'achievements': 'Thành Tích',
+                    'history': 'Lịch Sử',
+                    'notifications': 'Thông Báo',
+                    'language': 'Ngôn Ngữ',
+                    'open_browser': '🌐 Mở Trong Trình Duyệt'
+                },
+                'ko': {
+                    'cabinet_title': '👤 개인 캐비닛',
+                    'welcome': '개인 캐비닛에 오신 것을 환영합니다',
+                    'karma_points': '카르마 포인트',
+                    'cards': '카드',
+                    'my_karma': '내 카르마',
+                    'my_cards': '내 카드',
+                    'my_points': '내 포인트',
+                    'catalog': '장소 카탈로그',
+                    'achievements': '성취',
+                    'history': '히스토리',
+                    'notifications': '알림',
+                    'language': '언어',
+                    'open_browser': '🌐 브라우저에서 열기'
+                }
+            };
+            
+            const langTexts = texts[langCode] || texts['ru'];
+            
+            // Обновляем тексты
+            document.querySelector('.header h1').textContent = langTexts.cabinet_title;
+            document.querySelector('.header p').textContent = langTexts.welcome;
+            document.querySelector('.stats-card:nth-child(1) .stat-label').textContent = langTexts.karma_points;
+            document.querySelector('.stats-card:nth-child(2) .stat-label').textContent = langTexts.cards;
+            
+            // Обновляем кнопки
+            const buttons = document.querySelectorAll('.btn');
+            const buttonTexts = [
+                langTexts.my_karma,
+                langTexts.my_cards,
+                langTexts.my_points,
+                langTexts.catalog,
+                langTexts.achievements,
+                langTexts.history,
+                langTexts.notifications,
+                langTexts.language
+            ];
+            
+            buttons.forEach((btn, index) => {
+                if (buttonTexts[index]) {
+                    btn.querySelector('.btn-text').textContent = buttonTexts[index];
+                }
+            });
+            
+            // Обновляем кнопку браузера
+            const browserBtn = document.querySelector('.browser-button');
+            if (browserBtn) {
+                browserBtn.textContent = langTexts.open_browser;
+            }
+        }
+        function showHelpModal() {
+            // Отправляем команду в бот для открытия раздела помощи
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.sendData(JSON.stringify({
+                    action: 'open_help',
+                    command: '/help'
+                }));
+                
+                // Показываем уведомление
+                showMessage("📖 Открываем раздел помощи в боте...", "success");
+                
+                // Закрываем WebApp
+                setTimeout(() => {
+                    tg.close();
+                }, 1500);
+            } else {
+                // Fallback для браузера
+                const modal = createModal('❓ Помощь и поддержка', `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="background: linear-gradient(135deg, #28a745, #20c997); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 18px;">❓ Помощь и поддержка</h3>
+                            <div style="font-size: 16px;">Получите помощь в боте!</div>
+                        </div>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 15px 0; color: #333;">📱 Доступные команды в боте:</h4>
+                            <div style="text-align: left;">
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #007bff;">
+                                    <strong>/start</strong> - Начало работы с ботом
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #28a745;">
+                                    <strong>/help</strong> - Справка и инструкции
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                    <strong>/profile</strong> - Личный кабинет
+                                </div>
+                                <div style="margin: 10px 0; padding: 10px; background: white; border-radius: 8px; border-left: 4px solid #dc3545;">
+                                    <strong>/catalog</strong> - Каталог заведений
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px 0; color: #1976d2;">💡 Для полной помощи:</h4>
+                            <div style="text-align: left; font-size: 14px;">
+                                • Откройте бота в Telegram<br>
+                                • Используйте команду /help<br>
+                                • Обратитесь к администратору
+                            </div>
+                        </div>
+                        
+                        <button onclick="closeModal()" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 12px 25px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: 500;">Закрыть</button>
+                    </div>
+                `);
+            }
+        }
+        
+        // Функция открытия в браузере
+        function openInBrowser() {
+            console.log('🌐 Opening in browser...');
+            
+            // Получаем текущий URL
+            const currentUrl = window.location.href;
+            console.log('Current URL:', currentUrl);
+            
+            // Создаем URL для браузера (убираем параметры Telegram)
+            const browserUrl = currentUrl.split('?')[0];
+            console.log('Browser URL:', browserUrl);
+            
+            // Показываем сообщение с инструкциями
+            showMessage("🌐 Открываем в браузере для удобства", "info");
+            
+            // Пытаемся открыть в браузере
+            try {
+                // Для мобильных устройств
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    // Отправляем URL боту для открытия в браузере
+                    tg.sendData(JSON.stringify({
+                        action: 'open_in_browser',
+                        url: browserUrl
+                    }));
+                } else {
+                    // Для обычных браузеров - просто открываем в новой вкладке
+                    window.open(browserUrl, '_blank');
+                }
+            } catch (error) {
+                console.error('Error opening in browser:', error);
+                // Fallback - показываем URL для копирования
+                showBrowserUrlModal(browserUrl);
+            }
+        }
+        
+        function showBrowserUrlModal(url) {
+            const modal = createModal('🌐 Открыть в браузере', `
+                <div style="text-align: center; padding: 20px;">
+                    <h3>🌐 Скопируйте ссылку</h3>
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 10px; margin: 20px 0;">
+                        <p style="word-break: break-all; font-family: monospace; font-size: 12px;">${url}</p>
+                    </div>
+                    <button onclick="copyToClipboard('${url}')" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-right: 10px;">📋 Копировать</button>
+                    <button onclick="closeModal()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Закрыть</button>
+                </div>
+            `);
+        }
+        
+        function copyToClipboard(text) {
+            try {
+                navigator.clipboard.writeText(text).then(() => {
+                    showMessage("✅ Ссылка скопирована в буфер обмена", "success");
+                });
+            } catch (error) {
+                // Fallback для старых браузеров
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showMessage("✅ Ссылка скопирована в буфер обмена", "success");
+            }
+        }
+        
+        // Функция проверки принятия политики
+        async function checkPolicyAcceptance(userId) {
+            try {
+                const response = await fetch(`/api/user/policy?user_id=${userId}`);
+                const data = await response.json();
+                
+                if (data.success && data.policy_accepted) {
+                    console.log('✅ Политика принята, активируем кнопки');
+                    enableAllButtons();
+                } else {
+                    console.log('❌ Политика не принята, блокируем кнопки');
+                    disableAllButtons();
+                    showPolicyMessage();
+                }
+            } catch (error) {
+                console.error('Ошибка проверки политики:', error);
+                // В случае ошибки активируем кнопки (fallback для работы)
+                console.log('⚠️ Fallback: активируем кнопки при ошибке проверки политики');
+                enableAllButtons();
+            }
+        }
+        
+        // Функция показа сообщения о политике
+        function showPolicyMessage() {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'policy-message';
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <h3>📋 Принятие политики</h3>
+                    <p>Для использования функций необходимо принять политику конфиденциальности.</p>
+                    <p>Вернитесь в бот и нажмите /start для принятия политики.</p>
+                </div>
+            `;
+            document.body.insertBefore(messageDiv, document.body.firstChild);
+        }
+        
+        // Функция блокировки всех кнопок
+        function disableAllButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
+            });
+        }
+        
+        // Функция активации всех кнопок
+        function enableAllButtons() {
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            });
+        }
+        
+        // Обработка закрытия WebApp
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.onEvent('backButtonClicked', () => {
+                window.Telegram.WebApp.close();
+            });
+        }
+    </script>
+</body>
+</html>
