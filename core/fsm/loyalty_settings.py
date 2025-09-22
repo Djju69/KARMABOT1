@@ -8,6 +8,9 @@ class LoyaltySettingsStates(StatesGroup):
     waiting_for_redeem_rate = State()
     waiting_for_min_purchase = State()
     waiting_for_max_discount = State()
+    waiting_for_max_percent_bill = State()
+    waiting_for_bonus_points_usage = State()
+    waiting_for_confirmation = State()
 
 # Заглушки для функций
 async def handle_setting_choice(*args, **kwargs):
@@ -24,4 +27,16 @@ async def handle_min_purchase(*args, **kwargs):
 
 async def handle_max_discount(*args, **kwargs):
     """Заглушка для обработки максимальной скидки"""
+    pass
+
+async def handle_max_percent_bill(*args, **kwargs):
+    """Заглушка для обработки границы закрытия чека"""
+    pass
+
+async def handle_bonus_points_usage(*args, **kwargs):
+    """Заглушка для обработки дополнительной скидки при оплате баллами"""
+    pass
+
+async def handle_confirmation(*args, **kwargs):
+    """Заглушка для обработки подтверждения"""
     pass
