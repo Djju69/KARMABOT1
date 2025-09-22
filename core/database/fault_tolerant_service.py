@@ -13,36 +13,151 @@ import uuid
 
 from .db_v2 import db_v2
 
-# Заглушка для Supabase (будет реализована позже)
-class SupabaseStub:
+# Реальное подключение к Supabase
+class SupabaseClient:
+    def __init__(self):
+        from core.settings import settings
+        self.url = settings.supabase_url
+        self.key = settings.supabase_key
+        self.client = None
+        
+        if self.url and self.key:
+            try:
+                from supabase import create_client, Client
+                self.client: Client = create_client(self.url, self.key)
+                logger.info("✅ Supabase client initialized successfully")
+            except ImportError:
+                logger.warning("supabase-py not installed, using stub")
+                self.client = None
+            except Exception as e:
+                logger.error(f"Failed to create Supabase client: {e}")
+                self.client = None
+        else:
+            logger.warning("Supabase URL or Key not set, using stub")
+    
     def health_check(self):
-        return {'status': 'ok'}
+        if not self.client:
+            return {'status': 'error', 'message': 'Supabase client not initialized'}
+        
+        try:
+            # Простая проверка подключения
+            result = self.client.table('users').select('id').limit(1).execute()
+            return {'status': 'ok'}
+        except Exception as e:
+            return {'status': 'error', 'message': str(e)}
     
     def create_user_profile(self, user_id, user_data):
-        return True
+        if not self.client:
+            return True  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('user_profiles').insert({
+                'user_id': user_id,
+                **user_data,
+                'created_at': 'now()'
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase create_user_profile error: {e}")
+            return False
     
     def get_user_profile(self, user_id):
-        return {'user_id': user_id, 'cached': True}
+        if not self.client:
+            return {'user_id': user_id, 'cached': True}  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('user_profiles').select('*').eq('user_id', user_id).execute()
+            if result.data:
+                return result.data[0]
+            return None
+        except Exception as e:
+            logger.error(f"Supabase get_user_profile error: {e}")
+            return None
     
     def add_loyalty_points(self, user_id, points, reason):
-        return True
+        if not self.client:
+            return True  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('loyalty_points').insert({
+                'user_id': user_id,
+                'points': points,
+                'reason': reason,
+                'created_at': 'now()'
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase add_loyalty_points error: {e}")
+            return False
     
     def spend_loyalty_points(self, user_id, points, reason, partner_id):
-        return True
+        if not self.client:
+            return True  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('loyalty_transactions').insert({
+                'user_id': user_id,
+                'points_spent': points,
+                'reason': reason,
+                'partner_id': partner_id,
+                'created_at': 'now()'
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase spend_loyalty_points error: {e}")
+            return False
     
     def get_loyalty_points(self, user_id):
-        return 0
+        if not self.client:
+            return 0  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('loyalty_points').select('points').eq('user_id', user_id).execute()
+            total = sum(row['points'] for row in result.data)
+            return total
+        except Exception as e:
+            logger.error(f"Supabase get_loyalty_points error: {e}")
+            return 0
     
     def get_user_partner_cards(self, user_id):
-        return []
+        if not self.client:
+            return []  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('partner_cards').select('*').eq('user_id', user_id).execute()
+            return result.data
+        except Exception as e:
+            logger.error(f"Supabase get_user_partner_cards error: {e}")
+            return []
     
     def get_loyalty_history(self, user_id, limit=5):
-        return []
+        if not self.client:
+            return []  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('loyalty_transactions').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(limit).execute()
+            return result.data
+        except Exception as e:
+            logger.error(f"Supabase get_loyalty_history error: {e}")
+            return []
     
     def activate_partner_card(self, user_id, card_number, partner_id):
-        return True
+        if not self.client:
+            return True  # Fallback to stub behavior
+        
+        try:
+            result = self.client.table('partner_cards').insert({
+                'user_id': user_id,
+                'card_number': card_number,
+                'partner_id': partner_id,
+                'activated_at': 'now()'
+            }).execute()
+            return True
+        except Exception as e:
+            logger.error(f"Supabase activate_partner_card error: {e}")
+            return False
 
-secure_supabase = SupabaseStub()
+secure_supabase = SupabaseClient()
 
 logger = logging.getLogger(__name__)
 
