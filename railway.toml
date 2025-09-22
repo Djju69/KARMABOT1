@@ -1,5 +1,6 @@
 [build]
 builder = "nixpacks"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
 startCommand = "python main_v2.py"
