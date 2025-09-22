@@ -135,9 +135,9 @@ def get_webapp_inline(url: str, lang: str = "ru") -> InlineKeyboardMarkup:
 
 def get_catalog_item_row(listing_id: int, gmaps_url: Optional[str], lang: str = "ru") -> List[InlineKeyboardButton]:
     """Row with info button and map url (if any)"""
-    row = [InlineKeyboardButton(text="ℹ️ Подробнее", callback_data=f"act:view:{listing_id}")]
+    row = [InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{listing_id}")]
     if gmaps_url:
-        row.append(InlineKeyboardButton(text="🗺️ На карте", url=gmaps_url))
+        row.append(InlineKeyboardButton(text="🗺️", url=gmaps_url))
     return row
 
 
@@ -155,24 +155,40 @@ def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") 
 def get_catalog_card_actions(card_id: int, lang: str = "ru") -> InlineKeyboardMarkup:
     """Inline-кнопки для детального вида карточки каталога.
     Ряды:
-      [📱 Создать QR‑код] [📷 Фото]
+      [📱 QR] [📷 Фото] [⭐ Избранное]
       [◀️ Назад]
 
     Примечания:
     - QR: используем существующий поток создания QR (callback "qr_create").
     - Фото: gallery:<id> для просмотра фотографий
+    - Избранное: favorite:<id> для добавления в избранное
     - Назад: catalog:back (возврат к списку из state)
     """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text="📱 Создать QR-код", callback_data=f"qr_create:{card_id}"),
+                InlineKeyboardButton(text="📱 QR", callback_data=f"qr_create:{card_id}"),
                 InlineKeyboardButton(text="📷 Фото", callback_data=f"gallery:{card_id}"),
+                InlineKeyboardButton(text="⭐", callback_data=f"favorite:{card_id}"),
             ],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="catalog:back")],
         ]
     )
 
+
+def get_favorites_keyboard(lang: str = "ru") -> InlineKeyboardMarkup:
+    """Keyboard for favorites management"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="🔄 Обновить", callback_data="favorites_refresh"),
+                InlineKeyboardButton(text="🗑️ Очистить все", callback_data="favorites_clear")
+            ],
+            [
+                InlineKeyboardButton(text="◀️ Главное меню", callback_data="main_menu")
+            ]
+        ]
+    )
 
 def get_language_inline(active: Optional[str] = None) -> InlineKeyboardMarkup:
     """

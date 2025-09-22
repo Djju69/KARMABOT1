@@ -52,7 +52,7 @@ class DefaultCardRenderer:
     def _get_builtin_template(self, template_name: str) -> str:
         """Get built-in template as fallback"""
         templates = {
-            'card': '''**{title}**
+            'card': '''🍽️ **{title}**
 
 {description}
 

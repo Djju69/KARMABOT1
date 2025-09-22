@@ -632,6 +632,10 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         # Navigation - Keyboard
         'keyboard.profile_settings': '⚙️ Настройки',
         'back_to_categories': '◀️ К категориям',
+        'contact_info': 'Контакт',
+        'address_info': 'Адрес', 
+        'discount_info': 'Скидка',
+        'favorites': '⭐ Избранное',
         'ai_assistant': '🤖 AI Assistant',
         'dashboard_admin': '📊 Dashboard: Moderation(0) | Notifications(0)',
         'dashboard_superadmin': '📊 Dashboard: Moderation(0) | Notifications(0) | System(OK)',

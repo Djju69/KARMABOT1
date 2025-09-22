@@ -3104,6 +3104,8 @@ def ensure_database_ready():
         setup_supabase_rls()
         # Add sample data if needed
         add_sample_cards()
+        # Create favorites table
+        ensure_favorites_table()
         return
         
     try:
@@ -3243,6 +3245,39 @@ def setup_supabase_rls():
         logger.warning("supabase-py not available, skipping RLS setup")
     except Exception as e:
         logger.error(f"Error setting up Supabase RLS: {e}")
+
+def ensure_favorites_table():
+    """Create favorites table for storing user favorites"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            
+            # Create favorites table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS user_favorites (
+                    id SERIAL PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    card_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(user_id, card_id)
+                )
+            """)
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ user_favorites table created/verified")
+            
+        else:
+            logger.info("Using SQLite, skipping favorites table creation")
+            
+    except Exception as e:
+        logger.error(f"Error creating favorites table: {e}")
 
 def add_sample_cards():
     """Add sample cards for testing"""

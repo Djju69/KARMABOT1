@@ -825,3 +825,64 @@ def get_db():
         except Exception as e:
             logger.error(f"Error deleting partner by tg_id {tg_user_id}: {e}")
             return 0
+
+    def add_to_favorites(self, user_id: int, card_id: int) -> bool:
+        """Add card to user favorites"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    INSERT OR IGNORE INTO user_favorites (user_id, card_id) 
+                    VALUES (?, ?)
+                """, (user_id, card_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error adding to favorites: {e}")
+            return False
+
+    def remove_from_favorites(self, user_id: int, card_id: int) -> bool:
+        """Remove card from user favorites"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    DELETE FROM user_favorites 
+                    WHERE user_id = ? AND card_id = ?
+                """, (user_id, card_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error removing from favorites: {e}")
+            return False
+
+    def get_user_favorites(self, user_id: int) -> List[Dict]:
+        """Get user's favorite cards"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                           p.display_name as partner_name, f.created_at as favorited_at
+                    FROM user_favorites f
+                    JOIN cards_v2 c ON f.card_id = c.id
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    JOIN partners_v2 p ON c.partner_id = p.id
+                    WHERE f.user_id = ? AND c.status = 'published'
+                    ORDER BY f.created_at DESC
+                """, (user_id,))
+                
+                return [dict(row) for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"Error getting user favorites: {e}")
+            return []
+
+    def is_favorite(self, user_id: int, card_id: int) -> bool:
+        """Check if card is in user favorites"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.execute("""
+                    SELECT 1 FROM user_favorites 
+                    WHERE user_id = ? AND card_id = ?
+                """, (user_id, card_id))
+                return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking favorite status: {e}")
+            return False

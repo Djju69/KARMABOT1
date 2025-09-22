@@ -684,10 +684,8 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
 async def on_card_view(callback: CallbackQuery, bot: Bot):
     """Просмотр карточки по id. Формат: act:view:<id>"""
     try:
-        # Получаем язык пользователя
-        from core.database import db_v2
-        user_data = db_v2.get_user_by_tg_id(callback.from_user.id)
-        lang = user_data.get('lang', 'ru') if user_data else 'ru'
+        # Получаем язык пользователя (по умолчанию русский)
+        lang = 'ru'
         
         _, _, id_str = callback.data.split(":")
         listing_id = int(id_str)
@@ -838,3 +836,34 @@ async def on_catalog_back(callback: CallbackQuery, bot: Bot, lang: str, city_id:
             city_id=city_id,
         )
     await callback.answer()
+
+@category_router.callback_query(F.data.regexp(r"^favorite:[0-9]+$"))
+async def on_add_to_favorites(callback: CallbackQuery):
+    """Add card to favorites"""
+    try:
+        # Извлекаем ID карточки
+        card_id = int(callback.data.split(":")[1])
+        user_id = callback.from_user.id
+        
+        # Проверяем, есть ли уже в избранном
+        from core.database import db_v2
+        is_favorite = db_v2.is_favorite(user_id, card_id)
+        
+        if is_favorite:
+            # Удаляем из избранного
+            success = db_v2.remove_from_favorites(user_id, card_id)
+            if success:
+                await callback.answer("💔 Удалено из избранного")
+            else:
+                await callback.answer("❌ Ошибка при удалении из избранного", show_alert=True)
+        else:
+            # Добавляем в избранное
+            success = db_v2.add_to_favorites(user_id, card_id)
+            if success:
+                await callback.answer("⭐ Добавлено в избранное!")
+            else:
+                await callback.answer("❌ Ошибка при добавлении в избранное", show_alert=True)
+        
+    except Exception as e:
+        logger.error(f"Error adding to favorites: {e}")
+        await callback.answer("❌ Ошибка при работе с избранным", show_alert=True)

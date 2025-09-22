@@ -402,40 +402,36 @@ async def handle_help(message: Message, bot: Bot, state: FSMContext) -> None:
 ] + [
     '⭐ Избранные'
 ]))
-@main_menu_router.message(F.text == "⭐ Избранные")
+@main_menu_router.message(F.text.in_([get_text("favorites", lang) for lang in ["ru", "en", "ko", "vi"]] + ["⭐ Избранное", "⭐ Избранные"]))
 async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает список избранных заведений пользователя."""
     logger.debug(f"User {message.from_user.id} opened favorites")
     user_data = await state.get_data()
     lang = user_data.get('lang', 'ru')
     
-    from core.services.favorites_service import favorites_service
+    from core.database import db_v2
     
     # Получаем избранные заведения
-    favorites = await favorites_service.get_user_favorites(message.from_user.id, limit=10)
+    favorites = db_v2.get_user_favorites(message.from_user.id)
     
     if not favorites:
-        empty_text = translations.get(lang, {}).get(
-            'favorites_empty',
-            '⭐ Избранные\n\nУ вас пока нет избранных заведений.\nДобавляйте понравившиеся места в избранное!'
-        )
-        await message.answer(empty_text)
+        empty_text = "⭐ **Избранное**\n\nУ вас пока нет избранных заведений.\nДобавляйте понравившиеся места в избранное!"
+        await message.answer(empty_text, parse_mode="Markdown")
         return
     
     # Формируем список избранных
-    response = translations.get(lang, {}).get(
-        'favorites_title',
-        '⭐ Избранные заведения'
-    ) + "\n\n"
+    response = "⭐ **Избранные заведения**\n\n"
     
     for i, fav in enumerate(favorites, 1):
-        name = fav.get('name', 'Без названия')
+        title = fav.get('title', 'Без названия')
         category = fav.get('category_name', 'Другое')
-        address = fav.get('address', 'Адрес не указан')
+        description = fav.get('description', '')
         
-        response += f"{i}. **{name}**\n"
+        response += f"{i}. **{title}**\n"
         response += f"   📂 {category}\n"
-        response += f"   📍 {address}\n\n"
+        if description:
+            response += f"   📝 {description}\n"
+        response += "\n"
     
     # Добавляем кнопки управления
     from core.keyboards.inline_v2 import get_favorites_keyboard
