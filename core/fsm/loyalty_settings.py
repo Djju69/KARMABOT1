@@ -5,6 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 class LoyaltySettingsStates(StatesGroup):
     """Состояния для настроек лояльности"""
     waiting_for_choice = State()
+    waiting_for_setting_choice = State()
     waiting_for_redeem_rate = State()
     waiting_for_min_purchase = State()
     waiting_for_max_discount = State()
