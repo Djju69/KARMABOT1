@@ -162,6 +162,48 @@ async def start_qr_creation(callback: CallbackQuery, state: FSMContext):
         )
 
 
+@router.callback_query(F.data.regexp(r"^qr_create:[0-9]+$"))
+async def start_qr_creation_for_card(callback: CallbackQuery, state: FSMContext):
+    """Start QR code creation process for specific card"""
+    try:
+        await callback.answer()
+        
+        # Извлекаем ID карточки
+        card_id = int(callback.data.split(":")[1])
+        
+        # Получаем информацию о карточке
+        from core.database import db_v2
+        card = db_v2.get_card_by_id(card_id)
+        
+        if not card:
+            await callback.answer("❌ Карточка не найдена", show_alert=True)
+            return
+        
+        # Сохраняем ID карточки в состоянии
+        await state.update_data(card_id=card_id, card_title=card.get('title', 'Без названия'))
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💰 Баллы лояльности", callback_data="qr_type_loyalty_points")],
+            [InlineKeyboardButton(text="📊 Процент скидки", callback_data="qr_type_percentage")],
+            [InlineKeyboardButton(text="💵 Фиксированная сумма", callback_data="qr_type_fixed_amount")],
+            [InlineKeyboardButton(text="◀️ Назад к карточке", callback_data=f"act:view:{card_id}")]
+        ])
+        
+        await callback.message.edit_text(
+            f"🎫 <b>Создание QR-кода для карточки</b>\n\n"
+            f"📋 <b>Карточка:</b> {card.get('title', 'Без названия')}\n\n"
+            f"Выберите тип скидки:",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        
+        await state.set_state(QRStates.selecting_type)
+        
+    except Exception as e:
+        logger.error(f"Error starting QR creation for card: {e}")
+        await callback.answer("❌ Ошибка при создании QR-кода", show_alert=True)
+
+
 @router.callback_query(F.data.startswith("qr_type_"))
 async def select_discount_type(callback: CallbackQuery, state: FSMContext):
     """Select discount type"""

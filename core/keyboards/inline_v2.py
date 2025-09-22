@@ -135,9 +135,9 @@ def get_webapp_inline(url: str, lang: str = "ru") -> InlineKeyboardMarkup:
 
 def get_catalog_item_row(listing_id: int, gmaps_url: Optional[str], lang: str = "ru") -> List[InlineKeyboardButton]:
     """Row with info button and map url (if any)"""
-    row = [InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{listing_id}")]
+    row = [InlineKeyboardButton(text="ℹ️ Подробнее", callback_data=f"act:view:{listing_id}")]
     if gmaps_url:
-        row.append(InlineKeyboardButton(text=get_text("show_on_map", lang), url=gmaps_url))
+        row.append(InlineKeyboardButton(text="🗺️ На карте", url=gmaps_url))
     return row
 
 
@@ -155,28 +155,21 @@ def get_pagination_row(slug: str, page: int, pages: int, sub_slug: str = "all") 
 def get_catalog_card_actions(card_id: int, lang: str = "ru") -> InlineKeyboardMarkup:
     """Inline-кнопки для детального вида карточки каталога.
     Ряды:
-      [📱 Создать QR‑код] [📑 Меню/Прайс]
-      [💬 Отзывы] [📷 Галерея]
+      [📱 Создать QR‑код] [📷 Фото]
       [◀️ Назад]
 
     Примечания:
     - QR: используем существующий поток создания QR (callback "qr_create").
-    - Меню/Прайс, Отзывы: заглушки (callback "noop") до подключения фактических хендлеров.
-    - Галерея: gallery:<id>
+    - Фото: gallery:<id> для просмотра фотографий
     - Назад: catalog:back (возврат к списку из state)
     """
-    back_text = get_text("back", lang) or "◀️ Назад"
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(text=get_text("create_qr_code", lang) or "📱 Создать QR-код", callback_data="qr_create"),
-                InlineKeyboardButton(text="📑 Меню/Прайс", callback_data="noop"),
+                InlineKeyboardButton(text="📱 Создать QR-код", callback_data=f"qr_create:{card_id}"),
+                InlineKeyboardButton(text="📷 Фото", callback_data=f"gallery:{card_id}"),
             ],
-            [
-                InlineKeyboardButton(text="💬 Отзывы", callback_data="noop"),
-                InlineKeyboardButton(text="📷 Галерея", callback_data=f"gallery:{card_id}"),
-            ],
-            [InlineKeyboardButton(text=back_text, callback_data="catalog:back")],
+            [InlineKeyboardButton(text="◀️ Назад", callback_data="catalog:back")],
         ]
     )
 
