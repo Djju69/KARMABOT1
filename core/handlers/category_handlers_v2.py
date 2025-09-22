@@ -681,9 +681,14 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
 
 
 @category_router.callback_query(F.data.regexp(r"^act:view:[0-9]+$"))
-async def on_card_view(callback: CallbackQuery, bot: Bot, lang: str):
+async def on_card_view(callback: CallbackQuery, bot: Bot):
     """Просмотр карточки по id. Формат: act:view:<id>"""
     try:
+        # Получаем язык пользователя
+        from core.database import db_v2
+        user_data = db_v2.get_user_by_tg_id(callback.from_user.id)
+        lang = user_data.get('lang', 'ru') if user_data else 'ru'
+        
         _, _, id_str = callback.data.split(":")
         listing_id = int(id_str)
         await log_event("card_view", user=callback.from_user, id=listing_id)

@@ -84,18 +84,30 @@ class DefaultCardRenderer:
         t = get_all_texts(lang)
         template = self._load_template('card')
         
+        # Проверяем, является ли это тестовой карточкой
+        is_test_card = card.get('partner_name') == 'Sample Partner'
+        
         # Prepare sections
         contact_section = ""
         if card.get('contact'):
             contact_section = f"📞 **{t['contact_info']}:** {card['contact']}"
+        elif is_test_card:
+            # Для тестовых карточек добавляем пример контакта
+            contact_section = f"📞 **{t['contact_info']}:** +7-999-XXX-XX-XX (тестовый контакт)"
         
         address_section = ""
         if card.get('address'):
             address_section = f"📍 **{t['address_info']}:** {card['address']}"
+        elif is_test_card:
+            # Для тестовых карточек добавляем пример адреса
+            address_section = f"📍 **{t['address_info']}:** ул. Примерная, 1 (тестовый адрес)"
         
         discount_section = ""
         if card.get('discount_text'):
             discount_section = f"🎫 **{t['discount_info']}:** {card['discount_text']}"
+        elif is_test_card:
+            # Для тестовых карточек добавляем пример скидки
+            discount_section = f"🎫 **{t['discount_info']}:** 10% скидка (тестовое предложение)"
         
         # Actions (can be customized per category)
         actions = self._render_card_actions(card, t)
@@ -113,8 +125,12 @@ class DefaultCardRenderer:
         
         # Format template
         try:
+            title = card.get('title', 'Без названия')
+            if is_test_card:
+                title = f"🧪 {title} (тестовая карточка)"
+            
             return template.format(
-                title=card.get('title', 'Без названия'),
+                title=title,
                 description=card.get('description', ''),
                 contact_section=contact_section,
                 address_section=address_section,
