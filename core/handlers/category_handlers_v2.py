@@ -191,7 +191,7 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             text = get_text('catalog_empty_sub', lang)
             kb = None
         else:
-            # Отображаем все карточки на странице (до 5 штук)
+            # Отображаем все карточки на странице (до 5 штук) - ОБНОВЛЕНО
             header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
             
             # Рендерим каждую карточку отдельно
