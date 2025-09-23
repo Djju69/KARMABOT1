@@ -194,18 +194,16 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             # Отображаем все карточки на странице (до 5 штук) - ОБНОВЛЕНО
             header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
             
-            # Рендерим каждую карточку отдельно
-            cards_text = []
-            for i, card in enumerate(cards_page, 1):
+            # Показываем только первую карточку на странице с индивидуальными кнопками
+            if cards_page:
+                first_card = cards_page[0]
                 try:
-                    card_text = card_service.render_card(card, lang)
-                    cards_text.append(f"**{i}.** {card_text}")
-                    logger.warning(f"ДИАГНОСТИКА: Карточка {i} отрендерена успешно")
+                    card_text = card_service.render_card(first_card, lang)
+                    text = f"{header}\n\n{card_text}"
+                    logger.warning(f"ДИАГНОСТИКА: Показываем карточку {first_card.get('id')} отдельно")
                 except Exception as e:
-                    logger.error(f"ДИАГНОСТИКА: Ошибка рендеринга карточки {i}: {e}")
-                    cards_text.append(f"**{i}.** Ошибка отображения карточки")
-            
-            text = header + "\n\n" + "\n\n".join(cards_text)
+                    logger.error(f"ДИАГНОСТИКА: Ошибка рендеринга карточки: {e}")
+                    text = f"{header}\n\nОшибка отображения карточки"
             
             # 4. Сборка клавиатуры для всех карточек на странице
             inline_rows = []
