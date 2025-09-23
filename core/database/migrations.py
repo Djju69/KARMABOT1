@@ -3294,7 +3294,8 @@ def add_sample_cards():
             cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'published'")
             total_cards = cur.fetchone()[0]
             
-            if total_cards == 0:
+            # Always add sample cards if we have less than 50 cards (to ensure all categories have test data)
+            if total_cards < 50:
                 logger.info("No test cards found, adding sample data for all categories...")
                 
                 # Add sample partner
@@ -3446,12 +3447,19 @@ def add_sample_cards():
                         
                         for sub_slug, cards in subcategories.items():
                             for title, description in cards:
+                                # Check if card already exists
                                 cur.execute("""
-                                    INSERT INTO cards_v2 (partner_id, category_id, title, description, status, sub_slug)
-                                    VALUES (%s, %s, %s, %s, %s, %s)
-                                    ON CONFLICT DO NOTHING
-                                    RETURNING id
-                                """, (partner_id, category_id, title, description, 'published', sub_slug))
+                                    SELECT id FROM cards_v2 
+                                    WHERE partner_id = %s AND category_id = %s AND title = %s AND sub_slug = %s
+                                """, (partner_id, category_id, title, sub_slug))
+                                
+                                existing_card = cur.fetchone()
+                                if not existing_card:
+                                    cur.execute("""
+                                        INSERT INTO cards_v2 (partner_id, category_id, title, description, status, sub_slug)
+                                        VALUES (%s, %s, %s, %s, %s, %s)
+                                        RETURNING id
+                                    """, (partner_id, category_id, title, description, 'published', sub_slug))
                                 
                                 result = cur.fetchone()
                                 if result:
@@ -3470,7 +3478,7 @@ def add_sample_cards():
                 conn.commit()
                 logger.info("✅ All sample cards added successfully")
             else:
-                logger.info(f"Found {test_count} test cards, skipping sample data")
+                logger.info(f"Found {total_cards} published cards, skipping sample data")
             
             cur.close()
             conn.close()
