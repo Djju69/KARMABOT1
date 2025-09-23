@@ -3290,15 +3290,11 @@ def add_sample_cards():
             conn = psycopg2.connect(database_url)
             cur = conn.cursor()
             
-            # Check if we have any test cards from Sample Partner
-            cur.execute("""
-                SELECT COUNT(*) FROM cards_v2 c 
-                JOIN partners_v2 p ON c.partner_id = p.id 
-                WHERE p.tg_user_id = 123456789 AND c.status = 'published'
-            """)
-            test_count = cur.fetchone()[0]
+            # Check if we have any published cards at all
+            cur.execute("SELECT COUNT(*) FROM cards_v2 WHERE status = 'published'")
+            total_cards = cur.fetchone()[0]
             
-            if test_count == 0:
+            if total_cards == 0:
                 logger.info("No test cards found, adding sample data for all categories...")
                 
                 # Add sample partner
