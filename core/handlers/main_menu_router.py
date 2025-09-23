@@ -1199,7 +1199,11 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
         user_id = message.from_user.id
         lang = await profile_service.get_lang(user_id)
-        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена
+        # Используем новую систему ролей
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(user_id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        is_superadmin = role_name == "super_admin"
         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
         if is_superadmin or is_admin:
             kb = get_main_menu_reply_admin(lang, is_superadmin)
@@ -1390,7 +1394,11 @@ async def handle_back_to_main_menu(message: Message, bot: Bot, state: FSMContext
         from core.keyboards.reply_v2 import get_main_menu_reply_admin, get_main_menu_reply
         user_id = message.from_user.id
         lang = await profile_service.get_lang(user_id)
-        is_superadmin = int(user_id) == int(settings.bot_token.split(':')[0])  # Используем bot_id из токена
+        # Используем новую систему ролей
+        from core.security.roles import get_user_role
+        user_role = await get_user_role(user_id)
+        role_name = getattr(user_role, "name", str(user_role)).lower()
+        is_superadmin = role_name == "super_admin"
         is_admin = False if is_superadmin else await admins_service.is_admin(user_id)
         if is_superadmin or is_admin:
             kb = get_main_menu_reply_admin(lang, is_superadmin)
