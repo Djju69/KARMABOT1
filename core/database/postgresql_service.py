@@ -90,7 +90,11 @@ class PostgreSQLService:
             else:
                 return loop.run_until_complete(coro)
         except RuntimeError:
-            return asyncio.run(coro)
+            # Если event loop уже запущен, используем новый поток
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result()
     
     # Partner methods
     async def get_partner_by_tg_id(self, tg_user_id: int) -> Optional[Partner]:
