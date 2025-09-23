@@ -197,8 +197,13 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             # Рендерим каждую карточку отдельно
             cards_text = []
             for i, card in enumerate(cards_page, 1):
-                card_text = card_service.render_card(card, lang)
-                cards_text.append(f"**{i}.** {card_text}")
+                try:
+                    card_text = card_service.render_card(card, lang)
+                    cards_text.append(f"**{i}.** {card_text}")
+                    logger.warning(f"ДИАГНОСТИКА: Карточка {i} отрендерена успешно")
+                except Exception as e:
+                    logger.error(f"ДИАГНОСТИКА: Ошибка рендеринга карточки {i}: {e}")
+                    cards_text.append(f"**{i}.** Ошибка отображения карточки")
             
             text = header + "\n\n" + "\n\n".join(cards_text)
             
