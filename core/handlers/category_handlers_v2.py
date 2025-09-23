@@ -225,13 +225,20 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
 
         # 5. Отправка или редактирование сообщения (каталог: 5 позиций на страницу, далее детальный просмотр act:view)
+        logger.warning(f"ДИАГНОСТИКА: Отправляем сообщение длиной {len(text)} символов")
+        logger.warning(f"ДИАГНОСТИКА: Количество кнопок: {len(kb.inline_keyboard) if kb else 0}")
+        
         if message_id:
             try:
                 await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
-            except Exception:
+                logger.warning(f"ДИАГНОСТИКА: Сообщение успешно отредактировано")
+            except Exception as e:
+                logger.error(f"ДИАГНОСТИКА: Ошибка редактирования сообщения: {e}")
                 await bot.send_message(chat_id, text, reply_markup=kb)
+                logger.warning(f"ДИАГНОСТИКА: Отправлено новое сообщение вместо редактирования")
         else:
             await bot.send_message(chat_id, text, reply_markup=kb)
+            logger.warning(f"ДИАГНОСТИКА: Отправлено новое сообщение")
         await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
 
     except Exception as e:
