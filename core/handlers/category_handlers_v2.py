@@ -632,17 +632,24 @@ async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, ci
         _, slug, sub_slug, page_str = callback.data.split(":")
         page = int(page_str)
 
+        # Сначала отвечаем на callback чтобы убрать "часики"
+        await callback.answer()
+        
         # Вызываем универсальную функцию для обновления сообщения
         await log_event("catalog_page_click", user=callback.from_user, slug=slug, sub_slug=sub_slug, page=page)
         await show_catalog_page(bot, callback.message.chat.id, lang, slug, sub_slug, page, city_id, callback.message.message_id)
+        
         try:
             await state.update_data(category=slug, sub_slug=sub_slug, page=page)
         except Exception:
             pass
-        await callback.answer()
+            
     except Exception as e:
         logger.error(f"on_catalog_pagination error: {e}")
-        await callback.answer(get_text('catalog_error', lang), show_alert=False)
+        try:
+            await callback.answer(get_text('catalog_error', lang), show_alert=False)
+        except:
+            pass
 
 
 @category_router.callback_query(F.data.regexp(r"^filt:restaurants:(asia|europe|street|vege|all)$"))
@@ -651,6 +658,9 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
     Формат: filt:restaurants:<filter>
     """
     try:
+        # Сначала отвечаем на callback
+        await callback.answer()
+        
         _, _, filt = callback.data.split(":")
         await log_event("restaurants_filter", user=callback.from_user, filter=filt, lang=lang, city_id=city_id)
         slug = 'restaurants'
