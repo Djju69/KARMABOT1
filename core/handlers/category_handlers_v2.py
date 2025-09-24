@@ -190,55 +190,41 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         if not cards_page:
             text = get_text('catalog_empty_sub', lang)
             kb = None
+            await bot.send_message(chat_id, text, reply_markup=kb)
         else:
-            # Отображаем все карточки на странице (до 5 штук) - ОБНОВЛЕНО
+            # Отправляем каждую карточку отдельным сообщением с индивидуальными кнопками
             header = f"{get_text('catalog_found', lang)}: {total_items} | {get_text('catalog_page', lang)}. {page}/{total_pages}"
             
-            # Показываем все карточки на странице (до 5 штук) с индивидуальными кнопками
-            cards_text = []
+            # Сначала отправляем заголовок
+            await bot.send_message(chat_id, header)
+            
+            # Затем отправляем каждую карточку отдельно
             for i, card in enumerate(cards_page, 1):
                 try:
                     card_text = card_service.render_card(card, lang)
-                    cards_text.append(f"**{i}.** {card_text}")
+                    text = f"**{i}.** {card_text}"
                     logger.warning(f"ДИАГНОСТИКА: Карточка {i} отрендерена успешно")
+                    
+                    # Кнопки для этой карточки
+                    card_buttons = [
+                        InlineKeyboardButton(text="📱 QR", callback_data=f"qr_create:{card.get('id')}"),
+                        InlineKeyboardButton(text="📷 Фото", callback_data=f"gallery:{card.get('id')}"),
+                        InlineKeyboardButton(text="⭐", callback_data=f"favorite:{card.get('id')}"),
+                        InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{card.get('id')}")
+                    ]
+                    kb = InlineKeyboardMarkup(inline_keyboard=[card_buttons])
+                    
+                    await bot.send_message(chat_id, text, reply_markup=kb)
+                    logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена отдельным сообщением")
+                    
                 except Exception as e:
                     logger.error(f"ДИАГНОСТИКА: Ошибка рендеринга карточки {i}: {e}")
-                    cards_text.append(f"**{i}.** Ошибка отображения карточки")
+                    await bot.send_message(chat_id, f"**{i}.** Ошибка отображения карточки")
             
-            text = header + "\n\n" + "\n\n".join(cards_text)
-            
-            # 4. Сборка клавиатуры для всех карточек на странице
-            inline_rows = []
-            for card in cards_page:
-                # Кнопки для каждой карточки: QR, Фото, Избранное
-                card_buttons = [
-                    InlineKeyboardButton(text="📱 QR", callback_data=f"qr_create:{card.get('id')}"),
-                    InlineKeyboardButton(text="📷 Фото", callback_data=f"gallery:{card.get('id')}"),
-                    InlineKeyboardButton(text="⭐", callback_data=f"favorite:{card.get('id')}"),
-                    InlineKeyboardButton(text="ℹ️", callback_data=f"act:view:{card.get('id')}")
-                ]
-                inline_rows.append(card_buttons)
-            
-            # Добавляем пагинацию
+            # В конце отправляем пагинацию
             pagination_row = [get_pagination_row(slug, page, total_pages, sub_slug)]
-            kb_rows = inline_rows + pagination_row
-            kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
-
-        # 5. Отправка или редактирование сообщения (каталог: 5 позиций на страницу, далее детальный просмотр act:view)
-        logger.warning(f"ДИАГНОСТИКА: Отправляем сообщение длиной {len(text)} символов")
-        logger.warning(f"ДИАГНОСТИКА: Количество кнопок: {len(kb.inline_keyboard) if kb else 0}")
-        
-        if message_id:
-            try:
-                await bot.edit_message_text(text, chat_id, message_id, reply_markup=kb)
-                logger.warning(f"ДИАГНОСТИКА: Сообщение успешно отредактировано")
-            except Exception as e:
-                logger.error(f"ДИАГНОСТИКА: Ошибка редактирования сообщения: {e}")
-                await bot.send_message(chat_id, text, reply_markup=kb)
-                logger.warning(f"ДИАГНОСТИКА: Отправлено новое сообщение вместо редактирования")
-        else:
-            await bot.send_message(chat_id, text, reply_markup=kb)
-            logger.warning(f"ДИАГНОСТИКА: Отправлено новое сообщение")
+            kb_pagination = InlineKeyboardMarkup(inline_keyboard=pagination_row)
+            await bot.send_message(chat_id, "📄 Навигация по страницам:", reply_markup=kb_pagination)
         await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
 
     except Exception as e:
