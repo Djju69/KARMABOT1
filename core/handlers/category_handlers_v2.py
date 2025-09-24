@@ -148,6 +148,8 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         
         # 1. Получение данных и фильтрация
         try:
+            # Создаем новый объект log_event для каждого вызова
+            from ..utils.logging import log_event
             await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
             logger.warning(f"🔧 LOG_EVENT SUCCESS")
         except Exception as e:
@@ -250,7 +252,14 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         await bot.send_message(chat_id, get_text('catalog_error', lang))
 
 
-async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None):
+async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    try:
+        await state.clear()
+        logger.warning(f"🔧 FSM STATE CLEARED for restaurants")
+    except Exception as e:
+        logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
+    
     # Показываем reply клавиатуру с фильтрами кухни
     from ..keyboards.reply_v2 import get_restaurants_reply_keyboard
     await log_event("category_open", user=message.from_user, slug="restaurants", lang=lang, city_id=city_id)

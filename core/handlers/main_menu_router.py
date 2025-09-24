@@ -782,7 +782,7 @@ async def handle_restaurants(message: Message, bot: Bot, state: FSMContext) -> N
         city_id = await profile_service.get_city_id(message.from_user.id)
         
         logger.warning(f"🔧 CALLING on_restaurants with lang={lang}, city_id={city_id}")
-        await on_restaurants(message, bot, lang, city_id)
+        await on_restaurants(message, bot, lang, city_id, state)
         logger.warning(f"🔧 FINISHED on_restaurants")
         
     except Exception as e:
