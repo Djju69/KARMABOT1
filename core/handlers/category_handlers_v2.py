@@ -141,11 +141,16 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     """
     Универсальный обработчик для отображения страницы каталога с фильтрацией по sub_slug.
     """
+    logger.warning(f"🔧 SHOW_CATALOG_PAGE CALLED: chat_id={chat_id}, slug={slug}, sub_slug={sub_slug}, page={page}")
+    
     try:
         # 1. Получение данных и фильтрация
         await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
         logger.info(f"ДИАГНОСТИКА: Запрашиваем карточки для категории '{slug}', статус 'published'")
+        
+        logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
         all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+        logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
         logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
 
         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
@@ -256,8 +261,12 @@ async def on_hotels(message: Message, bot: Bot, lang: str, city_id: int | None):
     await message.answer(get_text('hotels_choose', lang), reply_markup=get_hotels_reply_keyboard(lang))
 
 async def on_transport(message: Message, bot: Bot, lang: str):
+    logger.warning(f"🔧 ON_TRANSPORT CALLED: user={message.from_user.id}, lang={lang}")
     await log_event("category_open", user=message.from_user, slug="transport", lang=lang)
+    
+    logger.warning(f"🔧 SENDING TRANSPORT KEYBOARD")
     await message.answer(get_text('transport_choose', lang), reply_markup=get_transport_reply_keyboard(lang))
+    logger.warning(f"🔧 TRANSPORT KEYBOARD SENT")
 
 async def on_tours(message: Message, bot: Bot, lang: str):
     await log_event("category_open", user=message.from_user, slug="tours", lang=lang)
@@ -326,8 +335,12 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
 
 async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Show Shops & Services submenu (shops/services)."""
+    logger.warning(f"🔧 ON_SHOPS CALLED: user={message.from_user.id}, lang={lang}, city_id={city_id}")
     await log_event("category_open", user=message.from_user, slug="shops", lang=lang, city_id=city_id)
+    
+    logger.warning(f"🔧 SENDING SHOPS KEYBOARD")
     await message.answer(get_text('shops_choose', lang), reply_markup=get_shops_reply_keyboard(lang))
+    logger.warning(f"🔧 SHOPS KEYBOARD SENT")
 
 async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Магазины и услуги'."""

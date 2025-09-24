@@ -761,15 +761,30 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 ]))
 async def handle_restaurants(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Рестораны'."""
+    logger.warning(f"🔧 RESTAURANTS HANDLER CALLED: user={message.from_user.id}")
+    
+    # Проверить состояние FSM
+    current_state = await state.get_state()
+    logger.warning(f"🔧 FSM STATE: {current_state}")
+    
+    # Проверить данные состояния
+    state_data = await state.get_data()
+    logger.warning(f"🔧 STATE DATA: {state_data}")
+    
     logger.debug(f"User {message.from_user.id} selected Restaurants category")
     if not await ensure_policy_accepted(message, bot, state):
+        logger.warning(f"🔧 POLICY NOT ACCEPTED for user {message.from_user.id}")
         return
         
     try:
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
+        
+        logger.warning(f"🔧 CALLING on_restaurants with lang={lang}, city_id={city_id}")
         await on_restaurants(message, bot, lang, city_id)
+        logger.warning(f"🔧 FINISHED on_restaurants")
+        
     except Exception as e:
         logger.error(f"Error in restaurants category: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -842,15 +857,30 @@ async def handle_hotels(message: Message, bot: Bot, state: FSMContext) -> None:
 ]))
 async def handle_transport(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Транспорт'."""
+    logger.warning(f"🔧 TRANSPORT HANDLER CALLED: user={message.from_user.id}")
+    
+    # Проверить состояние FSM
+    current_state = await state.get_state()
+    logger.warning(f"🔧 FSM STATE: {current_state}")
+    
+    # Проверить данные состояния
+    state_data = await state.get_data()
+    logger.warning(f"🔧 STATE DATA: {state_data}")
+    
     logger.debug(f"User {message.from_user.id} selected Transport category")
     if not await ensure_policy_accepted(message, bot, state):
+        logger.warning(f"🔧 POLICY NOT ACCEPTED for user {message.from_user.id}")
         return
         
     try:
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         # 'on_transport' не требует city_id
+        
+        logger.warning(f"🔧 CALLING on_transport with lang={lang}")
         await on_transport(message, bot, lang)
+        logger.warning(f"🔧 FINISHED on_transport")
+        
     except Exception as e:
         logger.error(f"Error in transport category: {e}", exc_info=True)
         user_data = await state.get_data()
@@ -896,15 +926,30 @@ async def handle_tours(message: Message, bot: Bot, state: FSMContext) -> None:
 ]))
 async def handle_shops(message: Message, bot: Bot, state: FSMContext) -> None:
     """Обработчик кнопки 'Магазины и услуги'."""
+    logger.warning(f"🔧 SHOPS HANDLER CALLED: user={message.from_user.id}")
+    
+    # Проверить состояние FSM
+    current_state = await state.get_state()
+    logger.warning(f"🔧 FSM STATE: {current_state}")
+    
+    # Проверить данные состояния
+    state_data = await state.get_data()
+    logger.warning(f"🔧 STATE DATA: {state_data}")
+    
     logger.debug(f"User {message.from_user.id} selected Shops category")
     if not await ensure_policy_accepted(message, bot, state):
+        logger.warning(f"🔧 POLICY NOT ACCEPTED for user {message.from_user.id}")
         return
         
     try:
         user_data = await state.get_data()
         lang = user_data.get('lang', 'ru')
         city_id = await profile_service.get_city_id(message.from_user.id)
+        
+        logger.warning(f"🔧 CALLING on_shops with lang={lang}, city_id={city_id}")
         await on_shops(message, bot, lang, city_id)
+        logger.warning(f"🔧 FINISHED on_shops")
+        
     except Exception as e:
         logger.error(f"Error in shops category: {e}", exc_info=True)
         user_data = await state.get_data()
