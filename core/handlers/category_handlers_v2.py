@@ -144,9 +144,12 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     logger.warning(f"🔧 SHOW_CATALOG_PAGE CALLED: chat_id={chat_id}, slug={slug}, sub_slug={sub_slug}, page={page}")
     
     try:
+        logger.warning(f"🔧 SHOW_CATALOG_PAGE ENTERED TRY BLOCK")
+        
         # 1. Получение данных и фильтрация
         try:
             await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
+            logger.warning(f"🔧 LOG_EVENT SUCCESS")
         except Exception as e:
             logger.warning(f"🔧 LOG_EVENT ERROR: {e}")
             
@@ -239,9 +242,11 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             kb_pagination = InlineKeyboardMarkup(inline_keyboard=pagination_row)
             await bot.send_message(chat_id, "📄 Навигация по страницам:", reply_markup=kb_pagination)
         await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
+        logger.warning(f"🔧 SHOW_CATALOG_PAGE COMPLETED SUCCESSFULLY")
 
     except Exception as e:
         logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
+        logger.warning(f"🔧 SHOW_CATALOG_PAGE FAILED WITH ERROR: {e}")
         await bot.send_message(chat_id, get_text('catalog_error', lang))
 
 
