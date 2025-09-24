@@ -360,7 +360,11 @@ async def main():
     from core.handlers.loyalty_settings_router import router as loyalty_settings_router
     dp.include_router(loyalty_settings_router)
     
-    # 9) Ping/catch-alls LAST
+    # 9) ВРЕМЕННЫЙ роутер для исправления каталога
+    from core.handlers.temp_catalog_fix import temp_router
+    dp.include_router(temp_router)
+    
+    # 10) Ping/catch-alls LAST
     dp.include_router(ping.router)
     
     # Ensure database is ready

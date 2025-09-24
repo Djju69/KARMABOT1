@@ -3342,6 +3342,160 @@ def unify_database_structure():
         logger.error(f"❌ Ошибка унификации БД: {e}")
         raise
 
+async def diagnose_and_fix_catalog():
+    """Диагностика и исправление каталога в продакшене"""
+    
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            
+            logger.info("🔍 ДИАГНОСТИКА КАТАЛОГА В ПРОДАКШЕНЕ")
+            logger.info("=" * 50)
+            
+            # 1. ДИАГНОСТИКА - подсчет карточек по категориям
+            query = """
+            SELECT 
+                c.slug,
+                c.name,
+                COUNT(cards.id) as total_cards,
+                COUNT(CASE WHEN cards.status = 'published' THEN 1 END) as published_cards
+            FROM categories_v2 c
+            LEFT JOIN cards_v2 cards ON c.id = cards.category_id
+            GROUP BY c.id, c.slug, c.name
+            ORDER BY published_cards DESC;
+            """
+            
+            cur.execute(query)
+            result = cur.fetchall()
+            
+            logger.info("📊 СОСТОЯНИЕ КАТЕГОРИЙ:")
+            empty_categories = []
+            
+            for row in result:
+                slug, name, total, published = row
+                logger.info(f"  {slug} ({name}): {published} опубликованных карточек")
+                if published == 0:  # published_cards = 0
+                    empty_categories.append((slug, name))
+            
+            # 2. ИСПРАВЛЕНИЕ - добавить карточки в пустые категории
+            if empty_categories:
+                logger.info(f"🛠️ Найдено {len(empty_categories)} пустых категорий")
+                
+                for slug, name in empty_categories:
+                    await add_test_cards_to_category(cur, slug, name)
+                    
+                conn.commit()
+                logger.info("✅ Все пустые категории заполнены")
+            else:
+                logger.info("✅ Все категории содержат карточки")
+                
+            conn.close()
+            logger.info("🎉 ДИАГНОСТИКА И ИСПРАВЛЕНИЕ КАТАЛОГА ЗАВЕРШЕНО")
+            
+        else:
+            logger.info("ℹ️ Используется SQLite, диагностика не требуется")
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка диагностики каталога: {e}")
+        raise
+
+async def add_test_cards_to_category(cur, category_slug, category_name):
+    """Добавить тестовые карточки в категорию"""
+    
+    try:
+        # Получить ID категории
+        cur.execute("SELECT id FROM categories_v2 WHERE slug = %s", (category_slug,))
+        category_result = cur.fetchone()
+        
+        if not category_result:
+            logger.error(f"Категория {category_slug} не найдена")
+            return
+            
+        category_id = category_result[0]
+        
+        # Получить или создать тестового партнера
+        cur.execute("""
+            INSERT INTO partners_v2 (tg_user_id, display_name, username, status, karma_points)
+            VALUES (999999999, 'Sample Partner', 'sample_partner', 'active', 1000)
+            ON CONFLICT (tg_user_id) DO NOTHING
+            RETURNING id
+        """)
+        
+        partner_result = cur.fetchone()
+        if partner_result:
+            partner_id = partner_result[0]
+        else:
+            cur.execute("SELECT id FROM partners_v2 WHERE tg_user_id = 999999999")
+            partner_id = cur.fetchone()[0]
+        
+        # Определить подкатегории для каждой категории
+        subcategories = {
+            'transport': ['cars', 'bikes', 'bicycles', 'scooters'],
+            'hotels': ['hotels', 'apartments', 'hostels'], 
+            'shops': ['clothing', 'electronics', 'food', 'books'],
+            'spa': ['salon', 'massage', 'wellness'],
+            'tours': ['excursions', 'travel', 'adventure'],
+            'beauty': ['salon', 'spa', 'massage'],
+            'health': ['clinic', 'pharmacy', 'fitness'],
+            'education': ['school', 'courses', 'tutoring'],
+            'services': ['repair', 'cleaning', 'delivery']
+        }
+        
+        subs = subcategories.get(category_slug, ['general'])
+        
+        cards_added = 0
+        photos_added = 0
+        
+        for sub_slug in subs:
+            for i in range(3):  # 3 карточки на подкатегорию
+                
+                # Добавить карточку
+                cur.execute("""
+                    INSERT INTO cards_v2 (
+                        partner_id, category_id, title, description, 
+                        status, sub_slug, created_at, updated_at
+                    ) VALUES (%s, %s, %s, %s, 'published', %s, NOW(), NOW())
+                    RETURNING id
+                """, (
+                    partner_id,
+                    f"Тест {category_name} {sub_slug.title()} {i+1}",
+                    f"Описание тестовой карточки {i+1} в подкатегории {sub_slug}",
+                    sub_slug
+                ))
+                
+                card_result = cur.fetchone()
+                if card_result:
+                    card_id = card_result[0]
+                    cards_added += 1
+                    
+                    # Добавить 2 фотографии для каждой карточки
+                    for photo_num in range(1, 3):
+                        cur.execute("""
+                            INSERT INTO card_photos (
+                                card_id, photo_url, photo_file_id, 
+                                is_main, position, file_id
+                            ) VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (
+                            card_id,
+                            f"https://example.com/photo_{card_id}_{photo_num}.jpg",
+                            f"photo_{card_id}_{photo_num}",
+                            photo_num == 1,
+                            photo_num,
+                            f"photo_{card_id}_{photo_num}"
+                        ))
+                        photos_added += 1
+        
+        logger.info(f"✅ Добавлено {cards_added} карточек и {photos_added} фото в категорию {category_slug}")
+        
+    except Exception as e:
+        logger.error(f"❌ Ошибка добавления карточек в {category_slug}: {e}")
+        raise
+
 def add_sample_cards():
     """Add sample cards for testing in all categories and subcategories"""
     try:
