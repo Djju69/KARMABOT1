@@ -3475,7 +3475,7 @@ def add_sample_cards():
                                     # Add 2 photos for each card
                                     for photo_num in range(1, 3):
                                         cur.execute("""
-                                            INSERT INTO card_photos (card_id, photo_url, photo_file_id, display_order)
+                                            INSERT INTO card_photos (card_id, photo_url, photo_file_id, position)
                                             VALUES (%s, %s, %s, %s)
                                             ON CONFLICT DO NOTHING
                                         """, (card_id, f"https://example.com/photo_{card_id}_{photo_num}.jpg", 

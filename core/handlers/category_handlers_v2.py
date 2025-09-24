@@ -217,6 +217,10 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
                     await bot.send_message(chat_id, text, reply_markup=kb)
                     logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена отдельным сообщением")
                     
+                    # Небольшая задержка между сообщениями
+                    import asyncio
+                    await asyncio.sleep(0.1)
+                    
                 except Exception as e:
                     logger.error(f"ДИАГНОСТИКА: Ошибка рендеринга карточки {i}: {e}")
                     await bot.send_message(chat_id, f"**{i}.** Ошибка отображения карточки")
