@@ -3298,6 +3298,14 @@ def add_sample_cards():
             if total_cards < 50:
                 logger.info("No test cards found, adding sample data for all categories...")
                 
+                # First, ensure sub_slug column exists
+                try:
+                    cur.execute("ALTER TABLE cards_v2 ADD COLUMN IF NOT EXISTS sub_slug VARCHAR(50)")
+                    conn.commit()
+                    logger.info("✅ Added sub_slug column to cards_v2")
+                except Exception as e:
+                    logger.warning(f"Could not add sub_slug column: {e}")
+                
                 # Add sample partner
                 cur.execute("""
                     INSERT INTO partners_v2 (tg_user_id, display_name, username, status, karma_points)
@@ -3447,11 +3455,11 @@ def add_sample_cards():
                         
                         for sub_slug, cards in subcategories.items():
                             for title, description in cards:
-                                # Check if card already exists
+                                # Check if card already exists (by title and category)
                                 cur.execute("""
                                     SELECT id FROM cards_v2 
-                                    WHERE partner_id = %s AND category_id = %s AND title = %s AND sub_slug = %s
-                                """, (partner_id, category_id, title, sub_slug))
+                                    WHERE partner_id = %s AND category_id = %s AND title = %s
+                                """, (partner_id, category_id, title))
                                 
                                 existing_card = cur.fetchone()
                                 if not existing_card:
