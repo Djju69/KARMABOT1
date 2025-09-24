@@ -145,7 +145,11 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     
     try:
         # 1. Получение данных и фильтрация
-        await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
+        try:
+            await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
+        except Exception as e:
+            logger.warning(f"🔧 LOG_EVENT ERROR: {e}")
+            
         logger.info(f"ДИАГНОСТИКА: Запрашиваем карточки для категории '{slug}', статус 'published'")
         
         logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
@@ -277,18 +281,27 @@ async def on_tours(message: Message, bot: Bot, lang: str):
 
 async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Транспорт'."""
+    logger.warning(f"🔧 ON_TRANSPORT_SUBMENU CALLED: user={message.from_user.id}, text={message.text}")
+    
     sub_slug_map = {
         get_text('transport_bikes', lang): 'bikes',
         get_text('transport_cars', lang): 'cars',
         get_text('transport_bicycles', lang): 'bicycles'
     }
     sub_slug = sub_slug_map.get(message.text, "all")
+    logger.warning(f"🔧 MAPPED TEXT '{message.text}' TO SUB_SLUG '{sub_slug}'")
+    
     await log_event("category_sub_open", user=message.from_user, slug="transport", sub_slug=sub_slug, lang=lang, city_id=city_id)
     try:
         await state.update_data(category='transport', sub_slug=sub_slug, page=1)
-    except Exception:
+        logger.warning(f"🔧 STATE UPDATED: category=transport, sub_slug={sub_slug}, page=1")
+    except Exception as e:
+        logger.warning(f"🔧 STATE UPDATE FAILED: {e}")
         pass
+    
+    logger.warning(f"🔧 CALLING show_catalog_page for transport/{sub_slug}")
     await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
+    logger.warning(f"🔧 FINISHED show_catalog_page for transport/{sub_slug}")
 
 async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Экскурсии'."""
@@ -344,17 +357,26 @@ async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
 
 async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Магазины и услуги'."""
+    logger.warning(f"🔧 ON_SHOPS_SUBMENU CALLED: user={message.from_user.id}, text={message.text}")
+    
     sub_slug_map = {
         get_text('shops_shops', lang): 'shops',
         get_text('shops_services', lang): 'services',
     }
     sub_slug = sub_slug_map.get(message.text, "all")
+    logger.warning(f"🔧 MAPPED TEXT '{message.text}' TO SUB_SLUG '{sub_slug}'")
+    
     await log_event("category_sub_open", user=message.from_user, slug="shops", sub_slug=sub_slug, lang=lang, city_id=city_id)
     try:
         await state.update_data(category='shops', sub_slug=sub_slug, page=1)
-    except Exception:
+        logger.warning(f"🔧 STATE UPDATED: category=shops, sub_slug={sub_slug}, page=1")
+    except Exception as e:
+        logger.warning(f"🔧 STATE UPDATE FAILED: {e}")
         pass
+    
+    logger.warning(f"🔧 CALLING show_catalog_page for shops/{sub_slug}")
     await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
+    logger.warning(f"🔧 FINISHED show_catalog_page for shops/{sub_slug}")
 
 async def show_nearest_v2(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Enhanced nearest places handler"""
@@ -869,6 +891,12 @@ async def on_card_gallery(callback: CallbackQuery):
     
     await callback.answer()
 
+
+@category_router.callback_query()
+async def debug_all_category_callbacks(callback: CallbackQuery):
+    """Универсальный обработчик для отладки всех callback'ов в категориях."""
+    logger.warning(f"🔧 ALL CATEGORY CALLBACKS: user={callback.from_user.id}, data={callback.data}")
+    await callback.answer()
 
 @category_router.callback_query(F.data == "catalog:back")
 async def on_catalog_back(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
