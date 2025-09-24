@@ -132,6 +132,13 @@ class DatabaseAdapter:
             return self.postgresql_service.execute_sync(query, params)
         else:
             return self.sqlite_service.execute(query, params)
+    
+    def get_card_photos(self, card_id: int):
+        """Get photos for a card (унифицированная структура)"""
+        if self.use_postgresql:
+            return self.postgresql_service.get_card_photos_sync(card_id)
+        else:
+            return self.sqlite_service.get_card_photos(card_id)
 
 # Global instance
 db_v2 = DatabaseAdapter()

@@ -3279,9 +3279,75 @@ def ensure_favorites_table():
     except Exception as e:
         logger.error(f"Error creating favorites table: {e}")
 
+def unify_database_structure():
+    """Унификация структуры PostgreSQL с SQLite согласно ТЗ"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            
+            logger.info("🔧 Начинаю унификацию структуры PostgreSQL с SQLite...")
+            
+            # 1. Добавляем недостающую колонку position в card_photos
+            try:
+                cur.execute("""
+                    ALTER TABLE card_photos 
+                    ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
+                """)
+                logger.info("✅ Добавлена колонка 'position' в таблицу card_photos")
+            except Exception as e:
+                logger.warning(f"⚠️ Колонка 'position' уже существует или ошибка: {e}")
+            
+            # 2. Добавляем недостающую колонку file_id в card_photos (для совместимости с SQLite)
+            try:
+                cur.execute("""
+                    ALTER TABLE card_photos 
+                    ADD COLUMN IF NOT EXISTS file_id TEXT;
+                """)
+                logger.info("✅ Добавлена колонка 'file_id' в таблицу card_photos")
+            except Exception as e:
+                logger.warning(f"⚠️ Колонка 'file_id' уже существует или ошибка: {e}")
+            
+            # 3. Проверяем и добавляем недостающие колонки в cards_v2
+            try:
+                cur.execute("""
+                    ALTER TABLE cards_v2 
+                    ADD COLUMN IF NOT EXISTS sub_slug VARCHAR(50);
+                """)
+                logger.info("✅ Добавлена колонка 'sub_slug' в таблицу cards_v2")
+            except Exception as e:
+                logger.warning(f"⚠️ Колонка 'sub_slug' уже существует или ошибка: {e}")
+            
+            # 4. Проверяем и добавляем недостающие колонки в partners_v2
+            try:
+                cur.execute("""
+                    ALTER TABLE partners_v2 
+                    ADD COLUMN IF NOT EXISTS karma_points INTEGER DEFAULT 0;
+                """)
+                logger.info("✅ Добавлена колонка 'karma_points' в таблицу partners_v2")
+            except Exception as e:
+                logger.warning(f"⚠️ Колонка 'karma_points' уже существует или ошибка: {e}")
+            
+            conn.commit()
+            logger.info("🎯 Унификация структуры БД завершена успешно!")
+            
+        else:
+            logger.info("ℹ️ Используется SQLite, унификация не требуется")
+            
+    except Exception as e:
+        logger.error(f"❌ Ошибка унификации БД: {e}")
+        raise
+
 def add_sample_cards():
     """Add sample cards for testing in all categories and subcategories"""
     try:
+        # Сначала унифицируем структуру БД
+        unify_database_structure()
+        
         database_url = os.getenv('DATABASE_URL', '')
         
         if database_url and database_url.startswith("postgresql"):
@@ -3472,14 +3538,14 @@ def add_sample_cards():
                                 result = cur.fetchone()
                                 if result:
                                     card_id = result[0]
-                                    # Add 2 photos for each card
+                                    # Add 2 photos for each card (унифицированная структура)
                                     for photo_num in range(1, 3):
                                         cur.execute("""
-                                            INSERT INTO card_photos (card_id, photo_url, photo_file_id, position)
-                                            VALUES (%s, %s, %s, %s)
+                                            INSERT INTO card_photos (card_id, photo_url, photo_file_id, is_main, position, file_id)
+                                            VALUES (%s, %s, %s, %s, %s, %s)
                                             ON CONFLICT DO NOTHING
                                         """, (card_id, f"https://example.com/photo_{card_id}_{photo_num}.jpg", 
-                                              f"photo_{card_id}_{photo_num}", photo_num))
+                                              f"photo_{card_id}_{photo_num}", photo_num == 1, photo_num, f"photo_{card_id}_{photo_num}"))
                         
                         logger.info(f"✅ Sample cards added to {category_slug} category")
                 

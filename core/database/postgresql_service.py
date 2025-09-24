@@ -414,6 +414,43 @@ class PostgreSQLService:
                         loop.close()
         except Exception as e:
             logger.error(f"Error executing query: {e}")
+    
+    def get_card_photos_sync(self, card_id: int):
+        """Get photos for a card (синхронная версия)"""
+        try:
+            query = """
+                SELECT id, card_id, photo_url, photo_file_id, caption, is_main, position, file_id, created_at
+                FROM card_photos 
+                WHERE card_id = $1 
+                ORDER BY position ASC, created_at ASC
+            """
+            params = (card_id,)
+            
+            if self._pool is None:
+                # Create temporary connection
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    conn = loop.run_until_complete(asyncpg.connect(self.database_url))
+                    try:
+                        rows = loop.run_until_complete(conn.fetch(query, *params))
+                        return [dict(row) for row in rows]
+                    finally:
+                        loop.run_until_complete(conn.close())
+                finally:
+                    loop.close()
+            else:
+                # Use existing pool
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    rows = loop.run_until_complete(self._pool.fetch(query, *params))
+                    return [dict(row) for row in rows]
+                finally:
+                    loop.close()
+        except Exception as e:
+            logger.error(f"Error getting card photos: {e}")
+            return []
 
 # Global instance
 _postgresql_service = None
@@ -427,3 +464,4 @@ def get_postgresql_service() -> PostgreSQLService:
             raise ValueError("DATABASE_URL must be a PostgreSQL connection string")
         _postgresql_service = PostgreSQLService(database_url)
     return _postgresql_service
+
