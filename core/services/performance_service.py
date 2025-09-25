@@ -96,10 +96,11 @@ class QueryOptimizer:
                 # Проверяем кэш
                 cached_result = await cache_service.get(unique_key)
                 if cached_result:
-                    logger.debug(f"📦 Cache hit: {unique_key}")
+                    logger.warning(f"🔧 CACHE HIT: {unique_key} - возвращаем кэшированный результат")
                     return json.loads(cached_result)
                 
                 # Выполняем запрос
+                logger.warning(f"🔧 CACHE MISS: {unique_key} - выполняем функцию")
                 start_time = time.time()
                 try:
                     result = await func(*args, **kwargs)
