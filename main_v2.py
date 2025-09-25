@@ -403,6 +403,17 @@ async def main():
                 if not got_lock:
                     logger.error("❌ Failed to acquire leader lock after retries, exiting...")
                     return
+                
+                # Устанавливаем обработчик завершения для освобождения блокировки
+                shutdown_handler = make_shutdown_handler(redis)
+                import signal
+                import asyncio
+                
+                def signal_handler(signum, frame):
+                    asyncio.create_task(shutdown_handler(None))
+                
+                signal.signal(signal.SIGTERM, signal_handler)
+                signal.signal(signal.SIGINT, signal_handler)
             
             # Set bot commands
             try:
@@ -422,6 +433,13 @@ async def main():
             
     except Exception as e:
         logger.error(f"❌ Fatal error in main: {e}", exc_info=True)
+        # Освобождаем блокировку при ошибке
+        if redis is not None:
+            try:
+                shutdown_handler = make_shutdown_handler(redis)
+                await shutdown_handler(None)
+            except Exception as cleanup_error:
+                logger.error(f"❌ Failed to cleanup Redis lock: {cleanup_error}")
         raise
     
     # Preflight check with Telegram API
