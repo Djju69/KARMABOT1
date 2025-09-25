@@ -23,8 +23,10 @@ def safe_db_query(func):
         retry=retry_if_exception_type((
             asyncpg.exceptions.ConnectionDoesNotExistError,
             asyncpg.exceptions.InterfaceError,
+            asyncpg.exceptions.PostgresError,
             ConnectionError,
-            OSError
+            OSError,
+            RuntimeError
         ))
     )
     async def wrapper(*args, **kwargs):

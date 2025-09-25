@@ -800,11 +800,16 @@ async def handle_profile(message: Message, bot: Bot, lang: str):
 
 
 @category_router.callback_query(F.data.regexp(r"^pg:(restaurants|spa|transport|hotels|tours|shops):([a-zA-Z0-9_]+):([0-9]+)$"))
-async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
+async def on_catalog_pagination(callback: CallbackQuery, bot: Bot, state: FSMContext):
     """Хендлер пагинации каталога. Формат: pg:<slug>:<sub_slug>:<page>"""
     try:
         _, slug, sub_slug, page_str = callback.data.split(":")
         page = int(page_str)
+
+        # Получаем lang и city_id из контекста
+        user_data = await state.get_data()
+        lang = user_data.get('lang', 'ru')
+        city_id = await profile_service.get_city_id(callback.from_user.id)
 
         # Сначала отвечаем на callback чтобы убрать "часики"
         await callback.answer()

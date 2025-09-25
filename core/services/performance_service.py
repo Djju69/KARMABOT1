@@ -75,6 +75,7 @@ class QueryOptimizer:
             'loyalty_config': 900,     # 15 минут
             'tariffs': 3600,          # 1 час
             'translations': 7200,     # 2 часа
+            'catalog': 30,            # 30 секунд для каталога
         }
     
     def cached_query(self, cache_key: str, ttl: int = 300):
@@ -96,6 +97,8 @@ class QueryOptimizer:
                     page = bound_args.arguments.get('page', 1)
                     city_id = bound_args.arguments.get('city_id', 'none')
                     unique_key = f"catalog:{slug}:{sub_slug}:{page}:{city_id}"
+                    # Используем короткий TTL для каталога
+                    ttl = self.cache_ttl.get('catalog', 30)
                 else:
                     unique_key = cache_key
                 
