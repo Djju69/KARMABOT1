@@ -3790,11 +3790,11 @@ def ensure_card_photos_table():
 
 def fix_invalid_photo_file_ids():
     """Fix invalid photo file_ids in card_photos table"""
+    import os
     try:
         if os.getenv('DATABASE_URL'):
             # PostgreSQL - используем Supabase API для синхронного выполнения
             import requests
-            import os
             
             supabase_url = os.getenv('SUPABASE_URL')
             supabase_key = os.getenv('SUPABASE_ANON_KEY')
