@@ -3792,52 +3792,58 @@ def fix_invalid_photo_file_ids():
     """Fix invalid photo file_ids in card_photos table"""
     try:
         if os.getenv('DATABASE_URL'):
-            # PostgreSQL - используем синхронную версию
-            import asyncpg
-            import asyncio
+            # PostgreSQL - используем Supabase API для синхронного выполнения
+            import requests
+            import os
             
-            # Создаем новый event loop для этой операции
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_ANON_KEY')
             
-            try:
-                async def fix_postgresql():
-                    conn = await asyncpg.connect(os.getenv('DATABASE_URL'))
-                    try:
-                        # Очищаем неправильные file_id
-                        result = await conn.execute("""
-                            UPDATE card_photos 
-                            SET file_id = NULL 
-                            WHERE file_id IS NOT NULL 
-                            AND (
-                                LENGTH(file_id) < 10 
-                                OR file_id LIKE '%wrong%' 
-                                OR file_id LIKE '%error%'
-                                OR file_id = ''
-                            )
-                        """)
-                        logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {result}")
-                        
-                        # Также очищаем photo_file_id если он есть
-                        result2 = await conn.execute("""
-                            UPDATE card_photos 
-                            SET photo_file_id = NULL 
-                            WHERE photo_file_id IS NOT NULL 
-                            AND (
-                                LENGTH(photo_file_id) < 10 
-                                OR photo_file_id LIKE '%wrong%' 
-                                OR photo_file_id LIKE '%error%'
-                                OR photo_file_id = ''
-                            )
-                        """)
-                        logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {result2}")
-                        
-                    finally:
-                        await conn.close()
+            if supabase_url and supabase_key:
+                headers = {
+                    'apikey': supabase_key,
+                    'Authorization': f'Bearer {supabase_key}',
+                    'Content-Type': 'application/json'
+                }
                 
-                loop.run_until_complete(fix_postgresql())
-            finally:
-                loop.close()
+                # Очищаем неправильные file_id
+                update_data = {
+                    'file_id': None
+                }
+                
+                # Выполняем UPDATE через Supabase API
+                response = requests.patch(
+                    f"{supabase_url}/rest/v1/card_photos",
+                    headers=headers,
+                    json=update_data,
+                    params={
+                        'or': '(file_id.lt.10,file_id.like.*wrong*,file_id.like.*error*,file_id.eq.)',
+                        'file_id': 'not.is.null'
+                    }
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"✅ Очищены неправильные file_id через Supabase API")
+                else:
+                    logger.warning(f"⚠️ Supabase API очистка file_id: {response.status_code}")
+                
+                # Также очищаем photo_file_id если он есть
+                response2 = requests.patch(
+                    f"{supabase_url}/rest/v1/card_photos",
+                    headers=headers,
+                    json={'photo_file_id': None},
+                    params={
+                        'or': '(photo_file_id.lt.10,photo_file_id.like.*wrong*,photo_file_id.like.*error*,photo_file_id.eq.)',
+                        'photo_file_id': 'not.is.null'
+                    }
+                )
+                
+                if response2.status_code == 200:
+                    logger.info(f"✅ Очищены неправильные photo_file_id через Supabase API")
+                else:
+                    logger.warning(f"⚠️ Supabase API очистка photo_file_id: {response2.status_code}")
+            else:
+                logger.warning("⚠️ Supabase credentials not found, skipping file_id cleanup")
         else:
             # SQLite
             import sqlite3
