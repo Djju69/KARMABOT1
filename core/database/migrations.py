@@ -3812,33 +3812,21 @@ def fix_invalid_photo_file_ids():
             try:
                 cur = conn.cursor()
                 
-                # Очищаем неправильные file_id
+                # Очищаем ВСЕ file_id (полная очистка)
                 cur.execute("""
                     UPDATE card_photos 
                     SET file_id = NULL 
-                    WHERE file_id IS NOT NULL 
-                    AND (
-                        LENGTH(file_id) < 10 
-                        OR file_id LIKE '%wrong%' 
-                        OR file_id LIKE '%error%'
-                        OR file_id = ''
-                    )
+                    WHERE file_id IS NOT NULL
                 """)
-                logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {cur.rowcount} записей")
+                logger.info(f"✅ Очищены ВСЕ file_id в PostgreSQL: {cur.rowcount} записей")
                 
-                # Также очищаем photo_file_id если он есть
+                # Также очищаем ВСЕ photo_file_id
                 cur.execute("""
                     UPDATE card_photos 
                     SET photo_file_id = NULL 
-                    WHERE photo_file_id IS NOT NULL 
-                    AND (
-                        LENGTH(photo_file_id) < 10 
-                        OR photo_file_id LIKE '%wrong%' 
-                        OR photo_file_id LIKE '%error%'
-                        OR photo_file_id = ''
-                    )
+                    WHERE photo_file_id IS NOT NULL
                 """)
-                logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {cur.rowcount} записей")
+                logger.info(f"✅ Очищены ВСЕ photo_file_id в PostgreSQL: {cur.rowcount} записей")
                 
                 conn.commit()
                 
@@ -3852,19 +3840,13 @@ def fix_invalid_photo_file_ids():
             try:
                 cur = conn.cursor()
                 
-                # Очищаем неправильные file_id
+                # Очищаем ВСЕ file_id (полная очистка)
                 cur.execute("""
                     UPDATE card_photos 
                     SET file_id = NULL 
-                    WHERE file_id IS NOT NULL 
-                    AND (
-                        LENGTH(file_id) < 10 
-                        OR file_id LIKE '%wrong%' 
-                        OR file_id LIKE '%error%'
-                        OR file_id = ''
-                    )
+                    WHERE file_id IS NOT NULL
                 """)
-                logger.info(f"✅ Очищены неправильные file_id в SQLite: {cur.rowcount}")
+                logger.info(f"✅ Очищены ВСЕ file_id в SQLite: {cur.rowcount}")
                 
                 conn.commit()
             finally:
