@@ -3100,6 +3100,8 @@ def ensure_database_ready():
         ensure_partners_v2_columns()
         ensure_cards_v2_table()
         ensure_card_photos_table()
+        # Fix invalid photo file_ids
+        fix_invalid_photo_file_ids()
         # Setup Supabase RLS if configured
         setup_supabase_rls()
         # Add sample data if needed
@@ -3785,3 +3787,74 @@ def ensure_card_photos_table():
             
     except Exception as e:
         logger.error(f"Error creating card_photos table: {e}")
+
+def fix_invalid_photo_file_ids():
+    """Fix invalid photo file_ids in card_photos table"""
+    try:
+        if os.getenv('DATABASE_URL'):
+            # PostgreSQL
+            import asyncpg
+            import asyncio
+            
+            async def fix_postgresql():
+                conn = await asyncpg.connect(os.getenv('DATABASE_URL'))
+                try:
+                    # Очищаем неправильные file_id
+                    result = await conn.execute("""
+                        UPDATE card_photos 
+                        SET file_id = NULL 
+                        WHERE file_id IS NOT NULL 
+                        AND (
+                            LENGTH(file_id) < 10 
+                            OR file_id LIKE '%wrong%' 
+                            OR file_id LIKE '%error%'
+                            OR file_id = ''
+                        )
+                    """)
+                    logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {result}")
+                    
+                    # Также очищаем photo_file_id если он есть
+                    result2 = await conn.execute("""
+                        UPDATE card_photos 
+                        SET photo_file_id = NULL 
+                        WHERE photo_file_id IS NOT NULL 
+                        AND (
+                            LENGTH(photo_file_id) < 10 
+                            OR photo_file_id LIKE '%wrong%' 
+                            OR photo_file_id LIKE '%error%'
+                            OR photo_file_id = ''
+                        )
+                    """)
+                    logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {result2}")
+                    
+                finally:
+                    await conn.close()
+            
+            asyncio.run(fix_postgresql())
+        else:
+            # SQLite
+            import sqlite3
+            conn = sqlite3.connect('bot_database.db')
+            try:
+                cur = conn.cursor()
+                
+                # Очищаем неправильные file_id
+                cur.execute("""
+                    UPDATE card_photos 
+                    SET file_id = NULL 
+                    WHERE file_id IS NOT NULL 
+                    AND (
+                        LENGTH(file_id) < 10 
+                        OR file_id LIKE '%wrong%' 
+                        OR file_id LIKE '%error%'
+                        OR file_id = ''
+                    )
+                """)
+                logger.info(f"✅ Очищены неправильные file_id в SQLite: {cur.rowcount}")
+                
+                conn.commit()
+            finally:
+                conn.close()
+                
+    except Exception as e:
+        logger.error(f"Error fixing photo file_ids: {e}")

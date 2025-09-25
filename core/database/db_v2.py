@@ -412,6 +412,11 @@ class DatabaseServiceV2:
     # --- Card photos helpers ---
     def add_card_photo(self, card_id: int, file_id: str, position: Optional[int] = None) -> int:
         """Add a photo to card_photos. If position is None, append to the end."""
+        # Валидация file_id
+        if not file_id or len(file_id) < 10 or 'wrong' in file_id.lower() or 'error' in file_id.lower():
+            logger.warning(f"Invalid file_id provided: {file_id}")
+            return None
+            
         with self.get_connection() as conn:
             if position is None:
                 cur = conn.execute(
