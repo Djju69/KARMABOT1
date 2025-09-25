@@ -85,10 +85,16 @@ class QueryOptimizer:
                 # Создаем уникальный ключ на основе параметров
                 if cache_key == "catalog":
                     # Для каталога создаем ключ на основе параметров
-                    slug = kwargs.get('slug', 'all')
-                    sub_slug = kwargs.get('sub_slug', 'all')
-                    page = kwargs.get('page', 1)
-                    city_id = kwargs.get('city_id', 'none')
+                    # Получаем параметры из args и kwargs
+                    import inspect
+                    sig = inspect.signature(func)
+                    bound_args = sig.bind(*args, **kwargs)
+                    bound_args.apply_defaults()
+                    
+                    slug = bound_args.arguments.get('slug', 'all')
+                    sub_slug = bound_args.arguments.get('sub_slug', 'all')
+                    page = bound_args.arguments.get('page', 1)
+                    city_id = bound_args.arguments.get('city_id', 'none')
                     unique_key = f"catalog:{slug}:{sub_slug}:{page}:{city_id}"
                 else:
                     unique_key = cache_key
