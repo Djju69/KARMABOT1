@@ -35,6 +35,9 @@ class Settings:
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     features: Features = field(default_factory=Features)
     
+    # Настройки ботов
+    admin_id: int = field(default_factory=lambda: int(os.getenv("ADMIN_ID", "6391215556")))  # Ваш ID как админ
+    
     # Дополнительные атрибуты для совместимости
     admins: list = field(default_factory=list)
     super_admins: list = field(default_factory=lambda: [6391215556])  # Ваш ID как супер-админ

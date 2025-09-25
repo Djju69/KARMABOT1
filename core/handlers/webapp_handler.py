@@ -181,13 +181,15 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
         from core.settings import settings
         from aiogram import Bot
         
-        admin_id = settings.bots.admin_id
+        admin_id = settings.admin_id
+        logger.warning(f"[WEBAPP] Attempting to notify admin {admin_id} about partner application from user {user_id}")
+        
         if admin_id:
             # Получаем бота из глобального контекста
             bot = Bot.get_current()
             if not bot:
                 # Создаем нового бота если глобальный недоступен
-                bot = Bot(token=settings.bots.token)
+                bot = Bot(token=settings.bot_token)
             
             await bot.send_message(
                 admin_id,
@@ -202,10 +204,12 @@ async def notify_admins_about_partner_application(user_id: int, partner_data: di
                 parse_mode="HTML"
             )
             
-            logger.info(f"[WEBAPP] Admin notified about partner application from user {user_id}")
+            logger.info(f"[WEBAPP] ✅ Admin {admin_id} notified about partner application from user {user_id}")
+        else:
+            logger.warning(f"[WEBAPP] ⚠️ Admin ID not configured, cannot send notification")
             
     except Exception as e:
-        logger.error(f"[WEBAPP] Error notifying admin: {e}")
+        logger.error(f"[WEBAPP] ❌ Error notifying admin: {e}")
 
 async def show_moderation_queue(message: Message):
     """Показать заявки на модерацию"""
