@@ -197,13 +197,13 @@ class PostgreSQLService:
             )
             return row['id']
     
-    async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
-        """Get cards by category with pagination"""
+    async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None) -> List[Dict]:
+        """Get cards by category with pagination and subcategory filtering"""
         try:
             pool = await self.get_pool()
             async with pool.acquire() as conn:
-                rows = await conn.fetch(
-                    """
+                # Базовый запрос
+                base_query = """
                     SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
                            p.display_name as partner_name,
                            COALESCE(COUNT(cp.id), 0) as photos_count
@@ -212,12 +212,28 @@ class PostgreSQLService:
                     JOIN partners_v2 p ON c.partner_id = p.id
                     LEFT JOIN card_photos cp ON cp.card_id = c.id
                     WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
-                    GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
-                    ORDER BY cat.priority_level DESC, c.created_at DESC
-                    LIMIT $3
-                    """,
-                    category_slug, status, limit
-                )
+                """
+                
+                # Добавляем фильтр по подкатегории если указан
+                if sub_slug and sub_slug != 'all':
+                    base_query += " AND c.sub_slug = $4"
+                    rows = await conn.fetch(
+                        base_query + """
+                        GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
+                        ORDER BY cat.priority_level DESC, c.created_at DESC
+                        LIMIT $3
+                        """,
+                        category_slug, status, limit, sub_slug
+                    )
+                else:
+                    rows = await conn.fetch(
+                        base_query + """
+                        GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
+                        ORDER BY cat.priority_level DESC, c.created_at DESC
+                        LIMIT $3
+                        """,
+                        category_slug, status, limit
+                    )
                 
                 return [dict(row) for row in rows]
         except Exception as e:

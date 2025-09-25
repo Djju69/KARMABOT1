@@ -156,9 +156,9 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
         
         # Простой запрос к базе данных без retry (из-за SSL проблем)
-        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100, sub_slug=sub_slug)
         logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
-        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
+        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}' подкатегории '{sub_slug}'")
 
         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
         if sub_slug == "all":
