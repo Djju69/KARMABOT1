@@ -3792,45 +3792,52 @@ def fix_invalid_photo_file_ids():
     """Fix invalid photo file_ids in card_photos table"""
     try:
         if os.getenv('DATABASE_URL'):
-            # PostgreSQL
+            # PostgreSQL - используем синхронную версию
             import asyncpg
             import asyncio
             
-            async def fix_postgresql():
-                conn = await asyncpg.connect(os.getenv('DATABASE_URL'))
-                try:
-                    # Очищаем неправильные file_id
-                    result = await conn.execute("""
-                        UPDATE card_photos 
-                        SET file_id = NULL 
-                        WHERE file_id IS NOT NULL 
-                        AND (
-                            LENGTH(file_id) < 10 
-                            OR file_id LIKE '%wrong%' 
-                            OR file_id LIKE '%error%'
-                            OR file_id = ''
-                        )
-                    """)
-                    logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {result}")
-                    
-                    # Также очищаем photo_file_id если он есть
-                    result2 = await conn.execute("""
-                        UPDATE card_photos 
-                        SET photo_file_id = NULL 
-                        WHERE photo_file_id IS NOT NULL 
-                        AND (
-                            LENGTH(photo_file_id) < 10 
-                            OR photo_file_id LIKE '%wrong%' 
-                            OR photo_file_id LIKE '%error%'
-                            OR photo_file_id = ''
-                        )
-                    """)
-                    logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {result2}")
-                    
-                finally:
-                    await conn.close()
+            # Создаем новый event loop для этой операции
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             
-            asyncio.run(fix_postgresql())
+            try:
+                async def fix_postgresql():
+                    conn = await asyncpg.connect(os.getenv('DATABASE_URL'))
+                    try:
+                        # Очищаем неправильные file_id
+                        result = await conn.execute("""
+                            UPDATE card_photos 
+                            SET file_id = NULL 
+                            WHERE file_id IS NOT NULL 
+                            AND (
+                                LENGTH(file_id) < 10 
+                                OR file_id LIKE '%wrong%' 
+                                OR file_id LIKE '%error%'
+                                OR file_id = ''
+                            )
+                        """)
+                        logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {result}")
+                        
+                        # Также очищаем photo_file_id если он есть
+                        result2 = await conn.execute("""
+                            UPDATE card_photos 
+                            SET photo_file_id = NULL 
+                            WHERE photo_file_id IS NOT NULL 
+                            AND (
+                                LENGTH(photo_file_id) < 10 
+                                OR photo_file_id LIKE '%wrong%' 
+                                OR photo_file_id LIKE '%error%'
+                                OR photo_file_id = ''
+                            )
+                        """)
+                        logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {result2}")
+                        
+                    finally:
+                        await conn.close()
+                
+                loop.run_until_complete(fix_postgresql())
+            finally:
+                loop.close()
         else:
             # SQLite
             import sqlite3
