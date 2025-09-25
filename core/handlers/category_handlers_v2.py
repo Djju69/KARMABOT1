@@ -306,13 +306,29 @@ async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: i
         pass
     
     logger.warning(f"🔧 CALLING show_catalog_page for transport/{sub_slug}")
-    await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
-    logger.warning(f"🔧 FINISHED show_catalog_page for transport/{sub_slug}")
+    try:
+        await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
+        logger.warning(f"🔧 FINISHED show_catalog_page for transport/{sub_slug}")
+    except Exception as e:
+        logger.error(f"🔧 SHOW_CATALOG_PAGE ERROR for transport/{sub_slug}: {e}")
+        await message.answer(f"❌ Ошибка загрузки карточек: {e}")
     
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
+        # Сохраняем важные данные (политика, язык)
+        current_data = await state.get_data()
+        policy_accepted = current_data.get('policy_accepted', False)
+        lang = current_data.get('lang', 'ru')
+        started = current_data.get('started', False)
+        
+        # Очищаем только состояние каталога, сохраняя политику
         await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for transport/{sub_slug}")
+        
+        # Восстанавливаем важные данные
+        if policy_accepted:
+            await state.update_data(policy_accepted=True, lang=lang, started=started)
+            
+        logger.warning(f"🔧 FSM STATE CLEARED for transport/{sub_slug} (policy preserved)")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
     
@@ -331,12 +347,28 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     except Exception:
         pass
     
-    await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
+    try:
+        await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"🔧 SHOW_CATALOG_PAGE ERROR for tours/{sub_slug}: {e}")
+        await message.answer(f"❌ Ошибка загрузки карточек: {e}")
     
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
+        # Сохраняем важные данные (политика, язык)
+        current_data = await state.get_data()
+        policy_accepted = current_data.get('policy_accepted', False)
+        lang = current_data.get('lang', 'ru')
+        started = current_data.get('started', False)
+        
+        # Очищаем только состояние каталога, сохраняя политику
         await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for tours/{sub_slug}")
+        
+        # Восстанавливаем важные данные
+        if policy_accepted:
+            await state.update_data(policy_accepted=True, lang=lang, started=started)
+            
+        logger.warning(f"🔧 FSM STATE CLEARED for tours/{sub_slug} (policy preserved)")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
 
@@ -354,12 +386,28 @@ async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | N
     except Exception:
         pass
     
-    await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
+    try:
+        await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"🔧 SHOW_CATALOG_PAGE ERROR for spa/{sub_slug}: {e}")
+        await message.answer(f"❌ Ошибка загрузки карточек: {e}")
     
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
+        # Сохраняем важные данные (политика, язык)
+        current_data = await state.get_data()
+        policy_accepted = current_data.get('policy_accepted', False)
+        lang = current_data.get('lang', 'ru')
+        started = current_data.get('started', False)
+        
+        # Очищаем только состояние каталога, сохраняя политику
         await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for spa/{sub_slug}")
+        
+        # Восстанавливаем важные данные
+        if policy_accepted:
+            await state.update_data(policy_accepted=True, lang=lang, started=started)
+            
+        logger.warning(f"🔧 FSM STATE CLEARED for spa/{sub_slug} (policy preserved)")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
 
@@ -376,12 +424,28 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
     except Exception:
         pass
     
-    await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
+    try:
+        await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
+    except Exception as e:
+        logger.error(f"🔧 SHOW_CATALOG_PAGE ERROR for hotels/{sub_slug}: {e}")
+        await message.answer(f"❌ Ошибка загрузки карточек: {e}")
     
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
+        # Сохраняем важные данные (политика, язык)
+        current_data = await state.get_data()
+        policy_accepted = current_data.get('policy_accepted', False)
+        lang = current_data.get('lang', 'ru')
+        started = current_data.get('started', False)
+        
+        # Очищаем только состояние каталога, сохраняя политику
         await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for hotels/{sub_slug}")
+        
+        # Восстанавливаем важные данные
+        if policy_accepted:
+            await state.update_data(policy_accepted=True, lang=lang, started=started)
+            
+        logger.warning(f"🔧 FSM STATE CLEARED for hotels/{sub_slug} (policy preserved)")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
 
@@ -414,13 +478,29 @@ async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int |
         pass
     
     logger.warning(f"🔧 CALLING show_catalog_page for shops/{sub_slug}")
-    await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
-    logger.warning(f"🔧 FINISHED show_catalog_page for shops/{sub_slug}")
+    try:
+        await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
+        logger.warning(f"🔧 FINISHED show_catalog_page for shops/{sub_slug}")
+    except Exception as e:
+        logger.error(f"🔧 SHOW_CATALOG_PAGE ERROR for shops/{sub_slug}: {e}")
+        await message.answer(f"❌ Ошибка загрузки карточек: {e}")
     
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
+        # Сохраняем важные данные (политика, язык)
+        current_data = await state.get_data()
+        policy_accepted = current_data.get('policy_accepted', False)
+        lang = current_data.get('lang', 'ru')
+        started = current_data.get('started', False)
+        
+        # Очищаем только состояние каталога, сохраняя политику
         await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for shops/{sub_slug}")
+        
+        # Восстанавливаем важные данные
+        if policy_accepted:
+            await state.update_data(policy_accepted=True, lang=lang, started=started)
+            
+        logger.warning(f"🔧 FSM STATE CLEARED for shops/{sub_slug} (policy preserved)")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
     
@@ -792,8 +872,20 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
         
         # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
         try:
+            # Сохраняем важные данные (политика, язык)
+            current_data = await state.get_data()
+            policy_accepted = current_data.get('policy_accepted', False)
+            lang = current_data.get('lang', 'ru')
+            started = current_data.get('started', False)
+            
+            # Очищаем только состояние каталога, сохраняя политику
             await state.clear()
-            logger.warning(f"🔧 FSM STATE CLEARED for restaurants/{filt}")
+            
+            # Восстанавливаем важные данные
+            if policy_accepted:
+                await state.update_data(policy_accepted=True, lang=lang, started=started)
+                
+            logger.warning(f"🔧 FSM STATE CLEARED for restaurants/{filt} (policy preserved)")
         except Exception as e:
             logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
     except Exception as e:
