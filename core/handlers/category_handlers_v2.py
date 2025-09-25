@@ -135,35 +135,13 @@ async def show_cards(user_id: int, category: str, sub_slug: Optional[str] = None
         page=max(1, int(page or 1)),
         city_id=city_id,
     )
-@cached_query("catalog:{slug}:{sub_slug}:{page}:{city_id}", ttl=300)
+@cached_query("catalog", ttl=300)
 @monitor_performance("show_catalog_page")
 async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_slug: str = "all", page: int = 1, city_id: int | None = None, message_id: int | None = None):
     """
     Универсальный обработчик для отображения страницы каталога с фильтрацией по sub_slug.
     """
-    logger.warning(f"🔧 SHOW_CATALOG_PAGE CALLED: chat_id={chat_id}, slug={slug}, sub_slug={sub_slug}, page={page}")
-    
-    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем все параметры
-    logger.warning(f"🔧 SHOW_CATALOG_PAGE PARAMS: bot={type(bot)}, chat_id={chat_id}, lang={lang}, slug={slug}, sub_slug={sub_slug}, page={page}, city_id={city_id}")
-    
-    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем импорты
     try:
-        logger.warning(f"🔧 CHECKING IMPORTS: db_v2={type(db_v2)}, card_service={type(card_service)}")
-    except Exception as e:
-        logger.error(f"🔧 IMPORT ERROR: {e}")
-        return
-    
-    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем все переменные перед try
-    try:
-        logger.warning(f"🔧 CHECKING VARIABLES: bot={bot}, chat_id={chat_id}, lang={lang}")
-        logger.warning(f"🔧 CHECKING VARIABLES: slug={slug}, sub_slug={sub_slug}, page={page}")
-        logger.warning(f"🔧 CHECKING VARIABLES: city_id={city_id}, message_id={message_id}")
-    except Exception as e:
-        logger.error(f"🔧 VARIABLE CHECK ERROR: {e}")
-        return
-    
-    try:
-        logger.warning(f"🔧 SHOW_CATALOG_PAGE ENTERED TRY BLOCK")
         
         # 1. Получение данных и фильтрация
         try:
@@ -262,16 +240,10 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
             kb_pagination = InlineKeyboardMarkup(inline_keyboard=pagination_row)
             await bot.send_message(chat_id, "📄 Навигация по страницам:", reply_markup=kb_pagination)
         await log_event("catalog_rendered", slug=slug, sub_slug=sub_slug, page=page, total_items=total_items)
-        logger.warning(f"🔧 SHOW_CATALOG_PAGE COMPLETED SUCCESSFULLY")
 
     except Exception as e:
         logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
-        logger.warning(f"🔧 SHOW_CATALOG_PAGE FAILED WITH ERROR: {e}")
-        logger.error(f"🔧 FULL ERROR TRACEBACK:", exc_info=True)
-        try:
-            await bot.send_message(chat_id, get_text('catalog_error', lang))
-        except Exception as send_error:
-            logger.error(f"🔧 FAILED TO SEND ERROR MESSAGE: {send_error}")
+        await bot.send_message(chat_id, get_text('catalog_error', lang))
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):

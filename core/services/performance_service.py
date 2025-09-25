@@ -82,10 +82,21 @@ class QueryOptimizer:
         def decorator(func: Callable):
             @wraps(func)
             async def wrapper(*args, **kwargs):
+                # Создаем уникальный ключ на основе параметров
+                if cache_key == "catalog":
+                    # Для каталога создаем ключ на основе параметров
+                    slug = kwargs.get('slug', 'all')
+                    sub_slug = kwargs.get('sub_slug', 'all')
+                    page = kwargs.get('page', 1)
+                    city_id = kwargs.get('city_id', 'none')
+                    unique_key = f"catalog:{slug}:{sub_slug}:{page}:{city_id}"
+                else:
+                    unique_key = cache_key
+                
                 # Проверяем кэш
-                cached_result = await cache_service.get(cache_key)
+                cached_result = await cache_service.get(unique_key)
                 if cached_result:
-                    logger.debug(f"📦 Cache hit: {cache_key}")
+                    logger.debug(f"📦 Cache hit: {unique_key}")
                     return json.loads(cached_result)
                 
                 # Выполняем запрос
@@ -98,8 +109,8 @@ class QueryOptimizer:
                     self.monitor.record_query(func.__name__, duration_ms, kwargs)
                     
                     # Сохраняем в кэш
-                    await cache_service.set(cache_key, json.dumps(result), ex=ttl)
-                    logger.debug(f"💾 Cached: {cache_key} (TTL: {ttl}s)")
+                    await cache_service.set(unique_key, json.dumps(result), ex=ttl)
+                    logger.debug(f"💾 Cached: {unique_key} (TTL: {ttl}s)")
                     
                     return result
                 except Exception as e:
