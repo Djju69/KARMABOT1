@@ -163,9 +163,12 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
                 if attempt > 0:
                     logger.warning(f"🔧 RECONNECTING TO DATABASE (attempt {attempt + 1})")
                     try:
-                        await db_v2.close()
+                        # Переподключаемся через пересоздание соединения
+                        import asyncio
                         await asyncio.sleep(0.5)
-                        await db_v2.connect()
+                        # Принудительно очищаем пул соединений
+                        if hasattr(db_v2, 'pool') and db_v2.pool:
+                            await db_v2.pool.close()
                         logger.warning(f"🔧 DATABASE RECONNECTED")
                     except Exception as reconnect_error:
                         logger.error(f"🔧 RECONNECT ERROR: {reconnect_error}")
