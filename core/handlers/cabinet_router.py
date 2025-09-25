@@ -81,7 +81,7 @@ async def user_cabinet_handler(message: Message, state: FSMContext):
         activated_qr_count = 0
         
         # Get user's favorite categories (most visited)
-        all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
+        all_cards = await db_v2.get_cards_by_category('all', status='published', limit=1000)
         user_visits = {}  # This would be tracked in a visits table
         
         # Form detailed profile message with real data

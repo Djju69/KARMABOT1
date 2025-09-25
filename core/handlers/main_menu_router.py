@@ -661,7 +661,7 @@ async def handle_location(message: Message, bot: Bot, state: FSMContext) -> None
         
         # Ищем ближайшие заведения
         from core.database.db_v2 import db_v2
-        all_cards = db_v2.get_cards_by_category('all', status='published', limit=50)
+        all_cards = await db_v2.get_cards_by_category('all', status='published', limit=50)
         
         if not all_cards:
             no_places_text = translations.get(lang, {}).get(
@@ -975,7 +975,7 @@ async def handle_choose_district(message: Message, bot: Bot, state: FSMContext) 
         
         # Получаем все заведения
         from core.database.db_v2 import db_v2
-        all_cards = db_v2.get_cards_by_category('all', status='published', limit=1000)
+        all_cards = await db_v2.get_cards_by_category('all', status='published', limit=1000)
         
         if city_id is not None:
             all_cards = [c for c in all_cards if c.get('city_id') == city_id]

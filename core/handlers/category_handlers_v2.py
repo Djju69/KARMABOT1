@@ -157,7 +157,7 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         
         # Запрос к базе данных с обработкой ошибок соединения
         try:
-            all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100, sub_slug=sub_slug)
+            all_cards = await db_v2.get_cards_by_category(slug, status='published', limit=100, sub_slug=sub_slug)
             logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
             logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}' подкатегории '{sub_slug}'")
             
@@ -547,7 +547,7 @@ async def handle_location_v2(message: Message, bot: Bot, lang: str, city_id: int
         categories = db_v2.get_categories(active_only=True)
         
         for category in categories:
-            cards = db_v2.get_cards_by_category(category.slug, status='published', limit=50)
+            cards = await db_v2.get_cards_by_category(category.slug, status='published', limit=50)
             # Добавляем информацию о категории к каждой карточке
             for card in cards:
                 if isinstance(card, dict):
@@ -648,7 +648,7 @@ async def category_selected_v2(message: Message, bot: Bot, lang: str):
             return
         
         # Get cards for this category
-        cards = db_v2.get_cards_by_category(
+        cards = await db_v2.get_cards_by_category(
             matching_category.slug, 
             status='published', 
             limit=10
@@ -841,7 +841,7 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
         page = 1
 
         # Получаем карточки категории (5 шт.)
-        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=50)
+        all_cards = await db_v2.get_cards_by_category(slug, status='published', limit=50)
         # Опциональная фильтрация по городу, если поле присутствует
         if city_id is not None and all_cards and 'city_id' in all_cards[0]:
             all_cards = [c for c in all_cards if (c.get('city_id') == city_id)]
