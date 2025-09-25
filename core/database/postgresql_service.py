@@ -52,8 +52,6 @@ class PostgreSQLService:
             # SSL настройки для Supabase (правильные для asyncpg)
             ssl_settings = {
                 'ssl': 'require',
-                'connect_timeout': 10,
-                'command_timeout': 30,
                 'server_settings': {
                     'application_name': 'karmabot',
                 }
