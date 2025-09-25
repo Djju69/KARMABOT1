@@ -340,10 +340,6 @@ class PostgreSQLService:
         """Get all active categories (sync)"""
         return self._run_async(self.get_categories())
     
-    def get_cards_by_category_sync(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
-        """Get cards by category (sync)"""
-        return self._run_async(self.get_cards_by_category(category_slug, status, limit))
-    
     def get_partner_by_tg_id_sync(self, tg_user_id: int) -> Optional[Partner]:
         """Get partner by Telegram user ID (sync)"""
         return self._run_async(self.get_partner_by_tg_id(tg_user_id))

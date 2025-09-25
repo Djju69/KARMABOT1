@@ -503,7 +503,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'tours_private': '👤 Индивидуальные',
         
         # Hotels
-        'hotels_hotels': '🏨 Отели',
+        'hotels_hotels': '🏨 Гостиницы',
         'hotels_apartments': '🏠 Апартаменты',
         'hotels_choose': '🏨 Выберите тип размещения:',
         
