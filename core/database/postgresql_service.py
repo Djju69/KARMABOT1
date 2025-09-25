@@ -50,22 +50,32 @@ class PostgreSQLService:
     @retry(
         wait=wait_exponential(multiplier=1, min=2, max=10),
         stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((ConnectionError, OSError, asyncpg.PostgresError))
+        retry=retry_if_exception_type((
+            ConnectionError, 
+            OSError, 
+            asyncpg.PostgresError,
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError
+        ))
     )
     async def init_pool(self):
         """Initialize connection pool with SSL settings and retry logic"""
         if not self._pool:
-            # SSL настройки для Supabase с улучшенной стабильностью
+            # SSL настройки для Supabase с максимальной стабильностью
             ssl_settings = {
                 'ssl': 'require',
-                'min_size': 1,
+                'min_size': 5,  # Минимум 5 соединений всегда активны
                 'max_size': 20,
-                'command_timeout': 60,
+                'max_inactive_connection_lifetime': 300,  # 5 минут
+                'command_timeout': 30,  # Уменьшаем таймаут
                 'server_settings': {
                     'application_name': 'karmabot',
                     'jit': 'off',  # Отключаем JIT для стабильности
-                    'statement_timeout': '60s',
-                    'idle_in_transaction_session_timeout': '60s'
+                    'statement_timeout': '30s',
+                    'idle_in_transaction_session_timeout': '30s',
+                    'tcp_keepalives_idle': '600',  # Keep-alive настройки
+                    'tcp_keepalives_interval': '30',
+                    'tcp_keepalives_count': '3'
                 }
             }
             
@@ -231,7 +241,13 @@ class PostgreSQLService:
     @retry(
         wait=wait_exponential(multiplier=1, min=1, max=5),
         stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((ConnectionError, OSError, asyncpg.PostgresError))
+        retry=retry_if_exception_type((
+            ConnectionError, 
+            OSError, 
+            asyncpg.PostgresError,
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError
+        ))
     )
     async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None) -> List[Dict]:
         """Get cards by category with pagination and subcategory filtering"""

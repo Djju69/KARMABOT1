@@ -155,16 +155,22 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         
         logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
         
-        # Простой запрос к базе данных без retry (из-за SSL проблем)
-        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
-        logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
-        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}' подкатегории '{sub_slug}'")
-        
-        # Фильтруем по подкатегории если нужно
-        if sub_slug and sub_slug != 'all' and all_cards:
-            filtered_cards = [card for card in all_cards if card.get('sub_slug') == sub_slug]
-            logger.info(f"ДИАГНОСТИКА: После фильтрации по подкатегории '{sub_slug}': {len(filtered_cards)} карточек")
-            all_cards = filtered_cards
+        # Запрос к базе данных с обработкой ошибок соединения
+        try:
+            all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+            logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
+            logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}' подкатегории '{sub_slug}'")
+            
+            # Фильтруем по подкатегории если нужно
+            if sub_slug and sub_slug != 'all' and all_cards:
+                filtered_cards = [card for card in all_cards if card.get('sub_slug') == sub_slug]
+                logger.info(f"ДИАГНОСТИКА: После фильтрации по подкатегории '{sub_slug}': {len(filtered_cards)} карточек")
+                all_cards = filtered_cards
+                
+        except Exception as db_error:
+            logger.error(f"❌ Database error in show_catalog_page: {db_error}")
+            # Возвращаем пустой список при ошибке
+            all_cards = []
 
         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
         if sub_slug == "all":
