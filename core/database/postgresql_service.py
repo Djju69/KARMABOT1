@@ -47,10 +47,36 @@ class PostgreSQLService:
         self._lock = threading.Lock()
     
     async def init_pool(self):
-        """Initialize connection pool"""
+        """Initialize connection pool with SSL settings"""
         if not self._pool:
-            self._pool = await asyncpg.create_pool(self.database_url)
-            logger.info("✅ PostgreSQL connection pool created")
+            # SSL настройки для Supabase
+            ssl_settings = {
+                'ssl': 'require',
+                'sslmode': 'require',
+                'connect_timeout': 10,
+                'command_timeout': 30,
+                'server_settings': {
+                    'application_name': 'karmabot',
+                }
+            }
+            
+            try:
+                self._pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=1,
+                    max_size=10,
+                    **ssl_settings
+                )
+                logger.info("✅ PostgreSQL connection pool created with SSL")
+            except Exception as e:
+                logger.error(f"❌ Failed to create PostgreSQL pool: {e}")
+                # Fallback без SSL
+                self._pool = await asyncpg.create_pool(
+                    self.database_url,
+                    min_size=1,
+                    max_size=10
+                )
+                logger.info("✅ PostgreSQL connection pool created (fallback)")
     
     async def close_pool(self):
         """Close connection pool"""
@@ -99,24 +125,28 @@ class PostgreSQLService:
     # Partner methods
     async def get_partner_by_tg_id(self, tg_user_id: int) -> Optional[Partner]:
         """Get partner by Telegram user ID"""
-        pool = await self.get_pool()
-        async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM partners_v2 WHERE tg_user_id = $1",
-                tg_user_id
-            )
-            if row:
-                return Partner(
-                    id=row['id'],
-                    tg_user_id=row['tg_user_id'],
-                    display_name=row['display_name'],
-                    phone=row['phone'],
-                    email=row['email'],
-                    is_verified=row['is_verified'],
-                    is_active=row['is_active'],
-                    created_at=row['created_at'],
-                    updated_at=row['updated_at']
+        try:
+            pool = await self.get_pool()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT * FROM partners_v2 WHERE tg_user_id = $1",
+                    tg_user_id
                 )
+                if row:
+                    return Partner(
+                        id=row['id'],
+                        tg_user_id=row['tg_user_id'],
+                        display_name=row['display_name'],
+                        phone=row['phone'],
+                        email=row['email'],
+                        is_verified=row['is_verified'],
+                        is_active=row['is_active'],
+                        created_at=row['created_at'],
+                        updated_at=row['updated_at']
+                    )
+                return None
+        except Exception as e:
+            logger.error(f"❌ Database error in get_partner_by_tg_id: {e}")
             return None
     
     async def create_partner(self, partner: Partner) -> int:
@@ -170,26 +200,31 @@ class PostgreSQLService:
     
     async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50) -> List[Dict]:
         """Get cards by category with pagination"""
-        pool = await self.get_pool()
-        async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """
-                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
-                       p.display_name as partner_name,
-                       COALESCE(COUNT(cp.id), 0) as photos_count
-                FROM cards_v2 c
-                JOIN categories_v2 cat ON c.category_id = cat.id
-                JOIN partners_v2 p ON c.partner_id = p.id
-                LEFT JOIN card_photos cp ON cp.card_id = c.id
-                WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
-                GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
-                ORDER BY cat.priority_level DESC, c.created_at DESC
-                LIMIT $3
-                """,
-                category_slug, status, limit
-            )
-            
-            return [dict(row) for row in rows]
+        try:
+            pool = await self.get_pool()
+            async with pool.acquire() as conn:
+                rows = await conn.fetch(
+                    """
+                    SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                           p.display_name as partner_name,
+                           COALESCE(COUNT(cp.id), 0) as photos_count
+                    FROM cards_v2 c
+                    JOIN categories_v2 cat ON c.category_id = cat.id
+                    JOIN partners_v2 p ON c.partner_id = p.id
+                    LEFT JOIN card_photos cp ON cp.card_id = c.id
+                    WHERE cat.slug = $1 AND c.status = $2 AND cat.is_active = true
+                    GROUP BY c.id, cat.name, cat.emoji, cat.priority_level, p.display_name
+                    ORDER BY cat.priority_level DESC, c.created_at DESC
+                    LIMIT $3
+                    """,
+                    category_slug, status, limit
+                )
+                
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"❌ Database error in get_cards_by_category: {e}")
+            # Возвращаем пустой список при ошибке
+            return []
     
     async def get_categories(self) -> List[Dict]:
         """Get all active categories"""
