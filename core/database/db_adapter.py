@@ -133,12 +133,40 @@ class DatabaseAdapter:
         else:
             return self.sqlite_service.execute(query, params)
     
-    def get_card_photos(self, card_id: int):
+    async def get_card_photos(self, card_id: int):
         """Get photos for a card (унифицированная структура)"""
         if self.use_postgresql:
-            return self.postgresql_service.get_card_photos_sync(card_id)
+            return await self.postgresql_service.get_card_photos(card_id)
         else:
             return self.sqlite_service.get_card_photos(card_id)
+    
+    async def add_to_favorites(self, user_id: int, card_id: int) -> bool:
+        """Add card to user favorites"""
+        if self.use_postgresql:
+            return await self.postgresql_service.add_to_favorites(user_id, card_id)
+        else:
+            return self.sqlite_service.add_to_favorites(user_id, card_id)
+    
+    async def remove_from_favorites(self, user_id: int, card_id: int) -> bool:
+        """Remove card from user favorites"""
+        if self.use_postgresql:
+            return await self.postgresql_service.remove_from_favorites(user_id, card_id)
+        else:
+            return self.sqlite_service.remove_from_favorites(user_id, card_id)
+    
+    async def is_favorite(self, user_id: int, card_id: int) -> bool:
+        """Check if card is in user favorites"""
+        if self.use_postgresql:
+            return await self.postgresql_service.is_favorite(user_id, card_id)
+        else:
+            return self.sqlite_service.is_favorite(user_id, card_id)
+    
+    async def get_card_by_id(self, card_id: int):
+        """Get card by ID"""
+        if self.use_postgresql:
+            return await self.postgresql_service.get_card_by_id(card_id)
+        else:
+            return self.sqlite_service.get_card_by_id(card_id)
 
 # Global instance
 db_v2 = DatabaseAdapter()

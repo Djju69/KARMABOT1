@@ -534,6 +534,78 @@ class PostgreSQLService:
         except Exception as e:
             logger.error(f"Error executing query: {e}")
     
+    @safe_db_query
+    async def get_card_photos(self, card_id: int):
+        """Get photos for a card (асинхронная версия)"""
+        try:
+            query = """
+                SELECT id, card_id, photo_url, photo_file_id, caption, is_main, position, file_id, created_at
+                FROM card_photos 
+                WHERE card_id = $1 
+                ORDER BY position ASC, created_at ASC
+            """
+            params = (card_id,)
+            
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(query, *params)
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting card photos: {e}")
+            return []
+    
+    @safe_db_query
+    async def add_to_favorites(self, user_id: int, card_id: int) -> bool:
+        """Add card to user favorites"""
+        try:
+            query = "INSERT INTO user_favorites (user_id, card_id) VALUES ($1, $2) ON CONFLICT DO NOTHING"
+            async with self._pool.acquire() as conn:
+                await conn.execute(query, user_id, card_id)
+                return True
+        except Exception as e:
+            logger.error(f"Error adding to favorites: {e}")
+            return False
+    
+    @safe_db_query
+    async def remove_from_favorites(self, user_id: int, card_id: int) -> bool:
+        """Remove card from user favorites"""
+        try:
+            query = "DELETE FROM user_favorites WHERE user_id = $1 AND card_id = $2"
+            async with self._pool.acquire() as conn:
+                result = await conn.execute(query, user_id, card_id)
+                return result.split()[-1] != '0'  # Проверяем что что-то было удалено
+        except Exception as e:
+            logger.error(f"Error removing from favorites: {e}")
+            return False
+    
+    @safe_db_query
+    async def is_favorite(self, user_id: int, card_id: int) -> bool:
+        """Check if card is in user favorites"""
+        try:
+            query = "SELECT 1 FROM user_favorites WHERE user_id = $1 AND card_id = $2 LIMIT 1"
+            async with self._pool.acquire() as conn:
+                result = await conn.fetchval(query, user_id, card_id)
+                return result is not None
+        except Exception as e:
+            logger.error(f"Error checking favorite status: {e}")
+            return False
+    
+    @safe_db_query
+    async def get_card_by_id(self, card_id: int):
+        """Get card by ID"""
+        try:
+            query = """
+                SELECT c.*, p.display_name as partner_name, p.phone as partner_phone
+                FROM cards_v2 c
+                LEFT JOIN partners_v2 p ON c.partner_id = p.id
+                WHERE c.id = $1 AND c.status = 'published'
+            """
+            async with self._pool.acquire() as conn:
+                row = await conn.fetchrow(query, card_id)
+                return dict(row) if row else None
+        except Exception as e:
+            logger.error(f"Error getting card by ID: {e}")
+            return None
+    
     def get_card_photos_sync(self, card_id: int):
         """Get photos for a card (синхронная версия)"""
         try:

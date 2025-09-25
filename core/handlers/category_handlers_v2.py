@@ -924,7 +924,7 @@ async def on_card_view(callback: CallbackQuery, bot: Bot):
         # Пытаемся получить карточку; если интерфейса нет — показываем заглушку.
         card = None
         try:
-            card = db_v2.get_card_by_id(listing_id)
+            card = await db_v2.get_card_by_id(listing_id)
         except Exception:
             card = None
 
@@ -935,7 +935,7 @@ async def on_card_view(callback: CallbackQuery, bot: Bot):
             # Получим фото (multi‑photo aware)
             from ..database.db_v2 import db_v2 as _db
             try:
-                photos = _db.get_card_photos(listing_id)
+                photos = await _db.get_card_photos(listing_id)
             except Exception:
                 photos = []
             # Попробуем отрисовать фото + подпись, иначе просто текст
@@ -1107,18 +1107,18 @@ async def on_add_to_favorites(callback: CallbackQuery):
         
         # Проверяем, есть ли уже в избранном
         from core.database import db_v2
-        is_favorite = db_v2.is_favorite(user_id, card_id)
+        is_favorite = await db_v2.is_favorite(user_id, card_id)
         
         if is_favorite:
             # Удаляем из избранного
-            success = db_v2.remove_from_favorites(user_id, card_id)
+            success = await db_v2.remove_from_favorites(user_id, card_id)
             if success:
                 await callback.answer("💔 Удалено из избранного")
             else:
                 await callback.answer("❌ Ошибка при удалении из избранного", show_alert=True)
         else:
             # Добавляем в избранное
-            success = db_v2.add_to_favorites(user_id, card_id)
+            success = await db_v2.add_to_favorites(user_id, card_id)
             if success:
                 await callback.answer("⭐ Добавлено в избранное!")
             else:
