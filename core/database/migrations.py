@@ -3793,57 +3793,58 @@ def fix_invalid_photo_file_ids():
     import os
     try:
         if os.getenv('DATABASE_URL'):
-            # PostgreSQL - используем Supabase API для синхронного выполнения
-            import requests
+            # PostgreSQL - используем прямой SQL запрос через psycopg2
+            import psycopg2
+            from urllib.parse import urlparse
             
-            supabase_url = os.getenv('SUPABASE_URL')
-            supabase_key = os.getenv('SUPABASE_ANON_KEY')
+            # Парсим DATABASE_URL
+            url = urlparse(os.getenv('DATABASE_URL'))
             
-            if supabase_url and supabase_key:
-                headers = {
-                    'apikey': supabase_key,
-                    'Authorization': f'Bearer {supabase_key}',
-                    'Content-Type': 'application/json'
-                }
+            conn = psycopg2.connect(
+                host=url.hostname,
+                port=url.port,
+                database=url.path[1:],
+                user=url.username,
+                password=url.password,
+                sslmode='require'
+            )
+            
+            try:
+                cur = conn.cursor()
                 
                 # Очищаем неправильные file_id
-                update_data = {
-                    'file_id': None
-                }
-                
-                # Выполняем UPDATE через Supabase API
-                response = requests.patch(
-                    f"{supabase_url}/rest/v1/card_photos",
-                    headers=headers,
-                    json=update_data,
-                    params={
-                        'or': '(file_id.lt.10,file_id.like.*wrong*,file_id.like.*error*,file_id.eq.)',
-                        'file_id': 'not.is.null'
-                    }
-                )
-                
-                if response.status_code == 200:
-                    logger.info(f"✅ Очищены неправильные file_id через Supabase API")
-                else:
-                    logger.warning(f"⚠️ Supabase API очистка file_id: {response.status_code}")
+                cur.execute("""
+                    UPDATE card_photos 
+                    SET file_id = NULL 
+                    WHERE file_id IS NOT NULL 
+                    AND (
+                        LENGTH(file_id) < 10 
+                        OR file_id LIKE '%wrong%' 
+                        OR file_id LIKE '%error%'
+                        OR file_id = ''
+                    )
+                """)
+                logger.info(f"✅ Очищены неправильные file_id в PostgreSQL: {cur.rowcount} записей")
                 
                 # Также очищаем photo_file_id если он есть
-                response2 = requests.patch(
-                    f"{supabase_url}/rest/v1/card_photos",
-                    headers=headers,
-                    json={'photo_file_id': None},
-                    params={
-                        'or': '(photo_file_id.lt.10,photo_file_id.like.*wrong*,photo_file_id.like.*error*,photo_file_id.eq.)',
-                        'photo_file_id': 'not.is.null'
-                    }
-                )
+                cur.execute("""
+                    UPDATE card_photos 
+                    SET photo_file_id = NULL 
+                    WHERE photo_file_id IS NOT NULL 
+                    AND (
+                        LENGTH(photo_file_id) < 10 
+                        OR photo_file_id LIKE '%wrong%' 
+                        OR photo_file_id LIKE '%error%'
+                        OR photo_file_id = ''
+                    )
+                """)
+                logger.info(f"✅ Очищены неправильные photo_file_id в PostgreSQL: {cur.rowcount} записей")
                 
-                if response2.status_code == 200:
-                    logger.info(f"✅ Очищены неправильные photo_file_id через Supabase API")
-                else:
-                    logger.warning(f"⚠️ Supabase API очистка photo_file_id: {response2.status_code}")
-            else:
-                logger.warning("⚠️ Supabase credentials not found, skipping file_id cleanup")
+                conn.commit()
+                
+            finally:
+                conn.close()
+                
         else:
             # SQLite
             import sqlite3
