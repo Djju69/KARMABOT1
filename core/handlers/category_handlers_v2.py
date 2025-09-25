@@ -153,6 +153,15 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         logger.error(f"🔧 IMPORT ERROR: {e}")
         return
     
+    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем все переменные перед try
+    try:
+        logger.warning(f"🔧 CHECKING VARIABLES: bot={bot}, chat_id={chat_id}, lang={lang}")
+        logger.warning(f"🔧 CHECKING VARIABLES: slug={slug}, sub_slug={sub_slug}, page={page}")
+        logger.warning(f"🔧 CHECKING VARIABLES: city_id={city_id}, message_id={message_id}")
+    except Exception as e:
+        logger.error(f"🔧 VARIABLE CHECK ERROR: {e}")
+        return
+    
     try:
         logger.warning(f"🔧 SHOW_CATALOG_PAGE ENTERED TRY BLOCK")
         
