@@ -148,8 +148,7 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         
         # 1. Получение данных и фильтрация
         try:
-            # Создаем новый объект log_event для каждого вызова
-            from ..utils.logging import log_event
+            # Используем существующий импорт log_event
             await log_event("catalog_query", slug=slug, sub_slug=sub_slug, page=page, city_id=city_id, lang=lang)
             logger.warning(f"🔧 LOG_EVENT SUCCESS")
         except Exception as e:
@@ -253,13 +252,6 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
-    try:
-        await state.clear()
-        logger.warning(f"🔧 FSM STATE CLEARED for restaurants")
-    except Exception as e:
-        logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
     # Показываем reply клавиатуру с фильтрами кухни
     from ..keyboards.reply_v2 import get_restaurants_reply_keyboard
     await log_event("category_open", user=message.from_user, slug="restaurants", lang=lang, city_id=city_id)
@@ -314,16 +306,15 @@ async def on_transport_submenu(message: Message, bot: Bot, lang: str, city_id: i
         pass
     
     logger.warning(f"🔧 CALLING show_catalog_page for transport/{sub_slug}")
+    await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
+    logger.warning(f"🔧 FINISHED show_catalog_page for transport/{sub_slug}")
     
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for transport/{sub_slug}")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
-    await show_catalog_page(bot, message.chat.id, lang, 'transport', sub_slug, page=1, city_id=city_id)
-    logger.warning(f"🔧 FINISHED show_catalog_page for transport/{sub_slug}")
     
     logger.warning(f"🔧 FINISHED on_transport_submenu")
 
@@ -340,7 +331,7 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     except Exception:
         pass
     
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for tours/{sub_slug}")
@@ -363,7 +354,7 @@ async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | N
     except Exception:
         pass
     
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for spa/{sub_slug}")
@@ -385,7 +376,7 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
     except Exception:
         pass
     
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for hotels/{sub_slug}")
@@ -423,16 +414,15 @@ async def on_shops_submenu(message: Message, bot: Bot, lang: str, city_id: int |
         pass
     
     logger.warning(f"🔧 CALLING show_catalog_page for shops/{sub_slug}")
+    await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
+    logger.warning(f"🔧 FINISHED show_catalog_page for shops/{sub_slug}")
     
-    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+    # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for shops/{sub_slug}")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
-    await show_catalog_page(bot, message.chat.id, lang, 'shops', sub_slug, page=1, city_id=city_id)
-    logger.warning(f"🔧 FINISHED show_catalog_page for shops/{sub_slug}")
     
     logger.warning(f"🔧 FINISHED on_shops_submenu")
 
@@ -798,14 +788,14 @@ async def on_restaurants_filter(callback: CallbackQuery, bot: Bot, lang: str, ci
         except Exception:
             pass
         
-        # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ
+        await callback.answer()
+        
+        # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
         try:
             await state.clear()
             logger.warning(f"🔧 FSM STATE CLEARED for restaurants/{filt}")
         except Exception as e:
             logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-        
-        await callback.answer()
     except Exception as e:
         logger.error(f"on_restaurants_filter error: {e}")
         error_text = get_text('error_try_later', lang)
