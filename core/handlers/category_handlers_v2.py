@@ -155,10 +155,21 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         
         logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
         
-        # Retry логика для базы данных
+        # Retry логика для базы данных с переподключением
         max_retries = 3
         for attempt in range(max_retries):
             try:
+                # Принудительно переподключаемся к базе при ошибках SSL
+                if attempt > 0:
+                    logger.warning(f"🔧 RECONNECTING TO DATABASE (attempt {attempt + 1})")
+                    try:
+                        await db_v2.close()
+                        await asyncio.sleep(0.5)
+                        await db_v2.connect()
+                        logger.warning(f"🔧 DATABASE RECONNECTED")
+                    except Exception as reconnect_error:
+                        logger.error(f"🔧 RECONNECT ERROR: {reconnect_error}")
+                
                 all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
                 logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
                 logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
