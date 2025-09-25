@@ -143,6 +143,9 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     """
     logger.warning(f"🔧 SHOW_CATALOG_PAGE CALLED: chat_id={chat_id}, slug={slug}, sub_slug={sub_slug}, page={page}")
     
+    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем все параметры
+    logger.warning(f"🔧 SHOW_CATALOG_PAGE PARAMS: bot={type(bot)}, chat_id={chat_id}, lang={lang}, slug={slug}, sub_slug={sub_slug}, page={page}, city_id={city_id}")
+    
     try:
         logger.warning(f"🔧 SHOW_CATALOG_PAGE ENTERED TRY BLOCK")
         
