@@ -154,9 +154,21 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
         logger.info(f"ДИАГНОСТИКА: Запрашиваем карточки для категории '{slug}', статус 'published'")
         
         logger.warning(f"🔧 ABOUT TO QUERY DATABASE for {slug}")
-        all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
-        logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
-        logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
+        
+        # Retry логика для базы данных
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                all_cards = db_v2.get_cards_by_category(slug, status='published', limit=100)
+                logger.warning(f"🔧 DATABASE RETURNED: {len(all_cards) if all_cards else 0} cards")
+                logger.info(f"ДИАГНОСТИКА: Получено {len(all_cards)} карточек для категории '{slug}'")
+                break
+            except Exception as db_error:
+                logger.error(f"🔧 DATABASE ERROR (attempt {attempt + 1}/{max_retries}): {db_error}")
+                if attempt == max_retries - 1:
+                    raise db_error
+                import asyncio
+                await asyncio.sleep(1)  # Ждем 1 секунду перед повтором
 
         # Optionally enrich from Odoo without changing UI. Only when sub_slug == 'all'.
         if sub_slug == "all":
@@ -243,7 +255,11 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
 
     except Exception as e:
         logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
-        await bot.send_message(chat_id, get_text('catalog_error', lang))
+        # Отправляем пользователю понятное сообщение об ошибке
+        try:
+            await bot.send_message(chat_id, "❌ Ошибка загрузки каталога. Попробуйте позже.")
+        except Exception as send_error:
+            logger.error(f"Failed to send error message: {send_error}")
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
