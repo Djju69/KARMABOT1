@@ -775,6 +775,9 @@ if __name__ == "__main__":
                             # Регистрация партнера через WebApp
                             try:
                                 import json
+                                import asyncio
+                                from tenacity import retry, wait_exponential, stop_after_attempt
+                                
                                 content_length = int(self.headers.get('Content-Length', 0))
                                 post_data = self.rfile.read(content_length)
                                 partner_data = json.loads(post_data.decode('utf-8'))
@@ -787,31 +790,59 @@ if __name__ == "__main__":
                                 # Используем временный user_id для тестирования
                                 temp_user_id = 7006636786
                                 
-                                # Сохраняем заявку партнера через DatabaseAdapter
-                                query = """
-                                    INSERT INTO partner_applications 
-                                    (user_id, name, phone, email, description, status, created_at)
-                                    VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-                                    ON CONFLICT (user_id) DO UPDATE SET
-                                    name = excluded.name,
-                                    phone = excluded.phone,
-                                    email = excluded.email,
-                                    description = excluded.description,
-                                    status = 'pending',
-                                    updated_at = datetime('now')
-                                """
+                                # Retry логика для стабильности
+                                @retry(wait=wait_exponential(multiplier=1, min=1, max=5), stop=stop_after_attempt(3))
+                                async def save_partner_with_retry():
+                                    # Сохраняем заявку партнера через DatabaseAdapter
+                                    query = """
+                                        INSERT INTO partner_applications 
+                                        (user_id, name, phone, email, description, status, created_at)
+                                        VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
+                                        ON CONFLICT (user_id) DO UPDATE SET
+                                        name = excluded.name,
+                                        phone = excluded.phone,
+                                        email = excluded.email,
+                                        description = excluded.description,
+                                        status = 'pending',
+                                        updated_at = datetime('now')
+                                    """
+                                    
+                                    params = (
+                                        temp_user_id,
+                                        partner_data.get('name', ''),
+                                        partner_data.get('phone', ''),
+                                        partner_data.get('email', ''),
+                                        partner_data.get('description', '')
+                                    )
+                                    
+                                    db_v2.execute(query, params)
+                                    logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
+                                    
+                                    # Уведомляем админа о новой заявке
+                                    try:
+                                        from core.handlers.webapp_handler import notify_admins_about_partner_application
+                                        
+                                        # Создаем фиктивное сообщение для уведомления
+                                        class FakeMessage:
+                                            def __init__(self, user_id):
+                                                self.from_user = type('obj', (object,), {
+                                                    'first_name': 'Пользователь',
+                                                    'username': None
+                                                })()
+                                        
+                                        fake_message = FakeMessage(temp_user_id)
+                                        await notify_admins_about_partner_application(temp_user_id, partner_data, fake_message)
+                                        logger.info(f"[API] Admin notification sent for partner application from user {temp_user_id}")
+                                    except Exception as notify_error:
+                                        logger.error(f"[API] Failed to notify admin: {notify_error}")
                                 
-                                params = (
-                                    temp_user_id,
-                                    partner_data.get('name', ''),
-                                    partner_data.get('phone', ''),
-                                    partner_data.get('email', ''),
-                                    partner_data.get('description', '')
-                                )
-                                
-                                db_v2.execute(query, params)
-                                
-                                logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
+                                # Выполняем с retry логикой
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                try:
+                                    loop.run_until_complete(save_partner_with_retry())
+                                finally:
+                                    loop.close()
                                 
                                 self.send_json_response({
                                     'success': True,
