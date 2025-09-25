@@ -9,6 +9,7 @@ import threading
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -46,25 +47,41 @@ class PostgreSQLService:
         self._pool = None
         self._lock = threading.Lock()
     
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((ConnectionError, OSError, asyncpg.PostgresError))
+    )
     async def init_pool(self):
-        """Initialize connection pool with SSL settings"""
+        """Initialize connection pool with SSL settings and retry logic"""
         if not self._pool:
-            # SSL настройки для Supabase (правильные для asyncpg)
+            # SSL настройки для Supabase с улучшенной стабильностью
             ssl_settings = {
                 'ssl': 'require',
+                'min_size': 1,
+                'max_size': 20,
+                'command_timeout': 60,
                 'server_settings': {
                     'application_name': 'karmabot',
+                    'jit': 'off',  # Отключаем JIT для стабильности
+                    'statement_timeout': '60s',
+                    'idle_in_transaction_session_timeout': '60s'
                 }
             }
             
             try:
+                logger.info("🔧 Creating PostgreSQL connection pool with SSL...")
                 self._pool = await asyncpg.create_pool(
                     self.database_url,
-                    min_size=1,
-                    max_size=10,
                     **ssl_settings
                 )
                 logger.info("✅ PostgreSQL connection pool created with SSL")
+                
+                # Тестируем соединение
+                async with self._pool.acquire() as conn:
+                    await conn.fetchval("SELECT 1")
+                logger.info("✅ PostgreSQL connection test successful")
+                
             except Exception as e:
                 logger.error(f"❌ Failed to create PostgreSQL pool: {e}")
                 # Fallback без SSL
@@ -81,6 +98,22 @@ class PostgreSQLService:
             await self._pool.close()
             self._pool = None
             logger.info("✅ PostgreSQL connection pool closed")
+    
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=3),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((ConnectionError, OSError, asyncpg.PostgresError))
+    )
+    async def health_check(self) -> bool:
+        """Health check for database connection"""
+        try:
+            pool = await self.get_pool()
+            async with pool.acquire() as conn:
+                result = await conn.fetchval("SELECT 1")
+                return result == 1
+        except Exception as e:
+            logger.error(f"❌ Database health check failed: {e}")
+            return False
     
     async def get_pool(self):
         """Get connection pool"""
@@ -195,6 +228,11 @@ class PostgreSQLService:
             )
             return row['id']
     
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=5),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((ConnectionError, OSError, asyncpg.PostgresError))
+    )
     async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None) -> List[Dict]:
         """Get cards by category with pagination and subcategory filtering"""
         try:

@@ -15,6 +15,7 @@ SQLAlchemy==2.0.23
 asyncpg==0.30.0
 aiosqlite>=0.19.0
 alembic>=1.12.1
+tenacity==8.2.3
 
 # === HTTP КЛИЕНТЫ ===
 httpx==0.24.1
