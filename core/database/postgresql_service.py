@@ -10,8 +10,30 @@ from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+import functools
 
 logger = logging.getLogger(__name__)
+
+def safe_db_query(func):
+    """Декоратор для безопасных database queries с retry"""
+    @functools.wraps(func)
+    @retry(
+        wait=wait_exponential(multiplier=1, min=1, max=3),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((
+            asyncpg.exceptions.ConnectionDoesNotExistError,
+            asyncpg.exceptions.InterfaceError,
+            ConnectionError,
+            OSError
+        ))
+    )
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except (asyncpg.exceptions.ConnectionDoesNotExistError, asyncpg.exceptions.InterfaceError):
+            logger.warning(f"🔧 Database connection error in {func.__name__}, retrying...")
+            raise  # Retry
+    return wrapper
 
 @dataclass
 class Partner:
@@ -63,19 +85,16 @@ class PostgreSQLService:
         if not self._pool:
             # SSL настройки для Supabase с максимальной стабильностью
             ssl_settings = {
-                'ssl': 'require',
-                'min_size': 5,  # Минимум 5 соединений всегда активны
-                'max_size': 20,
-                'max_inactive_connection_lifetime': 300,  # 5 минут
-                'command_timeout': 30,  # Уменьшаем таймаут
+                'ssl': 'prefer',  # Вместо 'require' для стабильности
+                'min_size': 2,  # Уменьшаем до 2
+                'max_size': 10,  # Уменьшаем до 10
+                'max_inactive_connection_lifetime': 60,  # 1 минута
+                'command_timeout': 30,
                 'server_settings': {
                     'application_name': 'karmabot',
                     'jit': 'off',  # Отключаем JIT для стабильности
                     'statement_timeout': '30s',
-                    'idle_in_transaction_session_timeout': '30s',
-                    'tcp_keepalives_idle': '600',  # Keep-alive настройки
-                    'tcp_keepalives_interval': '30',
-                    'tcp_keepalives_count': '3'
+                    'idle_in_transaction_session_timeout': '30s'
                 }
             }
             
@@ -238,17 +257,7 @@ class PostgreSQLService:
             )
             return row['id']
     
-    @retry(
-        wait=wait_exponential(multiplier=1, min=1, max=5),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((
-            ConnectionError, 
-            OSError, 
-            asyncpg.PostgresError,
-            asyncpg.exceptions.ConnectionDoesNotExistError,
-            asyncpg.exceptions.InterfaceError
-        ))
-    )
+    @safe_db_query
     async def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None) -> List[Dict]:
         """Get cards by category with pagination and subcategory filtering"""
         try:
