@@ -302,6 +302,16 @@ class PostgreSQLService:
             # Возвращаем пустой список при ошибке
             return []
     
+    def get_cards_by_category_sync(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None) -> List[Dict]:
+        """Synchronous wrapper for get_cards_by_category"""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            return loop.run_until_complete(self.get_cards_by_category(category_slug, status, limit, sub_slug))
+        except Exception as e:
+            logger.error(f"❌ Sync wrapper error in get_cards_by_category_sync: {e}")
+            return []
+    
     async def get_categories(self) -> List[Dict]:
         """Get all active categories"""
         pool = await self.get_pool()

@@ -70,10 +70,10 @@ class DatabaseAdapter:
         else:
             return self.sqlite_service.create_card(card)
     
-    def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50):
+    def get_cards_by_category(self, category_slug: str, status: str = 'approved', limit: int = 50, sub_slug: str = None):
         """Get cards by category"""
         if self.use_postgresql:
-            return self.postgresql_service.get_cards_by_category_sync(category_slug, status, limit)
+            return self.postgresql_service.get_cards_by_category_sync(category_slug, status, limit, sub_slug)
         else:
             return self.sqlite_service.get_cards_by_category(category_slug, status, limit)
     
