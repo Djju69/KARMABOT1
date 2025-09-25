@@ -146,6 +146,13 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем все параметры
     logger.warning(f"🔧 SHOW_CATALOG_PAGE PARAMS: bot={type(bot)}, chat_id={chat_id}, lang={lang}, slug={slug}, sub_slug={sub_slug}, page={page}, city_id={city_id}")
     
+    # КРИТИЧЕСКАЯ ДИАГНОСТИКА - проверяем импорты
+    try:
+        logger.warning(f"🔧 CHECKING IMPORTS: db_v2={type(db_v2)}, card_service={type(card_service)}")
+    except Exception as e:
+        logger.error(f"🔧 IMPORT ERROR: {e}")
+        return
+    
     try:
         logger.warning(f"🔧 SHOW_CATALOG_PAGE ENTERED TRY BLOCK")
         
@@ -251,7 +258,11 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
     except Exception as e:
         logger.error(f"show_catalog_page error for slug={slug}, sub_slug={sub_slug}: {e}")
         logger.warning(f"🔧 SHOW_CATALOG_PAGE FAILED WITH ERROR: {e}")
-        await bot.send_message(chat_id, get_text('catalog_error', lang))
+        logger.error(f"🔧 FULL ERROR TRACEBACK:", exc_info=True)
+        try:
+            await bot.send_message(chat_id, get_text('catalog_error', lang))
+        except Exception as send_error:
+            logger.error(f"🔧 FAILED TO SEND ERROR MESSAGE: {send_error}")
 
 
 async def on_restaurants(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
