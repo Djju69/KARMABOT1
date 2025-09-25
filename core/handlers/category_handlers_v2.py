@@ -331,14 +331,14 @@ async def on_tours_submenu(message: Message, bot: Bot, lang: str, city_id: int |
     except Exception:
         pass
     
+    await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
+    
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for tours/{sub_slug}")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
-    await show_catalog_page(bot, message.chat.id, lang, 'tours', sub_slug, page=1, city_id=city_id)
 
 async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'SPA'."""
@@ -354,14 +354,14 @@ async def on_spa_submenu(message: Message, bot: Bot, lang: str, city_id: int | N
     except Exception:
         pass
     
+    await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
+    
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for spa/{sub_slug}")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
-    await show_catalog_page(bot, message.chat.id, lang, 'spa', sub_slug, page=1, city_id=city_id)
 
 async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int | None, state: FSMContext):
     """Обработчик для кнопок подменю 'Отели'."""
@@ -376,14 +376,14 @@ async def on_hotels_submenu(message: Message, bot: Bot, lang: str, city_id: int 
     except Exception:
         pass
     
+    await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
+    
     # УНИВЕРСАЛЬНАЯ ОЧИСТКА FSM ДЛЯ ВСЕХ КАТЕГОРИЙ - ПОСЛЕ показа карточек
     try:
         await state.clear()
         logger.warning(f"🔧 FSM STATE CLEARED for hotels/{sub_slug}")
     except Exception as e:
         logger.warning(f"🔧 FSM STATE CLEAR FAILED: {e}")
-    
-    await show_catalog_page(bot, message.chat.id, lang, 'hotels', sub_slug, page=1, city_id=city_id)
 
 async def on_shops(message: Message, bot: Bot, lang: str, city_id: int | None):
     """Show Shops & Services submenu (shops/services)."""
