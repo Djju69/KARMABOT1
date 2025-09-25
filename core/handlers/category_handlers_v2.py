@@ -236,8 +236,30 @@ async def show_catalog_page(bot: Bot, chat_id: int, lang: str, slug: str, sub_sl
                     ]
                     kb = InlineKeyboardMarkup(inline_keyboard=[card_buttons])
                     
-                    await bot.send_message(chat_id, text, reply_markup=kb)
-                    logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена отдельным сообщением")
+                    # Пытаемся получить фото для карточки
+                    card_id = card.get('id')
+                    photos = []
+                    if card_id:
+                        try:
+                            photos = await db_v2.get_card_photos(card_id)
+                            logger.warning(f"ДИАГНОСТИКА: Получено {len(photos)} фото для карточки {card_id}")
+                        except Exception as e:
+                            logger.error(f"ДИАГНОСТИКА: Ошибка получения фото для карточки {card_id}: {e}")
+                            photos = []
+                    
+                    # Отправляем карточку с фото или без
+                    if photos and photos[0].get('file_id'):
+                        fid = photos[0].get('file_id')
+                        try:
+                            await bot.send_photo(chat_id, photo=fid, caption=text, reply_markup=kb)
+                            logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена с фото")
+                        except Exception as e:
+                            logger.error(f"ДИАГНОСТИКА: Ошибка отправки фото для карточки {i}: {e}")
+                            await bot.send_message(chat_id, text, reply_markup=kb)
+                            logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена как текст (fallback)")
+                    else:
+                        await bot.send_message(chat_id, text, reply_markup=kb)
+                        logger.warning(f"ДИАГНОСТИКА: Карточка {i} отправлена как текст (нет фото)")
                     
                     # Небольшая задержка между сообщениями
                     import asyncio
