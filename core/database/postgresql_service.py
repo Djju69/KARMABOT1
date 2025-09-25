@@ -49,10 +49,9 @@ class PostgreSQLService:
     async def init_pool(self):
         """Initialize connection pool with SSL settings"""
         if not self._pool:
-            # SSL настройки для Supabase
+            # SSL настройки для Supabase (правильные для asyncpg)
             ssl_settings = {
                 'ssl': 'require',
-                'sslmode': 'require',
                 'connect_timeout': 10,
                 'command_timeout': 30,
                 'server_settings': {
