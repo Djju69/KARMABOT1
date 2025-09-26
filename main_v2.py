@@ -945,8 +945,24 @@ if __name__ == "__main__":
                                     partner_data.get('description', '')
                                 )
                                 
-                                db_v2.execute(query, params)
-                                logger.info(f"[API] Partner application saved successfully for user {real_user_id}")
+                                # Проверяем есть ли уже заявка от этого пользователя
+                                check_query = "SELECT id FROM partner_applications WHERE user_id = $1"
+                                existing = db_v2.fetch_one(check_query, (real_user_id,))
+                                
+                                if existing:
+                                    # Обновляем существующую заявку
+                                    update_query = """
+                                        UPDATE partner_applications SET
+                                        name = $2, phone = $3, email = $4, description = $5,
+                                        status = 'pending', updated_at = NOW()
+                                        WHERE user_id = $1
+                                    """
+                                    db_v2.execute(update_query, params)
+                                    logger.info(f"[API] Partner application updated for user {real_user_id}")
+                                else:
+                                    # Создаем новую заявку
+                                    db_v2.execute(query, params)
+                                    logger.info(f"[API] Partner application saved successfully for user {real_user_id}")
                                 
                                 # Уведомляем админа о новой заявке (синхронно)
                                 try:
