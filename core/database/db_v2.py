@@ -36,7 +36,7 @@ def get_connection():
                 if self.conn:
                     await self.conn.close()
         
-        return AsyncConnectionWrapper()
+        return AsyncConnectionWrapper
     else:
         # SQLite fallback with unified path
         db_path = os.getenv('DATABASE_PATH') or 'core/database/data.db'

@@ -1037,7 +1037,8 @@ if __name__ == "__main__":
                     except Exception as e:
                         logger.error(f"Monitoring failed: {e}")
                 
-                monitoring_task = asyncio.create_task(start_monitoring())
+                # Создаем задачу мониторинга, но не ждем её завершения
+                asyncio.create_task(start_monitoring())
                 logger.info("🔍 Multi-platform monitoring started")
                 
             except Exception as e:

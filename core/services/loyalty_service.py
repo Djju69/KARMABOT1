@@ -31,9 +31,9 @@ logger = get_logger(__name__)
 DEFAULT_ACTIVITY_RULES = {
     ActivityType.DAILY_CHECKIN: ActivityRule(
         activity_type=ActivityType.DAILY_CHECKIN,
-        points=10,
+        points=5,  # Исправлено: было 10, стало 5 согласно документации
         cooldown_hours=24,
-        daily_cap=10,
+        daily_cap=5,  # Исправлено: было 10, стало 5
         is_active=True
     ),
     ActivityType.PROFILE_COMPLETION: ActivityRule(
@@ -44,7 +44,7 @@ DEFAULT_ACTIVITY_RULES = {
     ),
     ActivityType.CARD_BINDING: ActivityRule(
         activity_type=ActivityType.CARD_BINDING,
-        points=100,
+        points=25,  # Исправлено: было 100, стало 25 согласно документации
         cooldown_hours=0,  # Одноразово
         is_active=True
     ),
@@ -64,7 +64,7 @@ DEFAULT_ACTIVITY_RULES = {
 }
 
 DEFAULT_REFERRAL_PROGRAM = ReferralProgram(
-    referrer_bonus=100,
+    referrer_bonus=50,  # Исправлено: было 100, стало 50 согласно документации
     referee_bonus=50,
     is_active=True
 )

@@ -25,11 +25,16 @@ class Features:
     multi_platform_available: bool = field(default=True)
 
 @dataclass
+class DatabaseConfig:
+    url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./data.db"))
+
+@dataclass
 class Settings:
     environment: str = field(default_factory=lambda: os.getenv("ENVIRONMENT", "development"))
     debug: bool = field(default_factory=lambda: os.getenv("DEBUG", "False").lower() == "true")
     bot_token: str = field(default_factory=lambda: os.getenv("BOT_TOKEN", ""))
     database_url: str = field(default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./data.db"))
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
     supabase_url: str = field(default_factory=lambda: os.getenv("SUPABASE_URL", ""))
     supabase_key: str = field(default_factory=lambda: os.getenv("SUPABASE_KEY", ""))
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))
