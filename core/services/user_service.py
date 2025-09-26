@@ -203,7 +203,7 @@ class KarmaService:
             """, user_id, -amount, reason, admin_id)
             
             logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
-            return True
+        return True
 
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")
@@ -212,15 +212,15 @@ class KarmaService:
             await conn.close()
 
     async def get_karma_history(self, user_id: int, limit: int = 10, offset: int = 0) -> List[Dict[str, Any]]:
-        """
+    """
         Get karma transaction history for user.
-
-        Args:
-            user_id: Telegram user ID
+    
+    Args:
+        user_id: Telegram user ID
             limit: Number of transactions to return
             offset: Offset for pagination
-
-        Returns:
+        
+    Returns:
             list: List of karma transactions
         """
         try:

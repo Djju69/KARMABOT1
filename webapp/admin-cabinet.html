@@ -410,25 +410,27 @@
                 .then(response => response.json())
                 .then(data => {
                     const content = document.getElementById('moderation-content');
-                    if (data.applications && data.applications.length > 0) {
-                        let html = '<h4>🤝 Заявки партнеров:</h4>';
-                        data.applications.forEach(app => {
+                    if (data.success && data.data.applications.length > 0) {
+                        let html = `<h4>🤝 Заявки партнеров на модерацию: ${data.data.total}</h4>`;
+                        data.data.applications.forEach(app => {
                             html += `
                                 <div class="moderation-item">
-                                    <h5>${app.name}</h5>
-                                    <p>📞 ${app.phone}</p>
-                                    <p>📧 ${app.email}</p>
-                                    <p>📅 ${new Date(app.created_at).toLocaleDateString()}</p>
+                                    <h5>🏪 ${app.name}</h5>
+                                    <p><strong>👤 Пользователь ID:</strong> ${app.user_id}</p>
+                                    <p><strong>📞 Телефон:</strong> ${app.phone}</p>
+                                    <p><strong>📧 Email:</strong> ${app.email}</p>
+                                    <p><strong>📝 Описание:</strong> ${app.description}</p>
+                                    <p><strong>📅 Дата подачи:</strong> ${app.created_at}</p>
                                     <div class="moderation-actions">
-                                        <button onclick="approveApplication(${app.id})" class="btn-approve">✅ Одобрить</button>
-                                        <button onclick="rejectApplication(${app.id})" class="btn-reject">❌ Отклонить</button>
+                                        <button onclick="approvePartnerApplication(${app.user_id})" class="btn-approve">✅ Одобрить партнера</button>
+                                        <button onclick="rejectPartnerApplication(${app.user_id})" class="btn-reject">❌ Отклонить заявку</button>
                                     </div>
                                 </div>
                             `;
                         });
                         content.innerHTML = html;
                     } else {
-                        content.innerHTML = '<p>✅ Нет заявок на модерацию</p>';
+                        content.innerHTML = '<p>✅ Нет заявок партнеров на модерацию</p>';
                     }
                 })
                 .catch(error => {
@@ -438,37 +440,37 @@
                 });
         }
         
-        function approveApplication(appId) {
-            fetch(`/api/moderation/approve/${appId}`, { method: 'POST' })
+        function approvePartnerApplication(userId) {
+            fetch(`/api/moderation/approve/${userId}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('✅ Заявка одобрена');
+                        alert('✅ Заявка партнера одобрена');
                         loadModerationData(); // Перезагружаем данные
                     } else {
-                        alert('❌ Ошибка при одобрении заявки');
+                        alert('❌ Ошибка при одобрении заявки партнера');
                     }
                 })
                 .catch(error => {
-                    console.error('Error approving application:', error);
-                    alert('❌ Ошибка при одобрении заявки');
+                    console.error('Error approving partner application:', error);
+                    alert('❌ Ошибка при одобрении заявки партнера');
                 });
         }
         
-        function rejectApplication(appId) {
-            fetch(`/api/moderation/reject/${appId}`, { method: 'POST' })
+        function rejectPartnerApplication(userId) {
+            fetch(`/api/moderation/reject/${userId}`, { method: 'POST' })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('❌ Заявка отклонена');
+                        alert('❌ Заявка партнера отклонена');
                         loadModerationData(); // Перезагружаем данные
                     } else {
-                        alert('❌ Ошибка при отклонении заявки');
+                        alert('❌ Ошибка при отклонении заявки партнера');
                     }
                 })
                 .catch(error => {
-                    console.error('Error rejecting application:', error);
-                    alert('❌ Ошибка при отклонении заявки');
+                    console.error('Error rejecting partner application:', error);
+                    alert('❌ Ошибка при отклонении заявки партнера');
                 });
         }
         

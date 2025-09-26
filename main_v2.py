@@ -778,15 +778,18 @@ if __name__ == "__main__":
                                 
                                 # Получаем количество пользователей
                                 users_query = "SELECT COUNT(*) FROM user_profiles"
-                                users_count = db_v2.fetchone(users_query)[0] if db_v2.fetchone(users_query) else 0
+                                users_result = db_v2.execute(users_query)
+                                users_count = users_result.fetchone()[0] if users_result.fetchone() else 0
                                 
                                 # Получаем количество партнеров
                                 partners_query = "SELECT COUNT(*) FROM partners_v2 WHERE status = 'active'"
-                                partners_count = db_v2.fetchone(partners_query)[0] if db_v2.fetchone(partners_query) else 0
+                                partners_result = db_v2.execute(partners_query)
+                                partners_count = partners_result.fetchone()[0] if partners_result.fetchone() else 0
                                 
                                 # Получаем количество заявок на модерацию
                                 moderation_query = "SELECT COUNT(*) FROM partner_applications WHERE status = 'pending'"
-                                moderation_count = db_v2.fetchone(moderation_query)[0] if db_v2.fetchone(moderation_query) else 0
+                                moderation_result = db_v2.execute(moderation_query)
+                                moderation_count = moderation_result.fetchone()[0] if moderation_result.fetchone() else 0
                                 
                                 logger.info(f"[API] Admin stats: users={users_count}, partners={partners_count}, moderation={moderation_count}")
                                 
@@ -821,7 +824,8 @@ if __name__ == "__main__":
                                     ORDER BY created_at DESC 
                                     LIMIT 50
                                 """
-                                users = db_v2.fetchall(users_query)
+                                users_result = db_v2.execute(users_query)
+                                users = users_result.fetchall()
                                 
                                 users_list = []
                                 for user in users:
@@ -845,6 +849,50 @@ if __name__ == "__main__":
                                 })
                             except Exception as e:
                                 logger.error(f"[API] Error loading users: {e}")
+                                self.send_json_response({
+                                    'success': False,
+                                    'error': str(e)
+                                })
+                        
+                        elif self.path == '/api/moderation/applications':
+                            # Заявки на модерацию партнеров
+                            try:
+                                from core.database.db_adapter import db_v2
+                                
+                                # Получаем заявки на модерацию
+                                applications_query = """
+                                    SELECT user_id, name, phone, email, description, status, created_at
+                                    FROM partner_applications 
+                                    WHERE status = 'pending'
+                                    ORDER BY created_at DESC 
+                                    LIMIT 20
+                                """
+                                applications_result = db_v2.execute(applications_query)
+                                applications = applications_result.fetchall()
+                                
+                                applications_list = []
+                                for app in applications:
+                                    applications_list.append({
+                                        'user_id': app[0],
+                                        'name': app[1] or 'Не указано',
+                                        'phone': app[2] or 'Не указан',
+                                        'email': app[3] or 'Не указан',
+                                        'description': app[4] or 'Нет описания',
+                                        'status': app[5] or 'pending',
+                                        'created_at': app[6] or 'Не указано'
+                                    })
+                                
+                                logger.info(f"[API] Loaded {len(applications_list)} partner applications for moderation")
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'applications': applications_list,
+                                        'total': len(applications_list)
+                                    }
+                                })
+                            except Exception as e:
+                                logger.error(f"[API] Error loading moderation applications: {e}")
                                 self.send_json_response({
                                     'success': False,
                                     'error': str(e)
@@ -879,14 +927,14 @@ if __name__ == "__main__":
                                 query = """
                                     INSERT INTO partner_applications 
                                     (user_id, name, phone, email, description, status, created_at)
-                                    VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
+                                    VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
                                     ON CONFLICT (user_id) DO UPDATE SET
-                                    name = excluded.name,
-                                    phone = excluded.phone,
-                                    email = excluded.email,
-                                    description = excluded.description,
+                                    name = EXCLUDED.name,
+                                    phone = EXCLUDED.phone,
+                                    email = EXCLUDED.email,
+                                    description = EXCLUDED.description,
                                     status = 'pending',
-                                    updated_at = datetime('now')
+                                    updated_at = NOW()
                                 """
                                 
                                 params = (
