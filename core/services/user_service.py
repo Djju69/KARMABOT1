@@ -203,7 +203,7 @@ class KarmaService:
             """, user_id, -amount, reason, admin_id)
             
             logger.info(f"Subtracted {amount} karma from user {user_id}. New total: {new_karma}")
-        return True
+            return True
 
         except Exception as e:
             logger.error(f"Error subtracting karma from user {user_id}: {str(e)}")
