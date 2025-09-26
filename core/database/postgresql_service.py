@@ -643,6 +643,29 @@ class PostgreSQLService:
             logger.error(f"Error getting card photos: {e}")
             return []
 
+    @safe_db_query
+    async def get_user_favorites(self, user_id: int) -> List[Dict]:
+        """Get user's favorite cards"""
+        try:
+            query = """
+                SELECT c.*, cat.name as category_name, cat.emoji as category_emoji,
+                       p.display_name as partner_name, f.created_at as favorited_at
+                FROM user_favorites f
+                JOIN cards_v2 c ON f.card_id = c.id
+                JOIN categories_v2 cat ON c.category_id = cat.id
+                JOIN partners_v2 p ON c.partner_id = p.id
+                WHERE f.user_id = $1 AND c.status = 'published'
+                ORDER BY f.created_at DESC
+            """
+            params = (user_id,)
+            
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(query, *params)
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Error getting user favorites for user {user_id}: {e}")
+            return []
+
 # Global instance
 _postgresql_service = None
 

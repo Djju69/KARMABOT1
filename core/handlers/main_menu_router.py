@@ -412,7 +412,7 @@ async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> Non
     from core.database import db_v2
     
     # Получаем избранные заведения
-    favorites = db_v2.get_user_favorites(message.from_user.id)
+    favorites = await db_v2.get_user_favorites(message.from_user.id)
     
     if not favorites:
         empty_text = "⭐ **Избранное**\n\nУ вас пока нет избранных заведений.\nДобавляйте понравившиеся места в избранное!"

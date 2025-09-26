@@ -167,6 +167,13 @@ class DatabaseAdapter:
             return await self.postgresql_service.get_card_by_id(card_id)
         else:
             return self.sqlite_service.get_card_by_id(card_id)
+    
+    async def get_user_favorites(self, user_id: int):
+        """Get user favorites"""
+        if self.use_postgresql:
+            return await self.postgresql_service.get_user_favorites(user_id)
+        else:
+            return self.sqlite_service.get_user_favorites(user_id)
 
 # Global instance
 db_v2 = DatabaseAdapter()
