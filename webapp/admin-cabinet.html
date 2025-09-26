@@ -479,6 +479,63 @@
             }
         }
         
+        function showUsersModal() {
+            // Создаем модальное окно пользователей
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>👥 Пользователи</h3>
+                        <button class="close-btn" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="users-content">
+                            <p>🔄 Загрузка списка пользователей...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Загружаем список пользователей
+            fetch('/api/admin/users')
+                .then(response => response.json())
+                .then(data => {
+                    const content = document.getElementById('users-content');
+                    if (data.success) {
+                        let html = `<h4>Всего пользователей: ${data.data.total}</h4>`;
+                        
+                        if (data.data.users.length > 0) {
+                            html += '<div class="users-list">';
+                            data.data.users.forEach(user => {
+                                html += `
+                                    <div class="moderation-item">
+                                        <h5>👤 ${user.first_name} ${user.last_name}</h5>
+                                        <p><strong>ID:</strong> ${user.id}</p>
+                                        <p><strong>Username:</strong> @${user.username}</p>
+                                        <p><strong>Регистрация:</strong> ${user.created_at}</p>
+                                        <p><strong>Последняя активность:</strong> ${user.last_activity}</p>
+                                    </div>
+                                `;
+                            });
+                            html += '</div>';
+                        } else {
+                            html += '<p>Пользователи не найдены</p>';
+                        }
+                        
+                        content.innerHTML = html;
+                    } else {
+                        content.innerHTML = `<p>❌ Ошибка загрузки: ${data.error}</p>`;
+                    }
+                })
+                .catch(error => {
+                    const content = document.getElementById('users-content');
+                    content.innerHTML = `<p>❌ Ошибка загрузки пользователей: ${error.message}</p>`;
+                });
+        }
+        
         function showFeature(feature) {
             if (feature === 'moderation') {
                 // Показываем модерацию прямо в WebApp
@@ -486,10 +543,15 @@
                 return;
             }
             
+            if (feature === 'users') {
+                // Показываем список пользователей
+                showUsersModal();
+                return;
+            }
+            
             const messages = {
                 search: '🔍 Функция "Поиск" в разработке',
                 statistics: '📊 Функция "Статистика" в разработке',
-                users: '👥 Функция "Пользователи" в разработке',
                 partners: '🏪 Функция "Партнеры" в разработке',
                 cards: '🧾 Функция "Карты" в разработке',
                 broadcast: '💬 Функция "Рассылка" в разработке',

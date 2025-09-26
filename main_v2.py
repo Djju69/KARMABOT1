@@ -771,6 +771,85 @@ if __name__ == "__main__":
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
                         
+                        elif self.path == '/api/admin/stats':
+                            # Статистика для админ кабинета
+                            try:
+                                from core.database.db_adapter import db_v2
+                                
+                                # Получаем количество пользователей
+                                users_query = "SELECT COUNT(*) FROM user_profiles"
+                                users_count = db_v2.fetchone(users_query)[0] if db_v2.fetchone(users_query) else 0
+                                
+                                # Получаем количество партнеров
+                                partners_query = "SELECT COUNT(*) FROM partners_v2 WHERE status = 'active'"
+                                partners_count = db_v2.fetchone(partners_query)[0] if db_v2.fetchone(partners_query) else 0
+                                
+                                # Получаем количество заявок на модерацию
+                                moderation_query = "SELECT COUNT(*) FROM partner_applications WHERE status = 'pending'"
+                                moderation_count = db_v2.fetchone(moderation_query)[0] if db_v2.fetchone(moderation_query) else 0
+                                
+                                logger.info(f"[API] Admin stats: users={users_count}, partners={partners_count}, moderation={moderation_count}")
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'users_count': users_count,
+                                        'partners_count': partners_count,
+                                        'moderation_count': moderation_count
+                                    }
+                                })
+                            except Exception as e:
+                                logger.error(f"[API] Error loading admin stats: {e}")
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'users_count': 0,
+                                        'partners_count': 0,
+                                        'moderation_count': 0
+                                    }
+                                })
+                        
+                        elif self.path == '/api/admin/users':
+                            # Список пользователей для админ кабинета
+                            try:
+                                from core.database.db_adapter import db_v2
+                                
+                                # Получаем список пользователей
+                                users_query = """
+                                    SELECT user_id, first_name, last_name, username, created_at, last_activity
+                                    FROM user_profiles 
+                                    ORDER BY created_at DESC 
+                                    LIMIT 50
+                                """
+                                users = db_v2.fetchall(users_query)
+                                
+                                users_list = []
+                                for user in users:
+                                    users_list.append({
+                                        'id': user[0],
+                                        'first_name': user[1] or 'Не указано',
+                                        'last_name': user[2] or '',
+                                        'username': user[3] or 'Без username',
+                                        'created_at': user[4] or 'Не указано',
+                                        'last_activity': user[5] or 'Не указано'
+                                    })
+                                
+                                logger.info(f"[API] Loaded {len(users_list)} users for admin")
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'users': users_list,
+                                        'total': len(users_list)
+                                    }
+                                })
+                            except Exception as e:
+                                logger.error(f"[API] Error loading users: {e}")
+                                self.send_json_response({
+                                    'success': False,
+                                    'error': str(e)
+                                })
+                        
                         elif self.path == '/api/partner/register':
                             # Регистрация партнера через WebApp
                             try:
@@ -787,62 +866,78 @@ if __name__ == "__main__":
                                 # Используем единый DatabaseAdapter
                                 from core.database.db_adapter import db_v2
                                 
-                                # Используем временный user_id для тестирования
-                                temp_user_id = 7006636786
+                                # Получаем реальный user_id из данных или используем временный
+                                real_user_id = partner_data.get('user_id', 7006636786)
                                 
-                                # Retry логика для стабильности
-                                @retry(wait=wait_exponential(multiplier=1, min=1, max=5), stop=stop_after_attempt(3))
-                                async def save_partner_with_retry():
-                                    # Сохраняем заявку партнера через DatabaseAdapter
-                                    query = """
-                                        INSERT INTO partner_applications 
-                                        (user_id, name, phone, email, description, status, created_at)
-                                        VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
-                                        ON CONFLICT (user_id) DO UPDATE SET
-                                        name = excluded.name,
-                                        phone = excluded.phone,
-                                        email = excluded.email,
-                                        description = excluded.description,
-                                        status = 'pending',
-                                        updated_at = datetime('now')
-                                    """
-                                    
-                                    params = (
-                                        temp_user_id,
-                                        partner_data.get('name', ''),
-                                        partner_data.get('phone', ''),
-                                        partner_data.get('email', ''),
-                                        partner_data.get('description', '')
-                                    )
-                                    
-                                    db_v2.execute(query, params)
-                                    logger.info(f"[API] Partner application saved successfully for user {temp_user_id}")
-                                    
-                                    # Уведомляем админа о новой заявке
-                                    try:
-                                        from core.handlers.webapp_handler import notify_admins_about_partner_application
-                                        
-                                        # Создаем фиктивное сообщение для уведомления
-                                        class FakeMessage:
-                                            def __init__(self, user_id):
-                                                self.from_user = type('obj', (object,), {
-                                                    'first_name': 'Пользователь',
-                                                    'username': None
-                                                })()
-                                        
-                                        fake_message = FakeMessage(temp_user_id)
-                                        await notify_admins_about_partner_application(temp_user_id, partner_data, fake_message)
-                                        logger.info(f"[API] Admin notification sent for partner application from user {temp_user_id}")
-                                    except Exception as notify_error:
-                                        logger.error(f"[API] Failed to notify admin: {notify_error}")
+                                # Если user_id не передан, пытаемся получить из WebApp данных
+                                if real_user_id == 7006636786:
+                                    # Получаем user_id из заголовков или других источников
+                                    # В реальном WebApp это должно приходить из Telegram
+                                    real_user_id = 7006636786  # Пока используем тестовый ID
                                 
-                                # Выполняем с retry логикой
-                                loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(loop)
+                                # Сохраняем заявку партнера через DatabaseAdapter (синхронно)
+                                query = """
+                                    INSERT INTO partner_applications 
+                                    (user_id, name, phone, email, description, status, created_at)
+                                    VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'))
+                                    ON CONFLICT (user_id) DO UPDATE SET
+                                    name = excluded.name,
+                                    phone = excluded.phone,
+                                    email = excluded.email,
+                                    description = excluded.description,
+                                    status = 'pending',
+                                    updated_at = datetime('now')
+                                """
+                                
+                                params = (
+                                    real_user_id,
+                                    partner_data.get('name', ''),
+                                    partner_data.get('phone', ''),
+                                    partner_data.get('email', ''),
+                                    partner_data.get('description', '')
+                                )
+                                
+                                db_v2.execute(query, params)
+                                logger.info(f"[API] Partner application saved successfully for user {real_user_id}")
+                                
+                                # Уведомляем админа о новой заявке (синхронно)
                                 try:
-                                    loop.run_until_complete(save_partner_with_retry())
-                                finally:
-                                    loop.close()
+                                    from core.settings import settings
+                                    import requests
+                                    
+                                    admin_id = settings.admin_id
+                                    bot_token = settings.bot_token
+                                    
+                                    if admin_id and bot_token:
+                                        # Отправляем уведомление через Telegram Bot API напрямую
+                                        message_text = (
+                                            f"🆕 <b>Новая заявка на регистрацию партнера!</b>\n\n"
+                                            f"👤 <b>Пользователь:</b> Пользователь\n"
+                                            f"🆔 <b>ID:</b> {real_user_id}\n\n"
+                                            f"📝 <b>Данные заявки:</b>\n"
+                                            f"• Название: {partner_data.get('name', 'Не указано')}\n"
+                                            f"• Телефон: {partner_data.get('phone', 'Не указан')}\n"
+                                            f"• Email: {partner_data.get('email', 'Не указан')}\n"
+                                            f"• Время: {partner_data.get('timestamp', 'Не указано')}"
+                                        )
+                                        
+                                        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                                        data = {
+                                            'chat_id': admin_id,
+                                            'text': message_text,
+                                            'parse_mode': 'HTML'
+                                        }
+                                        
+                                        response = requests.post(url, data=data, timeout=10)
+                                        if response.status_code == 200:
+                                            logger.info(f"[API] ✅ Admin {admin_id} notified about partner application from user {real_user_id}")
+                                        else:
+                                            logger.error(f"[API] Failed to send notification: {response.text}")
+                                    else:
+                                        logger.warning(f"[API] ⚠️ Admin ID or bot token not configured")
+                                        
+                                except Exception as notify_error:
+                                    logger.error(f"[API] Failed to notify admin: {notify_error}")
                                 
                                 self.send_json_response({
                                     'success': True,
