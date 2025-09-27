@@ -336,6 +336,220 @@ async def get_stats_overview(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+# Модели для тарифов
+class Tariff(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: str
+    price: float
+    transaction_limit: int
+    commission_rate: float
+    features: List[str] = []
+    is_active: bool = True
+
+class TariffSubscription(BaseModel):
+    id: Optional[int] = None
+    partner_id: int
+    tariff_id: int
+    start_date: str
+    end_date: str
+    is_active: bool = True
+
+# API эндпоинты для тарифов
+@app.get("/api/admin/tariffs")
+async def get_all_tariffs(
+    user: User = Depends(require_roles("admin", "superadmin"))
+):
+    """Получить все тарифы для админов"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            tariffs = await conn.fetch("""
+                SELECT id, name, description, price, transaction_limit, 
+                       commission_rate, features, is_active, created_at
+                FROM partner_tariffs 
+                ORDER BY price ASC
+            """)
+            
+            return {
+                "success": True,
+                "data": {
+                    "tariffs": [dict(tariff) for tariff in tariffs]
+                }
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/api/admin/tariffs")
+async def create_tariff(
+    tariff_data: Tariff,
+    user: User = Depends(require_roles("superadmin"))
+):
+    """Создать новый тариф (только супер-админ)"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            tariff_id = await conn.fetchval("""
+                INSERT INTO partner_tariffs 
+                (name, description, price, transaction_limit, commission_rate, features, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                RETURNING id
+            """, tariff_data.name, tariff_data.description, tariff_data.price,
+                tariff_data.transaction_limit, tariff_data.commission_rate,
+                tariff_data.features, tariff_data.is_active)
+            
+            return {
+                "success": True,
+                "data": {"tariff_id": tariff_id, "message": "Тариф создан успешно"}
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.put("/api/admin/tariffs/{tariff_id}")
+async def update_tariff(
+    tariff_id: int,
+    tariff_data: Tariff,
+    user: User = Depends(require_roles("superadmin"))
+):
+    """Обновить тариф (только супер-админ)"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            await conn.execute("""
+                UPDATE partner_tariffs 
+                SET name = $1, description = $2, price = $3, 
+                    transaction_limit = $4, commission_rate = $5, 
+                    features = $6, is_active = $7
+                WHERE id = $8
+            """, tariff_data.name, tariff_data.description, tariff_data.price,
+                tariff_data.transaction_limit, tariff_data.commission_rate,
+                tariff_data.features, tariff_data.is_active, tariff_id)
+            
+            return {
+                "success": True,
+                "data": {"message": "Тариф обновлен успешно"}
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.delete("/api/admin/tariffs/{tariff_id}")
+async def delete_tariff(
+    tariff_id: int,
+    user: User = Depends(require_roles("superadmin"))
+):
+    """Удалить тариф (только супер-админ)"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            # Проверяем, есть ли активные подписки на этот тариф
+            active_subscriptions = await conn.fetchval("""
+                SELECT COUNT(*) FROM partner_tariff_subscriptions 
+                WHERE tariff_id = $1 AND is_active = true
+            """, tariff_id)
+            
+            if active_subscriptions > 0:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Нельзя удалить тариф с {active_subscriptions} активными подписками"
+                )
+            
+            await conn.execute("DELETE FROM partner_tariffs WHERE id = $1", tariff_id)
+            
+            return {
+                "success": True,
+                "data": {"message": "Тариф удален успешно"}
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/api/admin/tariff-subscriptions")
+async def get_tariff_subscriptions(
+    user: User = Depends(require_roles("admin", "superadmin"))
+):
+    """Получить все подписки на тарифы"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            subscriptions = await conn.fetch("""
+                SELECT pts.id, pts.partner_id, pts.tariff_id, pts.start_date, 
+                       pts.end_date, pts.is_active, pt.name as tariff_name,
+                       p.title as partner_name
+                FROM partner_tariff_subscriptions pts
+                JOIN partner_tariffs pt ON pts.tariff_id = pt.id
+                JOIN partners p ON pts.partner_id = p.id
+                ORDER BY pts.created_at DESC
+            """)
+            
+            return {
+                "success": True,
+                "data": {
+                    "subscriptions": [dict(sub) for sub in subscriptions]
+                }
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/api/admin/tariff-subscriptions")
+async def create_tariff_subscription(
+    subscription_data: TariffSubscription,
+    user: User = Depends(require_roles("admin", "superadmin"))
+):
+    """Создать подписку на тариф для партнера"""
+    try:
+        conn = await asyncpg.connect(settings.database_url)
+        try:
+            # Проверяем, что партнер существует
+            partner_exists = await conn.fetchval("""
+                SELECT id FROM partners WHERE id = $1
+            """, subscription_data.partner_id)
+            
+            if not partner_exists:
+                raise HTTPException(status_code=400, detail="Партнер не найден")
+            
+            # Проверяем, что тариф существует
+            tariff_exists = await conn.fetchval("""
+                SELECT id FROM partner_tariffs WHERE id = $1
+            """, subscription_data.tariff_id)
+            
+            if not tariff_exists:
+                raise HTTPException(status_code=400, detail="Тариф не найден")
+            
+            # Деактивируем старые подписки партнера
+            await conn.execute("""
+                UPDATE partner_tariff_subscriptions 
+                SET is_active = false 
+                WHERE partner_id = $1 AND is_active = true
+            """, subscription_data.partner_id)
+            
+            # Создаем новую подписку
+            subscription_id = await conn.fetchval("""
+                INSERT INTO partner_tariff_subscriptions 
+                (partner_id, tariff_id, start_date, end_date, is_active)
+                VALUES ($1, $2, $3, $4, $5)
+                RETURNING id
+            """, subscription_data.partner_id, subscription_data.tariff_id,
+                subscription_data.start_date, subscription_data.end_date,
+                subscription_data.is_active)
+            
+            return {
+                "success": True,
+                "data": {"subscription_id": subscription_id, "message": "Подписка создана успешно"}
+            }
+        finally:
+            await conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Проверка здоровья API"""

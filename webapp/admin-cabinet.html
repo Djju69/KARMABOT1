@@ -246,6 +246,102 @@
         border-radius: 5px;
         cursor: pointer;
     }
+    
+    /* Стили для управления тарифами */
+    .tariff-card {
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f9f9f9;
+    }
+    
+    .tariff-card h5 {
+        margin: 0 0 10px 0;
+        color: #333;
+    }
+    
+    .tariff-card p {
+        margin: 5px 0;
+        color: #666;
+    }
+    
+    .tariff-actions {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-edit {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .btn-delete {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .btn-create {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .form-group {
+        margin: 15px 0;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .form-group input, .form-group textarea, .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+    }
+    
+    .form-group textarea {
+        height: 80px;
+        resize: vertical;
+    }
+    
+    .subscription-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        background: #f8f9fa;
+    }
+    
+    .subscription-item h6 {
+        margin: 0 0 8px 0;
+        color: #333;
+    }
+    
+    .subscription-item p {
+        margin: 4px 0;
+        color: #666;
+        font-size: 14px;
+    }
     </style>
 </head>
 <body>
@@ -556,6 +652,12 @@
                 return;
             }
             
+            if (feature === 'tariff-management') {
+                // Показываем управление тарифами
+                showTariffManagementModal();
+                return;
+            }
+            
             const messages = {
                 search: '🔍 Функция "Поиск" в разработке',
                 statistics: '📊 Функция "Статистика" в разработке',
@@ -563,7 +665,6 @@
                 cards: '🧾 Функция "Карты" в разработке',
                 broadcast: '💬 Функция "Рассылка" в разработке',
                 'loyalty-settings': '⚙️ Настройки лояльности\n\nДля изменения параметров системы лояльности используйте команду /loyalty_settings в боте или обратитесь к супер-админу.',
-                'tariff-management': '💰 Управление тарифами\n\nДля управления тарифами партнеров используйте команду /tariffs в боте или обратитесь к супер-админу.',
                 delete: '🗑️ Функция "Удаление" в разработке',
                 language: '🌐 Функция "Язык" в разработке'
             };
@@ -573,6 +674,294 @@
             } else {
                 alert(messages[feature]);
             }
+        }
+        
+        function showTariffManagementModal() {
+            // Создаем модальное окно управления тарифами
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>💰 Управление тарифами</h3>
+                        <button class="close-btn" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="margin-bottom: 20px;">
+                            <button class="btn-create" onclick="showCreateTariffForm()">➕ Создать тариф</button>
+                            <button class="btn" onclick="loadTariffSubscriptions()" style="margin-left: 10px;">📋 Подписки</button>
+                        </div>
+                        <div id="tariff-content">
+                            <p>🔄 Загрузка тарифов...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Загружаем тарифы
+            loadTariffs();
+        }
+        
+        function loadTariffs() {
+            fetch('/api/admin/tariffs')
+                .then(response => response.json())
+                .then(data => {
+                    const content = document.getElementById('tariff-content');
+                    if (data.success && data.data.tariffs.length > 0) {
+                        let html = `<h4>📋 Список тарифов (${data.data.tariffs.length})</h4>`;
+                        data.data.tariffs.forEach(tariff => {
+                            html += `
+                                <div class="tariff-card">
+                                    <h5>💰 ${tariff.name}</h5>
+                                    <p><strong>Описание:</strong> ${tariff.description}</p>
+                                    <p><strong>Цена:</strong> ${tariff.price} ₽/месяц</p>
+                                    <p><strong>Лимит транзакций:</strong> ${tariff.transaction_limit}</p>
+                                    <p><strong>Комиссия:</strong> ${tariff.commission_rate}%</p>
+                                    <p><strong>Статус:</strong> ${tariff.is_active ? '✅ Активен' : '❌ Неактивен'}</p>
+                                    <div class="tariff-actions">
+                                        <button onclick="editTariff(${tariff.id})" class="btn-edit">✏️ Редактировать</button>
+                                        <button onclick="deleteTariff(${tariff.id})" class="btn-delete">🗑️ Удалить</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        content.innerHTML = html;
+                    } else {
+                        content.innerHTML = '<p>📋 Тарифы не найдены</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading tariffs:', error);
+                    document.getElementById('tariff-content').innerHTML = 
+                        '<p>❌ Ошибка загрузки тарифов</p>';
+                });
+        }
+        
+        function showCreateTariffForm() {
+            const content = document.getElementById('tariff-content');
+            content.innerHTML = `
+                <h4>➕ Создание нового тарифа</h4>
+                <form id="create-tariff-form">
+                    <div class="form-group">
+                        <label>Название тарифа:</label>
+                        <input type="text" id="tariff-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Описание:</label>
+                        <textarea id="tariff-description" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Цена (₽/месяц):</label>
+                        <input type="number" id="tariff-price" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Лимит транзакций:</label>
+                        <input type="number" id="tariff-limit" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Комиссия (%):</label>
+                        <input type="number" id="tariff-commission" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Статус:</label>
+                        <select id="tariff-active">
+                            <option value="true">Активен</option>
+                            <option value="false">Неактивен</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-create">✅ Создать тариф</button>
+                        <button type="button" onclick="loadTariffs()" class="btn-secondary" style="margin-left: 10px;">❌ Отмена</button>
+                    </div>
+                </form>
+            `;
+            
+            // Обработчик формы
+            document.getElementById('create-tariff-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                createTariff();
+            });
+        }
+        
+        function createTariff() {
+            const tariffData = {
+                name: document.getElementById('tariff-name').value,
+                description: document.getElementById('tariff-description').value,
+                price: parseFloat(document.getElementById('tariff-price').value),
+                transaction_limit: parseInt(document.getElementById('tariff-limit').value),
+                commission_rate: parseFloat(document.getElementById('tariff-commission').value),
+                features: [],
+                is_active: document.getElementById('tariff-active').value === 'true'
+            };
+            
+            fetch('/api/admin/tariffs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(tariffData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Тариф создан успешно');
+                    loadTariffs();
+                } else {
+                    alert('❌ Ошибка при создании тарифа');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating tariff:', error);
+                alert('❌ Ошибка при создании тарифа');
+            });
+        }
+        
+        function editTariff(tariffId) {
+            // Загружаем данные тарифа для редактирования
+            fetch(`/api/admin/tariffs`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const tariff = data.data.tariffs.find(t => t.id === tariffId);
+                        if (tariff) {
+                            showEditTariffForm(tariff);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading tariff:', error);
+                    alert('❌ Ошибка загрузки тарифа');
+                });
+        }
+        
+        function showEditTariffForm(tariff) {
+            const content = document.getElementById('tariff-content');
+            content.innerHTML = `
+                <h4>✏️ Редактирование тарифа: ${tariff.name}</h4>
+                <form id="edit-tariff-form">
+                    <div class="form-group">
+                        <label>Название тарифа:</label>
+                        <input type="text" id="edit-tariff-name" value="${tariff.name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Описание:</label>
+                        <textarea id="edit-tariff-description" required>${tariff.description}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Цена (₽/месяц):</label>
+                        <input type="number" id="edit-tariff-price" value="${tariff.price}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Лимит транзакций:</label>
+                        <input type="number" id="edit-tariff-limit" value="${tariff.transaction_limit}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Комиссия (%):</label>
+                        <input type="number" id="edit-tariff-commission" value="${tariff.commission_rate}" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Статус:</label>
+                        <select id="edit-tariff-active">
+                            <option value="true" ${tariff.is_active ? 'selected' : ''}>Активен</option>
+                            <option value="false" ${!tariff.is_active ? 'selected' : ''}>Неактивен</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-edit">✅ Сохранить изменения</button>
+                        <button type="button" onclick="loadTariffs()" class="btn-secondary" style="margin-left: 10px;">❌ Отмена</button>
+                    </div>
+                </form>
+            `;
+            
+            // Обработчик формы
+            document.getElementById('edit-tariff-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                updateTariff(tariff.id);
+            });
+        }
+        
+        function updateTariff(tariffId) {
+            const tariffData = {
+                name: document.getElementById('edit-tariff-name').value,
+                description: document.getElementById('edit-tariff-description').value,
+                price: parseFloat(document.getElementById('edit-tariff-price').value),
+                transaction_limit: parseInt(document.getElementById('edit-tariff-limit').value),
+                commission_rate: parseFloat(document.getElementById('edit-tariff-commission').value),
+                features: [],
+                is_active: document.getElementById('edit-tariff-active').value === 'true'
+            };
+            
+            fetch(`/api/admin/tariffs/${tariffId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(tariffData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('✅ Тариф обновлен успешно');
+                    loadTariffs();
+                } else {
+                    alert('❌ Ошибка при обновлении тарифа');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating tariff:', error);
+                alert('❌ Ошибка при обновлении тарифа');
+            });
+        }
+        
+        function deleteTariff(tariffId) {
+            if (confirm('⚠️ Вы уверены, что хотите удалить этот тариф?')) {
+                fetch(`/api/admin/tariffs/${tariffId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Тариф удален успешно');
+                        loadTariffs();
+                    } else {
+                        alert(`❌ Ошибка при удалении тарифа: ${data.detail}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting tariff:', error);
+                    alert('❌ Ошибка при удалении тарифа');
+                });
+            }
+        }
+        
+        function loadTariffSubscriptions() {
+            fetch('/api/admin/tariff-subscriptions')
+                .then(response => response.json())
+                .then(data => {
+                    const content = document.getElementById('tariff-content');
+                    if (data.success && data.data.subscriptions.length > 0) {
+                        let html = `<h4>📋 Подписки на тарифы (${data.data.subscriptions.length})</h4>`;
+                        data.data.subscriptions.forEach(sub => {
+                            html += `
+                                <div class="subscription-item">
+                                    <h6>🏪 ${sub.partner_name} - ${sub.tariff_name}</h6>
+                                    <p><strong>Период:</strong> ${sub.start_date} - ${sub.end_date}</p>
+                                    <p><strong>Статус:</strong> ${sub.is_active ? '✅ Активна' : '❌ Неактивна'}</p>
+                                </div>
+                            `;
+                        });
+                        content.innerHTML = html;
+                    } else {
+                        content.innerHTML = '<p>📋 Подписки не найдены</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading subscriptions:', error);
+                    document.getElementById('tariff-content').innerHTML = 
+                        '<p>❌ Ошибка загрузки подписок</p>';
+                });
         }
         
         // Обработка закрытия WebApp
