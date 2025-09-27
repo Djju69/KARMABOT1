@@ -764,6 +764,98 @@ if __name__ == "__main__":
                             except Exception as e:
                                 self.send_json_response({'success': False, 'error': str(e)}, status=500)
                                 
+                        elif self.path == '/api/moderation/applications':
+                            # Получаем заявки на модерацию
+                            try:
+                                applications = db_v2.fetch_all("""
+                                    SELECT pa.id, pa.user_id, pa.company_name, pa.description, 
+                                           pa.status, pa.created_at, pa.updated_at,
+                                           u.first_name, u.last_name, u.username
+                                    FROM partner_applications pa
+                                    LEFT JOIN users u ON pa.user_id = u.telegram_id
+                                    WHERE pa.status = 'pending'
+                                    ORDER BY pa.created_at DESC
+                                """)
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'applications': [dict(app) for app in applications]
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path.startswith('/api/moderation/approve/'):
+                            # Одобрить заявку
+                            try:
+                                app_id = self.path.split('/')[-1]
+                                db_v2.execute("""
+                                    UPDATE partner_applications 
+                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
+                                
+                                self.send_json_response({'success': True, 'message': 'Заявка одобрена'})
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path.startswith('/api/moderation/reject/'):
+                            # Отклонить заявку
+                            try:
+                                app_id = self.path.split('/')[-1]
+                                db_v2.execute("""
+                                    UPDATE partner_applications 
+                                    SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
+                                
+                                self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path == '/api/admin/users':
+                            # Получаем пользователей
+                            try:
+                                users = db_v2.fetch_all("""
+                                    SELECT telegram_id, first_name, last_name, username, 
+                                           points_balance, created_at, last_activity
+                                    FROM users 
+                                    ORDER BY created_at DESC
+                                    LIMIT 100
+                                """)
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'users': [dict(user) for user in users]
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
+                        elif self.path == '/api/admin/tariff-subscriptions':
+                            # Получаем подписки на тарифы
+                            try:
+                                subscriptions = db_v2.fetch_all("""
+                                    SELECT ts.id, ts.partner_id, ts.tariff_id, ts.status, 
+                                           ts.subscribed_at, ts.expires_at,
+                                           p.company_name, pt.name as tariff_name
+                                    FROM tariff_subscriptions ts
+                                    LEFT JOIN partners_v2 p ON ts.partner_id = p.user_id
+                                    LEFT JOIN partner_tariffs pt ON ts.tariff_id = pt.id
+                                    ORDER BY ts.subscribed_at DESC
+                                """)
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'subscriptions': [dict(sub) for sub in subscriptions]
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                                
                         elif self.path.startswith('/api/user/stats'):
                             # Получаем статистику для пользовательского кабинета
                             try:

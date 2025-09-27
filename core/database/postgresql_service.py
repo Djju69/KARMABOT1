@@ -685,3 +685,37 @@ def get_postgresql_service() -> PostgreSQLService:
         _postgresql_service = PostgreSQLService(database_url)
     return _postgresql_service
 
+# Асинхронные методы для использования в async контексте
+async def fetch_all_async(query: str, params: tuple = ()):
+    """Fetch all results from a query (async version)"""
+    service = get_postgresql_service()
+    try:
+        async with service._pool.acquire() as conn:
+            rows = await conn.fetch(query, *params)
+            return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Error fetching all: {e}")
+        return []
+
+async def fetch_one_async(query: str, params: tuple = ()):
+    """Fetch one result from a query (async version)"""
+    service = get_postgresql_service()
+    try:
+        async with service._pool.acquire() as conn:
+            row = await conn.fetchrow(query, *params)
+            return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Error fetching one: {e}")
+        return None
+
+async def execute_async(query: str, params: tuple = ()):
+    """Execute a query without returning results (async version)"""
+    service = get_postgresql_service()
+    try:
+        async with service._pool.acquire() as conn:
+            result = await conn.execute(query, *params)
+            return result
+    except Exception as e:
+        logger.error(f"Error executing query: {e}")
+        return None
+
