@@ -12,6 +12,7 @@ from core.services.tariff_service import tariff_service
 from core.models.tariff_models import TariffType
 from core.security.roles import get_user_role
 from core.database.db_adapter import db_v2
+from core.utils.locales_v2 import get_text
 
 logger = logging.getLogger(__name__)
 router = Router(name="tariffs_user_router")
