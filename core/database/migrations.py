@@ -3228,29 +3228,39 @@ def ensure_partner_tariff_system():
                 );
             """)
             
-            # Insert default tariffs
-            cur.execute("""
-                INSERT INTO partner_tariffs (
-                    name, tariff_type, price_vnd, max_transactions_per_month, 
-                    commission_rate, analytics_enabled, priority_support, 
-                    api_access, custom_integrations, dedicated_manager, description
-                ) VALUES 
-                ('FREE STARTER', 'free_starter', 0, 15, 0.1200, FALSE, FALSE, FALSE, FALSE, FALSE, 'Базовые карты, QR-коды, лимит 15 транзакций в месяц'),
-                ('BUSINESS', 'business', 490000, 100, 0.0600, TRUE, TRUE, FALSE, FALSE, FALSE, 'Расширенная аналитика, приоритетная поддержка, лимит 100 транзакций'),
-                ('ENTERPRISE', 'enterprise', 960000, -1, 0.0400, TRUE, TRUE, TRUE, TRUE, TRUE, 'API доступ, кастомные интеграции, выделенный менеджер, безлимит транзакций')
-                ON CONFLICT (tariff_type) DO UPDATE SET
-                    name = EXCLUDED.name,
-                    price_vnd = EXCLUDED.price_vnd,
-                    max_transactions_per_month = EXCLUDED.max_transactions_per_month,
-                    commission_rate = EXCLUDED.commission_rate,
-                    analytics_enabled = EXCLUDED.analytics_enabled,
-                    priority_support = EXCLUDED.priority_support,
-                    api_access = EXCLUDED.api_access,
-                    custom_integrations = EXCLUDED.custom_integrations,
-                    dedicated_manager = EXCLUDED.dedicated_manager,
-                    description = EXCLUDED.description,
-                    updated_at = NOW();
-            """)
+            # Insert default tariffs only if table exists and is empty
+            try:
+                cur.execute("SELECT COUNT(*) FROM partner_tariffs")
+                count = cur.fetchone()[0]
+                
+                if count == 0:
+                    cur.execute("""
+                        INSERT INTO partner_tariffs (
+                            name, tariff_type, price_vnd, max_transactions_per_month, 
+                            commission_rate, analytics_enabled, priority_support, 
+                            api_access, custom_integrations, dedicated_manager, description
+                        ) VALUES 
+                        ('FREE STARTER', 'free_starter', 0, 15, 0.1200, FALSE, FALSE, FALSE, FALSE, FALSE, 'Базовые карты, QR-коды, лимит 15 транзакций в месяц'),
+                        ('BUSINESS', 'business', 490000, 100, 0.0600, TRUE, TRUE, FALSE, FALSE, FALSE, 'Расширенная аналитика, приоритетная поддержка, лимит 100 транзакций'),
+                        ('ENTERPRISE', 'enterprise', 960000, -1, 0.0400, TRUE, TRUE, TRUE, TRUE, TRUE, 'API доступ, кастомные интеграции, выделенный менеджер, безлимит транзакций')
+                        ON CONFLICT (tariff_type) DO UPDATE SET
+                            name = EXCLUDED.name,
+                            price_vnd = EXCLUDED.price_vnd,
+                            max_transactions_per_month = EXCLUDED.max_transactions_per_month,
+                            commission_rate = EXCLUDED.commission_rate,
+                            analytics_enabled = EXCLUDED.analytics_enabled,
+                            priority_support = EXCLUDED.priority_support,
+                            api_access = EXCLUDED.api_access,
+                            custom_integrations = EXCLUDED.custom_integrations,
+                            dedicated_manager = EXCLUDED.dedicated_manager,
+                            description = EXCLUDED.description,
+                            updated_at = NOW();
+                    """)
+                    logger.info("✅ Default tariffs inserted successfully")
+                else:
+                    logger.info("✅ Tariffs already exist, skipping insertion")
+            except Exception as e:
+                logger.warning(f"Could not insert default tariffs: {e}")
             
             conn.commit()
             cur.close()
