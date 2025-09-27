@@ -27,7 +27,7 @@ async def handle_tariff_management(message: Message, state: FSMContext):
             return
         
         # Получаем все тарифы
-        tariffs = tariff_service.get_all_tariffs()
+        tariffs = await tariff_service.get_all_tariffs()
         
         if not tariffs:
             await message.answer("❌ Тарифы не найдены")
@@ -72,7 +72,7 @@ async def handle_tariff_view(callback: CallbackQuery, state: FSMContext):
         tariff_type_str = callback.data.split(":")[1]
         tariff_type = TariffType(tariff_type_str)
         
-        tariff = tariff_service.get_tariff_by_type(tariff_type)
+        tariff = await tariff_service.get_tariff_by_type(tariff_type)
         if not tariff:
             await callback.answer("❌ Тариф не найден")
             return
@@ -115,7 +115,7 @@ async def handle_tariff_subscribers(callback: CallbackQuery, state: FSMContext):
         tariff_type_str = callback.data.split(":")[1]
         tariff_type = TariffType(tariff_type_str)
         
-        tariff = tariff_service.get_tariff_by_type(tariff_type)
+        tariff = await tariff_service.get_tariff_by_type(tariff_type)
         if not tariff:
             await callback.answer("❌ Тариф не найден")
             return
@@ -141,7 +141,7 @@ async def handle_tariff_stats(callback: CallbackQuery, state: FSMContext):
     """Статистика по тарифам"""
     try:
         # Получаем все тарифы
-        tariffs = tariff_service.get_all_tariffs()
+        tariffs = await tariff_service.get_all_tariffs()
         
         text = "📊 <b>Статистика тарифной системы</b>\n\n"
         
@@ -175,7 +175,7 @@ async def handle_tariff_management_callback(callback: CallbackQuery, state: FSMC
     """Обработчик callback для управления тарифами"""
     try:
         # Получаем все тарифы
-        tariffs = tariff_service.get_all_tariffs()
+        tariffs = await tariff_service.get_all_tariffs()
         
         if not tariffs:
             await callback.answer("❌ Тарифы не найдены")
