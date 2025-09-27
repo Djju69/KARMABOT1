@@ -446,6 +446,46 @@ async def handle_favorites(message: Message, bot: Bot, state: FSMContext) -> Non
 ] + [
     '👥 Пригласить друзей'
 ]))
+@main_menu_router.message(F.text == "💰 Управление тарифами")
+async def handle_tariff_management(message: Message, bot: Bot):
+    """Обработчик кнопки управления тарифами для супер-админа"""
+    try:
+        from ..services.tariff_service import TariffService
+        from ..security.roles import get_user_role
+        
+        # Проверяем роль пользователя
+        user_role = await get_user_role(message.from_user.id)
+        if user_role != "superadmin":
+            await message.answer("❌ У вас нет прав для управления тарифами")
+            return
+        
+        # Получаем все тарифы
+        tariff_service = TariffService()
+        tariffs = await tariff_service.get_all_tariffs()
+        
+        if not tariffs:
+            await message.answer("📋 Тарифы не найдены")
+            return
+        
+        # Формируем сообщение с тарифами
+        text = "💰 **Управление тарифами**\n\n"
+        for tariff in tariffs:
+            status = "✅ Активен" if tariff.is_active else "❌ Неактивен"
+            text += f"**{tariff.name}**\n"
+            text += f"💰 Цена: {tariff.price} ₽/месяц\n"
+            text += f"📊 Лимит: {tariff.transaction_limit} транзакций\n"
+            text += f"💳 Комиссия: {tariff.commission_rate}%\n"
+            text += f"📝 {tariff.description}\n"
+            text += f"🔘 Статус: {status}\n\n"
+        
+        text += "💡 Для детального управления используйте веб-кабинет админа"
+        
+        await message.answer(text, parse_mode="Markdown")
+        
+    except Exception as e:
+        logger.error(f"Error in handle_tariff_management: {e}")
+        await message.answer("❌ Ошибка при загрузке тарифов")
+
 @main_menu_router.message(F.text == "👥 Пригласить друзей")
 async def handle_invite_friends_menu(message: Message, bot: Bot, state: FSMContext) -> None:
     """Показывает меню "Пригласить друзей" (3 пункта)."""
