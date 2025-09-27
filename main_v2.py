@@ -680,13 +680,22 @@ if __name__ == "__main__":
                         
                         if self.path == '/api/moderation/applications':
                             # Получаем заявки партнеров
-                            applications = db_v2.fetch_all("""
-                                SELECT id, name, phone, email, telegram_user_id, created_at, status
-                                FROM partner_applications 
-                                WHERE status = 'pending' 
-                                ORDER BY created_at ASC 
-                                LIMIT 50
-                            """)
+                            if db_v2.use_postgresql:
+                                applications = db_v2.postgresql_service.fetch_all_sync("""
+                                    SELECT id, name, phone, email, telegram_user_id, created_at, status
+                                    FROM partner_applications 
+                                    WHERE status = 'pending' 
+                                    ORDER BY created_at ASC 
+                                    LIMIT 50
+                                """)
+                            else:
+                                applications = db_v2.sqlite_service.fetch_all("""
+                                    SELECT id, name, phone, email, telegram_user_id, created_at, status
+                                    FROM partner_applications 
+                                    WHERE status = 'pending' 
+                                    ORDER BY created_at ASC 
+                                    LIMIT 50
+                                """)
                             
                             apps_list = []
                             for app in applications:
@@ -710,34 +719,57 @@ if __name__ == "__main__":
                             
                         elif self.path.startswith('/api/moderation/approve/'):
                             app_id = self.path.split('/')[-1]
-                            db_v2.execute("""
-                                UPDATE partner_applications 
-                                SET status = 'approved', updated_at = CURRENT_TIMESTAMP
-                                WHERE id = ?
-                            """, (app_id,))
+                            if db_v2.use_postgresql:
+                                db_v2.postgresql_service.execute_sync("""
+                                    UPDATE partner_applications 
+                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
+                            else:
+                                db_v2.sqlite_service.execute("""
+                                    UPDATE partner_applications 
+                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
                             
                             self.send_json_response({'success': True, 'message': 'Заявка одобрена'})
                             
                         elif self.path.startswith('/api/moderation/reject/'):
                             app_id = self.path.split('/')[-1]
-                            db_v2.execute("""
-                                UPDATE partner_applications 
-                                SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
-                                WHERE id = ?
-                            """, (app_id,))
+                            if db_v2.use_postgresql:
+                                db_v2.postgresql_service.execute_sync("""
+                                    UPDATE partner_applications 
+                                    SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
+                            else:
+                                db_v2.sqlite_service.execute("""
+                                    UPDATE partner_applications 
+                                    SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                    WHERE id = ?
+                                """, (app_id,))
                             
                             self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
                             
                         elif self.path == '/api/admin/tariffs':
                             # Получаем тарифы для админ кабинета
                             try:
-                                tariffs = db_v2.fetch_all("""
-                                    SELECT id, name, tariff_type, price_vnd, max_transactions_per_month, 
-                                           commission_rate, analytics_enabled, priority_support, api_access,
-                                           custom_integrations, dedicated_manager, description, is_active, created_at
-                                    FROM partner_tariffs 
-                                    ORDER BY price_vnd ASC
-                                """)
+                                if db_v2.use_postgresql:
+                                    tariffs = db_v2.postgresql_service.fetch_all_sync("""
+                                        SELECT id, name, tariff_type, price_vnd, max_transactions_per_month, 
+                                               commission_rate, analytics_enabled, priority_support, api_access,
+                                               custom_integrations, dedicated_manager, description, is_active, created_at
+                                        FROM partner_tariffs 
+                                        ORDER BY price_vnd ASC
+                                    """)
+                                else:
+                                    tariffs = db_v2.sqlite_service.fetch_all("""
+                                        SELECT id, name, tariff_type, price_vnd, max_transactions_per_month, 
+                                               commission_rate, analytics_enabled, priority_support, api_access,
+                                               custom_integrations, dedicated_manager, description, is_active, created_at
+                                        FROM partner_tariffs 
+                                        ORDER BY price_vnd ASC
+                                    """)
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -751,8 +783,12 @@ if __name__ == "__main__":
                         elif self.path == '/api/admin/stats':
                             # Получаем статистику для админ кабинета
                             try:
-                                users_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM users")[0]['count']
-                                partners_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM partners_v2")[0]['count']
+                                if db_v2.use_postgresql:
+                                    users_count = db_v2.postgresql_service.fetch_all_sync("SELECT COUNT(*) as count FROM users")[0]['count']
+                                    partners_count = db_v2.postgresql_service.fetch_all_sync("SELECT COUNT(*) as count FROM partners_v2")[0]['count']
+                                else:
+                                    users_count = db_v2.sqlite_service.fetch_all("SELECT COUNT(*) as count FROM users")[0]['count']
+                                    partners_count = db_v2.sqlite_service.fetch_all("SELECT COUNT(*) as count FROM partners_v2")[0]['count']
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -767,15 +803,26 @@ if __name__ == "__main__":
                         elif self.path == '/api/moderation/applications':
                             # Получаем заявки на модерацию
                             try:
-                                applications = db_v2.fetch_all("""
-                                    SELECT pa.id, pa.user_id, pa.company_name, pa.description, 
-                                           pa.status, pa.created_at, pa.updated_at,
-                                           u.first_name, u.last_name, u.username
-                                    FROM partner_applications pa
-                                    LEFT JOIN users u ON pa.user_id = u.telegram_id
-                                    WHERE pa.status = 'pending'
-                                    ORDER BY pa.created_at DESC
-                                """)
+                                if db_v2.use_postgresql:
+                                    applications = db_v2.postgresql_service.fetch_all_sync("""
+                                        SELECT pa.id, pa.user_id, pa.company_name, pa.description, 
+                                               pa.status, pa.created_at, pa.updated_at,
+                                               u.first_name, u.last_name, u.username
+                                        FROM partner_applications pa
+                                        LEFT JOIN users u ON pa.user_id = u.telegram_id
+                                        WHERE pa.status = 'pending'
+                                        ORDER BY pa.created_at DESC
+                                    """)
+                                else:
+                                    applications = db_v2.sqlite_service.fetch_all("""
+                                        SELECT pa.id, pa.user_id, pa.company_name, pa.description, 
+                                               pa.status, pa.created_at, pa.updated_at,
+                                               u.first_name, u.last_name, u.username
+                                        FROM partner_applications pa
+                                        LEFT JOIN users u ON pa.user_id = u.telegram_id
+                                        WHERE pa.status = 'pending'
+                                        ORDER BY pa.created_at DESC
+                                    """)
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -790,11 +837,18 @@ if __name__ == "__main__":
                             # Одобрить заявку
                             try:
                                 app_id = self.path.split('/')[-1]
-                                db_v2.execute("""
-                                    UPDATE partner_applications 
-                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
-                                    WHERE id = ?
-                                """, (app_id,))
+                                if db_v2.use_postgresql:
+                                    db_v2.postgresql_service.execute_sync("""
+                                        UPDATE partner_applications 
+                                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                        WHERE id = ?
+                                    """, (app_id,))
+                                else:
+                                    db_v2.sqlite_service.execute("""
+                                        UPDATE partner_applications 
+                                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                        WHERE id = ?
+                                    """, (app_id,))
                                 
                                 self.send_json_response({'success': True, 'message': 'Заявка одобрена'})
                             except Exception as e:
@@ -804,11 +858,18 @@ if __name__ == "__main__":
                             # Отклонить заявку
                             try:
                                 app_id = self.path.split('/')[-1]
-                                db_v2.execute("""
-                                    UPDATE partner_applications 
-                                    SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
-                                    WHERE id = ?
-                                """, (app_id,))
+                                if db_v2.use_postgresql:
+                                    db_v2.postgresql_service.execute_sync("""
+                                        UPDATE partner_applications 
+                                        SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                        WHERE id = ?
+                                    """, (app_id,))
+                                else:
+                                    db_v2.sqlite_service.execute("""
+                                        UPDATE partner_applications 
+                                        SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                                        WHERE id = ?
+                                    """, (app_id,))
                                 
                                 self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
                             except Exception as e:
@@ -817,13 +878,22 @@ if __name__ == "__main__":
                         elif self.path == '/api/admin/users':
                             # Получаем пользователей
                             try:
-                                users = db_v2.fetch_all("""
-                                    SELECT telegram_id, first_name, last_name, username, 
-                                           points_balance, created_at, last_activity
-                                    FROM users 
-                                    ORDER BY created_at DESC
-                                    LIMIT 100
-                                """)
+                                if db_v2.use_postgresql:
+                                    users = db_v2.postgresql_service.fetch_all_sync("""
+                                        SELECT telegram_id, first_name, last_name, username, 
+                                               points_balance, created_at, last_activity
+                                        FROM users 
+                                        ORDER BY created_at DESC
+                                        LIMIT 100
+                                    """)
+                                else:
+                                    users = db_v2.sqlite_service.fetch_all("""
+                                        SELECT telegram_id, first_name, last_name, username, 
+                                               points_balance, created_at, last_activity
+                                        FROM users 
+                                        ORDER BY created_at DESC
+                                        LIMIT 100
+                                    """)
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -837,15 +907,26 @@ if __name__ == "__main__":
                         elif self.path == '/api/admin/tariff-subscriptions':
                             # Получаем подписки на тарифы
                             try:
-                                subscriptions = db_v2.fetch_all("""
-                                    SELECT ts.id, ts.partner_id, ts.tariff_id, ts.status, 
-                                           ts.subscribed_at, ts.expires_at,
-                                           p.company_name, pt.name as tariff_name
-                                    FROM tariff_subscriptions ts
-                                    LEFT JOIN partners_v2 p ON ts.partner_id = p.user_id
-                                    LEFT JOIN partner_tariffs pt ON ts.tariff_id = pt.id
-                                    ORDER BY ts.subscribed_at DESC
-                                """)
+                                if db_v2.use_postgresql:
+                                    subscriptions = db_v2.postgresql_service.fetch_all_sync("""
+                                        SELECT ts.id, ts.partner_id, ts.tariff_id, ts.status, 
+                                               ts.subscribed_at, ts.expires_at,
+                                               p.company_name, pt.name as tariff_name
+                                        FROM tariff_subscriptions ts
+                                        LEFT JOIN partners_v2 p ON ts.partner_id = p.user_id
+                                        LEFT JOIN partner_tariffs pt ON ts.tariff_id = pt.id
+                                        ORDER BY ts.subscribed_at DESC
+                                    """)
+                                else:
+                                    subscriptions = db_v2.sqlite_service.fetch_all("""
+                                        SELECT ts.id, ts.partner_id, ts.tariff_id, ts.status, 
+                                               ts.subscribed_at, ts.expires_at,
+                                               p.company_name, pt.name as tariff_name
+                                        FROM tariff_subscriptions ts
+                                        LEFT JOIN partners_v2 p ON ts.partner_id = p.user_id
+                                        LEFT JOIN partner_tariffs pt ON ts.tariff_id = pt.id
+                                        ORDER BY ts.subscribed_at DESC
+                                    """)
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -863,11 +944,17 @@ if __name__ == "__main__":
                                 user_id = self.path.split('?')[1].split('=')[1] if '?' in self.path else '0'
                                 
                                 # Получаем баллы пользователя
-                                points_result = db_v2.fetch_all("SELECT points_balance FROM users WHERE telegram_id = ?", (user_id,))
+                                if db_v2.use_postgresql:
+                                    points_result = db_v2.postgresql_service.fetch_all_sync("SELECT points_balance FROM users WHERE telegram_id = ?", (user_id,))
+                                else:
+                                    points_result = db_v2.sqlite_service.fetch_all("SELECT points_balance FROM users WHERE telegram_id = ?", (user_id,))
                                 points_balance = points_result[0]['points_balance'] if points_result else 0
                                 
                                 # Получаем количество карт пользователя
-                                cards_count = db_v2.fetch_all("SELECT COUNT(*) as count FROM cards_binding WHERE user_id = ?", (user_id,))[0]['count']
+                                if db_v2.use_postgresql:
+                                    cards_count = db_v2.postgresql_service.fetch_all_sync("SELECT COUNT(*) as count FROM cards_binding WHERE user_id = ?", (user_id,))[0]['count']
+                                else:
+                                    cards_count = db_v2.sqlite_service.fetch_all("SELECT COUNT(*) as count FROM cards_binding WHERE user_id = ?", (user_id,))[0]['count']
                                 
                                 self.send_json_response({
                                     'success': True,
@@ -906,18 +993,30 @@ if __name__ == "__main__":
                                 
                                 # Получаем количество пользователей
                                 users_query = "SELECT COUNT(*) FROM user_profiles"
-                                users_result = db_v2.execute(users_query)
-                                users_count = users_result.fetchone()[0] if users_result.fetchone() else 0
+                                if db_v2.use_postgresql:
+                                    users_result = db_v2.postgresql_service.fetch_all_sync(users_query)
+                                    users_count = users_result[0]['count'] if users_result else 0
+                                else:
+                                    users_result = db_v2.sqlite_service.fetch_all(users_query)
+                                    users_count = users_result[0]['count'] if users_result else 0
                                 
                                 # Получаем количество партнеров
                                 partners_query = "SELECT COUNT(*) FROM partners_v2 WHERE status = 'active'"
-                                partners_result = db_v2.execute(partners_query)
-                                partners_count = partners_result.fetchone()[0] if partners_result.fetchone() else 0
+                                if db_v2.use_postgresql:
+                                    partners_result = db_v2.postgresql_service.fetch_all_sync(partners_query)
+                                    partners_count = partners_result[0]['count'] if partners_result else 0
+                                else:
+                                    partners_result = db_v2.sqlite_service.fetch_all(partners_query)
+                                    partners_count = partners_result[0]['count'] if partners_result else 0
                                 
                                 # Получаем количество заявок на модерацию
                                 moderation_query = "SELECT COUNT(*) FROM partner_applications WHERE status = 'pending'"
-                                moderation_result = db_v2.execute(moderation_query)
-                                moderation_count = moderation_result.fetchone()[0] if moderation_result.fetchone() else 0
+                                if db_v2.use_postgresql:
+                                    moderation_result = db_v2.postgresql_service.fetch_all_sync(moderation_query)
+                                    moderation_count = moderation_result[0]['count'] if moderation_result else 0
+                                else:
+                                    moderation_result = db_v2.sqlite_service.fetch_all(moderation_query)
+                                    moderation_count = moderation_result[0]['count'] if moderation_result else 0
                                 
                                 logger.info(f"[API] Admin stats: users={users_count}, partners={partners_count}, moderation={moderation_count}")
                                 
@@ -952,8 +1051,10 @@ if __name__ == "__main__":
                                     ORDER BY created_at DESC 
                                     LIMIT 50
                                 """
-                                users_result = db_v2.execute(users_query)
-                                users = users_result.fetchall()
+                                if db_v2.use_postgresql:
+                                    users = db_v2.postgresql_service.fetch_all_sync(users_query)
+                                else:
+                                    users = db_v2.sqlite_service.fetch_all(users_query)
                                 
                                 users_list = []
                                 for user in users:
@@ -995,8 +1096,10 @@ if __name__ == "__main__":
                                     ORDER BY created_at DESC 
                                     LIMIT 20
                                 """
-                                applications_result = db_v2.execute(applications_query)
-                                applications = applications_result.fetchall()
+                                if db_v2.use_postgresql:
+                                    applications = db_v2.postgresql_service.fetch_all_sync(applications_query)
+                                else:
+                                    applications = db_v2.sqlite_service.fetch_all(applications_query)
                                 
                                 applications_list = []
                                 for app in applications:
@@ -1075,7 +1178,10 @@ if __name__ == "__main__":
                                 
                                 # Проверяем есть ли уже заявка от этого пользователя
                                 check_query = "SELECT id FROM partner_applications WHERE user_id = $1"
-                                existing = db_v2.fetch_one(check_query, (real_user_id,))
+                                if db_v2.use_postgresql:
+                                    existing = db_v2.postgresql_service.fetch_one_sync(check_query, (real_user_id,))
+                                else:
+                                    existing = db_v2.sqlite_service.fetch_one(check_query, (real_user_id,))
                                 
                                 if existing:
                                     # Обновляем существующую заявку
@@ -1085,11 +1191,17 @@ if __name__ == "__main__":
                                         status = 'pending', updated_at = NOW()
                                         WHERE user_id = $1
                                     """
-                                    db_v2.execute(update_query, params)
+                                    if db_v2.use_postgresql:
+                                        db_v2.postgresql_service.execute_sync(update_query, params)
+                                    else:
+                                        db_v2.sqlite_service.execute(update_query, params)
                                     logger.info(f"[API] Partner application updated for user {real_user_id}")
                                 else:
                                     # Создаем новую заявку
-                                    db_v2.execute(query, params)
+                                    if db_v2.use_postgresql:
+                                        db_v2.postgresql_service.execute_sync(query, params)
+                                    else:
+                                        db_v2.sqlite_service.execute(query, params)
                                     logger.info(f"[API] Partner application saved successfully for user {real_user_id}")
                                 
                                 # Уведомляем админа о новой заявке (синхронно)
