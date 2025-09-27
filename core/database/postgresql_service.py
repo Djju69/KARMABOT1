@@ -485,8 +485,7 @@ class PostgreSQLService:
                             loop.run_until_complete(conn.close())
                     finally:
                         if not loop.is_running():
-                            if not loop.is_running():
-                        loop.close()
+                            loop.close()
                 else:
                     # Use existing pool
                     loop = asyncio.new_event_loop()
@@ -496,8 +495,7 @@ class PostgreSQLService:
                         return result
                     finally:
                         if not loop.is_running():
-                            if not loop.is_running():
-                        loop.close()
+                            loop.close()
         except Exception as e:
             logger.error(f"Error executing query: {e}")
             return []
@@ -527,8 +525,7 @@ class PostgreSQLService:
                             loop.run_until_complete(conn.close())
                     finally:
                         if not loop.is_running():
-                            if not loop.is_running():
-                        loop.close()
+                            loop.close()
                 else:
                     # Use existing pool
                     loop = asyncio.new_event_loop()
@@ -537,8 +534,7 @@ class PostgreSQLService:
                         loop.run_until_complete(self._pool.execute(query, *params))
                     finally:
                         if not loop.is_running():
-                            if not loop.is_running():
-                        loop.close()
+                            loop.close()
         except Exception as e:
             logger.error(f"Error executing query: {e}")
     
