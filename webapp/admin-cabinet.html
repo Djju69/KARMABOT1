@@ -715,9 +715,10 @@
                             html += `
                                 <div class="tariff-card">
                                     <h5>💰 ${tariff.name}</h5>
-                                    <p><strong>Описание:</strong> ${tariff.description}</p>
-                                    <p><strong>Цена:</strong> ${tariff.price} ₽/месяц</p>
-                                    <p><strong>Лимит транзакций:</strong> ${tariff.transaction_limit}</p>
+                                    <p><strong>Тип:</strong> ${tariff.tariff_type}</p>
+                                    <p><strong>Описание:</strong> ${tariff.description || 'Нет описания'}</p>
+                                    <p><strong>Цена:</strong> ${tariff.price_vnd} VND/месяц</p>
+                                    <p><strong>Лимит транзакций:</strong> ${tariff.max_transactions_per_month}</p>
                                     <p><strong>Комиссия:</strong> ${tariff.commission_rate}%</p>
                                     <p><strong>Статус:</strong> ${tariff.is_active ? '✅ Активен' : '❌ Неактивен'}</p>
                                     <div class="tariff-actions">

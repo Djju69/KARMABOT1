@@ -484,6 +484,8 @@ class PostgreSQLService:
                         finally:
                             loop.run_until_complete(conn.close())
                     finally:
+                        if not loop.is_running():
+                            if not loop.is_running():
                         loop.close()
                 else:
                     # Use existing pool
@@ -493,6 +495,8 @@ class PostgreSQLService:
                         result = loop.run_until_complete(self._pool.fetch(query, *params))
                         return result
                     finally:
+                        if not loop.is_running():
+                            if not loop.is_running():
                         loop.close()
         except Exception as e:
             logger.error(f"Error executing query: {e}")
@@ -522,6 +526,8 @@ class PostgreSQLService:
                         finally:
                             loop.run_until_complete(conn.close())
                     finally:
+                        if not loop.is_running():
+                            if not loop.is_running():
                         loop.close()
                 else:
                     # Use existing pool
@@ -530,6 +536,8 @@ class PostgreSQLService:
                     try:
                         loop.run_until_complete(self._pool.execute(query, *params))
                     finally:
+                        if not loop.is_running():
+                            if not loop.is_running():
                         loop.close()
         except Exception as e:
             logger.error(f"Error executing query: {e}")
@@ -629,7 +637,8 @@ class PostgreSQLService:
                     finally:
                         loop.run_until_complete(conn.close())
                 finally:
-                    loop.close()
+                    if not loop.is_running():
+                        loop.close()
             else:
                 # Use existing pool
                 loop = asyncio.new_event_loop()
@@ -638,7 +647,8 @@ class PostgreSQLService:
                     rows = loop.run_until_complete(self._pool.fetch(query, *params))
                     return [dict(row) for row in rows]
                 finally:
-                    loop.close()
+                    if not loop.is_running():
+                        loop.close()
         except Exception as e:
             logger.error(f"Error getting card photos: {e}")
             return []

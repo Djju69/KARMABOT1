@@ -2886,6 +2886,11 @@ class DatabaseMigrator:
         try:
             logger.info(f"Applying migration {version}: Partner tariff system")
             
+            # Skip if using PostgreSQL (handled by ensure_partner_tariff_system)
+            if self._conn is None:
+                logger.info(f"Migration {version} skipped (PostgreSQL mode)")
+                return
+            
             # Create tariffs table
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS partner_tariffs (

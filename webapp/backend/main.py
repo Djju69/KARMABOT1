@@ -340,11 +340,16 @@ async def get_stats_overview(
 class Tariff(BaseModel):
     id: Optional[int] = None
     name: str
-    description: str
-    price: float
-    transaction_limit: int
+    tariff_type: str
+    price_vnd: int
+    max_transactions_per_month: int
     commission_rate: float
-    features: List[str] = []
+    analytics_enabled: bool = False
+    priority_support: bool = False
+    api_access: bool = False
+    custom_integrations: bool = False
+    dedicated_manager: bool = False
+    description: Optional[str] = None
     is_active: bool = True
 
 class TariffSubscription(BaseModel):
@@ -365,10 +370,11 @@ async def get_all_tariffs(
         conn = await asyncpg.connect(settings.database_url)
         try:
             tariffs = await conn.fetch("""
-                SELECT id, name, description, price, transaction_limit, 
-                       commission_rate, features, is_active, created_at
+                SELECT id, name, tariff_type, price_vnd, max_transactions_per_month, 
+                       commission_rate, analytics_enabled, priority_support, api_access,
+                       custom_integrations, dedicated_manager, description, is_active, created_at
                 FROM partner_tariffs 
-                ORDER BY price ASC
+                ORDER BY price_vnd ASC
             """)
             
             return {
@@ -393,12 +399,16 @@ async def create_tariff(
         try:
             tariff_id = await conn.fetchval("""
                 INSERT INTO partner_tariffs 
-                (name, description, price, transaction_limit, commission_rate, features, is_active)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                (name, tariff_type, price_vnd, max_transactions_per_month, commission_rate, 
+                 analytics_enabled, priority_support, api_access, custom_integrations, 
+                 dedicated_manager, description, is_active)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                 RETURNING id
-            """, tariff_data.name, tariff_data.description, tariff_data.price,
-                tariff_data.transaction_limit, tariff_data.commission_rate,
-                tariff_data.features, tariff_data.is_active)
+            """, tariff_data.name, tariff_data.tariff_type, tariff_data.price_vnd,
+                tariff_data.max_transactions_per_month, tariff_data.commission_rate,
+                tariff_data.analytics_enabled, tariff_data.priority_support, tariff_data.api_access,
+                tariff_data.custom_integrations, tariff_data.dedicated_manager, 
+                tariff_data.description, tariff_data.is_active)
             
             return {
                 "success": True,
