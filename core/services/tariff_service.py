@@ -30,7 +30,7 @@ class TariffService:
                 ORDER BY price_vnd ASC
             """
             
-            rows = db_v2.fetch_all(query)
+            rows = await db_v2.fetch_all(query)
             
             tariffs = []
             for row in rows:
@@ -75,7 +75,7 @@ class TariffService:
                 WHERE tariff_type = $1 AND is_active = TRUE
             """
             
-            row = db_v2.fetch_one(query, (tariff_type.value,))
+            row = await db_v2.fetch_one(query, (tariff_type.value,))
             
             if not row:
                 return None
@@ -120,7 +120,7 @@ class TariffService:
                 AND (s.expires_at IS NULL OR s.expires_at > NOW())
             """
             
-            row = db_v2.fetch_one(query, (partner_id,))
+            row = await db_v2.fetch_one(query, (partner_id,))
             
             if not row:
                 # Возвращаем FREE STARTER по умолчанию
@@ -172,7 +172,7 @@ class TariffService:
                 SET is_active = FALSE, updated_at = NOW()
                 WHERE partner_id = $1 AND is_active = TRUE
             """
-            db_v2.execute(deactivate_query, (partner_id,))
+            await db_v2.execute(deactivate_query, (partner_id,))
             
             # Создаем новую подписку
             expires_at = datetime.now() + timedelta(days=duration_months * 30)
@@ -183,7 +183,7 @@ class TariffService:
                 VALUES ($1, $2, NOW(), $3, TRUE, FALSE, 'paid')
             """
             
-            db_v2.execute(subscribe_query, (partner_id, tariff.id, expires_at))
+            await db_v2.execute(subscribe_query, (partner_id, tariff.id, expires_at))
             
             logger.info(f"✅ Partner {partner_id} subscribed to {tariff_type.value} tariff")
             return True
@@ -215,7 +215,7 @@ class TariffService:
                 AND transaction_type = 'purchase'
             """
             
-            used_transactions = db_v2.fetch_one(query, (partner_id, current_month_start))[0]
+            used_transactions = (await db_v2.fetch_one(query, (partner_id, current_month_start)))[0]
             remaining = tariff.features.max_transactions_per_month - used_transactions
             
             return {

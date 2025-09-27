@@ -3190,9 +3190,10 @@ def ensure_partner_tariff_system():
             conn = psycopg2.connect(database_url)
             cur = conn.cursor()
             
-            # Create tariffs table
+            # Drop and recreate tariffs table to ensure correct structure
+            cur.execute("DROP TABLE IF EXISTS partner_tariffs CASCADE;")
             cur.execute("""
-                CREATE TABLE IF NOT EXISTS partner_tariffs (
+                CREATE TABLE partner_tariffs (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(100) NOT NULL UNIQUE,
                     tariff_type VARCHAR(50) NOT NULL UNIQUE,
