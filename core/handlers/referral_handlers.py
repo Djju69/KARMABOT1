@@ -43,20 +43,75 @@ async def invite_my_link(cb: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "invite_invited")
 async def invite_invited(cb: CallbackQuery, state: FSMContext):
     lang = (await state.get_data()).get("lang", "ru")
-    # Заглушка с безопасной выдачей
-    text = get_text("invite.invited", lang) or "📋 Приглашённые"
-    text += "\n\nСкоро. Пагинация >10 поддерживается."
-    await cb.message.edit_text(text)
-    await cb.answer()
+    try:
+        # Получаем список приглашенных из многоуровневой системы
+        referrals = await multilevel_referral_service.get_user_referrals(cb.from_user.id)
+        
+        if not referrals:
+            text = get_text("invite.invited", lang) or "📋 Приглашённые"
+            text += "\n\nВы пока никого не пригласили.\nПоделитесь своей ссылкой с друзьями!"
+            await cb.message.edit_text(text)
+            await cb.answer()
+            return
+        
+        text = get_text("invite.invited", lang) or "📋 Приглашённые"
+        text += "\n\n"
+        
+        for i, ref in enumerate(referrals, 1):
+            name = ref.get('first_name', '') or ref.get('username', 'Пользователь')
+            level = ref.get('level', 1)
+            created_at = ref.get('created_at', '')
+            earnings = ref.get('total_earnings', 0)
+            
+            text += f"{i}. **{name}** (Уровень {level})\n"
+            text += f"   📅 {created_at}\n"
+            text += f"   💰 Заработано: {earnings} баллов\n\n"
+        
+        await cb.message.edit_text(text, parse_mode="Markdown")
+        await cb.answer()
+        
+    except Exception as e:
+        logger.error(f"Error getting referrals: {e}")
+        text = get_text("invite.invited", lang) or "📋 Приглашённые"
+        text += "\n\nОшибка загрузки данных. Попробуйте позже."
+        await cb.message.edit_text(text)
+        await cb.answer()
 
 @router.callback_query(F.data == "invite_earnings")
 async def invite_earnings(cb: CallbackQuery, state: FSMContext):
     lang = (await state.get_data()).get("lang", "ru")
-    # Заглушка с безопасной выдачей
-    text = get_text("invite.earnings", lang) or "💵 Доходы"
-    text += "\n\nСкоро. Диапазоны: все / 30д / 7д / сегодня."
-    await cb.message.edit_text(text)
-    await cb.answer()
+    try:
+        # Получаем статистику доходов из многоуровневой системы
+        stats = await multilevel_referral_service.get_user_stats(cb.from_user.id)
+        
+        text = get_text("invite.earnings", lang) or "💵 Доходы"
+        text += "\n\n"
+        
+        text += f"💰 **Всего заработано:** {stats.get('total_earnings', 0)} баллов\n"
+        text += f"👥 **Приглашено:** {stats.get('total_referrals', 0)} человек\n"
+        text += f"🔥 **Активных:** {stats.get('active_referrals', 0)} за 30 дней\n\n"
+        
+        # Показываем доходы по уровням
+        text += "📊 **Доходы по уровням:**\n"
+        text += f"• 1-й уровень: {stats.get('level_1_earnings', 0)} баллов\n"
+        text += f"• 2-й уровень: {stats.get('level_2_earnings', 0)} баллов\n"
+        text += f"• 3-й уровень: {stats.get('level_3_earnings', 0)} баллов\n\n"
+        
+        if stats.get('total_referrals', 0) > 0:
+            avg_earnings = stats.get('total_earnings', 0) / stats.get('total_referrals', 1)
+            text += f"📈 **Средний доход:** {avg_earnings:.1f} баллов с человека\n\n"
+        
+        text += "💡 Приглашайте больше друзей, чтобы увеличить доходы!"
+        
+        await cb.message.edit_text(text, parse_mode="Markdown")
+        await cb.answer()
+        
+    except Exception as e:
+        logger.error(f"Error getting earnings: {e}")
+        text = get_text("invite.earnings", lang) or "💵 Доходы"
+        text += "\n\nОшибка загрузки данных. Попробуйте позже."
+        await cb.message.edit_text(text)
+        await cb.answer()
 async def show_referral_program(message: Message, state: FSMContext):
     """Показ реферальной программы"""
     try:
@@ -294,3 +349,6 @@ async def show_my_referral_link(message: Message, state: FSMContext):
     except Exception as e:
         logger.error(f"Ошибка показа реферальной ссылки: {e}")
         await message.answer("❌ Ошибка загрузки реферальной ссылки")
+
+# Создаем экземпляр сервиса
+multilevel_referral_service = MultilevelReferralService()

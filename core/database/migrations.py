@@ -8,6 +8,9 @@ from typing import Optional, Any
 import logging
 import os
 
+# Import specific migrations
+from core.database.migrations.migrate_013_multilevel_referral_system import migrate_013_multilevel_referral_system
+
 logger = logging.getLogger(__name__)
 
 def _col_exists(conn: sqlite3.Connection, table: str, col: str) -> bool:
@@ -626,6 +629,10 @@ class DatabaseMigrator:
         self.migrate_016_plastic_cards()
         # Loyalty system and partner ecosystem
         self.migrate_017_loyalty_system()
+        # Partner tariff system
+        self.migrate_021_partner_tariff_system()
+        # Multilevel referral system
+        self.migrate_013_multilevel_referral_system()
         # Personal cabinets system
         self.migrate_018_personal_cabinets()
         # Fix users table - execute only if not applied; avoid noisy FORCE
@@ -2870,6 +2877,94 @@ class DatabaseMigrator:
             logger.error(f"Failed to apply migration {version}: {e}")
             raise
 
+    def migrate_021_partner_tariff_system(self):
+        """Migration 021: Partner tariff system"""
+        version = "021"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+            
+        try:
+            logger.info(f"Applying migration {version}: Partner tariff system")
+            
+            # Create tariffs table
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_tariffs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL UNIQUE,
+                    tariff_type TEXT NOT NULL UNIQUE,
+                    price_vnd INTEGER NOT NULL DEFAULT 0,
+                    max_transactions_per_month INTEGER NOT NULL DEFAULT 15,
+                    commission_rate REAL NOT NULL DEFAULT 0.1200,
+                    analytics_enabled INTEGER NOT NULL DEFAULT 0,
+                    priority_support INTEGER NOT NULL DEFAULT 0,
+                    api_access INTEGER NOT NULL DEFAULT 0,
+                    custom_integrations INTEGER NOT NULL DEFAULT 0,
+                    dedicated_manager INTEGER NOT NULL DEFAULT 0,
+                    description TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    updated_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
+            
+            # Create subscriptions table
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS partner_tariff_subscriptions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    partner_id INTEGER NOT NULL,
+                    tariff_id INTEGER NOT NULL REFERENCES partner_tariffs(id),
+                    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    expires_at TEXT,
+                    is_active INTEGER NOT NULL DEFAULT 1,
+                    auto_renew INTEGER NOT NULL DEFAULT 0,
+                    payment_status TEXT DEFAULT 'pending',
+                    created_at TEXT DEFAULT (datetime('now')),
+                    updated_at TEXT DEFAULT (datetime('now')),
+                    UNIQUE(partner_id, is_active) DEFERRABLE INITIALLY DEFERRED
+                )
+            """)
+            
+            # Insert default tariffs
+            self._conn.execute("""
+                INSERT OR REPLACE INTO partner_tariffs (
+                    name, tariff_type, price_vnd, max_transactions_per_month, 
+                    commission_rate, analytics_enabled, priority_support, 
+                    api_access, custom_integrations, dedicated_manager, description
+                ) VALUES 
+                ('FREE STARTER', 'free_starter', 0, 15, 0.1200, 0, 0, 0, 0, 0, 'Базовые карты, QR-коды, лимит 15 транзакций в месяц'),
+                ('BUSINESS', 'business', 490000, 100, 0.0600, 1, 1, 0, 0, 0, 'Расширенная аналитика, приоритетная поддержка, лимит 100 транзакций'),
+                ('ENTERPRISE', 'enterprise', 960000, -1, 0.0400, 1, 1, 1, 1, 1, 'API доступ, кастомные интеграции, выделенный менеджер, безлимит транзакций')
+            """)
+            
+            self._conn.commit()
+            self.mark_migration_applied(version)
+            logger.info(f"✅ Applied migration {version}: Partner tariff system")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply migration {version}: {e}")
+            raise
+
+    def migrate_013_multilevel_referral_system(self):
+        """Migration 013: Multilevel referral system"""
+        version = "013"
+        if self.is_migration_applied(version):
+            logger.info(f"Migration {version} already applied, skipping")
+            return
+            
+        try:
+            logger.info(f"Applying migration {version}: Multilevel referral system")
+            
+            # Import and call the migration function
+            migrate_013_multilevel_referral_system(self._conn)
+            
+            self.mark_migration_applied(version)
+            logger.info(f"✅ Applied migration {version}: Multilevel referral system")
+            
+        except Exception as e:
+            logger.error(f"Failed to apply migration {version}: {e}")
+            raise
+
 # Global migrator instance - use PostgreSQL in production
 import os
 db_path = os.getenv("DATABASE_URL", "core/database/data.db")
@@ -3084,6 +3179,91 @@ def ensure_partners_v2_columns():
     except Exception as e:
         logger.error(f"Error ensuring partners_v2 columns: {e}")
 
+def ensure_partner_tariff_system():
+    """Ensure partner tariff system tables exist"""
+    try:
+        database_url = os.getenv('DATABASE_URL', '')
+        
+        if database_url and database_url.startswith("postgresql"):
+            # PostgreSQL - use synchronous connection
+            import psycopg2
+            
+            conn = psycopg2.connect(database_url)
+            cur = conn.cursor()
+            
+            # Create tariffs table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS partner_tariffs (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(100) NOT NULL UNIQUE,
+                    tariff_type VARCHAR(50) NOT NULL UNIQUE,
+                    price_vnd INTEGER NOT NULL DEFAULT 0,
+                    max_transactions_per_month INTEGER NOT NULL DEFAULT 15,
+                    commission_rate DECIMAL(5,4) NOT NULL DEFAULT 0.1200,
+                    analytics_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                    priority_support BOOLEAN NOT NULL DEFAULT FALSE,
+                    api_access BOOLEAN NOT NULL DEFAULT FALSE,
+                    custom_integrations BOOLEAN NOT NULL DEFAULT FALSE,
+                    dedicated_manager BOOLEAN NOT NULL DEFAULT FALSE,
+                    description TEXT,
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+            
+            # Create subscriptions table
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS partner_tariff_subscriptions (
+                    id SERIAL PRIMARY KEY,
+                    partner_id INTEGER NOT NULL,
+                    tariff_id INTEGER NOT NULL REFERENCES partner_tariffs(id),
+                    started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                    expires_at TIMESTAMP,
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    auto_renew BOOLEAN NOT NULL DEFAULT FALSE,
+                    payment_status VARCHAR(50) DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    updated_at TIMESTAMP DEFAULT NOW(),
+                    CONSTRAINT unique_active_subscription UNIQUE (partner_id, is_active) DEFERRABLE INITIALLY DEFERRED
+                );
+            """)
+            
+            # Insert default tariffs
+            cur.execute("""
+                INSERT INTO partner_tariffs (
+                    name, tariff_type, price_vnd, max_transactions_per_month, 
+                    commission_rate, analytics_enabled, priority_support, 
+                    api_access, custom_integrations, dedicated_manager, description
+                ) VALUES 
+                ('FREE STARTER', 'free_starter', 0, 15, 0.1200, FALSE, FALSE, FALSE, FALSE, FALSE, 'Базовые карты, QR-коды, лимит 15 транзакций в месяц'),
+                ('BUSINESS', 'business', 490000, 100, 0.0600, TRUE, TRUE, FALSE, FALSE, FALSE, 'Расширенная аналитика, приоритетная поддержка, лимит 100 транзакций'),
+                ('ENTERPRISE', 'enterprise', 960000, -1, 0.0400, TRUE, TRUE, TRUE, TRUE, TRUE, 'API доступ, кастомные интеграции, выделенный менеджер, безлимит транзакций')
+                ON CONFLICT (tariff_type) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    price_vnd = EXCLUDED.price_vnd,
+                    max_transactions_per_month = EXCLUDED.max_transactions_per_month,
+                    commission_rate = EXCLUDED.commission_rate,
+                    analytics_enabled = EXCLUDED.analytics_enabled,
+                    priority_support = EXCLUDED.priority_support,
+                    api_access = EXCLUDED.api_access,
+                    custom_integrations = EXCLUDED.custom_integrations,
+                    dedicated_manager = EXCLUDED.dedicated_manager,
+                    description = EXCLUDED.description,
+                    updated_at = NOW();
+            """)
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+            logger.info("✅ Partner tariff system tables created/verified in PostgreSQL")
+        else:
+            # SQLite - handled by migrator
+            logger.info("Partner tariff system will be handled by SQLite migrator")
+            
+    except Exception as e:
+        logger.error(f"Error ensuring partner tariff system: {e}")
+
 def ensure_database_ready():
     """Ensure database is migrated and ready to use"""
     # Run migrations by default, skip only if explicitly disabled
@@ -3100,6 +3280,8 @@ def ensure_database_ready():
         ensure_partners_v2_columns()
         ensure_cards_v2_table()
         ensure_card_photos_table()
+        # Ensure partner tariff system
+        ensure_partner_tariff_system()
         # Fix invalid photo file_ids
         fix_invalid_photo_file_ids()
         # Setup Supabase RLS if configured
@@ -3854,3 +4036,13 @@ def fix_invalid_photo_file_ids():
                 
     except Exception as e:
         logger.error(f"Error fixing photo file_ids: {e}")
+
+def ensure_multilevel_referral_system():
+    """Ensure multilevel referral system is ready for PostgreSQL"""
+    try:
+        from core.database.migrations.migrate_013_multilevel_referral_system import ensure_multilevel_referral_system as _ensure_multilevel_referral_system
+        _ensure_multilevel_referral_system()
+        logger.info("✅ Multilevel referral system ready for PostgreSQL")
+    except Exception as e:
+        logger.error(f"❌ Failed to ensure multilevel referral system: {e}")
+        raise

@@ -360,7 +360,23 @@ async def main():
     from core.handlers.loyalty_settings_router import router as loyalty_settings_router
     dp.include_router(loyalty_settings_router)
     
-    # 9) ВРЕМЕННЫЙ роутер для исправления каталога
+    # 9) Tariff management (admin only)
+    from core.handlers.tariff_admin_router import router as tariff_admin_router
+    dp.include_router(tariff_admin_router)
+    
+    # 9.1) Tariff commands for all users
+    from core.handlers.tariffs_user_router import router as tariffs_user_router
+    dp.include_router(tariffs_user_router)
+    
+    # 9.2) Language selection router
+    from core.handlers.language_router import router as language_router
+    dp.include_router(language_router)
+    
+    # 9.3) Gamification router
+    from core.handlers.gamification_router import router as gamification_router
+    dp.include_router(gamification_router)
+    
+    # 10) ВРЕМЕННЫЙ роутер для исправления каталога
     from core.handlers.temp_catalog_fix import temp_router
     dp.include_router(temp_router)
     

@@ -95,6 +95,10 @@ def get_main_menu_reply_admin(lang: str = 'ru', is_superadmin: bool = False) -> 
 
     # Ряд 3: Админ кабинет (с короной для супер-админа)
     rows.append([KeyboardButton(text=admin_btn_text)])
+    
+    # Ряд 4: Управление тарифами (только для супер-админа)
+    if is_superadmin:
+        rows.append([KeyboardButton(text="💰 Управление тарифами")])
 
     return ReplyKeyboardMarkup(
         keyboard=rows,

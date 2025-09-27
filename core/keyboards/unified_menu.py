@@ -33,6 +33,10 @@ def get_universal_main_menu(lang: str = 'ru') -> ReplyKeyboardMarkup:
                 KeyboardButton(text=get_text("help", lang))
             ],
             [
+                KeyboardButton(text=get_text("gamification.achievements", lang)),
+                KeyboardButton(text=get_text("choose_language", lang))
+            ],
+            [
                 KeyboardButton(text=get_text("menu.profile", lang))
             ]
         ],

@@ -1,10 +1,11 @@
 """
-Referral Service - реферальная система
+Referral Service - реферальная система с многоуровневой поддержкой
 """
 
 from typing import List, Dict, Optional, Tuple
 from core.database import db_v2
 from core.services.points_service import points_service
+from core.services.multilevel_referral_service import MultilevelReferralService
 import logging
 import secrets
 import string
@@ -13,6 +14,9 @@ logger = logging.getLogger(__name__)
 
 class ReferralService:
     """Сервис для работы с реферальной системой"""
+    
+    def __init__(self):
+        self.multilevel_service = MultilevelReferralService()
     
     # Настройки реферальной системы
     REFERRAL_REWARD = 50  # Исправлено: было 100, стало 50 согласно документации
@@ -25,8 +29,7 @@ class ReferralService:
         referral_code = f"ref_{user_id}_{secrets.token_hex(4)}"
         return f"https://t.me/{bot_username}?start={referral_code}"
     
-    @staticmethod
-    async def process_referral(invited_user_id: int, referral_code: str) -> bool:
+    async def process_referral(self, invited_user_id: int, referral_code: str) -> bool:
         """Обработать реферальное приглашение"""
         try:
             # Парсим код приглашения
@@ -61,17 +64,25 @@ class ReferralService:
             if existing_referral and len(existing_referral) > 0:
                 return False
 
-                # Создаем запись о реферале
+            # Добавляем реферала в многоуровневую систему
+            try:
+                referral_info = await self.multilevel_service.add_referral(invited_user_id, inviter_id)
+                logger.info(f"Реферал добавлен в многоуровневую систему: {referral_info}")
+            except Exception as e:
+                logger.warning(f"Не удалось добавить в многоуровневую систему: {e}")
+                # Продолжаем с базовой системой
+
+            # Создаем запись о реферале
             db_v2.execute_query(
                 """INSERT INTO referrals (inviter_id, invited_id, status, reward_points) 
                    VALUES (?, ?, 'completed', ?)""",
-                (inviter_id, invited_user_id, ReferralService.REFERRAL_REWARD)
+                (inviter_id, invited_user_id, self.REFERRAL_REWARD)
             )
             
             # Начисляем баллы приглашающему
             await points_service.add_points(
                 inviter_id, 
-                ReferralService.REFERRAL_REWARD,
+                self.REFERRAL_REWARD,
                 "referral_invite",
                 f"Приглашение пользователя {invited_user_id}"
             )
@@ -79,7 +90,7 @@ class ReferralService:
             # Начисляем баллы приглашенному
             await points_service.add_points(
                 invited_user_id,
-                ReferralService.REFERRED_REWARD,
+                self.REFERRED_REWARD,
                 "referral_bonus",
                 f"Бонус за регистрацию по приглашению"
             )

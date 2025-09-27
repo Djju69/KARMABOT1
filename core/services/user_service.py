@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import asyncpg
 import os
-from core.utils.logger import get_logger
+from core.services.gamification_service import gamification_service
 
 logger = get_logger(__name__)
 

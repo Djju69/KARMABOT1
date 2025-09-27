@@ -1,113 +1,92 @@
 """
-Модели для тарифной системы KARMABOT1
+Модели тарифной системы для партнеров
 """
-from dataclasses import dataclass
-from enum import Enum
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Optional, List
+from enum import Enum
+from dataclasses import dataclass
+from decimal import Decimal
 
 class TariffType(Enum):
     """Типы тарифов"""
     FREE_STARTER = "free_starter"
-    BUSINESS = "business"
+    BUSINESS = "business" 
     ENTERPRISE = "enterprise"
 
-class TariffStatus(Enum):
-    """Статусы тарифа"""
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    EXPIRED = "expired"
-    CANCELLED = "cancelled"
+@dataclass
+class TariffFeatures:
+    """Функции тарифа"""
+    max_transactions_per_month: int
+    commission_rate: float  # Процент комиссии (0.12 = 12%)
+    analytics_enabled: bool
+    priority_support: bool
+    api_access: bool
+    custom_integrations: bool
+    dedicated_manager: bool
 
 @dataclass
 class Tariff:
     """Модель тарифа"""
-    id: int
+    id: Optional[int]
     name: str
     tariff_type: TariffType
-    monthly_price_vnd: int
-    commission_percent: float
-    transaction_limit: Optional[int]  # None = безлимит
-    features: List[str]
+    price_vnd: int  # Цена в вьетнамских донгах
+    features: TariffFeatures
+    description: str
     is_active: bool = True
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-@dataclass
-class PartnerTariff:
-    """Тариф партнера"""
-    id: int
-    partner_id: int
-    tariff_id: int
-    status: TariffStatus
-    start_date: datetime
-    end_date: Optional[datetime]
-    auto_renew: bool = True
-    payment_method: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-
-@dataclass
-class TariffUsage:
-    """Использование тарифа"""
-    id: int
-    partner_id: int
-    tariff_id: int
-    month: int
-    year: int
-    transactions_count: int
-    transactions_limit: int
-    commission_earned: float
-    created_at: Optional[datetime] = None
-
-# Дефолтные тарифы
-DEFAULT_TARIFFS = [
-    Tariff(
-        id=1,
+# Предустановленные тарифы согласно документации
+DEFAULT_TARIFFS = {
+    TariffType.FREE_STARTER: Tariff(
+        id=None,
         name="FREE STARTER",
         tariff_type=TariffType.FREE_STARTER,
-        monthly_price_vnd=0,
-        commission_percent=12.0,
-        transaction_limit=15,
-        features=[
-            "Базовые карты лояльности",
-            "QR-коды для скидок",
-            "Простая аналитика",
-            "Email поддержка"
-        ]
+        price_vnd=0,
+        features=TariffFeatures(
+            max_transactions_per_month=15,
+            commission_rate=0.12,  # 12%
+            analytics_enabled=False,
+            priority_support=False,
+            api_access=False,
+            custom_integrations=False,
+            dedicated_manager=False
+        ),
+        description="Базовые карты, QR-коды, лимит 15 транзакций в месяц"
     ),
-    Tariff(
-        id=2,
+    
+    TariffType.BUSINESS: Tariff(
+        id=None,
         name="BUSINESS",
         tariff_type=TariffType.BUSINESS,
-        monthly_price_vnd=490000,
-        commission_percent=6.0,
-        transaction_limit=100,
-        features=[
-            "Расширенные карты лояльности",
-            "QR-коды с кастомизацией",
-            "Детальная аналитика",
-            "Приоритетная поддержка",
-            "API доступ (ограниченный)",
-            "Интеграция с CRM"
-        ]
+        price_vnd=490000,  # 490,000 VND
+        features=TariffFeatures(
+            max_transactions_per_month=100,
+            commission_rate=0.06,  # 6%
+            analytics_enabled=True,
+            priority_support=True,
+            api_access=False,
+            custom_integrations=False,
+            dedicated_manager=False
+        ),
+        description="Расширенная аналитика, приоритетная поддержка, лимит 100 транзакций"
     ),
-    Tariff(
-        id=3,
-        name="ENTERPRISE",
+    
+    TariffType.ENTERPRISE: Tariff(
+        id=None,
+        name="ENTERPRISE", 
         tariff_type=TariffType.ENTERPRISE,
-        monthly_price_vnd=960000,
-        commission_percent=4.0,
-        transaction_limit=None,  # Безлимит
-        features=[
-            "Полный функционал карт",
-            "Кастомные QR-коды",
-            "Продвинутая аналитика",
-            "Выделенный менеджер",
-            "Полный API доступ",
-            "Кастомные интеграции",
-            "Белый лейбл",
-            "Приоритетная разработка"
-        ]
+        price_vnd=960000,  # 960,000 VND
+        features=TariffFeatures(
+            max_transactions_per_month=-1,  # Безлимит
+            commission_rate=0.04,  # 4%
+            analytics_enabled=True,
+            priority_support=True,
+            api_access=True,
+            custom_integrations=True,
+            dedicated_manager=True
+        ),
+        description="API доступ, кастомные интеграции, выделенный менеджер, безлимит транзакций"
     )
-]
+}
