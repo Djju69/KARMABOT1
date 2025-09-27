@@ -728,6 +728,26 @@ if __name__ == "__main__":
                             
                             self.send_json_response({'success': True, 'message': 'Заявка отклонена'})
                             
+                        elif self.path == '/api/admin/tariffs':
+                            # Получаем тарифы для админ кабинета
+                            try:
+                                tariffs = db_v2.fetch_all("""
+                                    SELECT id, name, tariff_type, price_vnd, max_transactions_per_month, 
+                                           commission_rate, analytics_enabled, priority_support, api_access,
+                                           custom_integrations, dedicated_manager, description, is_active, created_at
+                                    FROM partner_tariffs 
+                                    ORDER BY price_vnd ASC
+                                """)
+                                
+                                self.send_json_response({
+                                    'success': True,
+                                    'data': {
+                                        'tariffs': [dict(tariff) for tariff in tariffs]
+                                    }
+                                })
+                            except Exception as e:
+                                self.send_json_response({'success': False, 'error': str(e)}, status=500)
+                            
                         elif self.path == '/api/admin/stats':
                             # Получаем статистику для админ кабинета
                             try:
