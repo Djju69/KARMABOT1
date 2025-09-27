@@ -17,7 +17,7 @@ class TariffService:
     def __init__(self):
         self.default_tariffs = DEFAULT_TARIFFS
     
-    async def get_all_tariffs(self) -> List[Tariff]:
+    def get_all_tariffs(self) -> List[Tariff]:
         """Получить все доступные тарифы"""
         try:
             query = """
@@ -30,7 +30,7 @@ class TariffService:
                 ORDER BY price_vnd ASC
             """
             
-            rows = await db_v2.fetch_all(query)
+            rows = db_v2.fetch_all(query)
             
             tariffs = []
             for row in rows:
@@ -63,7 +63,7 @@ class TariffService:
             logger.error(f"❌ Error getting tariffs: {e}")
             return []
     
-    async def get_tariff_by_type(self, tariff_type: TariffType) -> Optional[Tariff]:
+    def get_tariff_by_type(self, tariff_type: TariffType) -> Optional[Tariff]:
         """Получить тариф по типу"""
         try:
             query = """
@@ -75,7 +75,7 @@ class TariffService:
                 WHERE tariff_type = $1 AND is_active = TRUE
             """
             
-            row = await db_v2.fetch_one(query, (tariff_type.value,))
+            row = db_v2.fetch_one(query, (tariff_type.value,))
             
             if not row:
                 return None
@@ -106,7 +106,7 @@ class TariffService:
             logger.error(f"❌ Error getting tariff by type {tariff_type}: {e}")
             return None
     
-    async def get_partner_current_tariff(self, partner_id: int) -> Optional[Tariff]:
+    def get_partner_current_tariff(self, partner_id: int) -> Optional[Tariff]:
         """Получить текущий тариф партнера"""
         try:
             query = """
@@ -120,11 +120,11 @@ class TariffService:
                 AND (s.expires_at IS NULL OR s.expires_at > NOW())
             """
             
-            row = await db_v2.fetch_one(query, (partner_id,))
+            row = db_v2.fetch_one(query, (partner_id,))
             
             if not row:
                 # Возвращаем FREE STARTER по умолчанию
-                return await self.get_tariff_by_type(TariffType.FREE_STARTER)
+                return self.get_tariff_by_type(TariffType.FREE_STARTER)
             
             features = TariffFeatures(
                 max_transactions_per_month=row[4],
@@ -150,9 +150,9 @@ class TariffService:
             
         except Exception as e:
             logger.error(f"❌ Error getting partner tariff for {partner_id}: {e}")
-            return await self.get_tariff_by_type(TariffType.FREE_STARTER)
+            return self.get_tariff_by_type(TariffType.FREE_STARTER)
     
-    async def subscribe_partner_to_tariff(
+    def subscribe_partner_to_tariff(
         self, 
         partner_id: int, 
         tariff_type: TariffType,
@@ -161,7 +161,7 @@ class TariffService:
         """Подписать партнера на тариф"""
         try:
             # Получаем тариф
-            tariff = await self.get_tariff_by_type(tariff_type)
+            tariff = self.get_tariff_by_type(tariff_type)
             if not tariff:
                 logger.error(f"❌ Tariff {tariff_type} not found")
                 return False
@@ -172,7 +172,7 @@ class TariffService:
                 SET is_active = FALSE, updated_at = NOW()
                 WHERE partner_id = $1 AND is_active = TRUE
             """
-            await db_v2.execute(deactivate_query, (partner_id,))
+            db_v2.execute(deactivate_query, (partner_id,))
             
             # Создаем новую подписку
             expires_at = datetime.now() + timedelta(days=duration_months * 30)
@@ -183,7 +183,7 @@ class TariffService:
                 VALUES ($1, $2, NOW(), $3, TRUE, FALSE, 'paid')
             """
             
-            await db_v2.execute(subscribe_query, (partner_id, tariff.id, expires_at))
+            db_v2.execute(subscribe_query, (partner_id, tariff.id, expires_at))
             
             logger.info(f"✅ Partner {partner_id} subscribed to {tariff_type.value} tariff")
             return True
@@ -192,11 +192,11 @@ class TariffService:
             logger.error(f"❌ Error subscribing partner {partner_id} to {tariff_type}: {e}")
             return False
     
-    async def check_transaction_limit(self, partner_id: int) -> Dict[str, Any]:
+    def check_transaction_limit(self, partner_id: int) -> Dict[str, Any]:
         """Проверить лимит транзакций партнера"""
         try:
             # Получаем текущий тариф
-            tariff = await self.get_partner_current_tariff(partner_id)
+            tariff = self.get_partner_current_tariff(partner_id)
             if not tariff:
                 return {"allowed": False, "reason": "No tariff found"}
             
@@ -215,7 +215,7 @@ class TariffService:
                 AND transaction_type = 'purchase'
             """
             
-            used_transactions = (await db_v2.fetch_one(query, (partner_id, current_month_start)))[0]
+            used_transactions = db_v2.fetch_one(query, (partner_id, current_month_start))[0]
             remaining = tariff.features.max_transactions_per_month - used_transactions
             
             return {

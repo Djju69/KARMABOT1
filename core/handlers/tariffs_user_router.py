@@ -28,7 +28,7 @@ async def handle_tariffs_command(message: Message, state: FSMContext):
         lang = user_data.get('lang', 'ru')
         
         # Получаем все тарифы
-        tariffs = await tariff_service.get_all_tariffs()
+        tariffs = tariff_service.get_all_tariffs()
         
         if not tariffs:
             await message.answer(get_text('tariffs.no_tariffs', lang))
@@ -42,7 +42,7 @@ async def handle_tariffs_command(message: Message, state: FSMContext):
         current_tariff = None
         if is_partner:
             try:
-                current_tariff = await tariff_service.get_partner_current_tariff(user_id)
+                current_tariff = tariff_service.get_partner_current_tariff(user_id)
             except:
                 pass
         
@@ -150,7 +150,7 @@ async def handle_tariff_info(callback: CallbackQuery, state: FSMContext):
         tariff_type_str = callback.data.split(":")[1]
         tariff_type = TariffType(tariff_type_str)
         
-        tariff = await tariff_service.get_tariff_by_type(tariff_type)
+        tariff = tariff_service.get_tariff_by_type(tariff_type)
         if not tariff:
             await callback.answer("❌ Тариф не найден")
             return
@@ -241,7 +241,7 @@ async def handle_tariff_apply(callback: CallbackQuery, state: FSMContext):
         tariff_type = TariffType(tariff_type_str)
         
         # Получаем тариф
-        tariff = await tariff_service.get_tariff_by_type(tariff_type)
+        tariff = tariff_service.get_tariff_by_type(tariff_type)
         if not tariff:
             await callback.answer("❌ Тариф не найден")
             return
@@ -295,13 +295,13 @@ async def handle_tariff_confirm(callback: CallbackQuery, state: FSMContext):
         tariff_type = TariffType(tariff_type_str)
         
         # Получаем тариф
-        tariff = await tariff_service.get_tariff_by_type(tariff_type)
+        tariff = tariff_service.get_tariff_by_type(tariff_type)
         if not tariff:
             await callback.answer("❌ Тариф не найден")
             return
         
         # Применяем тариф
-        success = await tariff_service.subscribe_partner_to_tariff(user_id, tariff_type)
+        success = tariff_service.subscribe_partner_to_tariff(user_id, tariff_type)
         
         if success:
             text = f"✅ <b>Тариф успешно изменен!</b>\n\n"
@@ -354,7 +354,7 @@ async def handle_back_to_tariffs(callback: CallbackQuery, state: FSMContext):
             return
         
         # Получаем все тарифы
-        tariffs = await tariff_service.get_all_tariffs()
+        tariffs = tariff_service.get_all_tariffs()
         
         if not tariffs:
             await callback.answer("❌ Тарифы временно недоступны")
