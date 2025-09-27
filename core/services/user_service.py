@@ -6,9 +6,10 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 import asyncpg
 import os
+import logging
 from core.services.gamification_service import gamification_service
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class KarmaService:
