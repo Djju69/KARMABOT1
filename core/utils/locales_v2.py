@@ -276,7 +276,17 @@ translations_v2 = {
         'language_changed': '✅ 언어가 {language}로 변경되었습니다',
         
         # Errors
-        'menu_error': '메인 메뉴로 돌아갈 수 없습니다. 나중에 다시 시도해주세요.'
+        'menu_error': '메인 메뉴로 돌아갈 수 없습니다. 나중에 다시 시도해주세요.',
+        
+        # Commands
+        'commands.start': '재시작',
+        'commands.add_card': '파트너 추가',
+        'commands.webapp': 'WebApp 열기',
+        'commands.city': '도시 변경',
+        'commands.help': '도움말/FAQ',
+        'commands.policy': '개인정보 보호정책',
+        'commands.clear_cache': '캐시 지우기 (관리자만)',
+        'commands.tariffs': '요금제 보기',
     },
     'vi': {
         # v4.2.4 minimal labels
@@ -514,7 +524,17 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'language_changed': '✅ Đã thay đổi ngôn ngữ thành {language}',
         
         # Errors
-        'menu_error': 'Không thể quay lại menu chính. Vui lòng thử lại sau.'
+        'menu_error': 'Không thể quay lại menu chính. Vui lòng thử lại sau.',
+        
+        # Commands
+        'commands.start': 'Khởi động lại',
+        'commands.add_card': 'Thêm đối tác',
+        'commands.webapp': 'Mở WebApp',
+        'commands.city': 'Đổi thành phố',
+        'commands.help': 'Trợ giúp/FAQ',
+        'commands.policy': 'Chính sách bảo mật',
+        'commands.clear_cache': 'Xóa cache (chỉ admin)',
+        'commands.tariffs': 'Xem gói cước',
     },
     'ru': {
         # v4.2.4 menu keys
@@ -545,6 +565,7 @@ Bạn có quyền truy cập, sửa đổi và xóa dữ liệu cá nhân của 
         'commands.help': 'Помощь/FAQ',
         'commands.policy': 'Политика конфиденциальности',
         'commands.clear_cache': 'Очистить кэш (только админ)',
+        'commands.tariffs': 'Просмотр тарифов',
         # v4.2.5 commands (новые описания)
         'commands.add_card': 'Добавить партнёра',
         
@@ -1068,6 +1089,16 @@ For questions about personal data processing, contact the bot administrator.
         # Menu keys
         'menu.invite_friends': '👥 Invite friends',
         'menu.favorites': '⭐ Favorites',
+        
+        # Commands
+        'commands.start': 'Restart',
+        'commands.add_card': 'Add partner',
+        'commands.webapp': 'Open WebApp',
+        'commands.city': 'Change city',
+        'commands.help': 'Help/FAQ',
+        'commands.policy': 'Privacy policy',
+        'commands.clear_cache': 'Clear cache (admin only)',
+        'commands.tariffs': 'View tariffs',
     }
 }
 

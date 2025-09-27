@@ -6,6 +6,7 @@ from typing import List, Dict, Any
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
+from aiogram.filters import Command
 
 from core.services.tariff_service import tariff_service
 from core.models.tariff_models import TariffType
@@ -15,7 +16,7 @@ from core.database.db_adapter import db_v2
 logger = logging.getLogger(__name__)
 router = Router(name="tariffs_user_router")
 
-@router.message(F.text == "/tariffs")
+@router.message(Command("tariffs"))
 async def handle_tariffs_command(message: Message, state: FSMContext):
     """Команда /tariffs - показать все доступные тарифы для пользователей"""
     try:

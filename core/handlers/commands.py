@@ -31,6 +31,7 @@ async def set_commands(bot: Bot) -> None:
         ("help", "commands.help"),
         ("policy", "commands.policy"),
         ("clear_cache", "commands.clear_cache"),
+        ("tariffs", "commands.tariffs"),
     ]
 
     def build(locale: str):
