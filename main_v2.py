@@ -720,7 +720,7 @@ if __name__ == "__main__":
         import os
         
         def start_web_server():
-            port = int(os.getenv("PORT", 8080))
+            port = int(os.getenv("PORT", 8000))
             os.chdir("webapp")  # Serve files from webapp directory
             
             # Создаем кастомный обработчик с API эндпоинтами
