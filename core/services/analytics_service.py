@@ -89,7 +89,7 @@ class AnalyticsService:
     async def _create_analytics_indexes(self):
         """Создание индексов для аналитики"""
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
             indexes = [
                 "CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)",
@@ -99,7 +99,15 @@ class AnalyticsService:
                 "CREATE INDEX IF NOT EXISTS idx_cards_category_status ON cards_v2(category_id, status)",
             ]
             
-            with get_connection() as conn:
+            # Используем правильный способ получения соединения
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                for index_sql in indexes:
+                    db_v2.postgresql_service.execute_sync(index_sql)
+                logger.info("📊 Analytics indexes created")
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
                 for index_sql in indexes:
                     conn.execute(index_sql)
                 conn.commit()

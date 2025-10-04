@@ -553,8 +553,13 @@ async def main():
     try:
         me = await bot.get_me()
         logger.info("✅ Bot authorized: @%s (id=%s)", me.username, me.id)
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("🗑️  Deleted any existing webhook")
+        
+        # Удаляем webhook только если планируем использовать polling
+        if DISABLE_WEBHOOK:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("🗑️  Deleted any existing webhook (polling mode)")
+        else:
+            logger.info("✅ Webhook mode - keeping existing webhook")
         
     except TelegramUnauthorizedError as e:
         logger.error("❌ Invalid BOT TOKEN (BOTS__BOT_TOKEN). %s", e)
@@ -675,8 +680,13 @@ async def main():
         atexit.register(lambda: asyncio.run(cleanup()))
 
     try:
-        # To ensure no conflicts, we delete any existing webhook and start polling cleanly.
-        await bot.delete_webhook(drop_pending_updates=True)
+        # Удаляем webhook только если планируем использовать polling
+        if DISABLE_WEBHOOK:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("🗑️  Deleted any existing webhook for polling (distributed lock)")
+        else:
+            logger.info("✅ Webhook mode - keeping existing webhook (distributed lock)")
+        
         # Preflight: if another instance is polling (even foreign), go idle
         if await _preflight_polling_conflict(safe_token):
             logger.error("❌ Another instance is actively polling (preflight).")
@@ -1386,11 +1396,17 @@ if __name__ == "__main__":
                 
                 # Создаем задачу мониторинга, но не ждем её завершения
                 try:
-                    loop = asyncio.get_event_loop()
-                    loop.create_task(start_monitoring())
-                    logger.info("🔍 Multi-platform monitoring started")
-                except RuntimeError:
-                    logger.warning("⚠️  No event loop available for monitoring")
+                    # Проверяем есть ли активный event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(start_monitoring())
+                        logger.info("🔍 Multi-platform monitoring started")
+                    except RuntimeError:
+                        # Нет активного event loop, создаем новый
+                        asyncio.create_task(start_monitoring())
+                        logger.info("🔍 Multi-platform monitoring started (new loop)")
+                except Exception as e:
+                    logger.warning(f"⚠️  Failed to start monitoring: {e}")
                 
             except Exception as e:
                 logger.error(f"Failed to initialize multi-platform system: {e}")

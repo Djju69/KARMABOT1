@@ -2968,9 +2968,12 @@ class DatabaseMigrator:
                 logger.info(f"✅ Applied migration {version}: Multilevel referral system (PostgreSQL)")
             else:
                 # SQLite режим - используем локальную функцию
-                migrate_013_multilevel_referral_system(self._conn)
-                self.mark_migration_applied(version, "Multilevel referral system")
-                logger.info(f"✅ Applied migration {version}: Multilevel referral system (SQLite)")
+                if self._conn is not None:
+                    migrate_013_multilevel_referral_system(self._conn)
+                    self.mark_migration_applied(version, "Multilevel referral system")
+                    logger.info(f"✅ Applied migration {version}: Multilevel referral system (SQLite)")
+                else:
+                    logger.warning("SQLite connection is None, skipping migration 013")
             
         except Exception as e:
             logger.error(f"Failed to apply migration {version}: {e}")

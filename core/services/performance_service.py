@@ -182,8 +182,17 @@ class DatabaseOptimizer:
         ]
         
         try:
-            from core.database.db_v2 import get_connection
-            with get_connection() as conn:
+            from core.database.db_adapter import db_v2
+            
+            # Используем правильный способ получения соединения
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                for index_sql in indexes:
+                    db_v2.postgresql_service.execute_sync(index_sql)
+                logger.info("🔧 Database indexes created successfully")
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
                 for index_sql in indexes:
                     conn.execute(index_sql)
                 conn.commit()
@@ -194,10 +203,26 @@ class DatabaseOptimizer:
     async def analyze_query_performance(self):
         """Анализ производительности запросов"""
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
             # Получаем статистику таблиц
-            with get_connection() as conn:
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                tables_query = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+                tables_result = db_v2.postgresql_service.fetch_all_sync(tables_query)
+                tables = [row['table_name'] for row in tables_result]
+                
+                analysis = {}
+                for table in tables:
+                    count_result = db_v2.postgresql_service.fetch_one_sync(f"SELECT COUNT(*) FROM {table}")
+                    count = count_result['count'] if count_result else 0
+                    analysis[table] = {'rows': count}
+                
+                logger.info(f"📊 Database analysis: {analysis}")
+                return analysis
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
                 cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
                 tables = [row[0] for row in cursor.fetchall()]
                 

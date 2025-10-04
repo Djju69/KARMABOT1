@@ -85,9 +85,41 @@ class NotificationService:
     async def _load_notification_settings(self):
         """Загрузка настроек уведомлений"""
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
-            with get_connection() as conn:
+            # Используем правильный способ получения соединения
+            if db_v2.use_postgresql:
+                # Для PostgreSQL проверяем наличие таблицы
+                check_table_query = """
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = 'notification_settings'
+                    )
+                """
+                table_exists = db_v2.postgresql_service.fetch_one_sync(check_table_query)
+                
+                if not table_exists or not table_exists['exists']:
+                    # Создаем таблицу настроек уведомлений
+                    create_table_query = """
+                        CREATE TABLE notification_settings (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER,
+                            email_notifications BOOLEAN DEFAULT true,
+                            push_notifications BOOLEAN DEFAULT true,
+                            system_alerts BOOLEAN DEFAULT true,
+                            partner_updates BOOLEAN DEFAULT true,
+                            loyalty_updates BOOLEAN DEFAULT true,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """
+                    db_v2.postgresql_service.execute_sync(create_table_query)
+                    logger.info("📋 Notification settings table created (PostgreSQL)")
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
+                
                 # Проверяем наличие таблицы настроек уведомлений
                 cursor = conn.execute("""
                     SELECT name FROM sqlite_master 
@@ -110,7 +142,7 @@ class NotificationService:
                         )
                     """)
                     conn.commit()
-                    logger.info("📋 Notification settings table created")
+                    logger.info("📋 Notification settings table created (SQLite)")
                     
         except Exception as e:
             logger.error(f"❌ Failed to load notification settings: {e}")
