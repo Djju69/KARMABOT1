@@ -29,6 +29,9 @@ from core.database.migrations import ensure_database_ready
 # Переменная для отключения webhook (для тестирования)
 DISABLE_WEBHOOK = os.getenv("DISABLE_WEBHOOK", "false").lower() == "true"
 
+# Принудительное обновление версии
+VERSION = "v2.1.0-port-fix"
+
 # === ИНТЕГРАЦИЯ MULTI-PLATFORM API ===
 try:
     from api.platform_endpoints import main_router
@@ -289,6 +292,7 @@ async def main():
     redis_url = _get_redis_url()
     setup_logging(level=logging.INFO, retention_days=7)
     logger.info("🚀 Starting KARMABOT1...")
+    logger.info(f"📦 Version: {VERSION}")
     
     # Initialize Redis (optional)
     redis_url = _get_redis_url()
