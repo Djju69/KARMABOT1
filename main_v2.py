@@ -509,7 +509,7 @@ async def main():
                 # Start web server
                 runner = web.AppRunner(app)
                 await runner.setup()
-                site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8080)))
+                site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8000)))
                 await site.start()
                 
                 logger.info("🌐 Web server started")
