@@ -719,7 +719,12 @@ class DatabaseMigrator:
                 else:
                     # PostgreSQL path: use IF NOT EXISTS
                     sql = """
-                    ALTER TABLE users ADD COLUMN IF NOT EXISTS policy_accepted BOOLEAN DEFAULT FALSE;
+                    DO $$ 
+                    BEGIN
+                        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+                            ALTER TABLE users ADD COLUMN IF NOT EXISTS policy_accepted BOOLEAN DEFAULT FALSE;
+                        END IF;
+                    END $$;
                     """
                     self.apply_migration(version, desc, sql)
         except Exception as e:
@@ -3056,9 +3061,9 @@ def ensure_user_roles_table():
         
         if database_url.startswith("postgres"):
             # PostgreSQL
-            from core.settings import settings
             import psycopg2
             
+            # Используем DATABASE_URL напрямую, а не settings
             conn = psycopg2.connect(database_url)
             cur = conn.cursor()
             try:

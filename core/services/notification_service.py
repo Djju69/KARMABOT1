@@ -89,33 +89,41 @@ class NotificationService:
             
             # Используем правильный способ получения соединения
             if db_v2.use_postgresql:
-                # Для PostgreSQL проверяем наличие таблицы
-                check_table_query = """
-                    SELECT EXISTS (
-                        SELECT FROM information_schema.tables 
-                        WHERE table_schema = 'public' 
-                        AND table_name = 'notification_settings'
-                    )
-                """
-                table_exists = db_v2.postgresql_service.fetch_one_sync(check_table_query)
-                
-                if not table_exists or not table_exists['exists']:
-                    # Создаем таблицу настроек уведомлений
-                    create_table_query = """
-                        CREATE TABLE notification_settings (
-                            id SERIAL PRIMARY KEY,
-                            user_id INTEGER,
-                            email_notifications BOOLEAN DEFAULT true,
-                            push_notifications BOOLEAN DEFAULT true,
-                            system_alerts BOOLEAN DEFAULT true,
-                            partner_updates BOOLEAN DEFAULT true,
-                            loyalty_updates BOOLEAN DEFAULT true,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                # Для PostgreSQL используем синхронные методы только если нет активного event loop
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем создание таблицы
+                    logger.warning("Skipping notification settings creation - async context detected")
+                    return
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    check_table_query = """
+                        SELECT EXISTS (
+                            SELECT FROM information_schema.tables 
+                            WHERE table_schema = 'public' 
+                            AND table_name = 'notification_settings'
                         )
                     """
-                    db_v2.postgresql_service.execute_sync(create_table_query)
-                    logger.info("📋 Notification settings table created (PostgreSQL)")
+                    table_exists = db_v2.postgresql_service.fetch_one_sync(check_table_query)
+                    
+                    if not table_exists or not table_exists['exists']:
+                        # Создаем таблицу настроек уведомлений
+                        create_table_query = """
+                            CREATE TABLE notification_settings (
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER,
+                                email_notifications BOOLEAN DEFAULT true,
+                                push_notifications BOOLEAN DEFAULT true,
+                                system_alerts BOOLEAN DEFAULT true,
+                                partner_updates BOOLEAN DEFAULT true,
+                                loyalty_updates BOOLEAN DEFAULT true,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """
+                        db_v2.postgresql_service.execute_sync(create_table_query)
+                        logger.info("📋 Notification settings table created (PostgreSQL)")
             else:
                 # Для SQLite используем обычное соединение
                 conn = db_v2.sqlite_service.get_connection()

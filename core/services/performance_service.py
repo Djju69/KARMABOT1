@@ -186,10 +186,18 @@ class DatabaseOptimizer:
             
             # Используем правильный способ получения соединения
             if db_v2.use_postgresql:
-                # Для PostgreSQL используем синхронные методы
-                for index_sql in indexes:
-                    db_v2.postgresql_service.execute_sync(index_sql)
-                logger.info("🔧 Database indexes created successfully")
+                # Для PostgreSQL используем синхронные методы только если нет активного event loop
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем создание индексов
+                    logger.warning("Skipping index creation - async context detected")
+                    return
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    for index_sql in indexes:
+                        db_v2.postgresql_service.execute_sync(index_sql)
+                    logger.info("🔧 Database indexes created successfully")
             else:
                 # Для SQLite используем обычное соединение
                 conn = db_v2.sqlite_service.get_connection()
