@@ -308,8 +308,21 @@ class PostgreSQLService:
         """Synchronous wrapper for get_cards_by_category"""
         import asyncio
         try:
-            loop = asyncio.get_event_loop()
-            return loop.run_until_complete(self.get_cards_by_category(category_slug, status, limit, sub_slug))
+            # Try to get current event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # We're in an async context, can't use run_until_complete
+                logger.warning("Cannot execute sync query in async context")
+                return []
+            except RuntimeError:
+                # No running loop, safe to create one
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    return loop.run_until_complete(self.get_cards_by_category(category_slug, status, limit, sub_slug))
+                finally:
+                    if not loop.is_running():
+                        loop.close()
         except Exception as e:
             logger.error(f"❌ Sync wrapper error in get_cards_by_category_sync: {e}")
             return []
@@ -487,15 +500,27 @@ class PostgreSQLService:
                         if not loop.is_running():
                             loop.close()
                 else:
-                    # Use existing pool
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+                    # Use existing pool - avoid creating new event loop
                     try:
-                        result = loop.run_until_complete(self._pool.fetch(query, *params))
-                        return result
-                    finally:
-                        if not loop.is_running():
-                            loop.close()
+                        # Try to get current event loop
+                        try:
+                            loop = asyncio.get_running_loop()
+                            # We're in an async context, can't use run_until_complete
+                            logger.warning("Cannot execute sync query in async context")
+                            return []
+                        except RuntimeError:
+                            # No running loop, safe to create one
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                result = loop.run_until_complete(self._pool.fetch(query, *params))
+                                return result
+                            finally:
+                                if not loop.is_running():
+                                    loop.close()
+                    except Exception as e:
+                        logger.error(f"Error in sync fetch_all: {e}")
+                        return []
         except Exception as e:
             logger.error(f"Error executing query: {e}")
             return []
@@ -527,14 +552,26 @@ class PostgreSQLService:
                         if not loop.is_running():
                             loop.close()
                 else:
-                    # Use existing pool
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
+                    # Use existing pool - avoid creating new event loop
                     try:
-                        loop.run_until_complete(self._pool.execute(query, *params))
-                    finally:
-                        if not loop.is_running():
-                            loop.close()
+                        # Try to get current event loop
+                        try:
+                            loop = asyncio.get_running_loop()
+                            # We're in an async context, can't use run_until_complete
+                            logger.warning("Cannot execute sync query in async context")
+                            return
+                        except RuntimeError:
+                            # No running loop, safe to create one
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            try:
+                                loop.run_until_complete(self._pool.execute(query, *params))
+                            finally:
+                                if not loop.is_running():
+                                    loop.close()
+                    except Exception as e:
+                        logger.error(f"Error in sync execute: {e}")
+                        return
         except Exception as e:
             logger.error(f"Error executing query: {e}")
     
@@ -636,15 +673,27 @@ class PostgreSQLService:
                     if not loop.is_running():
                         loop.close()
             else:
-                # Use existing pool
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
+                # Use existing pool - avoid creating new event loop
                 try:
-                    rows = loop.run_until_complete(self._pool.fetch(query, *params))
-                    return [dict(row) for row in rows]
-                finally:
-                    if not loop.is_running():
-                        loop.close()
+                    # Try to get current event loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        # We're in an async context, can't use run_until_complete
+                        logger.warning("Cannot execute sync query in async context")
+                        return []
+                    except RuntimeError:
+                        # No running loop, safe to create one
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        try:
+                            rows = loop.run_until_complete(self._pool.fetch(query, *params))
+                            return [dict(row) for row in rows]
+                        finally:
+                            if not loop.is_running():
+                                loop.close()
+                except Exception as e:
+                    logger.error(f"Error in sync get_card_photos: {e}")
+                    return []
         except Exception as e:
             logger.error(f"Error getting card photos: {e}")
             return []

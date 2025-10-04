@@ -699,6 +699,12 @@ class DatabaseMigrator:
                     # SQLite path: add column if missing
                     with self.get_connection() as conn:
                         try:
+                            # First check if users table exists
+                            cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+                            if not cur.fetchone():
+                                logger.info("Users table doesn't exist, skipping migration 022")
+                                return
+                            
                             cur = conn.execute("PRAGMA table_info(users)")
                             cols = {row[1] for row in cur.fetchall()}
                         except Exception:
@@ -3053,7 +3059,7 @@ def ensure_user_roles_table():
             from core.settings import settings
             import psycopg2
             
-            conn = psycopg2.connect(settings.database.url)
+            conn = psycopg2.connect(database_url)
             cur = conn.cursor()
             try:
                 # Create user_roles table if it doesn't exist
@@ -3069,7 +3075,7 @@ def ensure_user_roles_table():
                 """)
                 
                 # Insert super-admin role if it doesn't exist
-                admin_id = getattr(settings.bots, 'admin_id', 6391215556)
+                admin_id = int(os.getenv("SUPER_ADMIN_ID", "6391215556"))
                 cur.execute("""
                     INSERT INTO user_roles (user_id, role) 
                     VALUES (%s, 'SUPER_ADMIN') 
