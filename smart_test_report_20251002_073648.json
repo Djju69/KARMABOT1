@@ -1,0 +1,127 @@
+{
+  "test_date": "2025-10-02T07:36:48.606887",
+  "platform": "Railway",
+  "bot_username": "@Karma25TESTBot",
+  "total_tests": 12,
+  "passed": 10,
+  "failed": 0,
+  "warned": 2,
+  "messages_sent": 6,
+  "results": [
+    {
+      "test": "Подключение к боту",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:35.574677",
+      "details": {
+        "username": "@Karma25TESTBot",
+        "name": "KarmaTEST",
+        "id": 8363530491
+      }
+    },
+    {
+      "test": "Webhook статус",
+      "status": "WARN",
+      "timestamp": "2025-10-02T07:36:36.802833",
+      "details": {
+        "note": "Webhook не настроен"
+      }
+    },
+    {
+      "test": "Отправка: /start",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:38.028075",
+      "details": {
+        "message_id": 21343,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Отправка: /help",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:39.369694",
+      "details": {
+        "message_id": 21344,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Отправка: /menu",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:40.601338",
+      "details": {
+        "message_id": 21345,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Отправка: Категории",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:41.839353",
+      "details": {
+        "message_id": 21346,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Отправка: Помощь",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:43.091366",
+      "details": {
+        "message_id": 21347,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Отправка: Личный кабинет",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:44.315200",
+      "details": {
+        "message_id": 21348,
+        "delivered": true
+      }
+    },
+    {
+      "test": "Общая доставка команд",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:45.328564",
+      "details": {
+        "delivered": 6,
+        "total": 6,
+        "success_rate": "100.0%"
+      }
+    },
+    {
+      "test": "Команды бота",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:46.582561",
+      "details": {
+        "count": 2,
+        "commands": [
+          "/start - 🚀 Запустить бота",
+          "/help - 📋 Помощь"
+        ]
+      }
+    },
+    {
+      "test": "Ручная проверка",
+      "status": "WARN",
+      "timestamp": "2025-10-02T07:36:47.594971",
+      "details": {
+        "note": "Требует ручной проверки в Telegram"
+      }
+    },
+    {
+      "test": "Анализ результатов",
+      "status": "PASS",
+      "timestamp": "2025-10-02T07:36:48.606887",
+      "details": {
+        "total_tests": 11,
+        "passed": 9,
+        "failed": 0,
+        "warned": 2,
+        "success_rate": "81.8%",
+        "messages_sent": 6
+      }
+    }
+  ]
+}

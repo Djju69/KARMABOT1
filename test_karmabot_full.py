@@ -7,12 +7,23 @@
 import asyncio
 import logging
 import json
+import os
 from datetime import datetime
 from aiogram import Bot, Dispatcher, types
 
+# Load .env file
+try:
+    with open('.env', 'r', encoding='utf-8') as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+except FileNotFoundError:
+    pass
+
 # ==================== НАСТРОЙКИ ====================
-BOT_TOKEN = "ВСТАВЬ_СЮДА_BOT_TOKEN"  # Токен бота
-TEST_USER_ID = 123456789  # Твой Telegram ID от @userinfobot
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+TEST_USER_ID = int(os.getenv("TEST_USER_ID", "0"))
 
 # Логирование
 logging.basicConfig(
@@ -371,42 +382,41 @@ class KarmaBotTester:
         logger.info(f"💾 Отчет сохранен: {filename}\n")
 
 async def main():
-    print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║     АВТОМАТИЧЕСКИЙ ТЕСТИРОВЩИК KARMABOT1                 ║
-    ║                                                           ║
-    ║  Проверяет ВСЕ кнопки и команды бота автоматически       ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """)
+    print("="*60)
+    print("AUTOMATIC KARMABOT1 TESTER")
+    print("="*60)
+    print()
     
-    if BOT_TOKEN == "ВСТАВЬ_СЮДА_BOT_TOKEN":
-        logger.error("❌ Укажи BOT_TOKEN в файле!")
-        logger.error("   Найди его в @BotFather")
+    if BOT_TOKEN == "":
+        logger.error("ERROR: Set BOT_TOKEN in .env file!")
+        logger.error("   Get it from @BotFather")
         return
     
-    if TEST_USER_ID == 123456789:
-        logger.warning("⚠️  Укажи свой Telegram ID")
-        logger.warning("   Получи у @userinfobot")
+    if TEST_USER_ID == 0:
+        logger.warning("WARNING: Set TEST_USER_ID in .env file")
+        logger.warning("   Get it from @userinfobot")
     
-    logger.info("\n⚠️  ВАЖНО: Перед запуском проверь:")
-    logger.info("   1. На Railway установлена DISABLE_WEBHOOK=true")
-    logger.info("   2. Бот перезапустился (подожди 1 минуту)")
-    logger.info("   3. В логах Railway видно '⚠️ РЕЖИМ ТЕСТИРОВАНИЯ'\n")
+    logger.info("\nIMPORTANT: Before starting check:")
+    logger.info("   1. Railway has DISABLE_WEBHOOK=true")
+    logger.info("   2. Bot restarted (wait 1 minute)")
+    logger.info("   3. Railway logs show 'TESTING MODE'\n")
     
-    input("✅ Всё готово? Нажми Enter для запуска тестов...")
+    # Auto start after 3 seconds
+    import time
+    logger.info("Starting tests in 3 seconds...")
+    time.sleep(3)
     
     tester = KarmaBotTester(BOT_TOKEN, TEST_USER_ID)
     await tester.run_all_tests()
     
-    print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║              ✅ ТЕСТИРОВАНИЕ ЗАВЕРШЕНО!                   ║
-    ║                                                           ║
-    ║  Проверь файлы:                                           ║
-    ║  - test_report_*.json  (полный отчет)                    ║
-    ║  - test_results.log    (детальный лог)                   ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """)
+    print("="*60)
+    print("TESTING COMPLETED!")
+    print("="*60)
+    print()
+    print("Check files:")
+    print("- test_report_*.json  (full report)")
+    print("- test_results.log    (detailed log)")
+    print("="*60)
 
 if __name__ == "__main__":
     try:
