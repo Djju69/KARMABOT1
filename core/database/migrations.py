@@ -2964,12 +2964,12 @@ class DatabaseMigrator:
                 # PostgreSQL режим - используем ensure_multilevel_referral_system
                 logger.info("PostgreSQL режим - используем ensure_multilevel_referral_system")
                 ensure_multilevel_referral_system()
-                self.mark_migration_applied(version)
+                self.mark_migration_applied(version, "Multilevel referral system")
                 logger.info(f"✅ Applied migration {version}: Multilevel referral system (PostgreSQL)")
             else:
                 # SQLite режим - используем локальную функцию
                 migrate_013_multilevel_referral_system(self._conn)
-                self.mark_migration_applied(version)
+                self.mark_migration_applied(version, "Multilevel referral system")
                 logger.info(f"✅ Applied migration {version}: Multilevel referral system (SQLite)")
             
         except Exception as e:

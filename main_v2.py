@@ -522,7 +522,10 @@ async def main():
                 # Start web server
                 runner = web.AppRunner(app)
                 await runner.setup()
-                site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8000)))
+                
+                # Используем порт 8000 для webhook сервера (не конфликтует с Railway)
+                webhook_port = int(os.getenv('WEBHOOK_PORT', 8000))
+                site = web.TCPSite(runner, '0.0.0.0', webhook_port)
                 await site.start()
                 
                 logger.info("🌐 Web server started")
@@ -729,7 +732,7 @@ if __name__ == "__main__":
         import os
         
         def start_web_server():
-            port = int(os.getenv("PORT", 8000))
+            port = int(os.getenv("API_PORT", 8080))
             os.chdir("webapp")  # Serve files from webapp directory
             
             # Создаем кастомный обработчик с API эндпоинтами
