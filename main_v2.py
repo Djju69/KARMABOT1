@@ -26,6 +26,9 @@ from aiogram.enums import ParseMode
 from core.settings import Settings, get_settings, Features
 from core.database.migrations import ensure_database_ready
 
+# Переменная для отключения webhook (для тестирования)
+DISABLE_WEBHOOK = os.getenv("DISABLE_WEBHOOK", "false").lower() == "true"
+
 # === ИНТЕГРАЦИЯ MULTI-PLATFORM API ===
 try:
     from api.platform_endpoints import main_router
@@ -439,13 +442,85 @@ async def main():
                 logger.error(f"❌ Failed to set bot commands: {e}", exc_info=True)
                 return
             
-            # Start the bot with allowed updates
-            logger.info("🚀 Starting bot polling...")
-            await dp.start_polling(
-                bot,
-                allowed_updates=dp.resolve_used_update_types(),
-                drop_pending_updates=True
-            )
+            # НОВАЯ ЛОГИКА ЗАПУСКА:
+            if DISABLE_WEBHOOK:
+                # ============================================
+                # РЕЖИМ ТЕСТИРОВАНИЯ - WEBHOOK ОТКЛЮЧЕН
+                # ============================================
+                logger.info("="*60)
+                logger.info("⚠️  РЕЖИМ ТЕСТИРОВАНИЯ - WEBHOOK ОТКЛЮЧЕН")
+                logger.info("   Бот работает через long polling")
+                logger.info("="*60)
+                
+                await bot.delete_webhook(drop_pending_updates=False)
+                await dp.start_polling(
+                    bot,
+                    allowed_updates=dp.resolve_used_update_types(),
+                    skip_updates=False
+                )
+                
+            else:
+                # ============================================
+                # ОБЫЧНЫЙ РЕЖИМ - WEBHOOK ВКЛЮЧЕН
+                # ============================================
+                logger.info("✅ ПРОДАКШЕН РЕЖИМ - WEBHOOK АКТИВЕН")
+                
+                WEBHOOK_URL = os.getenv("WEBHOOK_URL") or os.getenv("RAILWAY_STATIC_URL")
+                
+                if not WEBHOOK_URL:
+                    logger.error("❌ WEBHOOK_URL не установлен!")
+                    return
+                
+                if not WEBHOOK_URL.startswith("http"):
+                    WEBHOOK_URL = f"https://{WEBHOOK_URL}"
+                
+                webhook_path = "/webhook"
+                full_webhook_url = f"{WEBHOOK_URL}{webhook_path}"
+                
+                await bot.delete_webhook(drop_pending_updates=True)
+                await bot.set_webhook(url=full_webhook_url, drop_pending_updates=True)
+                
+                logger.info(f"✅ Webhook: {full_webhook_url}")
+                
+                # ЗАПУСК WEB СЕРВЕРА
+                from aiohttp import web
+                from aiohttp.web import Request, Response
+                
+                async def webhook_handler(request: Request) -> Response:
+                    """Handle incoming webhook updates"""
+                    try:
+                        data = await request.json()
+                        update = types.Update(**data)
+                        await dp.feed_update(bot, update)
+                        return Response(text="OK")
+                    except Exception as e:
+                        logger.error(f"Webhook error: {e}")
+                        return Response(text="Error", status=500)
+                
+                app = web.Application()
+                app.router.add_post("/webhook", webhook_handler)
+                
+                # Health check endpoint
+                async def health_handler(request: Request) -> Response:
+                    return Response(text="OK")
+                
+                app.router.add_get("/health", health_handler)
+                
+                # Start web server
+                runner = web.AppRunner(app)
+                await runner.setup()
+                site = web.TCPSite(runner, '0.0.0.0', int(os.getenv('PORT', 8080)))
+                await site.start()
+                
+                logger.info("🌐 Web server started")
+                
+                # Keep running
+                try:
+                    await asyncio.Future()  # Run forever
+                except KeyboardInterrupt:
+                    logger.info("🛑 Shutting down...")
+                finally:
+                    await runner.cleanup()
             
     except Exception as e:
         logger.error(f"❌ Fatal error in main: {e}", exc_info=True)
