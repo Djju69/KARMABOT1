@@ -487,7 +487,7 @@ async def main():
                 if not WEBHOOK_URL.startswith("http"):
                     WEBHOOK_URL = f"https://{WEBHOOK_URL}"
                 
-                webhook_path = "/webhook/webhook"
+                webhook_path = "/webhook"
                 full_webhook_url = f"{WEBHOOK_URL}{webhook_path}"
                 
                 await bot.delete_webhook(drop_pending_updates=True)
@@ -511,7 +511,7 @@ async def main():
                         return Response(text="Error", status=500)
                 
                 app = web.Application()
-                app.router.add_post("/webhook/webhook", webhook_handler)
+                app.router.add_post("/webhook", webhook_handler)
                 
                 # Health check endpoint
                 async def health_handler(request: Request) -> Response:
