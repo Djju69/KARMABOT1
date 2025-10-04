@@ -2959,11 +2959,18 @@ class DatabaseMigrator:
         try:
             logger.info(f"Applying migration {version}: Multilevel referral system")
             
-            # Import and call the migration function
-            migrate_013_multilevel_referral_system(self._conn)
-            
-            self.mark_migration_applied(version)
-            logger.info(f"✅ Applied migration {version}: Multilevel referral system")
+            # Проверяем режим базы данных
+            if self._conn is None:
+                # PostgreSQL режим - используем ensure_multilevel_referral_system
+                logger.info("PostgreSQL режим - используем ensure_multilevel_referral_system")
+                ensure_multilevel_referral_system()
+                self.mark_migration_applied(version)
+                logger.info(f"✅ Applied migration {version}: Multilevel referral system (PostgreSQL)")
+            else:
+                # SQLite режим - используем локальную функцию
+                migrate_013_multilevel_referral_system(self._conn)
+                self.mark_migration_applied(version)
+                logger.info(f"✅ Applied migration {version}: Multilevel referral system (SQLite)")
             
         except Exception as e:
             logger.error(f"Failed to apply migration {version}: {e}")

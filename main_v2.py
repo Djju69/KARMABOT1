@@ -456,7 +456,16 @@ async def main():
                 logger.info("   Бот работает через long polling")
                 logger.info("="*60)
                 
-                await bot.delete_webhook(drop_pending_updates=False)
+                # Проверяем webhook перед запуском polling
+                webhook_info = await bot.get_webhook_info()
+                if webhook_info.url:
+                    logger.info(f"⚠️  Webhook активен: {webhook_info.url}")
+                    logger.info("   Удаляем webhook для polling...")
+                    await bot.delete_webhook(drop_pending_updates=True)
+                    logger.info("✅ Webhook удален")
+                else:
+                    logger.info("✅ Webhook не активен, можно запускать polling")
+                
                 await dp.start_polling(
                     bot,
                     allowed_updates=dp.resolve_used_update_types(),
@@ -1373,8 +1382,12 @@ if __name__ == "__main__":
                         logger.error(f"Monitoring failed: {e}")
                 
                 # Создаем задачу мониторинга, но не ждем её завершения
-                asyncio.create_task(start_monitoring())
-                logger.info("🔍 Multi-platform monitoring started")
+                try:
+                    loop = asyncio.get_event_loop()
+                    loop.create_task(start_monitoring())
+                    logger.info("🔍 Multi-platform monitoring started")
+                except RuntimeError:
+                    logger.warning("⚠️  No event loop available for monitoring")
                 
             except Exception as e:
                 logger.error(f"Failed to initialize multi-platform system: {e}")
