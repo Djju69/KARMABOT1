@@ -924,7 +924,12 @@ class DatabaseMigrator:
         # Add karma_points column if it doesn't exist
         # We'll do a pre-check to avoid noisy duplicate-column errors in logs
         karma_column_sql = """
-        ALTER TABLE users ADD COLUMN karma_points INTEGER DEFAULT 0;
+        DO $$ 
+        BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS karma_points INTEGER DEFAULT 0;
+            END IF;
+        END $$;
         """
         
         # Karma transactions table
@@ -3057,9 +3062,9 @@ def ensure_user_roles_table():
     """Ensure user_roles table exists in both PostgreSQL and SQLite"""
     try:
         import os
-        database_url = os.getenv("DATABASE_URL", "").lower()
+        database_url = os.getenv("DATABASE_URL", "")
         
-        if database_url.startswith("postgres"):
+        if database_url.lower().startswith("postgres"):
             # PostgreSQL
             import psycopg2
             
