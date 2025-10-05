@@ -499,36 +499,7 @@ async def main():
                 from aiohttp import web
                 from aiohttp.web import Request, Response
                 
-                async def webhook_handler(request: Request) -> Response:
-                    """Handle incoming webhook updates"""
-                    try:
-                        data = await request.json()
-                        update = types.Update(**data)
-                        await dp.feed_update(bot, update)
-                        return Response(text="OK")
-                    except Exception as e:
-                        logger.error(f"Webhook error: {e}")
-                        return Response(text="Error", status=500)
-                
-                app = web.Application()
-                app.router.add_post("/webhook", webhook_handler)
-                
-                # Health check endpoint
-                async def health_handler(request: Request) -> Response:
-                    return Response(text="OK")
-                
-                app.router.add_get("/health", health_handler)
-                
-                # Start web server
-                runner = web.AppRunner(app)
-                await runner.setup()
-                
-                # Используем отдельный порт для webhook сервера (не конфликтует с Railway)
-                webhook_port = int(os.getenv('WEBHOOK_PORT', 8000))
-                site = web.TCPSite(runner, '0.0.0.0', webhook_port)
-                await site.start()
-                
-                logger.info("🌐 Web server started")
+                logger.info("🌐 Webhook integrated into main server")
                 
                 # Keep running
                 try:
@@ -750,12 +721,16 @@ if __name__ == "__main__":
                 def do_GET(self):
                     if self.path.startswith('/api/'):
                         self.handle_api_request()
+                    elif self.path == '/health':
+                        self.handle_health_request()
                     else:
                         super().do_GET()
                 
                 def do_POST(self):
                     if self.path.startswith('/api/'):
                         self.handle_api_request()
+                    elif self.path == '/webhook':
+                        self.handle_webhook_request()
                     else:
                         super().do_POST()
                 
@@ -768,6 +743,45 @@ if __name__ == "__main__":
                         self.end_headers()
                     else:
                         super().do_OPTIONS()
+                
+                def handle_webhook_request(self):
+                    """Обработка webhook запросов от Telegram"""
+                    try:
+                        content_length = int(self.headers.get('Content-Length', 0))
+                        post_data = self.rfile.read(content_length)
+                        
+                        # Обрабатываем webhook через aiogram
+                        import asyncio
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        
+                        async def process_webhook():
+                            from aiogram import Bot
+                            bot = Bot(token=os.getenv("BOTS__BOT_TOKEN"))
+                            try:
+                                await bot.process_new_updates([json.loads(post_data.decode('utf-8'))])
+                            finally:
+                                await bot.session.close()
+                        
+                        loop.run_until_complete(process_webhook())
+                        loop.close()
+                        
+                        self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(b'OK')
+                        
+                    except Exception as e:
+                        logger.error(f"Webhook error: {e}")
+                        self.send_response(500)
+                        self.end_headers()
+                        self.wfile.write(b'Error')
+                
+                def handle_health_request(self):
+                    """Health check endpoint"""
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/plain')
+                    self.end_headers()
+                    self.wfile.write(b'OK')
                 
                 def handle_api_request(self):
                     try:
