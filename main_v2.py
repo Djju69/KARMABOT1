@@ -285,6 +285,15 @@ async def main():
     # Initialize logging first
     setup_logging()
     
+    # Логируем переменные окружения для диагностики
+    logger.info("🔍 Environment variables:")
+    logger.info(f"BOT_TOKEN: {'*' * 20}...{os.getenv('BOT_TOKEN', '')[-10:] if os.getenv('BOT_TOKEN') else 'NOT SET'}")
+    logger.info(f"WEBHOOK_URL: {os.getenv('WEBHOOK_URL', 'NOT SET')}")
+    logger.info(f"RAILWAY_STATIC_URL: {os.getenv('RAILWAY_STATIC_URL', 'NOT SET')}")
+    logger.info(f"DISABLE_WEBHOOK: {os.getenv('DISABLE_WEBHOOK', 'false')}")
+    logger.info(f"API_PORT: {os.getenv('API_PORT', '8080')}")
+    logger.info(f"DATABASE_URL: {'SET' if os.getenv('DATABASE_URL') else 'NOT SET'}")
+    
     # Single instance check removed - function was not defined
     # This was causing NameError in production
         
@@ -479,6 +488,7 @@ async def main():
                 logger.info("✅ ПРОДАКШЕН РЕЖИМ - WEBHOOK АКТИВЕН")
                 
                 WEBHOOK_URL = os.getenv("WEBHOOK_URL") or os.getenv("RAILWAY_STATIC_URL")
+                logger.info(f"🔍 WEBHOOK_URL from env: {WEBHOOK_URL}")
                 
                 if not WEBHOOK_URL:
                     logger.error("❌ WEBHOOK_URL не установлен!")
@@ -489,11 +499,17 @@ async def main():
                 
                 # WEBHOOK_URL уже содержит /webhook, поэтому не добавляем его
                 full_webhook_url = WEBHOOK_URL
+                logger.info(f"🔍 Final webhook URL: {full_webhook_url}")
                 
                 await bot.delete_webhook(drop_pending_updates=True)
-                await bot.set_webhook(url=full_webhook_url, drop_pending_updates=True)
+                logger.info("🗑️ Deleted existing webhook")
                 
-                logger.info(f"✅ Webhook: {full_webhook_url}")
+                await bot.set_webhook(url=full_webhook_url, drop_pending_updates=True)
+                logger.info(f"✅ Webhook set: {full_webhook_url}")
+                
+                # Проверяем что webhook установлен
+                webhook_info = await bot.get_webhook_info()
+                logger.info(f"🔍 Webhook info: {webhook_info}")
                 
                 # ЗАПУСК WEB СЕРВЕРА
                 from aiohttp import web
@@ -727,11 +743,19 @@ if __name__ == "__main__":
         import os
         
         def start_web_server(bot_instance, dp_instance):
+            logger.info("🌐 Starting web server...")
+            logger.info(f"Bot instance: {bot_instance}")
+            logger.info(f"DP instance: {dp_instance}")
+            
             port = int(os.getenv("API_PORT", 8080))
             os.chdir("webapp")  # Serve files from webapp directory
             
             # Создаем кастомный обработчик с API эндпоинтами
             class CustomHTTPRequestHandler(SimpleHTTPRequestHandler):
+                def __init__(self, *args, **kwargs):
+                    self.bot_instance = bot_instance
+                    self.dp_instance = dp_instance
+                    super().__init__(*args, **kwargs)
                 def do_GET(self):
                     if self.path.startswith('/api/'):
                         self.handle_api_request()
@@ -741,6 +765,11 @@ if __name__ == "__main__":
                         super().do_GET()
                 
                 def do_POST(self):
+                    logger.info("=" * 50)
+                    logger.info("🔔 WEBHOOK REQUEST RECEIVED!")
+                    logger.info(f"Path: {self.path}")
+                    logger.info(f"Headers: {dict(self.headers)}")
+                    
                     if self.path.startswith('/api/'):
                         self.handle_api_request()
                     elif self.path == '/webhook':
@@ -763,15 +792,18 @@ if __name__ == "__main__":
                     try:
                         content_length = int(self.headers.get('Content-Length', 0))
                         post_data = self.rfile.read(content_length)
+                        logger.info(f"📨 Body length: {content_length}")
+                        logger.info(f"📨 Body preview: {post_data.decode('utf-8')[:200]}")
                         
                         # Получаем JSON от Telegram
                         import json
                         update_data = json.loads(post_data.decode('utf-8'))
-                        logger.info(f"📨 Received webhook update: {update_data.get('update_id', 'unknown')}")
+                        logger.info(f"✅ Parsed update: {update_data.get('update_id')}")
                         
                         # Создаём объект Update
                         from aiogram.types import Update
                         update = Update(**update_data)
+                        logger.info(f"✅ Created Update object")
                         
                         # ВАЖНО: Обрабатываем update через диспетчер
                         # Используем существующий event loop
@@ -779,19 +811,22 @@ if __name__ == "__main__":
                         try:
                             loop = asyncio.get_running_loop()
                             # Создаем задачу для обработки update
-                            task = loop.create_task(dp_instance.feed_update(bot=bot_instance, update=update))
+                            task = loop.create_task(self.dp_instance.feed_update(bot=self.bot_instance, update=update))
                             # Ждем завершения задачи
                             loop.run_until_complete(task)
+                            logger.info(f"✅ Fed to dispatcher successfully")
                         except RuntimeError:
                             # Если нет активного event loop, создаем новый
-                            asyncio.run(dp_instance.feed_update(bot=bot_instance, update=update))
+                            asyncio.run(self.dp_instance.feed_update(bot=self.bot_instance, update=update))
+                            logger.info(f"✅ Fed to dispatcher (new loop)")
                         
                         self.send_response(200)
                         self.end_headers()
                         self.wfile.write(b'OK')
+                        logger.info("✅ Response sent")
                         
                     except Exception as e:
-                        logger.error(f"Webhook error: {e}")
+                        logger.error(f"❌ Webhook error: {e}", exc_info=True)
                         self.send_response(500)
                         self.end_headers()
                         self.wfile.write(b'Error')
