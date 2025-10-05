@@ -487,19 +487,19 @@ async def main():
                 # ============================================
                 logger.info("✅ ПРОДАКШЕН РЕЖИМ - WEBHOOK АКТИВЕН")
                 
-                WEBHOOK_URL = os.getenv("WEBHOOK_URL") or os.getenv("RAILWAY_STATIC_URL")
-                if WEBHOOK_URL and not WEBHOOK_URL.startswith("http"):
-                    WEBHOOK_URL = f"https://{WEBHOOK_URL}"
-                if not WEBHOOK_URL:
-                    logger.error("❌ WEBHOOK_URL не установлен!")
+                # ПРИНУДИТЕЛЬНО используем RAILWAY_STATIC_URL для правильного домена
+                RAILWAY_URL = os.getenv("RAILWAY_STATIC_URL")
+                if not RAILWAY_URL:
+                    logger.error("❌ RAILWAY_STATIC_URL не установлен!")
                     return
                 
-                # Добавляем /webhook если его нет
-                if not WEBHOOK_URL.endswith('/webhook'):
-                    WEBHOOK_URL = f"{WEBHOOK_URL}/webhook"
+                # Формируем правильный webhook URL
+                if not RAILWAY_URL.startswith("http"):
+                    RAILWAY_URL = f"https://{RAILWAY_URL}"
                 
-                logger.info(f"🔍 WEBHOOK_URL from env: {WEBHOOK_URL}")
-                full_webhook_url = WEBHOOK_URL
+                full_webhook_url = f"{RAILWAY_URL}/webhook"
+                
+                logger.info(f"🔍 RAILWAY_STATIC_URL: {os.getenv('RAILWAY_STATIC_URL')}")
                 logger.info(f"🔍 Final webhook URL: {full_webhook_url}")
                 
                 await bot.delete_webhook(drop_pending_updates=True)
