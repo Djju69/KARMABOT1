@@ -807,35 +807,43 @@ if __name__ == "__main__":
                         logger.info(f"✅ Created Update object")
                         
                         # ВАЖНО: Обрабатываем update через диспетчер
-                        # Используем правильную обработку async в синхронном контексте
+                        # Используем синхронную обработку в основном потоке
                         import asyncio
-                        import threading
                         
-                        def run_async_in_thread():
-                            """Запускаем async функцию в отдельном потоке"""
-                            import logging
-                            logger = logging.getLogger(__name__)
+                        try:
+                            # Получаем текущий event loop
+                            loop = asyncio.get_event_loop()
                             
+                            # Создаем задачу для обработки update
+                            task = loop.create_task(
+                                self.dp_instance.feed_update(bot=self.bot_instance, update=update)
+                            )
+                            
+                            # Ждем завершения задачи с таймаутом
                             try:
-                                # Создаем новый event loop для этого потока
+                                loop.run_until_complete(asyncio.wait_for(task, timeout=10.0))
+                                logger.info(f"✅ Fed to dispatcher successfully")
+                            except asyncio.TimeoutError:
+                                logger.warning("⚠️ Webhook processing timeout")
+                                task.cancel()
+                            except Exception as e:
+                                logger.error(f"❌ Error in webhook processing: {e}")
+                                
+                        except RuntimeError as e:
+                            logger.error(f"❌ No event loop available: {e}")
+                            # Fallback: создаем новый event loop
+                            try:
                                 loop = asyncio.new_event_loop()
                                 asyncio.set_event_loop(loop)
-                                try:
-                                    # КРИТИЧНО: Используем существующий bot instance
-                                    # НЕ создаем новый - это вызывает конфликты event loop
-                                    loop.run_until_complete(
-                                        self.dp_instance.feed_update(bot=self.bot_instance, update=update)
-                                    )
-                                    logger.info(f"✅ Fed to dispatcher successfully")
-                                finally:
+                                loop.run_until_complete(
+                                    self.dp_instance.feed_update(bot=self.bot_instance, update=update)
+                                )
+                                logger.info(f"✅ Fed to dispatcher successfully (fallback)")
+                            except Exception as fallback_error:
+                                logger.error(f"❌ Fallback failed: {fallback_error}")
+                            finally:
+                                if 'loop' in locals():
                                     loop.close()
-                            except Exception as e:
-                                logger.error(f"❌ Error in async thread: {e}")
-                        
-                        # Запускаем в отдельном потоке
-                        thread = threading.Thread(target=run_async_in_thread)
-                        thread.start()
-                        thread.join(timeout=10)  # Ждем максимум 10 секунд
                         
                         self.send_response(200)
                         self.end_headers()
