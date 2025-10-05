@@ -712,7 +712,7 @@ if __name__ == "__main__":
         from http.server import HTTPServer, SimpleHTTPRequestHandler
         import os
         
-        def start_web_server():
+        def start_web_server(bot_instance, dp_instance):
             port = int(os.getenv("API_PORT", 8080))
             os.chdir("webapp")  # Serve files from webapp directory
             
@@ -750,17 +750,27 @@ if __name__ == "__main__":
                         content_length = int(self.headers.get('Content-Length', 0))
                         post_data = self.rfile.read(content_length)
                         
-                        # Простая обработка webhook без создания нового event loop
+                        # Получаем JSON от Telegram
                         import json
+                        update_data = json.loads(post_data.decode('utf-8'))
+                        logger.info(f"📨 Received webhook update: {update_data.get('update_id', 'unknown')}")
+                        
+                        # Создаём объект Update
+                        from aiogram.types import Update
+                        update = Update(**update_data)
+                        
+                        # ВАЖНО: Обрабатываем update через диспетчер
+                        # Используем существующий event loop
+                        import asyncio
                         try:
-                            update_data = json.loads(post_data.decode('utf-8'))
-                            logger.info(f"📨 Received webhook update: {update_data.get('update_id', 'unknown')}")
-                            
-                            # Здесь должна быть обработка через aiogram
-                            # Пока просто логируем получение
-                            
-                        except json.JSONDecodeError as e:
-                            logger.error(f"Invalid JSON in webhook: {e}")
+                            loop = asyncio.get_running_loop()
+                            # Создаем задачу для обработки update
+                            task = loop.create_task(dp_instance.feed_update(bot=bot_instance, update=update))
+                            # Ждем завершения задачи
+                            loop.run_until_complete(task)
+                        except RuntimeError:
+                            # Если нет активного event loop, создаем новый
+                            asyncio.run(dp_instance.feed_update(bot=bot_instance, update=update))
                         
                         self.send_response(200)
                         self.end_headers()
@@ -1384,7 +1394,7 @@ if __name__ == "__main__":
             logger.info(f"Web server with API started on port {port}")
             httpd.serve_forever()
         
-        web_thread = threading.Thread(target=start_web_server)
+        web_thread = threading.Thread(target=start_web_server, args=(bot, dp))
         web_thread.daemon = True
         web_thread.start()
         
