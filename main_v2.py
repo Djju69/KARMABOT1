@@ -501,6 +501,11 @@ async def main():
                 
                 logger.info("🌐 Webhook integrated into main server")
                 
+                # Запускаем web сервер с bot и dp
+                web_thread = threading.Thread(target=start_web_server, args=(bot, dp))
+                web_thread.daemon = True
+                web_thread.start()
+                
                 # Keep running
                 try:
                     await asyncio.Future()  # Run forever
@@ -1394,9 +1399,6 @@ if __name__ == "__main__":
             logger.info(f"Web server with API started on port {port}")
             httpd.serve_forever()
         
-        web_thread = threading.Thread(target=start_web_server, args=(bot, dp))
-        web_thread.daemon = True
-        web_thread.start()
         
         # === ИНТЕГРАЦИЯ MULTI-PLATFORM API ===
         if MULTI_PLATFORM_AVAILABLE:
