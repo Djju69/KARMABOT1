@@ -523,8 +523,8 @@ async def main():
                 runner = web.AppRunner(app)
                 await runner.setup()
                 
-                # Используем порт Railway для webhook сервера
-                webhook_port = int(os.getenv('PORT', 8000))
+                # Используем отдельный порт для webhook сервера (не конфликтует с Railway)
+                webhook_port = int(os.getenv('WEBHOOK_PORT', 8000))
                 site = web.TCPSite(runner, '0.0.0.0', webhook_port)
                 await site.start()
                 
