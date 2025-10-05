@@ -807,19 +807,30 @@ if __name__ == "__main__":
                         logger.info(f"✅ Created Update object")
                         
                         # ВАЖНО: Обрабатываем update через диспетчер
-                        # Используем существующий event loop
+                        # Используем правильную обработку async в синхронном контексте
                         import asyncio
-                        try:
-                            loop = asyncio.get_running_loop()
-                            # Создаем задачу для обработки update
-                            task = loop.create_task(self.dp_instance.feed_update(bot=self.bot_instance, update=update))
-                            # Ждем завершения задачи
-                            loop.run_until_complete(task)
-                            logger.info(f"✅ Fed to dispatcher successfully")
-                        except RuntimeError:
-                            # Если нет активного event loop, создаем новый
-                            asyncio.run(self.dp_instance.feed_update(bot=self.bot_instance, update=update))
-                            logger.info(f"✅ Fed to dispatcher (new loop)")
+                        import threading
+                        
+                        def run_async_in_thread():
+                            """Запускаем async функцию в отдельном потоке"""
+                            try:
+                                # Создаем новый event loop для этого потока
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                try:
+                                    loop.run_until_complete(
+                                        self.dp_instance.feed_update(bot=self.bot_instance, update=update)
+                                    )
+                                    logger.info(f"✅ Fed to dispatcher successfully")
+                                finally:
+                                    loop.close()
+                            except Exception as e:
+                                logger.error(f"❌ Error in async thread: {e}")
+                        
+                        # Запускаем в отдельном потоке
+                        thread = threading.Thread(target=run_async_in_thread)
+                        thread.start()
+                        thread.join(timeout=10)  # Ждем максимум 10 секунд
                         
                         self.send_response(200)
                         self.end_headers()
