@@ -487,8 +487,8 @@ async def main():
                 if not WEBHOOK_URL.startswith("http"):
                     WEBHOOK_URL = f"https://{WEBHOOK_URL}"
                 
-                webhook_path = "/webhook"
-                full_webhook_url = f"{WEBHOOK_URL}{webhook_path}"
+                # WEBHOOK_URL уже содержит /webhook, поэтому не добавляем его
+                full_webhook_url = WEBHOOK_URL
                 
                 await bot.delete_webhook(drop_pending_updates=True)
                 await bot.set_webhook(url=full_webhook_url, drop_pending_updates=True)
