@@ -750,21 +750,17 @@ if __name__ == "__main__":
                         content_length = int(self.headers.get('Content-Length', 0))
                         post_data = self.rfile.read(content_length)
                         
-                        # Обрабатываем webhook через aiogram
-                        import asyncio
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        
-                        async def process_webhook():
-                            from aiogram import Bot
-                            bot = Bot(token=os.getenv("BOTS__BOT_TOKEN"))
-                            try:
-                                await bot.process_new_updates([json.loads(post_data.decode('utf-8'))])
-                            finally:
-                                await bot.session.close()
-                        
-                        loop.run_until_complete(process_webhook())
-                        loop.close()
+                        # Простая обработка webhook без создания нового event loop
+                        import json
+                        try:
+                            update_data = json.loads(post_data.decode('utf-8'))
+                            logger.info(f"📨 Received webhook update: {update_data.get('update_id', 'unknown')}")
+                            
+                            # Здесь должна быть обработка через aiogram
+                            # Пока просто логируем получение
+                            
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Invalid JSON in webhook: {e}")
                         
                         self.send_response(200)
                         self.end_headers()
