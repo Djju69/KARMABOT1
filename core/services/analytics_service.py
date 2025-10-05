@@ -135,9 +135,46 @@ class AnalyticsService:
             return UserMetrics(**data)
         
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
-            with get_connection() as conn:
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем
+                    logger.warning("Skipping user metrics - async context detected")
+                    return UserMetrics(total_users=0, active_users=0, new_users=0, retention_rate=0.0)
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    total_users_result = db_v2.postgresql_service.fetch_one_sync("SELECT COUNT(*) FROM users")
+                    total_users = total_users_result['count'] if total_users_result else 0
+                    
+                    active_date = datetime.now() - timedelta(days=days)
+                    active_users_result = db_v2.postgresql_service.fetch_one_sync(
+                        "SELECT COUNT(*) FROM users WHERE last_active >= %s",
+                        (active_date.isoformat(),)
+                    )
+                    active_users = active_users_result['count'] if active_users_result else 0
+                    
+                    new_users_result = db_v2.postgresql_service.fetch_one_sync(
+                        "SELECT COUNT(*) FROM users WHERE created_at >= %s",
+                        (active_date.isoformat(),)
+                    )
+                    new_users = new_users_result['count'] if new_users_result else 0
+                    
+                    retention_rate = (active_users / total_users * 100) if total_users > 0 else 0.0
+                    
+                    return UserMetrics(
+                        total_users=total_users,
+                        active_users=active_users,
+                        new_users=new_users,
+                        retention_rate=retention_rate
+                    )
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
+                
                 # Общее количество пользователей
                 cursor = conn.execute("SELECT COUNT(*) FROM users")
                 total_users = cursor.fetchone()[0]
@@ -238,9 +275,52 @@ class AnalyticsService:
             return PartnerMetrics(**data)
         
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
-            with get_connection() as conn:
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем
+                    logger.warning("Skipping partner metrics - async context detected")
+                    return PartnerMetrics(total_partners=0, active_partners=0, pending_partners=0, rejected_partners=0, total_cards=0, approved_cards=0, pending_cards=0, rejected_cards=0)
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    total_partners_result = db_v2.postgresql_service.fetch_one_sync("SELECT COUNT(*) FROM partners_v2")
+                    total_partners = total_partners_result['count'] if total_partners_result else 0
+                    
+                    status_counts_result = db_v2.postgresql_service.fetch_all_sync("SELECT status, COUNT(*) FROM partners_v2 GROUP BY status")
+                    status_counts = {row['status']: row['count'] for row in status_counts_result}
+                    
+                    active_partners = status_counts.get('approved', 0)
+                    pending_partners = status_counts.get('pending', 0)
+                    rejected_partners = status_counts.get('rejected', 0)
+                    
+                    total_cards_result = db_v2.postgresql_service.fetch_one_sync("SELECT COUNT(*) FROM cards_v2")
+                    total_cards = total_cards_result['count'] if total_cards_result else 0
+                    
+                    card_status_result = db_v2.postgresql_service.fetch_all_sync("SELECT status, COUNT(*) FROM cards_v2 GROUP BY status")
+                    card_status_counts = {row['status']: row['count'] for row in card_status_result}
+                    
+                    approved_cards = card_status_counts.get('approved', 0)
+                    pending_cards = card_status_counts.get('pending', 0)
+                    rejected_cards = card_status_counts.get('rejected', 0)
+                    
+                    return PartnerMetrics(
+                        total_partners=total_partners,
+                        active_partners=active_partners,
+                        pending_partners=pending_partners,
+                        rejected_partners=rejected_partners,
+                        total_cards=total_cards,
+                        approved_cards=approved_cards,
+                        pending_cards=pending_cards,
+                        rejected_cards=rejected_cards
+                    )
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
+                
                 # Общее количество партнеров
                 cursor = conn.execute("SELECT COUNT(*) FROM partners_v2")
                 total_partners = cursor.fetchone()[0]
@@ -311,9 +391,40 @@ class AnalyticsService:
             return TransactionMetrics(**data)
         
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
-            with get_connection() as conn:
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем
+                    logger.warning("Skipping transaction metrics - async context detected")
+                    return TransactionMetrics(total_transactions=0, period_transactions=0, total_points_earned=0, total_points_spent=0, avg_transaction_amount=0.0, top_transactions=[])
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    total_transactions_result = db_v2.postgresql_service.fetch_one_sync("SELECT COUNT(*) FROM points_history")
+                    total_transactions = total_transactions_result['count'] if total_transactions_result else 0
+                    
+                    period_start = datetime.now() - timedelta(days=days)
+                    period_transactions_result = db_v2.postgresql_service.fetch_one_sync(
+                        "SELECT COUNT(*) FROM points_history WHERE created_at >= %s",
+                        (period_start.isoformat(),)
+                    )
+                    period_transactions = period_transactions_result['count'] if period_transactions_result else 0
+                    
+                    return TransactionMetrics(
+                        total_transactions=total_transactions,
+                        period_transactions=period_transactions,
+                        total_points_earned=0,
+                        total_points_spent=0,
+                        avg_transaction_amount=0.0,
+                        top_transactions=[]
+                    )
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
+                
                 # Общее количество транзакций
                 cursor = conn.execute("SELECT COUNT(*) FROM points_history")
                 total_transactions = cursor.fetchone()[0]
@@ -401,9 +512,23 @@ class AnalyticsService:
             return BusinessMetrics(**data)
         
         try:
-            from core.database.db_v2 import get_connection
+            from core.database.db_adapter import db_v2
             
-            with get_connection() as conn:
+            if db_v2.use_postgresql:
+                # Для PostgreSQL используем синхронные методы
+                try:
+                    import asyncio
+                    asyncio.get_running_loop()
+                    # Есть активный event loop, пропускаем
+                    logger.warning("Skipping business metrics - async context detected")
+                    return BusinessMetrics(top_categories=[], top_partners=[], growth_metrics={}, conversion_rates={})
+                except RuntimeError:
+                    # Нет активного event loop, можно использовать синхронные методы
+                    return BusinessMetrics(top_categories=[], top_partners=[], growth_metrics={}, conversion_rates={})
+            else:
+                # Для SQLite используем обычное соединение
+                conn = db_v2.sqlite_service.get_connection()
+                
                 # Топ категории по количеству карт
                 cursor = conn.execute("""
                     SELECT c.name, COUNT(cards.id) as card_count

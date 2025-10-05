@@ -672,7 +672,16 @@ async def main():
             logger.error("Staying idle.")
             await asyncio.Event().wait()
             return
-        await dp.start_polling(bot)
+        
+        # КРИТИЧНО: Запускаем polling ТОЛЬКО если webhook отключен
+        if DISABLE_WEBHOOK:
+            logger.info("🚀 Starting bot polling (distributed lock mode)")
+            await dp.start_polling(bot)
+        else:
+            logger.info("✅ Webhook mode - polling disabled (distributed lock)")
+            # В webhook режиме НЕ запускаем polling!
+            # Обработка сообщений идёт через HTTPServer
+            await asyncio.Event().wait()  # Ждем бесконечно
     finally:
         # Release distributed lock if held
         if release_lock:
@@ -1424,9 +1433,8 @@ if __name__ == "__main__":
                         loop.create_task(start_monitoring())
                         logger.info("🔍 Multi-platform monitoring started")
                     except RuntimeError:
-                        # Нет активного event loop, создаем новый
-                        asyncio.create_task(start_monitoring())
-                        logger.info("🔍 Multi-platform monitoring started (new loop)")
+                        # Нет активного event loop, пропускаем мониторинг
+                        logger.warning("⚠️ Cannot start monitoring: no running event loop")
                 except Exception as e:
                     logger.warning(f"⚠️  Failed to start monitoring: {e}")
                 
