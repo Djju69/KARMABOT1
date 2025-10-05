@@ -813,17 +813,26 @@ if __name__ == "__main__":
                         
                         def run_async_in_thread():
                             """Запускаем async функцию в отдельном потоке"""
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            
                             try:
                                 # Создаем новый event loop для этого потока
                                 loop = asyncio.new_event_loop()
                                 asyncio.set_event_loop(loop)
                                 try:
-                                    # Используем существующий bot instance (не создаем новый!)
-                                    # Это предотвращает конфликты подключений к БД
+                                    # Создаем новый bot instance с новой сессией для этого потока
+                                    # Это предотвращает конфликты сессий между потоками
+                                    import aiogram
+                                    new_bot = aiogram.Bot(token=self.bot_instance.token)
+                                    
                                     loop.run_until_complete(
-                                        self.dp_instance.feed_update(bot=self.bot_instance, update=update)
+                                        self.dp_instance.feed_update(bot=new_bot, update=update)
                                     )
                                     logger.info(f"✅ Fed to dispatcher successfully")
+                                    
+                                    # Закрываем сессию нового бота
+                                    loop.run_until_complete(new_bot.session.close())
                                 finally:
                                     loop.close()
                             except Exception as e:
