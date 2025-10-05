@@ -807,43 +807,25 @@ if __name__ == "__main__":
                         logger.info(f"✅ Created Update object")
                         
                         # ВАЖНО: Обрабатываем update через диспетчер
-                        # Используем синхронную обработку в основном потоке
-                        import asyncio
-                        
+                        # Используем простой синхронный подход без asyncio
                         try:
-                            # Получаем текущий event loop
-                            loop = asyncio.get_event_loop()
+                            # Создаем новый event loop для этого потока
+                            import asyncio
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
                             
-                            # Создаем задачу для обработки update
-                            task = loop.create_task(
-                                self.dp_instance.feed_update(bot=self.bot_instance, update=update)
-                            )
-                            
-                            # Ждем завершения задачи с таймаутом
                             try:
-                                loop.run_until_complete(asyncio.wait_for(task, timeout=10.0))
-                                logger.info(f"✅ Fed to dispatcher successfully")
-                            except asyncio.TimeoutError:
-                                logger.warning("⚠️ Webhook processing timeout")
-                                task.cancel()
-                            except Exception as e:
-                                logger.error(f"❌ Error in webhook processing: {e}")
-                                
-                        except RuntimeError as e:
-                            logger.error(f"❌ No event loop available: {e}")
-                            # Fallback: создаем новый event loop
-                            try:
-                                loop = asyncio.new_event_loop()
-                                asyncio.set_event_loop(loop)
+                                # Выполняем обработку update
                                 loop.run_until_complete(
                                     self.dp_instance.feed_update(bot=self.bot_instance, update=update)
                                 )
-                                logger.info(f"✅ Fed to dispatcher successfully (fallback)")
-                            except Exception as fallback_error:
-                                logger.error(f"❌ Fallback failed: {fallback_error}")
+                                logger.info(f"✅ Fed to dispatcher successfully")
                             finally:
-                                if 'loop' in locals():
-                                    loop.close()
+                                loop.close()
+                                
+                        except Exception as e:
+                            logger.error(f"❌ Error in webhook processing: {e}")
+                            # Просто логируем ошибку и продолжаем
                         
                         self.send_response(200)
                         self.end_headers()
