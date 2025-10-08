@@ -855,26 +855,26 @@ if __name__ == "__main__":
                     self.end_headers()
                     self.wfile.write(b'Error')
                 
-                def handle_health_request(self):
-                    """Health check endpoint"""
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'text/plain')
-                    self.end_headers()
-                    self.wfile.write(b'OK')
-                
-                def handle_api_request(self):
-                    try:
-                        import sys
-                        import os
-                        
-                        # Добавляем путь к корню проекта
-                        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                        
-                        from core.database.db_adapter import db_v2
-                        
-                        if self.path == '/api/moderation/applications':
-                            # Получаем заявки партнеров
-                            if db_v2.use_postgresql:
+            def handle_health_request(self):
+                """Health check endpoint"""
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain')
+                self.end_headers()
+                self.wfile.write(b'OK')
+            
+            def handle_api_request(self):
+                try:
+                    import sys
+                    import os
+                    
+                    # Добавляем путь к корню проекта
+                    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    
+                    from core.database.db_adapter import db_v2
+                    
+                    if self.path == '/api/moderation/applications':
+                        # Получаем заявки партнеров
+                        if db_v2.use_postgresql:
                                 applications = db_v2.postgresql_service.fetch_all_sync("""
                                     SELECT id, name, phone, email, telegram_user_id, created_at, status
                                     FROM partner_applications 
@@ -1452,16 +1452,16 @@ if __name__ == "__main__":
                         logger.error(f"API error: {e}")
                         self.send_json_response({'success': False, 'error': str(e)}, status=500)
                 
-                def send_json_response(self, data, status=200):
-                    self.send_response(status)
-                    self.send_header('Content-Type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-                    self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-                    self.end_headers()
-                    
-                    response_json = json.dumps(data, ensure_ascii=False, indent=2)
-                    self.wfile.write(response_json.encode('utf-8'))
+            def send_json_response(self, data, status=200):
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+                self.end_headers()
+                
+                response_json = json.dumps(data, ensure_ascii=False, indent=2)
+                self.wfile.write(response_json.encode('utf-8'))
             
             httpd = HTTPServer(("0.0.0.0", port), CustomHTTPRequestHandler)
             logger.info(f"Web server with API started on port {port}")
