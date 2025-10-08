@@ -911,7 +911,7 @@ if __name__ == "__main__":
                             
                             self.send_json_response(response)
                             
-                        elif self.path.startswith('/api/moderation/approve/'):
+                        if self.path.startswith('/api/moderation/approve/'):
                             app_id = self.path.split('/')[-1]
                             if db_v2.use_postgresql:
                                 db_v2.postgresql_service.execute_sync("""
