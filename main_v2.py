@@ -1447,10 +1447,6 @@ if __name__ == "__main__":
                             
                         else:
                             self.send_error(404, "API endpoint not found")
-                            
-                    except Exception as e:
-                        logger.error(f"API error: {e}")
-                        self.send_json_response({'success': False, 'error': str(e)}, status=500)
                 
             def send_json_response(self, data, status=200):
                 self.send_response(status)
