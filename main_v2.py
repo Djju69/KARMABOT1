@@ -814,26 +814,35 @@ if __name__ == "__main__":
                         update = Update(**update_data)
                         logger.info(f"✅ Created Update object")
                         
-                        # ВАЖНО: Обрабатываем update через диспетчер
-                        # Используем простой синхронный подход без asyncio
-                        try:
-                            # Создаем новый event loop для этого потока
-                            import asyncio
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            
-                            try:
-                                # Выполняем обработку update
-                                loop.run_until_complete(
-                                    self.dp_instance.feed_update(bot=self.bot_instance, update=update)
-                                )
-                                logger.info(f"✅ Fed to dispatcher successfully")
-                            finally:
-                                loop.close()
-                                
-                        except Exception as e:
-                            logger.error(f"❌ Error in webhook processing: {e}")
-                            # Просто логируем ошибку и продолжаем
+            # ВАЖНО: Обрабатываем update через диспетчер
+            # Используем простой синхронный подход без asyncio
+            try:
+                # Создаем новый event loop для этого потока
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                
+                try:
+                    # Создаем новый Bot экземпляр для этого потока
+                    from aiogram import Bot
+                    bot_token = os.getenv('BOT_TOKEN')
+                    new_bot = Bot(token=bot_token)
+                    
+                    # Выполняем обработку update
+                    loop.run_until_complete(
+                        self.dp_instance.feed_update(bot=new_bot, update=update)
+                    )
+                    logger.info(f"✅ Fed to dispatcher successfully")
+                    
+                    # Закрываем сессию нового бота
+                    loop.run_until_complete(new_bot.session.close())
+                    
+                finally:
+                    loop.close()
+                    
+            except Exception as e:
+                logger.error(f"❌ Error in webhook processing: {e}")
+                # Просто логируем ошибку и продолжаем
                         
                         self.send_response(200)
                         self.end_headers()
