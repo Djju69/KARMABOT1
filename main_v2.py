@@ -801,6 +801,14 @@ if __name__ == "__main__":
                         update_data = json.loads(post_data.decode('utf-8'))
                         logger.info(f"✅ Parsed update: {update_data.get('update_id')}")
                         
+                        # Проверяем что это валидный Telegram update
+                        if 'update_id' not in update_data:
+                            logger.warning("⚠️ Invalid Telegram update - missing update_id")
+                            self.send_response(200)
+                            self.end_headers()
+                            self.wfile.write(b'OK')
+                            return
+                        
                         # Создаём объект Update
                         from aiogram.types import Update
                         update = Update(**update_data)
