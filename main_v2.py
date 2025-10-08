@@ -788,72 +788,72 @@ if __name__ == "__main__":
                     else:
                         super().do_OPTIONS()
                 
-                def handle_webhook_request(self):
-                    """Обработка webhook запросов от Telegram"""
-                    try:
-                        content_length = int(self.headers.get('Content-Length', 0))
-                        post_data = self.rfile.read(content_length)
-                        logger.info(f"📨 Body length: {content_length}")
-                        logger.info(f"📨 Body preview: {post_data.decode('utf-8')[:200]}")
-                        
-                        # Получаем JSON от Telegram
-                        import json
-                        update_data = json.loads(post_data.decode('utf-8'))
-                        logger.info(f"✅ Parsed update: {update_data.get('update_id')}")
-                        
-                        # Проверяем что это валидный Telegram update
-                        if 'update_id' not in update_data:
-                            logger.warning("⚠️ Invalid Telegram update - missing update_id")
-                            self.send_response(200)
-                            self.end_headers()
-                            self.wfile.write(b'OK')
-                            return
-                        
-                        # Создаём объект Update
-                        from aiogram.types import Update
-                        update = Update(**update_data)
-                        logger.info(f"✅ Created Update object")
-                        
-            # ВАЖНО: Обрабатываем update через диспетчер
-            # Используем простой синхронный подход без asyncio
-            try:
-                # Создаем новый event loop для этого потока
-                import asyncio
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                
+            def handle_webhook_request(self):
+                """Обработка webhook запросов от Telegram"""
                 try:
-                    # Создаем новый Bot экземпляр для этого потока
-                    from aiogram import Bot
-                    bot_token = os.getenv('BOT_TOKEN')
-                    new_bot = Bot(token=bot_token)
+                    content_length = int(self.headers.get('Content-Length', 0))
+                    post_data = self.rfile.read(content_length)
+                    logger.info(f"📨 Body length: {content_length}")
+                    logger.info(f"📨 Body preview: {post_data.decode('utf-8')[:200]}")
                     
-                    # Выполняем обработку update
-                    loop.run_until_complete(
-                        self.dp_instance.feed_update(bot=new_bot, update=update)
-                    )
-                    logger.info(f"✅ Fed to dispatcher successfully")
+                    # Получаем JSON от Telegram
+                    import json
+                    update_data = json.loads(post_data.decode('utf-8'))
+                    logger.info(f"✅ Parsed update: {update_data.get('update_id')}")
                     
-                    # Закрываем сессию нового бота
-                    loop.run_until_complete(new_bot.session.close())
+                    # Проверяем что это валидный Telegram update
+                    if 'update_id' not in update_data:
+                        logger.warning("⚠️ Invalid Telegram update - missing update_id")
+                        self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(b'OK')
+                        return
                     
-                finally:
-                    loop.close()
+                    # Создаём объект Update
+                    from aiogram.types import Update
+                    update = Update(**update_data)
+                    logger.info(f"✅ Created Update object")
                     
-            except Exception as e:
-                logger.error(f"❌ Error in webhook processing: {e}")
-                # Просто логируем ошибку и продолжаем
-            
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b'OK')
-            logger.info("✅ Response sent")
-            
-        except Exception as e:
-            logger.error(f"❌ Webhook error: {e}", exc_info=True)
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(b'Error')
+                        # ВАЖНО: Обрабатываем update через диспетчер
+                        # Используем простой синхронный подход без asyncio
+                        try:
+                            # Создаем новый event loop для этого потока
+                            import asyncio
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            
+                            try:
+                                # Создаем новый Bot экземпляр для этого потока
+                                from aiogram import Bot
+                                bot_token = os.getenv('BOT_TOKEN')
+                                new_bot = Bot(token=bot_token)
+                                
+                                # Выполняем обработку update
+                                loop.run_until_complete(
+                                    self.dp_instance.feed_update(bot=new_bot, update=update)
+                                )
+                                logger.info(f"✅ Fed to dispatcher successfully")
+                                
+                                # Закрываем сессию нового бота
+                                loop.run_until_complete(new_bot.session.close())
+                                
+                            finally:
+                                loop.close()
+                                
+                        except Exception as e:
+                            logger.error(f"❌ Error in webhook processing: {e}")
+                            # Просто логируем ошибку и продолжаем
+                    
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b'OK')
+                    logger.info("✅ Response sent")
+                    
+                except Exception as e:
+                    logger.error(f"❌ Webhook error: {e}", exc_info=True)
+                    self.send_response(500)
+                    self.end_headers()
+                    self.wfile.write(b'Error')
                 
                 def handle_health_request(self):
                     """Health check endpoint"""
