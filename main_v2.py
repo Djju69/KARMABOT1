@@ -882,14 +882,14 @@ if __name__ == "__main__":
                                     ORDER BY created_at ASC 
                                     LIMIT 50
                                 """)
-                            else:
-                                applications = db_v2.sqlite_service.fetch_all("""
-                                    SELECT id, name, phone, email, telegram_user_id, created_at, status
-                                    FROM partner_applications 
-                                    WHERE status = 'pending' 
-                                    ORDER BY created_at ASC 
-                                    LIMIT 50
-                                """)
+                        else:
+                            applications = db_v2.sqlite_service.fetch_all("""
+                                SELECT id, name, phone, email, telegram_user_id, created_at, status
+                                FROM partner_applications 
+                                WHERE status = 'pending' 
+                                ORDER BY created_at ASC 
+                                LIMIT 50
+                            """)
                             
                             apps_list = []
                             for app in applications:
