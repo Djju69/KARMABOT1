@@ -843,17 +843,17 @@ if __name__ == "__main__":
             except Exception as e:
                 logger.error(f"❌ Error in webhook processing: {e}")
                 # Просто логируем ошибку и продолжаем
-                        
-                        self.send_response(200)
-                        self.end_headers()
-                        self.wfile.write(b'OK')
-                        logger.info("✅ Response sent")
-                        
-                    except Exception as e:
-                        logger.error(f"❌ Webhook error: {e}", exc_info=True)
-                        self.send_response(500)
-                        self.end_headers()
-                        self.wfile.write(b'Error')
+            
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b'OK')
+            logger.info("✅ Response sent")
+            
+        except Exception as e:
+            logger.error(f"❌ Webhook error: {e}", exc_info=True)
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(b'Error')
                 
                 def handle_health_request(self):
                     """Health check endpoint"""
