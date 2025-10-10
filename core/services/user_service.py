@@ -216,8 +216,8 @@ class KarmaService:
         """
         Get karma transaction history for user.
     
-        Args:
-            user_id: Telegram user ID
+    Args:
+        user_id: Telegram user ID
             limit: Number of transactions to return
             offset: Offset for pagination
         
